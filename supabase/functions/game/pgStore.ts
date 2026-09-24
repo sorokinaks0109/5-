@@ -105,8 +105,16 @@ export class PgStore implements Store {
             email_confirm: true,
             app_metadata: { role: it.role },
           });
-          if (error || !data.user) throw new GameError(`Не удалось создать код ${it.code}: ${error?.message ?? ''}`);
-          return { ...it, id: data.user.id };
+          if (data?.user) return { ...it, id: data.user.id };
+          // Пользователь уже есть (например, прошлая попытка оборвалась) — находим его и обновляем
+          if (error && /already|exists|registered/i.test(error.message)) {
+            const existing = await this.findAuthUser(codeEmail(it.code));
+            if (existing) {
+              await this.db.auth.admin.updateUserById(existing, { password: it.code, app_metadata: { role: it.role } });
+              return { ...it, id: existing };
+            }
+          }
+          throw new GameError(`Не удалось создать код ${it.code}: ${error?.message ?? 'неизвестная ошибка'}`);
         }),
       );
       const rows = users.map((u) => ({
@@ -121,6 +129,17 @@ export class PgStore implements Store {
       created.push(...inserted.map(toAccount));
     }
     return created;
+  }
+
+  private async findAuthUser(email: string): Promise<string | null> {
+    for (let page = 1; page <= 20; page++) {
+      const { data, error } = await this.db.auth.admin.listUsers({ page, perPage: 1000 });
+      if (error) throw new Error(error.message);
+      const u = data.users.find((x) => x.email?.toLowerCase() === email.toLowerCase());
+      if (u) return u.id;
+      if (data.users.length < 1000) return null;
+    }
+    return null;
   }
 
   async updateAccount(a: Account) {

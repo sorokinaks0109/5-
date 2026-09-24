@@ -10,7 +10,20 @@ import rawContent from '../_shared/content.ts';
 import { PgStore } from './pgStore.ts';
 
 const content = rawContent as unknown as Content;
-const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+/** Служебный ключ: старое имя SUPABASE_SERVICE_ROLE_KEY или новые секретные ключи SUPABASE_SECRET_KEYS. */
+function serviceKey(): string {
+  const legacy = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (legacy) return legacy;
+  const raw = Deno.env.get('SUPABASE_SECRET_KEYS') ?? Deno.env.get('SUPABASE_SECRET_KEY') ?? '';
+  try {
+    const keys = JSON.parse(raw) as Record<string, string>;
+    return keys.default ?? Object.values(keys)[0] ?? '';
+  } catch {
+    return raw;
+  }
+}
+
+const admin = createClient(Deno.env.get('SUPABASE_URL')!, serviceKey(), {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
@@ -32,7 +45,10 @@ Deno.serve(async (req) => {
     // Первый вход организатора по коду из секрета ORGANIZER_CODE
     if (body.action === 'bootstrap') {
       const secret = normalizeCode(Deno.env.get('ORGANIZER_CODE') ?? '');
-      if (secret.length < 8 || normalizeCode(String(body.code ?? '')) !== secret) throw new GameError('Код не найден.');
+      if (!secret) throw new GameError('На сервере не задан секрет ORGANIZER_CODE (README, шаг 4).');
+      if (secret.length < 8)
+        throw new GameError('Секрет ORGANIZER_CODE короче 8 латинских букв и цифр. Русские буквы и знаки в коде не учитываются.');
+      if (normalizeCode(String(body.code ?? '')) !== secret) throw new GameError('Код не найден.');
       await svc.ensureOrganizer(secret);
       return json({ ok: true });
     }
@@ -48,6 +64,7 @@ Deno.serve(async (req) => {
   } catch (e) {
     if (e instanceof GameError) return json({ error: e.message }, 400);
     console.error(e);
-    return json({ error: 'Ошибка сервера. Попробуйте ещё раз.' }, 500);
+    const detail = e instanceof Error ? e.message : String(e);
+    return json({ error: `Ошибка сервера: ${detail.slice(0, 200)}` }, 500);
   }
 });
