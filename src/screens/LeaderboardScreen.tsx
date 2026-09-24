@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api/index.ts';
 import { Flag } from '../components/Mountain.tsx';
 import { pc } from '../content.ts';
-import type { LeaderboardView, PublicRatingRow } from '../core/types.ts';
+import { STAGES, type LeaderboardView, type PublicRatingRow } from '../core/types.ts';
 import { meters, useApp } from '../hooks.ts';
 
 const W = 400;
@@ -21,14 +21,14 @@ function flagPos(r: PublicRatingRow, i: number, max: number) {
 }
 
 export function RatingMountain({ rows }: { rows: PublicRatingRow[] }) {
-  const max = pc.settings.stageMaxAltitude * 5;
+  const max = pc.settings.stageMaxAltitude * STAGES.length;
   const sorted = rows.slice().sort((a, b) => a.altitude - b.altitude);
   return (
     <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Гора рейтинга" style={{ width: '100%', display: 'block' }}>
       <rect width={W} height={H} fill="#312e81" rx="14" />
       <path d={`M10 ${BASE_Y + 15} L${TOP.x} ${TOP.y} L${W - 10} ${BASE_Y + 15} Z`} fill="#a5b4fc" />
       <path d={`M${TOP.x - 40} ${TOP.y + 55} L${TOP.x} ${TOP.y} L${TOP.x + 40} ${TOP.y + 55} L${TOP.x + 15} ${TOP.y + 45} L${TOP.x} ${TOP.y + 58} L${TOP.x - 18} ${TOP.y + 44} Z`} fill="#f4f7fb" />
-      {[1000, 2000, 3000, 4000, 5000].map((m) => {
+      {STAGES.map((n) => n * pc.settings.stageMaxAltitude).map((m) => {
         const y = BASE_Y - (m / max) * (BASE_Y - TOP.y - 12);
         return (
           <g key={m}>

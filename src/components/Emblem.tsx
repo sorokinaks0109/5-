@@ -1,7 +1,7 @@
-// Юбилейный знак «5 лет». Надписи по кругу берутся из content.json (settings.badgeTop / badgeBottom).
+// Эмблема игры: вершина с флажком. Надписи по кругу берутся из content.json (settings.badgeTop / badgeBottom).
 import { pc } from '../content.ts';
 
-export function Badge5({ size = 96 }: { size?: number; dark?: boolean }) {
+export function Emblem({ size = 96 }: { size?: number }) {
   const top = pc.settings.badgeTop;
   const bottom = pc.settings.badgeBottom;
   return (
@@ -22,11 +22,11 @@ export function Badge5({ size = 96 }: { size?: number; dark?: boolean }) {
       <circle cx="60" cy="60" r="58" fill="url(#badge-ring)" />
       <circle cx="60" cy="60" r="50" fill="none" stroke="#fff" strokeWidth="1.5" strokeDasharray="3 4" opacity="0.8" />
       <circle cx="60" cy="60" r="34" fill="url(#badge-core)" />
-      <path d="M34 76 L50 54 L58 64 L70 46 L88 76 Z" fill="#22d3ee" opacity="0.85" />
-      <path d="M66 52 L70 46 L74 52 Z" fill="#fff" />
-      <text x="60" y="73" textAnchor="middle" fontSize="38" fontWeight="900" fill="#fff" fontFamily="Arial, sans-serif">
-        5
-      </text>
+      <path d="M30 80 L50 54 L58 64 L70 44 L90 80 Z" fill="#22d3ee" />
+      <path d="M64 53 L70 44 L76 53 L72 51 L70 54 L67 51 Z" fill="#fff" />
+      <path d="M50 54 L54 59 L46 59 Z" fill="#fff" opacity="0.8" />
+      <line x1="70" y1="44" x2="70" y2="26" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M71 26 L86 30.5 L71 35 Z" fill="#f97316" />
       <text fontSize="11" fontWeight="900" fill="#1e1b4b" letterSpacing="1.5" fontFamily="Arial, sans-serif">
         <textPath href="#badge-arc-top" startOffset="50%" textAnchor="middle">
           {top}

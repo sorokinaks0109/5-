@@ -2,7 +2,7 @@
 import { buildItems, perfectAnswer } from './items.ts';
 import { createRng, shuffle, type Rng } from './random.ts';
 import { GameService } from './service.ts';
-import type { Account, AnswerKey, AnswerValue, Content, StageNo, Store } from './types.ts';
+import { IDEA_STAGE, type Account, type AnswerKey, type AnswerValue, type Content, type StageNo, type Store } from './types.ts';
 
 export const DEMO_CODES = {
   organizer: 'ORG-2027',
@@ -63,6 +63,10 @@ function wrongAnswer(key: AnswerKey, rng: Rng): AnswerValue {
       return shuffle(key.order, rng);
     case 'hotspots':
       return key.zones.slice(0, Math.ceil(key.zones.length / 2)).map((z) => ({ x: z.x + 1, y: z.y + 1 }));
+    case 'fishbone': {
+      const ids = Object.keys(key.placement);
+      return Object.fromEntries(ids.map((id, i) => [id, i < 3 ? 'none-x' : key.placement[id]]));
+    }
     case 'match': {
       const ids = Object.keys(key.pairs);
       const v = Object.values(key.pairs);
@@ -100,14 +104,14 @@ export async function seedDemo(store: Store, content: Content): Promise<void> {
   for (let b = 0; b < bots.length; b++) {
     let bot: Account = bots[b];
     const skill = 0.45 + rng() * 0.5;
-    const stagesToPlay = 1 + Math.floor(rng() * 5);
+    const stagesToPlay = 1 + Math.floor(rng() * IDEA_STAGE);
     t = realNow - 2 * 86_400_000 + Math.floor(rng() * 40) * 3_600_000;
     await svc.setProfile(bot, BOT_NICKS[b], content.departments[b % content.departments.length]);
     bot = (await store.getAccount(bot.id))!;
 
     for (let st = 1 as StageNo; st <= stagesToPlay; st = (st + 1) as StageNo) {
       await svc.startStage(bot, st);
-      if (st === 5) {
+      if (st === IDEA_STAGE) {
         t += 25 * 60_000;
         await svc.saveIdea(bot, IDEAS[b % IDEAS.length], true);
         break;
@@ -127,7 +131,7 @@ export async function seedDemo(store: Store, content: Content): Promise<void> {
   const ideas = (await store.listIdeas()).filter((i) => i.submittedAt);
   for (const idea of ideas.slice(0, 2)) {
     for (const j of jury.slice(0, 2)) {
-      const scores = Object.fromEntries(content.stage5.criteria.map((c) => [c.id, 80 + Math.floor(rng() * 12) * 10]));
+      const scores = Object.fromEntries(content.idea.criteria.map((c) => [c.id, 80 + Math.floor(rng() * 12) * 10]));
       await svc.juryScore(j, idea.workNo, scores, 'Демо-оценка');
     }
   }

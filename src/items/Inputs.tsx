@@ -3,7 +3,7 @@ import { useRef } from 'react';
 import {
   DndContext,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
   TouchSensor,
   closestCenter,
   useSensor,
@@ -115,8 +115,8 @@ function SortRow({
       className={isDragging ? 'dragging' : ''}
     >
       {!disabled && (
-        <span className="handle" {...attributes} {...listeners} aria-label="Перетащить">
-          ⠿
+        <span className="handle" {...attributes} {...listeners} aria-label="Потяните, чтобы переставить">
+          <span aria-hidden="true">⠿</span>
         </span>
       )}
       <span className="pos">{index + 1}.</span>
@@ -141,8 +141,9 @@ function SortRow({
 
 export function OrderInput({ item, value, onChange, disabled, review }: Props<OrderItem, string[]>) {
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 6 } }),
+    // Мышь — сразу; палец — только за бегунок, поэтому остальная карточка спокойно листается
+    useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
   const byId = new Map(item.elements.map((e) => [e.id, e]));
@@ -155,6 +156,11 @@ export function OrderInput({ item, value, onChange, disabled, review }: Props<Or
   const correct = review?.correct as string[] | undefined;
   return (
     <>
+      {!disabled && (
+        <p className="small muted" style={{ marginTop: 0 }}>
+          Тяните карточку за цветной бегунок слева или нажимайте ▲▼. Листать список можно пальцем по тексту.
+        </p>
+      )}
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onEnd}>
         <SortableContext items={value} strategy={verticalListSortingStrategy}>
           <ol className="sortable">

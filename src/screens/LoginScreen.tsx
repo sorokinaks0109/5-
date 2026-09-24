@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { api } from '../api/index.ts';
-import { Badge5 } from '../components/Badge5.tsx';
+import { Emblem } from '../components/Emblem.tsx';
 import { LogoSlot } from '../components/Notice.tsx';
 import { Snow } from '../components/Snow.tsx';
 import { DEMO_CODES } from '../core/demoSeed.ts';
@@ -33,7 +33,7 @@ export function LoginScreen({ onLogin }: { onLogin: (code: string) => Promise<vo
       </svg>
       <div className="splash-inner">
         <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <Badge5 size={104} />
+          <Emblem size={104} />
           <LogoSlot />
         </div>
         <h1>{pc.settings.gameName}</h1>

@@ -6,12 +6,14 @@ import { STAGE_THEME } from '../theme.ts';
 
 const BASE = { x: 24, y: 238 };
 export const PEAKS = [
-  { x: 72, y: 192 },
-  { x: 142, y: 160 },
-  { x: 212, y: 126 },
-  { x: 282, y: 94 },
+  { x: 60, y: 200 },
+  { x: 116, y: 176 },
+  { x: 172, y: 150 },
+  { x: 228, y: 124 },
+  { x: 284, y: 96 },
   { x: 348, y: 40 },
 ];
+const LAST = PEAKS.length - 1;
 
 export function Flag({ color = '#ff6b2c', label }: { color?: string; label?: string }) {
   return (
@@ -56,7 +58,7 @@ export function Mountain({
 
   return (
     <div className="mountain">
-      <svg viewBox="0 0 400 260" role="img" aria-label={`Пройдено вершин: ${done} из 5`}>
+      <svg viewBox="0 0 400 260" role="img" aria-label={`Пройдено вершин: ${done} из ${PEAKS.length}`}>
         <defs>
           <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stopColor="#1e1b4b" />
@@ -99,15 +101,17 @@ export function Mountain({
 
         <path d="M0 260 L0 170 L60 120 L110 150 L180 80 L250 130 L320 70 L400 120 L400 260 Z" fill="#7c3aed" opacity="0.45" />
         <path
-          d="M0 260 L0 244 L40 226 L72 192 L104 206 L142 160 L172 174 L212 126 L244 142 L282 94 L312 112 L348 40 L378 84 L400 98 L400 260 Z"
+          d="M0 260 L0 244 L32 230 L60 200 L88 212 L116 176 L144 188 L172 150 L200 162 L228 124 L256 138 L284 96 L314 112 L348 40 L378 84 L400 98 L400 260 Z"
           fill="url(#rock)"
         />
         {/* снежные шапки */}
-        <path d="M60 204 L72 192 L84 200 L76 202 L70 198 Z" fill="#fff" />
-        <path d="M128 174 L142 160 L156 170 L146 170 L140 166 Z" fill="#fff" />
-        <path d="M196 144 L212 126 L228 138 L218 138 L210 134 Z" fill="#fff" />
-        <path d="M264 114 L282 94 L300 106 L288 108 L280 102 Z" fill="#fff" />
-        <path d="M326 70 L348 40 L368 70 L356 66 L348 72 L340 64 Z" fill="#fff" />
+        {PEAKS.map((p, i) =>
+          i === LAST ? (
+            <path key={i} d={`M${p.x - 22} ${p.y + 30} L${p.x} ${p.y} L${p.x + 20} ${p.y + 30} L${p.x + 8} ${p.y + 26} L${p.x} ${p.y + 32} L${p.x - 8} ${p.y + 24} Z`} fill="#fff" />
+          ) : (
+            <path key={i} d={`M${p.x - 12} ${p.y + 12} L${p.x} ${p.y} L${p.x + 12} ${p.y + 10} L${p.x + 4} ${p.y + 10} L${p.x - 2} ${p.y + 6} Z`} fill="#fff" />
+          ),
+        )}
         <path d="M0 260 L0 248 L400 236 L400 260 Z" fill="#f5f3ff" />
 
         <polyline points={trail} fill="none" stroke="#fff" strokeWidth="2.5" strokeDasharray="5 6" opacity="0.9" />
@@ -130,7 +134,7 @@ export function Mountain({
               <circle
                 cx={p.x}
                 cy={p.y}
-                r={i === 4 ? 12 : 10}
+                r={i === LAST ? 12 : 10}
                 fill={fin || open ? theme.color : '#312e81'}
                 stroke="#fff"
                 strokeWidth="2.5"
@@ -140,9 +144,9 @@ export function Mountain({
               </text>
               <text
                 x={p.x}
-                y={p.y + (i === 4 ? 27 : 23)}
+                y={p.y + (i === LAST ? 27 : i % 2 ? 34 : 22)}
                 textAnchor="middle"
-                fontSize="9"
+                fontSize="8.5"
                 fontWeight="800"
                 fill="#1e1b4b"
                 stroke="#fff"
@@ -155,9 +159,6 @@ export function Mountain({
             </g>
           );
         })}
-        <text x="348" y="18" textAnchor="middle" fontSize="10" fontWeight="900" fill="#facc15">
-          ★ 5 лет ★
-        </text>
         <g className="flag-move" style={{ transform: `translate(${pos.x}px, ${pos.y - 10}px)` }}>
           <Flag label={nick ?? undefined} />
         </g>

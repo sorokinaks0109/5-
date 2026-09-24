@@ -1,11 +1,11 @@
 -- =====================================================================
--- «Идейные игры — Пять вершин». Схема базы данных для Supabase.
+-- «Кайдзен-восхождение». Схема базы данных для Supabase.
 -- Как применить: Supabase → SQL Editor → New query → вставить весь файл → Run.
 -- Файл можно запускать повторно: он ничего не удаляет.
 --
 -- Защита строк (RLS) включена на всех таблицах:
 --   * участник видит только свои строки;
---   * жюри видит только работы этапа 5 (без имён) и свои оценки;
+--   * жюри видит только идеи (без имён) и свои оценки;
 --   * организатор видит всё.
 -- Записывать в таблицы из браузера нельзя никому: все изменения делает
 -- серверная функция «game» после проверки прав и правил игры.
@@ -40,7 +40,7 @@ create unique index if not exists accounts_nick_unique
 -- Прохождение этапов. assignment — какие задания выпали (без правильных ответов).
 create table if not exists public.stage_runs (
   account_id uuid not null references public.accounts (id) on delete cascade,
-  stage int not null check (stage between 1 and 5),
+  stage int not null,
   started_at timestamptz not null,
   deadline timestamptz not null,
   finished_at timestamptz,
@@ -50,7 +50,11 @@ create table if not exists public.stage_runs (
   primary key (account_id, stage)
 );
 
--- Идеи этапа 5. work_no — анонимный номер работы для жюри.
+-- Вершин шесть: 1–5 проверяются автоматически, 6 — идея для жюри
+alter table public.stage_runs drop constraint if exists stage_runs_stage_check;
+alter table public.stage_runs add constraint stage_runs_stage_check check (stage between 1 and 6);
+
+-- Идеи (вершина 6). work_no — анонимный номер работы для жюри.
 create table if not exists public.ideas (
   account_id uuid primary key references public.accounts (id) on delete cascade,
   work_no int not null unique,

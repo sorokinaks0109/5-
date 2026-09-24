@@ -19,11 +19,30 @@ function badge(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number)
   ctx.beginPath();
   ctx.arc(cx, cy, r * 0.58, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = '#fff';
-  ctx.font = `900 ${r * 0.75}px Arial, sans-serif`;
+  // Вершина с флажком
+  const u = r / 60;
+  ctx.fillStyle = '#22d3ee';
+  ctx.beginPath();
+  ctx.moveTo(cx - 30 * u, cy + 20 * u);
+  ctx.lineTo(cx - 10 * u, cy - 6 * u);
+  ctx.lineTo(cx - 2 * u, cy + 4 * u);
+  ctx.lineTo(cx + 10 * u, cy - 16 * u);
+  ctx.lineTo(cx + 30 * u, cy + 20 * u);
+  ctx.fill();
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 2.5 * u;
+  ctx.beginPath();
+  ctx.moveTo(cx + 10 * u, cy - 16 * u);
+  ctx.lineTo(cx + 10 * u, cy - 34 * u);
+  ctx.stroke();
+  ctx.fillStyle = '#f97316';
+  ctx.beginPath();
+  ctx.moveTo(cx + 11 * u, cy - 34 * u);
+  ctx.lineTo(cx + 26 * u, cy - 29.5 * u);
+  ctx.lineTo(cx + 11 * u, cy - 25 * u);
+  ctx.fill();
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('5', cx, cy + r * 0.04);
   // Надпись по кругу
   const text = `${pc.settings.badgeTop} · ${pc.settings.badgeBottom} · `;
   ctx.font = `800 ${r * 0.17}px Arial, sans-serif`;
@@ -150,7 +169,7 @@ export function drawCertificate(canvas: HTMLCanvasElement, nick: string, altitud
 
   ctx.font = '800 48px Arial, sans-serif';
   ctx.fillStyle = '#c026d3';
-  ctx.fillText(`Набранная высота: ${altitude.toLocaleString('ru-RU')} м из 5 000 м`, W / 2, 1030);
+  ctx.fillText(`Набранная высота: ${altitude.toLocaleString('ru-RU')} м из ${(pc.settings.stageMaxAltitude * pc.stages.length).toLocaleString('ru-RU')} м`, W / 2, 1030);
 }
 
 export async function downloadCertificate(nick: string, altitude: number) {

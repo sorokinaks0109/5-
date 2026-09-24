@@ -705,7 +705,8 @@ textarea {
   background: #fff;
   border: 2px solid var(--stone);
   border-radius: 12px;
-  touch-action: none;
+  padding-left: 0;
+  overflow: hidden;
 }
 .sortable li.dragging {
   border-color: var(--signal-strong);
@@ -714,13 +715,26 @@ textarea {
   position: relative;
 }
 .sortable .handle {
+  align-self: stretch;
+  flex: none;
+  width: 48px;
+  margin: -10px 0;
+  display: grid;
+  place-items: center;
   cursor: grab;
-  color: var(--stone-dark);
-  font-size: 1.4rem;
-  padding: 4px;
+  color: #fff;
+  font-size: 1.6rem;
+  background: linear-gradient(180deg, #8b5cf6, #6366f1);
   touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.sortable .handle:active {
+  cursor: grabbing;
+  background: linear-gradient(180deg, #f97316, #e11d48);
 }
 .sortable .pos {
+  margin-left: 6px;
   font-weight: 800;
   color: var(--deep-2);
   width: 24px;
@@ -734,8 +748,9 @@ textarea {
   gap: 2px;
 }
 .sortable .arrows button {
-  width: 40px;
-  height: 30px;
+  width: 44px;
+  height: 36px;
+  font-size: 1rem;
   border-radius: 8px;
   border: 1px solid var(--stone);
   background: var(--snow);
@@ -1189,4 +1204,344 @@ tr.finalist td:first-child {
   font-size: 2.4rem;
   font-weight: 900;
   line-height: 1.1;
+}
+
+/* ---------- Диаграмма Исикавы ---------- */
+.fishbone {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  min-width: 0;
+}
+.fishbone > * {
+  min-width: 0;
+}
+.fb-pool {
+  background: #fff;
+  border: 2px dashed #a5b4fc;
+  border-radius: 16px;
+  padding: 12px;
+  box-shadow: 0 6px 18px rgba(49, 46, 129, 0.12);
+}
+.fb-pool.over {
+  border-color: #7c3aed;
+}
+.fb-pool-cards {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 2px 8px;
+  -webkit-overflow-scrolling: touch;
+}
+.fb-card {
+  flex: none;
+  max-width: 230px;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 2px solid #c7d2fe;
+  background: #f5f3ff;
+  font-size: 0.95rem;
+  line-height: 1.3;
+  font-weight: 600;
+  cursor: grab;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+  transition: transform 0.12s ease, box-shadow 0.15s ease;
+}
+.fb-card.selected {
+  border-color: #e11d48;
+  background: #fff1f2;
+  box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.2);
+  transform: translateY(-2px);
+}
+.fb-card.ghost {
+  opacity: 0.35;
+}
+.fb-card.dragging {
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25);
+  transform: rotate(-2deg) scale(1.03);
+  cursor: grabbing;
+}
+.fb-card.small {
+  max-width: none;
+  width: 100%;
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 5px 7px;
+  border-width: 1.5px;
+  background: #fff;
+  cursor: pointer;
+}
+.fb-card.ok {
+  border-color: var(--ok);
+  background: var(--ok-soft);
+}
+.fb-card.bad {
+  border-color: var(--bad);
+  background: var(--bad-soft);
+}
+
+.fb-fish {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(76px, 21%);
+  grid-template-rows: auto 30px auto;
+  column-gap: 6px;
+  row-gap: 0;
+  padding: 4px 0;
+  isolation: isolate;
+}
+.fb-bone,
+.fb-none {
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+  border-radius: 14px;
+  padding: 8px 6px;
+  background: #fff;
+  border: 2px solid #cbd5e1;
+  background: color-mix(in srgb, var(--bone, #64748b) 10%, #fff);
+  border: 2px solid color-mix(in srgb, var(--bone, #64748b) 55%, #fff);
+  min-height: 118px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.fb-bone.target,
+.fb-none.target {
+  cursor: pointer;
+  animation: boneCall 1.4s ease-in-out infinite;
+}
+@keyframes boneCall {
+  50% {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--bone, #e11d48) 35%, transparent);
+  }
+}
+.fb-bone.over,
+.fb-none.over {
+  transform: scale(1.04);
+  border-color: var(--bone, #e11d48);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
+}
+/* «Рёбра» от кости к хребту */
+.fb-bone::after {
+  content: '';
+  position: absolute;
+  left: 58%;
+  width: 4px;
+  height: 34px;
+  border-radius: 2px;
+  background: #7c3aed;
+  z-index: -1;
+}
+.fb-bone.top::after {
+  bottom: -30px;
+  transform: rotate(-28deg);
+  transform-origin: top;
+}
+.fb-bone.bottom::after {
+  top: -30px;
+  transform: rotate(28deg);
+  transform-origin: bottom;
+}
+.fb-bone-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1px;
+  margin-bottom: 6px;
+  color: var(--bone, #334155);
+  line-height: 1.15;
+}
+.fb-bone-head b {
+  font-size: 0.8rem;
+  color: #1e1b4b;
+}
+.fb-icon {
+  font-size: 1.35rem;
+}
+.fb-hint {
+  display: none;
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+.fb-bone-cards {
+  display: grid;
+  gap: 4px;
+}
+.fb-spine {
+  grid-column: 1 / 4;
+  grid-row: 2;
+  align-self: center;
+  position: relative;
+  height: 8px;
+  margin-left: 18px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #7c3aed, #db2777);
+}
+.fb-spine::before {
+  content: '';
+  position: absolute;
+  left: -20px;
+  top: -12px;
+  border-style: solid;
+  border-width: 16px 0 16px 22px;
+  border-color: transparent transparent transparent #c4b5fd;
+  transform: scaleX(-1);
+}
+.fb-head {
+  grid-column: 4;
+  grid-row: 1 / 4;
+  position: relative;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  padding: 12px 10px 12px 12px;
+  min-height: 150px;
+  border-radius: 14px 60% 60% 14px / 14px 50% 50% 14px;
+  background: linear-gradient(135deg, #db2777, #7c3aed);
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.78rem;
+  line-height: 1.25;
+  box-shadow: 0 8px 20px rgba(124, 58, 237, 0.35);
+}
+.fb-eye {
+  position: absolute;
+  right: 22%;
+  top: 16%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: inset 3px 0 0 #1e1b4b;
+}
+.fb-problem {
+  padding-top: 10px;
+}
+.fb-none {
+  --bone: #64748b;
+  min-height: 0;
+}
+.fb-none .fb-bone-head {
+  flex-direction: row;
+  justify-content: center;
+  gap: 8px;
+}
+.fb-none .fb-hint {
+  display: inline;
+}
+.fb-none .fb-bone-cards {
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+}
+@media (min-width: 640px) {
+  .fb-fish {
+    column-gap: 12px;
+  }
+  .fb-hint {
+    display: block;
+  }
+  .fb-bone-head b {
+    font-size: 0.95rem;
+  }
+  .fb-card.small {
+    font-size: 0.82rem;
+  }
+  .fb-head {
+    font-size: 0.95rem;
+    min-height: 180px;
+  }
+}
+
+/* Телефон: на костях только значок, название и счётчик; сами причины — списком под рыбой */
+.fb-count {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--bone, #64748b);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 900;
+  line-height: 22px;
+}
+.fb-count:empty {
+  visibility: hidden;
+}
+.fb-list {
+  display: grid;
+  gap: 10px;
+}
+.fb-list-group {
+  border-radius: 12px;
+  background: #faf8ff;
+  padding: 8px 10px;
+}
+.fb-list-title {
+  font-weight: 800;
+  font-size: 0.9rem;
+  margin-bottom: 6px;
+}
+.fb-list .fb-card.small {
+  font-size: 0.9rem;
+  padding: 8px 10px;
+}
+@media (max-width: 639px) {
+  .fb-fish .fb-bone-cards,
+  .fb-none .fb-bone-cards {
+    display: none;
+  }
+  .fb-bone {
+    min-height: 92px;
+    display: grid;
+    align-content: center;
+  }
+  .fb-fish {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) 40px;
+    column-gap: 5px;
+  }
+  .fb-bone {
+    padding: 8px 3px;
+  }
+  .fb-bone-head b {
+    font-size: 0.7rem;
+    hyphens: auto;
+    -webkit-hyphens: auto;
+  }
+  .fb-head {
+    min-height: 120px;
+    padding: 0;
+    border-radius: 8px 40px 40px 8px;
+  }
+  .fb-head .fb-problem {
+    display: none;
+  }
+  .fb-eye {
+    right: 30%;
+    top: 22%;
+  }
+}
+@media (min-width: 640px) {
+  .fb-list {
+    display: none;
+  }
+}
+
+.fb-problem-banner {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #fce7f3, #ede9fe);
+  border-left: 5px solid #db2777;
+  font-size: 0.95rem;
+}
+@media (min-width: 640px) {
+  .fb-problem-banner {
+    display: none;
+  }
+}
+.fb-head {
+  overflow: hidden;
 }

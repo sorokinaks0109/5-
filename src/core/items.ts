@@ -12,6 +12,7 @@ import type {
   ReviewEntry,
   StageNo,
 } from './types.ts';
+import { NOT_A_CAUSE } from './types.ts';
 
 function byOrder<T extends { id: string }>(list: T[], order?: string[]): T[] {
   if (!order) return list.slice();
@@ -39,6 +40,10 @@ export function stageIntro(stage: StageNo, content: Content, a: Assignment): { t
   }
   if (stage === 4) {
     const c = content.stage4.cases.find((i) => i.id === a.group);
+    return c && { title: c.title, text: c.text };
+  }
+  if (stage === 5) {
+    const c = content.stage5.cases.find((i) => i.id === a.group);
     return c && { title: c.title, text: c.text };
   }
   return undefined;
@@ -262,6 +267,49 @@ export function buildItems(stage: StageNo, content: Content, a: Assignment): Int
     });
   }
 
+  if (stage === 5) {
+    const fc = content.stage5.cases.find((x) => x.id === a.group);
+    if (!fc) throw new Error(`Кейс Исикавы «${a.group}» не найден`);
+    const cats = content.stage5.categories;
+    return a.items.map((ai): InternalItem => {
+      if (ai.ref === 'fishbone') {
+        return {
+          item: {
+            id: ai.id,
+            kind: 'fishbone',
+            title: 'Соберите «рыбью кость»',
+            prompt:
+              'Разложите причины по «костям» диаграммы Исикавы (6М). Нажмите на карточку, затем на нужную кость — или перетащите карточку. Если факт не влияет на проблему, отправьте его в корзину «Не причина».',
+            maxPoints: pts.stage5.fishbone,
+            hasHint: !!fc.hints?.fishbone,
+            problem: fc.problem,
+            categories: cats.map((c) => ({ id: c.id, text: c.text, icon: c.icon, hint: c.hint })),
+            cards: opts(byOrder(fc.causes, ai.order)),
+            allowNone: fc.causes.some((c) => c.category === NOT_A_CAUSE),
+          },
+          key: { kind: 'fishbone', placement: Object.fromEntries(fc.causes.map((c) => [c.id, c.category])) },
+          hint: fc.hints?.fishbone,
+          explanation: fc.explanations?.fishbone,
+        };
+      }
+      const q = ai.ref === 'focus' ? fc.focus : content.stage5.next;
+      return {
+        item: {
+          id: ai.id,
+          kind: 'choice',
+          title: ai.ref === 'focus' ? 'Главная причина' : 'Что дальше?',
+          prompt: q.question,
+          maxPoints: ai.ref === 'focus' ? pts.stage5.focus : pts.stage5.next,
+          hasHint: !!q.hint,
+          options: opts(byOrder(q.options, ai.order)),
+        },
+        key: { kind: 'choice', answer: q.answer },
+        hint: q.hint,
+        explanation: q.explanation,
+      };
+    });
+  }
+
   return [];
 }
 
@@ -315,11 +363,13 @@ export function gradeAnswer(key: AnswerKey, value: AnswerValue): number {
       return Math.max(0, (hit.size - 0.5 * misses) / key.zones.length);
     }
 
-    case 'match': {
+    case 'match':
+    case 'fishbone': {
       if (!value || typeof value !== 'object' || Array.isArray(value)) throw bad();
       const v = value as Record<string, unknown>;
-      const ids = Object.keys(key.pairs);
-      return ids.filter((id) => v[id] === key.pairs[id]).length / ids.length;
+      const pairs = key.kind === 'match' ? key.pairs : key.placement;
+      const ids = Object.keys(pairs);
+      return ids.filter((id) => v[id] === pairs[id]).length / ids.length;
     }
 
     case 'number': {
@@ -346,6 +396,8 @@ export function reviewFor(it: InternalItem): ReviewEntry {
       return { ...base, correct: k.zones.map((z) => z.label), zones: k.zones };
     case 'match':
       return { ...base, correct: k.pairs };
+    case 'fishbone':
+      return { ...base, correct: k.placement };
     case 'number':
       return { ...base, correct: { answer: k.answer, tolerance: k.tolerance } };
   }
@@ -365,6 +417,8 @@ export function perfectAnswer(key: AnswerKey): AnswerValue {
       return key.zones.map((z) => ({ x: z.x + z.w / 2, y: z.y + z.h / 2 }));
     case 'match':
       return { ...key.pairs };
+    case 'fishbone':
+      return { ...key.placement };
     case 'number':
       return key.answer;
   }

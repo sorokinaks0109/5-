@@ -4,6 +4,7 @@ import type { AnswerRecord, AnswerValue, PublicItem, ReviewEntry } from '../core
 import { meters } from '../hooks.ts';
 import { pc } from '../content.ts';
 import { Burst } from '../components/Burst.tsx';
+import { FishboneInput } from './Fishbone.tsx';
 import { ChoiceInput, FlagsInput, HotspotsInput, MatchInput, MultiInput, NumberInput, OrderInput } from './Inputs.tsx';
 
 type Answer = Omit<AnswerRecord, 'answeredAt'>;
@@ -20,6 +21,7 @@ function initialValue(item: PublicItem, answer?: Answer): unknown {
     case 'order':
       return item.elements.map((e) => e.id);
     case 'match':
+    case 'fishbone':
       return {};
     case 'number':
       return '';
@@ -38,6 +40,8 @@ function isReady(item: PublicItem, v: unknown): boolean {
       return true;
     case 'match':
       return item.left.every((l) => !!(v as Record<string, string>)[l.id]);
+    case 'fishbone':
+      return item.cards.every((c) => !!(v as Record<string, string>)[c.id]);
     case 'number':
       return Number.isFinite(Number(String(v).replace(',', '.'))) && String(v).trim() !== '';
   }
@@ -132,6 +136,9 @@ export function ItemCard({
       break;
     case 'flags':
       input = <FlagsInput item={item} value={value as string[]} onChange={setValue} order={flagsOrder} {...common} />;
+      break;
+    case 'fishbone':
+      input = <FishboneInput item={item} value={value as Record<string, string>} onChange={setValue} {...common} />;
       break;
     case 'number':
       input = <NumberInput item={item} value={value as string} onChange={setValue} {...common} />;
