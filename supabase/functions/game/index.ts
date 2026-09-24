@@ -59,7 +59,8 @@ Deno.serve(async (req) => {
       const { data } = await admin.auth.getUser(token);
       actorId = data.user?.id ?? null;
     }
-    const result = await dispatch(svc, actorId, body.action as Action, body);
+    const payload = body.payload && typeof body.payload === 'object' ? body.payload : body;
+    const result = await dispatch(svc, actorId, body.action as Action, payload);
     return json(result ?? null);
   } catch (e) {
     if (e instanceof GameError) return json({ error: e.message }, 400);
