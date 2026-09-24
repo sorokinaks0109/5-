@@ -137,18 +137,7 @@ export function drawCertificate(canvas: HTMLCanvasElement, nick: string, altitud
   ctx.lineWidth = 3;
   ctx.strokeRect(40, 40, W - 80, H - 80);
 
-  // Место для логотипа
-  ctx.setLineDash([12, 10]);
-  ctx.strokeStyle = 'rgba(255,255,255,0.6)';
-  ctx.strokeRect(90, 90, 300, 120);
-  ctx.setLineDash([]);
-  ctx.fillStyle = 'rgba(255,255,255,0.7)';
-  ctx.font = '600 26px Arial, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('Место для логотипа', 240, 150);
-
-  badge(ctx, W - 210, 170, 110);
+  badge(ctx, W / 2, 150, 95);
 
   ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';

@@ -94,3 +94,12 @@ describe('случайная выдача заданий', () => {
     expect(normalizeCode(' abcd-efgh ')).toBe('ABCDEFGH');
   });
 });
+
+describe('ввод кода', () => {
+  it('похожие русские буквы превращаются в латинские', async () => {
+    const { normalizeCode, hasCyrillic } = await import('../src/core/codes.ts');
+    expect(normalizeCode('рнтс-кмах')).toBe('PHTCKMAX');
+    expect(hasCyrillic('ГПНС2026')).toBe(true);
+    expect(hasCyrillic('АВС-2026')).toBe(false);
+  });
+});

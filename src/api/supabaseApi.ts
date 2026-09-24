@@ -1,7 +1,7 @@
 // Боевой режим: вход через Supabase Auth, все действия — через серверную функцию «game».
 // Правильные ответы и проверка живут только на сервере.
 import { createClient as createSupabase } from '@supabase/supabase-js';
-import { codeEmail, normalizeCode } from '../core/codes.ts';
+import { codeEmail, hasCyrillic, normalizeCode } from '../core/codes.ts';
 import { GameError } from '../core/errors.ts';
 import type { Transport } from './api.ts';
 
@@ -39,6 +39,7 @@ export function createSupabaseTransport(url: string, anonKey: string): Transport
     mode: 'supabase',
     async login(code) {
       const norm = normalizeCode(code);
+      if (hasCyrillic(code)) throw new GameError('Код набирается латинскими буквами и цифрами. Переключите клавиатуру на английскую раскладку.');
       if (norm.length < 6) throw new GameError('Код слишком короткий.');
       let { error } = await signIn(norm);
       if (error && /rate|many/i.test(error.message)) throw new GameError('Слишком много попыток. Подождите пару минут.');
