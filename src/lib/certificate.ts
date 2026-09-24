@@ -1,4 +1,5 @@
 // Сертификат «Покоритель вершины» в PNG. Рисуется на canvas прямо в браузере.
+import { pc } from '../content.ts';
 import { downloadBlob } from './export.ts';
 
 const W = 1600;
@@ -6,11 +7,15 @@ const H = 1130;
 
 function badge(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
   ctx.save();
-  ctx.fillStyle = '#ff7a1a';
+  const ring = ctx.createLinearGradient(cx - r, cy - r, cx + r, cy + r);
+  ring.addColorStop(0, '#facc15');
+  ring.addColorStop(0.5, '#f97316');
+  ring.addColorStop(1, '#ec4899');
+  ctx.fillStyle = ring;
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = '#0b2545';
+  ctx.fillStyle = '#1e1b4b';
   ctx.beginPath();
   ctx.arc(cx, cy, r * 0.58, 0, Math.PI * 2);
   ctx.fill();
@@ -20,9 +25,9 @@ function badge(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number)
   ctx.textBaseline = 'middle';
   ctx.fillText('5', cx, cy + r * 0.04);
   // Надпись по кругу
-  const text = 'ИДЕЙНЫЕ ИГРЫ · 5 ЛЕТ · 2027 · ';
+  const text = `${pc.settings.badgeTop} · ${pc.settings.badgeBottom} · `;
   ctx.font = `800 ${r * 0.17}px Arial, sans-serif`;
-  ctx.fillStyle = '#0b2545';
+  ctx.fillStyle = '#1e1b4b';
   const step = (Math.PI * 2) / text.length;
   for (let i = 0; i < text.length; i++) {
     const a = -Math.PI / 2 + i * step;
@@ -49,13 +54,29 @@ export function drawCertificate(canvas: HTMLCanvasElement, nick: string, altitud
   const ctx = canvas.getContext('2d')!;
 
   const sky = ctx.createLinearGradient(0, 0, 0, H);
-  sky.addColorStop(0, '#0b2545');
-  sky.addColorStop(1, '#1d4273');
+  sky.addColorStop(0, '#1e1b4b');
+  sky.addColorStop(0.45, '#5b21b6');
+  sky.addColorStop(0.8, '#db2777');
+  sky.addColorStop(1, '#fb923c');
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, W, H);
 
   // Горы
-  ctx.fillStyle = 'rgba(141,169,196,0.35)';
+  // Северное сияние
+  const aur = ctx.createLinearGradient(0, 0, W, 0);
+  aur.addColorStop(0, 'rgba(34,211,238,0)');
+  aur.addColorStop(0.5, 'rgba(52,211,153,0.55)');
+  aur.addColorStop(1, 'rgba(34,211,238,0)');
+  ctx.fillStyle = aur;
+  ctx.beginPath();
+  ctx.moveTo(0, 520);
+  ctx.bezierCurveTo(400, 380, 800, 600, 1200, 430);
+  ctx.bezierCurveTo(1400, 360, 1500, 420, W, 400);
+  ctx.lineTo(W, 470);
+  ctx.bezierCurveTo(1300, 500, 900, 620, 600, 560);
+  ctx.bezierCurveTo(300, 500, 150, 560, 0, 600);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(167,139,250,0.55)';
   ctx.beginPath();
   ctx.moveTo(0, H);
   ctx.lineTo(0, 840);
@@ -67,7 +88,7 @@ export function drawCertificate(canvas: HTMLCanvasElement, nick: string, altitud
   ctx.lineTo(W, 800);
   ctx.lineTo(W, H);
   ctx.fill();
-  ctx.fillStyle = '#e6edf5';
+  ctx.fillStyle = '#f5f3ff';
   ctx.beginPath();
   ctx.moveTo(0, H);
   ctx.lineTo(0, 850);
@@ -112,23 +133,23 @@ export function drawCertificate(canvas: HTMLCanvasElement, nick: string, altitud
 
   ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
-  ctx.fillStyle = '#cfe0f1';
-  ctx.font = '700 34px Arial, sans-serif';
-  ctx.fillText('ИДЕЙНЫЕ ИГРЫ · 2027 · ОТБОРОЧНЫЙ ТУР «ПЯТЬ ВЕРШИН»', W / 2, 300);
+  ctx.fillStyle = '#e0e7ff';
+  fitText(ctx, `${pc.settings.gameName} · ${pc.settings.tourName}`.toUpperCase(), 1000, 34, 700);
+  ctx.fillText(`${pc.settings.gameName} · ${pc.settings.tourName}`.toUpperCase(), W / 2, 300);
 
   ctx.fillStyle = '#ffffff';
   ctx.font = '900 96px Arial, sans-serif';
   ctx.fillText('СЕРТИФИКАТ', W / 2, 400);
-  ctx.fillStyle = '#ffb38a';
+  ctx.fillStyle = '#facc15';
   ctx.font = '800 56px Arial, sans-serif';
   ctx.fillText('«Покоритель вершины»', W / 2, 480);
 
-  ctx.fillStyle = '#0b2545';
+  ctx.fillStyle = '#1e1b4b';
   fitText(ctx, nick, 1100, 88);
   ctx.fillText(nick, W / 2, 940);
 
   ctx.font = '800 48px Arial, sans-serif';
-  ctx.fillStyle = '#c2410c';
+  ctx.fillStyle = '#c026d3';
   ctx.fillText(`Набранная высота: ${altitude.toLocaleString('ru-RU')} м из 5 000 м`, W / 2, 1030);
 }
 

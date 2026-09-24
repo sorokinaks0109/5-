@@ -12,7 +12,13 @@ export interface Option {
 }
 
 export interface ContentSettings {
+  /** Название игры — показывается на экране входа, главной и в сертификате */
+  gameName: string;
   tourName: string;
+  tagline: string;
+  /** Надписи по кругу на значке */
+  badgeTop: string;
+  badgeBottom: string;
   maxParticipants: number;
   tourDays: number;
   /** Минуты на этапы 1..5 */

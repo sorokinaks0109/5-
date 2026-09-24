@@ -6,7 +6,8 @@ import { Mountain } from '../components/Mountain.tsx';
 import { LogoSlot } from '../components/Notice.tsx';
 import { pc } from '../content.ts';
 import type { StageNo, StageSummary } from '../core/types.ts';
-import { formatDate, meters, serverOffset, useApp, useNow } from '../hooks.ts';
+import { formatDate, meters, serverOffset, useApp, useCountUp, useNow } from '../hooks.ts';
+import { STAGE_THEME } from '../theme.ts';
 import { formatClock, remainingMs } from '../core/timer.ts';
 import { downloadCertificate } from '../lib/certificate.ts';
 
@@ -22,8 +23,11 @@ export function HomeScreen() {
   const p = me.participant!;
   const now = useNow(serverOffset(me.tour.serverNow));
   const [busy, setBusy] = useState<number | null>(null);
+  const shownAltitude = useCountUp(p.altitude);
+  const maxTotal = pc.settings.stageMaxAltitude * 5;
 
   const start = async (s: StageSummary) => {
+    if (s.status === 'locked') return;
     if (s.status === 'available') {
       const min = pc.settings.stageMinutes[s.stage - 1];
       const ok = window.confirm(
@@ -49,7 +53,7 @@ export function HomeScreen() {
   return (
     <>
       <header className="topbar">
-        <div className="title">Пять вершин</div>
+        <div className="title">{pc.settings.gameName}</div>
         <button className="btn btn-ghost btn-small" onClick={() => go('/profile')}>
           Профиль
         </button>
@@ -63,14 +67,17 @@ export function HomeScreen() {
             <section className="hero">
               <div className="row" style={{ alignItems: 'flex-start' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="small" style={{ color: '#cfe0f1' }}>
+                  <div className="small" style={{ color: '#e0e7ff' }}>
                     {me.nick} · {me.department}
                   </div>
                   <div className="alt">
-                    {meters(p.altitude)} <small>из {meters(pc.settings.stageMaxAltitude * 5)}</small>
+                    {meters(shownAltitude)} <small>из {meters(maxTotal)}</small>
                   </div>
                 </div>
                 <Badge5 size={72} />
+              </div>
+              <div className="progress-bar" aria-hidden="true">
+                <span style={{ width: `${Math.min(100, (p.altitude / maxTotal) * 100)}%` }} />
               </div>
               <div className="stats">
                 <div className="stat">
@@ -90,7 +97,7 @@ export function HomeScreen() {
               </div>
             </section>
             <div className="card" style={{ padding: 8 }}>
-              <Mountain stages={p.stages} nick={me.nick} />
+              <Mountain stages={p.stages} nick={me.nick} onPeak={(st) => start(p.stages[st - 1])} />
             </div>
             <TourInfo />
           </div>
@@ -118,9 +125,24 @@ export function HomeScreen() {
             <h2>Маршрут</h2>
             <div className="stage-list">
               {p.stages.map((s) => (
-                <div key={s.stage} className={`stage-card ${s.status}`}>
-                  <div className="stage-num">{s.status === 'finished' ? '✓' : s.stage}</div>
+                <div
+                  key={s.stage}
+                  className={`stage-card ${s.status}`}
+                  style={s.status === 'locked' ? undefined : { borderLeftColor: STAGE_THEME[s.stage - 1].color }}
+                >
+                  <div
+                    className="stage-num"
+                    style={{
+                      background: s.status === 'locked' ? undefined : STAGE_THEME[s.stage - 1].soft,
+                      color: STAGE_THEME[s.stage - 1].color,
+                    }}
+                  >
+                    {s.status === 'finished' ? '✓' : STAGE_THEME[s.stage - 1].icon}
+                  </div>
                   <div className="info">
+                    <span className="term" style={{ color: STAGE_THEME[s.stage - 1].color }}>
+                      {s.stage}. {STAGE_THEME[s.stage - 1].term}
+                    </span>
                     <b>{pc.stages[s.stage - 1].name}</b>
                     <span className="small muted">
                       {STATUS_TEXT[s.status]}
