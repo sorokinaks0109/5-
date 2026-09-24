@@ -1,0 +1,7 @@
+node_modules
+dist
+.env
+.env.local
+supabase/functions/_shared
+supabase/.temp
+*.log
