@@ -10,6 +10,8 @@ import { cryptoRng, type Rng } from './random.ts';
 import { countErrors, hintsLeft, ideaAltitude, juryTotal, pointsFor, stageAltitude, weatherFor } from './scoring.ts';
 import { computeDeadline, isExpired, stageSeconds } from './timer.ts';
 import {
+  AUTO_STAGES,
+  IDEA_STAGE,
   STAGES,
   type Account,
   type AnswerResult,
@@ -157,8 +159,8 @@ export class GameService {
       if (run) status = run.finishedAt ? 'finished' : 'active';
       else status = prev && open && !!acc.nick ? 'available' : 'locked';
       let altitude = run ? stageAltitude(run.answers) : 0;
-      if (stage === 5) {
-        altitude = tour.resultsPublished && idea?.submittedAt ? ideaAltitude(scores, this.content.stage5.criteria) ?? 0 : 0;
+      if (stage === IDEA_STAGE) {
+        altitude = tour.resultsPublished && idea?.submittedAt ? ideaAltitude(scores, this.content.idea.criteria) ?? 0 : 0;
       }
       return {
         stage,
@@ -169,7 +171,7 @@ export class GameService {
         deadline: run?.deadline ?? null,
         finishedAt: run?.finishedAt ?? null,
         errors: run ? countErrors(run.answers) : 0,
-        juryScored: stage === 5 && tour.resultsPublished ? scores.length : undefined,
+        juryScored: stage === IDEA_STAGE && tour.resultsPublished ? scores.length : undefined,
       };
     });
   }
@@ -186,7 +188,7 @@ export class GameService {
 
   private async closeRun(run: StageRun, at: string) {
     run.finishedAt = at;
-    if (run.stage === 5) {
+    if (run.stage === IDEA_STAGE) {
       // Черновик идеи отправляется автоматически, если в нём что-то написано.
       const idea = await this.store.getIdea(run.accountId);
       if (idea && !idea.submittedAt && Object.values(idea.fields).some((v) => v.trim())) {
@@ -267,10 +269,10 @@ export class GameService {
       altitude: stageAltitude(run.answers),
     };
     // Правильные ответы — только после завершения этапа.
-    if (run.finishedAt && run.stage !== 5) {
+    if (run.finishedAt && run.stage !== IDEA_STAGE) {
       view.review = Object.fromEntries(items.map((i) => [i.item.id, reviewFor(i)]));
     }
-    if (run.stage === 5) {
+    if (run.stage === IDEA_STAGE) {
       const idea = await this.store.getIdea(acc.id);
       view.idea = idea
         ? { fields: idea.fields, submittedAt: idea.submittedAt, workNo: idea.workNo }
@@ -336,20 +338,20 @@ export class GameService {
   }
 
   async finishStage(acc: Account, stage: StageNo): Promise<StageView> {
-    if (stage === 5) throw new GameError('Этап 5 завершается отправкой идеи.');
+    if (stage === IDEA_STAGE) throw new GameError('Эта вершина завершается отправкой идеи.');
     const run = await this.activeRun(acc, stage);
     await this.closeRun(run, this.now().toISOString());
     return this.stageView(acc, run);
   }
 
   async saveIdea(acc: Account, fields: Record<string, string>, submit: boolean): Promise<StageView> {
-    const run = await this.activeRun(acc, 5);
+    const run = await this.activeRun(acc, IDEA_STAGE);
     const clean: Record<string, string> = {};
-    for (const f of this.content.stage5.fields) {
+    for (const f of this.content.idea.fields) {
       clean[f.id] = String(fields?.[f.id] ?? '').slice(0, f.maxLength);
     }
     if (submit) {
-      const empty = this.content.stage5.fields.filter((f) => f.required && !clean[f.id].trim());
+      const empty = this.content.idea.fields.filter((f) => f.required && !clean[f.id].trim());
       if (empty.length) throw new GameError(`Заполните обязательные поля: ${empty.map((f) => f.label).join(', ')}.`);
     }
     const now = this.now().toISOString();
@@ -403,7 +405,7 @@ export class GameService {
       this.store.listIdeas(),
       this.store.listIdeaScores(),
     ]);
-    const criteria = this.content.stage5.criteria;
+    const criteria = this.content.idea.criteria;
     const rows = accounts
       .filter((a) => a.role === 'participant')
       .map((a) => {
@@ -413,11 +415,11 @@ export class GameService {
         const idea = ideas.find((i) => i.accountId === a.id && i.submittedAt);
         const ideaScores = idea ? scores.filter((s) => s.ideaAccountId === a.id) : [];
         const stageAltitudes = STAGES.map((st) => {
-          if (st === 5) return includeJury ? ideaAltitude(ideaScores, criteria) ?? 0 : 0;
+          if (st === IDEA_STAGE) return includeJury ? ideaAltitude(ideaScores, criteria) ?? 0 : 0;
           const r = byStage.get(st);
           return r ? stageAltitude(r.answers) : 0;
         });
-        const seconds14 = ([1, 2, 3, 4] as StageNo[]).reduce((s, st) => {
+        const secondsAuto = AUTO_STAGES.reduce((s, st) => {
           const r = byStage.get(st);
           return s + stageSeconds(r?.startedAt ?? null, r?.finishedAt ?? null, this.minutes(st));
         }, 0);
@@ -429,7 +431,7 @@ export class GameService {
           department: a.department ?? '',
           stageAltitudes,
           altitude: stageAltitudes.reduce((s, x) => s + x, 0),
-          seconds14,
+          secondsAuto,
           hintsUsed: my.reduce((s, r) => s + r.hints.length, 0),
           juryScored: ideaScores.length,
         };
@@ -466,7 +468,7 @@ export class GameService {
     const idea = (await this.store.listIdeas()).find((i) => i.workNo === Number(workNo) && i.submittedAt);
     if (!idea) throw new GameError('Работа не найдена.');
     const clean: Record<string, number> = {};
-    for (const c of this.content.stage5.criteria) {
+    for (const c of this.content.idea.criteria) {
       const v = Number(scores?.[c.id]);
       if (!Number.isFinite(v) || v < 0 || v > c.max) throw new GameError(`«${c.name}»: оценка от 0 до ${c.max}.`);
       clean[c.id] = Math.round(v);
@@ -574,7 +576,7 @@ export class GameService {
       this.store.listIdeas(),
       this.store.listIdeaScores(),
     ]);
-    const criteria = this.content.stage5.criteria;
+    const criteria = this.content.idea.criteria;
     const jury: JuryDetail[] = ideas
       .filter((i) => i.submittedAt)
       .sort((a, b) => a.workNo - b.workNo)

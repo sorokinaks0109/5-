@@ -64,6 +64,13 @@ describe('подсчёт метров', () => {
     expect(gradeAnswer(key, { m1: 'sort', m2: 'shine' })).toBe(0.5);
   });
 
+  it('проверяет «рыбью кость»: доля верно разложенных причин', () => {
+    const key = { kind: 'fishbone' as const, placement: { c1: 'people', c2: 'methods', c3: 'none', c4: 'machines' } };
+    expect(gradeAnswer(key, { c1: 'people', c2: 'methods', c3: 'none', c4: 'machines' })).toBe(1);
+    expect(gradeAnswer(key, { c1: 'people', c2: 'people', c3: 'none' })).toBe(0.5);
+    expect(() => gradeAnswer(key, ['people'])).toThrow();
+  });
+
   it('принимает расчёт в пределах допуска', () => {
     const key = { kind: 'number' as const, answer: 100, tolerance: 5 };
     expect(gradeAnswer(key, 100)).toBe(1);
@@ -82,7 +89,7 @@ describe('подсчёт метров', () => {
   });
 
   it('считает этап 5 как среднее трёх судей', () => {
-    const criteria = content.stage5.criteria;
+    const criteria = content.idea.criteria;
     const full = Object.fromEntries(criteria.map((c) => [c.id, 200]));
     const half = Object.fromEntries(criteria.map((c) => [c.id, 100]));
     expect(juryTotal(full, criteria)).toBe(1000);
@@ -94,10 +101,10 @@ describe('подсчёт метров', () => {
 
   it('при равенстве высоты выше тот, кто быстрее прошёл этапы 1–4', () => {
     const r = rank([
-      { accountId: 'a', number: 1, altitude: 3000, seconds14: 2000 },
-      { accountId: 'b', number: 2, altitude: 3000, seconds14: 1500 },
-      { accountId: 'c', number: 3, altitude: 3500, seconds14: 3600 },
-      { accountId: 'd', number: 4, altitude: 3000, seconds14: 1500 },
+      { accountId: 'a', number: 1, altitude: 3000, secondsAuto: 2000 },
+      { accountId: 'b', number: 2, altitude: 3000, secondsAuto: 1500 },
+      { accountId: 'c', number: 3, altitude: 3500, secondsAuto: 3600 },
+      { accountId: 'd', number: 4, altitude: 3000, secondsAuto: 1500 },
     ]);
     expect(r.map((x) => x.accountId)).toEqual(['c', 'b', 'd', 'a']);
     expect(r.map((x) => x.place)).toEqual([1, 2, 2, 4]);

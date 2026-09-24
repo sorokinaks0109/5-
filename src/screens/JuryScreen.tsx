@@ -8,11 +8,11 @@ import { formatDate, meters, useApp } from '../hooks.ts';
 function Scoring({ work, onSaved }: { work: JuryWork; onSaved: (list: JuryWork[]) => void }) {
   const { error, info, me } = useApp();
   const [scores, setScores] = useState<Record<string, number>>(
-    () => work.myScores ?? Object.fromEntries(pc.stage5.criteria.map((c) => [c.id, 0])),
+    () => work.myScores ?? Object.fromEntries(pc.idea.criteria.map((c) => [c.id, 0])),
   );
   const [comment, setComment] = useState(work.myComment);
   const [busy, setBusy] = useState(false);
-  const total = pc.stage5.criteria.reduce((s, c) => s + (scores[c.id] ?? 0), 0);
+  const total = pc.idea.criteria.reduce((s, c) => s + (scores[c.id] ?? 0), 0);
   const locked = me.tour.resultsPublished;
 
   const save = async () => {
@@ -30,7 +30,7 @@ function Scoring({ work, onSaved }: { work: JuryWork; onSaved: (list: JuryWork[]
   return (
     <div className="card">
       <h2>Оценка</h2>
-      {pc.stage5.criteria.map((c) => (
+      {pc.idea.criteria.map((c) => (
         <div key={c.id} className="score-row">
           <div>
             <b>{c.name}</b>
@@ -110,7 +110,7 @@ export function JuryScreen() {
             <div className="card work-text">
               <h1>Работа № {work.workNo}</h1>
               <p className="small muted">Отправлена {formatDate(work.submittedAt)}. Автор скрыт.</p>
-              {pc.stage5.fields.map((f) => (
+              {pc.idea.fields.map((f) => (
                 <div key={f.id}>
                   <h4>
                     {f.group ? `${f.group}: ` : ''}

@@ -1,5 +1,5 @@
 // Проверка content.json и выделение публичной части (без заданий и ответов).
-import type { ChoiceQuestion, Content, PublicContent } from './types.ts';
+import { NOT_A_CAUSE, STAGES, type ChoiceQuestion, type Content, type PublicContent } from './types.ts';
 
 export function toPublicContent(c: Content): PublicContent {
   return {
@@ -8,7 +8,7 @@ export function toPublicContent(c: Content): PublicContent {
     stages: c.stages,
     wasteTypes: c.stage1.wasteTypes,
     steps: c.stage2.steps,
-    stage5: c.stage5,
+    idea: c.idea,
   };
 }
 
@@ -34,10 +34,11 @@ export function validateContent(c: Content): string[] {
   };
 
   // Настройки
-  if (s.stageMinutes?.length !== 5) err('settings.stageMinutes: нужно 5 чисел — минуты на каждую вершину');
+  if (s.stageMinutes?.length !== STAGES.length)
+    err(`settings.stageMinutes: нужно ${STAGES.length} чисел — минуты на каждую вершину`);
   if (s.hintPenalty < 0 || s.hintPenalty > 1) err('settings.hintPenalty: число от 0 до 1 (0.3 = 30 %)');
   if (s.juryCount < 1) err('settings.juryCount: нужен хотя бы один судья');
-  if (c.stages?.length !== 5) err('stages: нужно описание для 5 вершин');
+  if (c.stages?.length !== STAGES.length) err(`stages: нужно описание для ${STAGES.length} вершин`);
   if (!c.departments?.length) err('departments: список подразделений пуст');
 
   // Этап 1
@@ -103,13 +104,32 @@ export function validateContent(c: Content): string[] {
   const p4 = s.points.stage4;
   if (p4.whys + p4.root + p4.measures + p4.questions !== max) err(`settings.points.stage4: сумма должна быть ${max}`);
 
-  // Этап 5
-  uniq('stage5.fields', c.stage5.fields.map((x) => x.id));
-  uniq('stage5.criteria', c.stage5.criteria.map((x) => x.id));
-  const critSum = c.stage5.criteria.reduce((a, x) => a + x.max, 0);
-  if (critSum !== max) err(`stage5.criteria: сумма максимумов должна быть ${max}, сейчас ${critSum}`);
-  c.stage5.fields.forEach((f) => {
-    if (!(f.maxLength > 0)) err(`stage5, поле «${f.id}»: maxLength должно быть больше 0`);
+  // Этап 5 — диаграмма Исикавы
+  const cats = c.stage5.categories.map((x) => x.id);
+  uniq('stage5.categories', cats);
+  if (cats.includes(NOT_A_CAUSE)) err(`stage5.categories: id «${NOT_A_CAUSE}» зарезервирован для корзины «Не причина»`);
+  uniq('stage5.cases', c.stage5.cases.map((x) => x.id));
+  c.stage5.cases.forEach((fc) => {
+    uniq(`stage5, кейс «${fc.id}», причины`, fc.causes.map((x) => x.id));
+    fc.causes.forEach((x) => {
+      if (x.category !== NOT_A_CAUSE && !cats.includes(x.category))
+        err(`stage5, кейс «${fc.id}», причина «${x.id}»: категория «${x.category}» не найдена в categories`);
+    });
+    if (fc.causes.length < 4) err(`stage5, кейс «${fc.id}»: нужно хотя бы 4 причины`);
+    choice(`stage5, кейс «${fc.id}», главная причина`, fc.focus);
+  });
+  choice('stage5.next', c.stage5.next);
+  if (c.stage5.cases.length < s.draw.stage5Cases) err('stage5: кейсов в банке меньше, чем выдаётся');
+  const p5 = s.points.stage5;
+  if (p5.fishbone + p5.focus + p5.next !== max) err(`settings.points.stage5: сумма должна быть ${max}`);
+
+  // Вершина с идеей
+  uniq('idea.fields', c.idea.fields.map((x) => x.id));
+  uniq('idea.criteria', c.idea.criteria.map((x) => x.id));
+  const critSum = c.idea.criteria.reduce((a, x) => a + x.max, 0);
+  if (critSum !== max) err(`idea.criteria: сумма максимумов должна быть ${max}, сейчас ${critSum}`);
+  c.idea.fields.forEach((f) => {
+    if (!(f.maxLength > 0)) err(`idea, поле «${f.id}»: maxLength должно быть больше 0`);
   });
 
   return errors;

@@ -64,10 +64,14 @@ describe('случайная выдача заданий', () => {
     const a4 = assignStage(4, content, seed('p1', 4));
     expect(a4.items.filter((i) => i.ref.startsWith('q:'))).toHaveLength(4);
     expect(a4.items.filter((i) => i.ref.startsWith('why:'))).toHaveLength(5);
+
+    const a5 = assignStage(5, content, seed('p1', 5));
+    expect(content.stage5.cases.map((i) => i.id)).toContain(a5.group);
+    expect(a5.items.map((i) => i.ref)).toEqual(['fishbone', 'focus', 'next']);
   });
 
-  it('сумма метров на этапах 1–4 ровно 1000', () => {
-    for (const st of [1, 2, 3, 4] as StageNo[]) {
+  it('сумма метров на автоматических вершинах ровно 1000', () => {
+    for (const st of [1, 2, 3, 4, 5] as StageNo[]) {
       for (let i = 0; i < 10; i++) {
         const items = buildItems(st, content, assignStage(st, content, seed(`p${i}`, st)));
         expect(items.reduce((s, x) => s + x.item.maxPoints, 0)).toBe(1000);
@@ -76,10 +80,10 @@ describe('случайная выдача заданий', () => {
   });
 
   it('в публичных заданиях нет правильных ответов', () => {
-    for (const st of [1, 2, 3, 4] as StageNo[]) {
+    for (const st of [1, 2, 3, 4, 5] as StageNo[]) {
       const items = buildItems(st, content, assignStage(st, content, seed('p1', st)));
       const pub = JSON.stringify(items.map((i) => i.item));
-      expect(pub).not.toMatch(/"answer"|"answers"|"valueAdded"|"zones"|"pairs"/);
+      expect(pub).not.toMatch(/"answer"|"answers"|"valueAdded"|"zones"|"pairs"|"placement"|"category"/);
     }
   });
 

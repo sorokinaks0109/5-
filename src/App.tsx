@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from './api/index.ts';
 import { Toast } from './components/Notice.tsx';
-import type { MeView, StageNo } from './core/types.ts';
+import { IDEA_STAGE, type MeView, type StageNo } from './core/types.ts';
 import { Ctx, errorText, useHashRoute, type AppCtx } from './hooks.ts';
 import { HomeScreen } from './screens/HomeScreen.tsx';
 import { JuryScreen } from './screens/JuryScreen.tsx';
@@ -76,10 +76,10 @@ function screenFor(me: MeView, route: string) {
   if (me.role === 'organizer') return <OrganizerScreen />;
   if (me.role === 'jury') return <JuryScreen />;
   if (!me.nick || route === '/profile') return <ProfileScreen />;
-  const m = route.match(/^\/stage\/([1-5])$/);
+  const m = route.match(/^\/stage\/([1-6])$/);
   if (m) {
     const stage = Number(m[1]) as StageNo;
-    return stage === 5 ? <IdeaScreen key="idea" /> : <StageScreen key={stage} stage={stage} />;
+    return stage === IDEA_STAGE ? <IdeaScreen key="idea" /> : <StageScreen key={stage} stage={stage} />;
   }
   if (route === '/rating') return <LeaderboardScreen />;
   return <HomeScreen />;

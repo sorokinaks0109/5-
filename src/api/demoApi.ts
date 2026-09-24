@@ -10,8 +10,8 @@ import type { Content } from '../core/types.ts';
 import { seedDemo } from '../core/demoSeed.ts';
 import type { Transport } from './api.ts';
 
-const DATA_KEY = 'idei-igry-demo-data-v1';
-const SESSION_KEY = 'idei-igry-demo-session';
+const DATA_KEY = 'kaizen-demo-data-v2';
+const SESSION_KEY = 'kaizen-demo-session-v2';
 
 function readJson<T>(key: string): T | null {
   try {

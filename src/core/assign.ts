@@ -56,7 +56,18 @@ export function assignStage(stage: StageNo, content: Content, seed: string): Ass
         ],
       };
     }
-    case 5:
+    case 5: {
+      const [fc] = pick(content.stage5.cases, draw.stage5Cases, rng);
+      return {
+        group: fc.id,
+        items: [
+          { id: 's5-fishbone', ref: 'fishbone', order: shuffle(ids(fc.causes), rng) },
+          { id: 's5-focus', ref: 'focus', order: shuffle(ids(fc.focus.options), rng) },
+          { id: 's5-next', ref: 'next', order: shuffle(ids(content.stage5.next.options), rng) },
+        ],
+      };
+    }
+    case 6:
       return { items: [] };
   }
 }

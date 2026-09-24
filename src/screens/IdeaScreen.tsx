@@ -3,10 +3,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../api/index.ts';
 import { Oxygen } from '../components/Oxygen.tsx';
 import { pc } from '../content.ts';
-import type { IdeaField, StageView } from '../core/types.ts';
+import { IDEA_STAGE, type IdeaField, type StageView } from '../core/types.ts';
 import { serverOffset, useApp, useNow } from '../hooks.ts';
 
-const DRAFT_KEY = 'idei-igry-idea-draft';
+const DRAFT_KEY = 'kaizen-idea-draft';
 const AUTOSAVE_MS = 15_000;
 
 function FieldBox({
@@ -58,7 +58,7 @@ export function IdeaScreen() {
 
   const load = useCallback(async () => {
     try {
-      const v = await api.getStage(5);
+      const v = await api.getStage(IDEA_STAGE);
       setOffset(serverOffset(v.serverNow));
       setView(v);
       return v;
@@ -80,7 +80,7 @@ export function IdeaScreen() {
       const server = v.idea?.fields ?? {};
       // Берём более длинный текст по каждому полю: так не потеряется ни серверный, ни локальный черновик
       const merged: Record<string, string> = {};
-      for (const f of pc.stage5.fields) {
+      for (const f of pc.idea.fields) {
         const a = server[f.id] ?? '';
         const b = v.status === 'active' ? local[f.id] ?? '' : '';
         merged[f.id] = b.length > a.length ? b : a;
@@ -157,7 +157,7 @@ export function IdeaScreen() {
   };
 
   const groups: { title?: string; fields: IdeaField[] }[] = [];
-  for (const f of pc.stage5.fields) {
+  for (const f of pc.idea.fields) {
     const last = groups[groups.length - 1];
     if (last && f.group && last.title === f.group) last.fields.push(f);
     else groups.push({ title: f.group, fields: [f] });
@@ -170,7 +170,7 @@ export function IdeaScreen() {
           ←
         </button>
         <div className="name">
-          {pc.stages[4].name}
+          {pc.stages[IDEA_STAGE - 1].name}
           <small>
             {active ? (saved === 'saved' ? 'Черновик сохранён' : saved === 'saving' ? 'Сохраняем…' : 'Есть несохранённые изменения') : 'Отправлено'}
           </small>
@@ -180,8 +180,8 @@ export function IdeaScreen() {
       <main className="container">
         {active ? (
           <div className="card">
-            <h1 style={{ fontSize: '1.3rem' }}>{pc.stages[4].title}</h1>
-            <p className="small muted">{pc.stages[4].intro}</p>
+            <h1 style={{ fontSize: '1.3rem' }}>{pc.stages[IDEA_STAGE - 1].title}</h1>
+            <p className="small muted">{pc.stages[IDEA_STAGE - 1].intro}</p>
             <p className="small">
               Черновик сохраняется автоматически. Если время закончится, жюри получит последний сохранённый вариант. Не
               указывайте в тексте своё имя — оценка анонимная.
@@ -236,7 +236,7 @@ export function IdeaScreen() {
         <div className="card">
           <h3>Как оценивает жюри</h3>
           <ul className="small" style={{ paddingLeft: 20, margin: 0 }}>
-            {pc.stage5.criteria.map((c) => (
+            {pc.idea.criteria.map((c) => (
               <li key={c.id}>
                 <b>{c.name}</b> (до {c.max} м) — {c.description}
               </li>

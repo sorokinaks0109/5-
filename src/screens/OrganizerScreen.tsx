@@ -1,10 +1,10 @@
 // Панель организатора: тур, личные коды, прогресс, итоги и выгрузка.
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/index.ts';
-import { Badge5 } from '../components/Badge5.tsx';
+import { Emblem } from '../components/Emblem.tsx';
 import { pc } from '../content.ts';
 import { prettyCode } from '../core/codes.ts';
-import type { Account, ProgressRow, ResultsView, StageStatus } from '../core/types.ts';
+import { STAGES, type Account, type ProgressRow, type ResultsView, type StageStatus } from '../core/types.ts';
 import { formatDate, meters, useApp } from '../hooks.ts';
 import { downloadCsv, downloadXlsx, stamp, type Sheet } from '../lib/export.ts';
 import { RatingMountain } from './LeaderboardScreen.tsx';
@@ -93,7 +93,7 @@ function TourTab() {
               {t.opensAt && <p className="small">Открыт: {formatDate(t.opensAt)}</p>}
               {t.closesAt && <p className="small">Закрытие: {formatDate(t.closesAt)}</p>}
             </div>
-            <Badge5 size={80} dark />
+            <Emblem size={80} />
           </div>
           <div className="row">
             {t.state !== 'open' && (
@@ -325,7 +325,7 @@ function ProgressTab() {
   if (!rows) return <p className="muted">Загрузка…</p>;
 
   const started = rows.filter((r) => r.stages.some((s) => s !== 'locked' && s !== 'available')).length;
-  const perStage = [0, 1, 2, 3, 4].map((i) => rows.filter((r) => r.stages[i] === 'finished').length);
+  const perStage = STAGES.map((st) => st - 1).map((i) => rows.filter((r) => r.stages[i] === 'finished').length);
   return (
     <>
       <div className="card">
@@ -396,7 +396,7 @@ function ResultsTab() {
   }, [load]);
   if (!data) return <p className="muted">Загрузка…</p>;
 
-  const criteria = pc.stage5.criteria;
+  const criteria = pc.idea.criteria;
   const ratingSheet: Sheet = {
     name: 'Рейтинг',
     header: [
@@ -407,7 +407,7 @@ function ResultsTab() {
       'Код',
       ...pc.stages.map((s, i) => `В${i + 1} ${s.name}, м`),
       'Итого, м',
-      'Время В1–В4, мин',
+      'Время В1–В5, мин',
       'Подсказок',
       'Оценок жюри',
     ],
@@ -419,7 +419,7 @@ function ResultsTab() {
       prettyCode(r.code),
       ...r.stageAltitudes,
       r.altitude,
-      Math.round((r.seconds14 / 60) * 10) / 10,
+      Math.round((r.secondsAuto / 60) * 10) / 10,
       r.hintsUsed,
       r.juryScored,
     ]),
@@ -443,8 +443,8 @@ function ResultsTab() {
   };
   const ideasSheet: Sheet = {
     name: 'Идеи',
-    header: ['Работа №', 'Ник автора', ...pc.stage5.fields.map((f) => (f.group ? `${f.group}: ${f.label}` : f.label))],
-    rows: data.jury.map((j) => [j.workNo, j.nick, ...pc.stage5.fields.map((f) => j.fields[f.id] ?? '')]),
+    header: ['Работа №', 'Ник автора', ...pc.idea.fields.map((f) => (f.group ? `${f.group}: ${f.label}` : f.label))],
+    rows: data.jury.map((j) => [j.workNo, j.nick, ...pc.idea.fields.map((f) => j.fields[f.id] ?? '')]),
   };
   const incomplete = data.jury.filter((j) => j.scores.length < pc.settings.juryCount);
 
@@ -483,9 +483,9 @@ function ResultsTab() {
                 <tr>
                   <th>Место</th>
                   <th>Ник</th>
-                  <th>В1–В5</th>
+                  <th>В1–В6</th>
                   <th>Итого</th>
-                  <th>Время В1–4</th>
+                  <th>Время В1–5</th>
                 </tr>
               </thead>
               <tbody>
@@ -500,7 +500,7 @@ function ResultsTab() {
                     <td>
                       <b>{meters(r.altitude)}</b>
                     </td>
-                    <td className="small">{Math.round(r.seconds14 / 60)} мин</td>
+                    <td className="small">{Math.round(r.secondsAuto / 60)} мин</td>
                   </tr>
                 ))}
               </tbody>

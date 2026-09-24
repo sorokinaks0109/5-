@@ -1,8 +1,11 @@
 // Общие типы игры. Файл без зависимостей: используется и в браузере, и в серверной функции.
 
 export type Role = 'participant' | 'jury' | 'organizer';
-export type StageNo = 1 | 2 | 3 | 4 | 5;
-export const STAGES: StageNo[] = [1, 2, 3, 4, 5];
+export type StageNo = 1 | 2 | 3 | 4 | 5 | 6;
+export const STAGES: StageNo[] = [1, 2, 3, 4, 5, 6];
+/** Вершина с идеей — оценивает жюри. Остальные проверяются автоматически. */
+export const IDEA_STAGE: StageNo = 6;
+export const AUTO_STAGES: StageNo[] = [1, 2, 3, 4, 5];
 
 // ---------- Контент (content.json) ----------
 
@@ -21,8 +24,8 @@ export interface ContentSettings {
   badgeBottom: string;
   maxParticipants: number;
   tourDays: number;
-  /** Минуты на этапы 1..5 */
-  stageMinutes: [number, number, number, number, number];
+  /** Минуты на вершины 1..6 */
+  stageMinutes: number[];
   finalistsCount: number;
   hintsTotal: number;
   /** Доля, на которую подсказка снижает метры за задание (0.3 = 30 %) */
@@ -37,11 +40,13 @@ export interface ContentSettings {
     stage3Processes: number;
     stage4Cases: number;
     stage4Questions: number;
+    stage5Cases: number;
   };
   points: {
     stage2: { order: number; hotspots: number; match: number };
     stage3: { order: number; flags: number; number: number };
     stage4: { whys: number; root: number; measures: number; questions: number };
+    stage5: { fishbone: number; focus: number; next: number };
   };
 }
 
@@ -136,6 +141,28 @@ export interface Case {
   measures: MultiQuestion;
 }
 
+/** Код корзины «не относится к проблеме» на диаграмме Исикавы */
+export const NOT_A_CAUSE = 'none';
+
+export interface FishboneCause {
+  id: string;
+  text: string;
+  /** id категории 6М или "none" — не причина */
+  category: string;
+}
+
+export interface FishboneCase {
+  id: string;
+  title: string;
+  /** Коротко — «голова рыбы» */
+  problem: string;
+  text: string;
+  causes: FishboneCause[];
+  focus: ChoiceQuestion;
+  hints?: { fishbone?: string };
+  explanations?: { fishbone?: string };
+}
+
 export interface IdeaField {
   id: string;
   label: string;
@@ -156,7 +183,7 @@ export interface Criterion {
 export interface Content {
   settings: ContentSettings;
   departments: string[];
-  stages: [StageText, StageText, StageText, StageText, StageText];
+  stages: StageText[];
   stage1: { wasteTypes: (Option & { description: string })[]; situations: Situation[] };
   stage2: {
     steps: (Option & { description: string })[];
@@ -167,7 +194,12 @@ export interface Content {
   };
   stage3: { processes: Process[] };
   stage4: { cases: Case[]; questions: (ChoiceQuestion & { id: string })[] };
-  stage5: { fields: IdeaField[]; criteria: Criterion[] };
+  stage5: {
+    categories: (Option & { icon: string; hint: string })[];
+    cases: FishboneCase[];
+    next: ChoiceQuestion;
+  };
+  idea: { fields: IdeaField[]; criteria: Criterion[] };
 }
 
 /** То, что можно отдать в браузер: без банка заданий и ответов */
@@ -177,12 +209,12 @@ export interface PublicContent {
   stages: Content['stages'];
   wasteTypes: Content['stage1']['wasteTypes'];
   steps: Content['stage2']['steps'];
-  stage5: Content['stage5'];
+  idea: Content['idea'];
 }
 
 // ---------- Задания, которые видит участник ----------
 
-export type ItemKind = 'choice' | 'multi' | 'order' | 'hotspots' | 'match' | 'flags' | 'number';
+export type ItemKind = 'choice' | 'multi' | 'order' | 'hotspots' | 'match' | 'flags' | 'number' | 'fishbone';
 
 export interface PublicItemBase {
   id: string;
@@ -226,7 +258,17 @@ export interface NumberItem extends PublicItemBase {
   unit: string;
 }
 
-export type PublicItem = ChoiceItem | MultiItem | OrderItem | HotspotsItem | MatchItem | FlagsItem | NumberItem;
+/** Диаграмма Исикавы: разложить причины по «костям» 6М */
+export interface FishboneItem extends PublicItemBase {
+  kind: 'fishbone';
+  problem: string;
+  categories: (Option & { icon: string; hint: string })[];
+  cards: Option[];
+  /** Есть ли корзина «Не причина» */
+  allowNone: boolean;
+}
+
+export type PublicItem = ChoiceItem | MultiItem | OrderItem | HotspotsItem | MatchItem | FlagsItem | NumberItem | FishboneItem;
 
 /** Ключ ответа — живёт только на сервере (или в демо) */
 export type AnswerKey =
@@ -236,7 +278,8 @@ export type AnswerKey =
   | { kind: 'hotspots'; zones: Zone[] }
   | { kind: 'match'; pairs: Record<string, string> }
   | { kind: 'flags'; answers: string[] }
-  | { kind: 'number'; answer: number; tolerance: number };
+  | { kind: 'number'; answer: number; tolerance: number }
+  | { kind: 'fishbone'; placement: Record<string, string> };
 
 export interface InternalItem {
   item: PublicItem;
@@ -359,7 +402,7 @@ export interface StageSummary {
   deadline: string | null;
   finishedAt: string | null;
   errors: number;
-  /** Для этапа 5: сколько судей уже оценили */
+  /** Для вершины с идеей: сколько судей уже оценили */
   juryScored?: number;
 }
 
@@ -435,7 +478,7 @@ export interface RatingRow {
   department: string;
   stageAltitudes: number[];
   altitude: number;
-  seconds14: number;
+  secondsAuto: number;
   hintsUsed: number;
   juryScored: number;
   finalist: boolean;

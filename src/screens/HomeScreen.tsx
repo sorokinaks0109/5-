@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { api } from '../api/index.ts';
-import { Badge5 } from '../components/Badge5.tsx';
+import { Emblem } from '../components/Emblem.tsx';
 import { Gear } from '../components/Gear.tsx';
 import { Mountain } from '../components/Mountain.tsx';
 import { LogoSlot } from '../components/Notice.tsx';
 import { pc } from '../content.ts';
-import type { StageNo, StageSummary } from '../core/types.ts';
+import { IDEA_STAGE, STAGES, type StageNo, type StageSummary } from '../core/types.ts';
 import { formatDate, meters, serverOffset, useApp, useCountUp, useNow } from '../hooks.ts';
 import { STAGE_THEME } from '../theme.ts';
 import { formatClock, remainingMs } from '../core/timer.ts';
@@ -24,7 +24,7 @@ export function HomeScreen() {
   const now = useNow(serverOffset(me.tour.serverNow));
   const [busy, setBusy] = useState<number | null>(null);
   const shownAltitude = useCountUp(p.altitude);
-  const maxTotal = pc.settings.stageMaxAltitude * 5;
+  const maxTotal = pc.settings.stageMaxAltitude * STAGES.length;
 
   const start = async (s: StageSummary) => {
     if (s.status === 'locked') return;
@@ -74,7 +74,7 @@ export function HomeScreen() {
                     {meters(shownAltitude)} <small>из {meters(maxTotal)}</small>
                   </div>
                 </div>
-                <Badge5 size={72} />
+                <Emblem size={72} />
               </div>
               <div className="progress-bar" aria-hidden="true">
                 <span style={{ width: `${Math.min(100, (p.altitude / maxTotal) * 100)}%` }} />
@@ -85,7 +85,7 @@ export function HomeScreen() {
                   <span>место{p.participantsCount ? ` из ${p.participantsCount}` : ''}</span>
                 </div>
                 <div className="stat">
-                  <b>{p.stages.filter((s) => s.status === 'finished').length} / 5</b>
+                  <b>{p.stages.filter((s) => s.status === 'finished').length} / {STAGES.length}</b>
                   <span>вершин</span>
                 </div>
                 <div className="stat">
@@ -146,8 +146,8 @@ export function HomeScreen() {
                     <b>{pc.stages[s.stage - 1].name}</b>
                     <span className="small muted">
                       {STATUS_TEXT[s.status]}
-                      {s.status === 'finished' && s.stage < 5 && ` · ${meters(s.altitude)}`}
-                      {s.status === 'finished' && s.stage === 5 && (published ? ` · ${meters(s.altitude)}` : ' · оценивает жюри')}
+                      {s.status === 'finished' && s.stage !== IDEA_STAGE && ` · ${meters(s.altitude)}`}
+                      {s.status === 'finished' && s.stage === IDEA_STAGE && (published ? ` · ${meters(s.altitude)}` : ' · оценивает жюри')}
                       {s.status === 'active' && s.deadline && ` · осталось ${formatClock(remainingMs(s.deadline, now))}`}
                       {s.status === 'available' && ` · ${pc.settings.stageMinutes[s.stage - 1]} мин`}
                     </span>
@@ -164,7 +164,7 @@ export function HomeScreen() {
                   )}
                   {s.status === 'finished' && (
                     <button className="btn btn-ghost btn-small" onClick={() => go(`/stage/${s.stage as StageNo}`)}>
-                      {s.stage === 5 ? 'Моя идея' : 'Разбор'}
+                      {s.stage === IDEA_STAGE ? 'Моя идея' : 'Разбор'}
                     </button>
                   )}
                 </div>
@@ -181,7 +181,7 @@ export function HomeScreen() {
                   {Math.round(pc.settings.hintPenalty * 100)}%.
                 </li>
                 <li>Ошибки портят погоду, но не останавливают игру.</li>
-                <li>При равной высоте выше тот, кто быстрее прошёл вершины 1–4.</li>
+                <li>При равной высоте выше тот, кто быстрее прошёл вершины 1–5.</li>
                 <li>В финал выходят {pc.settings.finalistsCount} лучших.</li>
               </ul>
             </div>

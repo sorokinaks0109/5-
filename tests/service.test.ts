@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildItems, perfectAnswer } from '../src/core/items.ts';
-import type { StageNo } from '../src/core/types.ts';
+import { AUTO_STAGES, IDEA_STAGE, type StageNo } from '../src/core/types.ts';
 import { content, openTourWithPlayer } from './helpers.ts';
 
 async function solveStage(ctx: Awaited<ReturnType<typeof openTourWithPlayer>>, stage: StageNo, perfect = true) {
@@ -19,16 +19,16 @@ describe('прохождение тура', () => {
     await expect(ctx.svc.startStage(ctx.player, 2)).rejects.toThrow(/предыдущей/);
     await solveStage(ctx, 1);
     const me = await ctx.svc.me(ctx.player);
-    expect(me.participant!.stages.map((s) => s.status)).toEqual(['finished', 'available', 'locked', 'locked', 'locked']);
+    expect(me.participant!.stages.map((s) => s.status)).toEqual(['finished', 'available', 'locked', 'locked', 'locked', 'locked']);
   });
 
-  it('идеальное прохождение этапов 1–4 даёт 4000 м', async () => {
+  it('идеальное прохождение автоматических вершин 1–5 даёт 5000 м', async () => {
     const ctx = await openTourWithPlayer();
-    for (const st of [1, 2, 3, 4] as StageNo[]) await solveStage(ctx, st);
+    for (const st of AUTO_STAGES) await solveStage(ctx, st);
     const me = await ctx.svc.me(ctx.player);
-    expect(me.participant!.altitude).toBe(4000);
+    expect(me.participant!.altitude).toBe(5000);
     expect(me.participant!.place).toBe(1);
-    expect(me.participant!.stages[4].status).toBe('available');
+    expect(me.participant!.stages[5].status).toBe('available');
   });
 
   it('ответ окончательный, ошибка портит погоду', async () => {
@@ -62,14 +62,14 @@ describe('прохождение тура', () => {
     expect(again.status).toBe('finished');
   });
 
-  it('этап 5: черновик, отправка, анонимная оценка жюри, итог — среднее', async () => {
+  it('вершина с идеей: черновик, отправка, анонимная оценка жюри, итог — среднее', async () => {
     const ctx = await openTourWithPlayer();
-    for (const st of [1, 2, 3, 4] as StageNo[]) await solveStage(ctx, st);
-    await ctx.svc.startStage(ctx.player, 5);
+    for (const st of AUTO_STAGES) await solveStage(ctx, st);
+    await ctx.svc.startStage(ctx.player, IDEA_STAGE);
     const long = 'я'.repeat(5000);
     await ctx.svc.saveIdea(ctx.player, { problem: long }, false);
     await expect(ctx.svc.saveIdea(ctx.player, { problem: 'x' }, true)).rejects.toThrow(/обязательные/);
-    const fields = Object.fromEntries(content.stage5.fields.map((f) => [f.id, 'текст']));
+    const fields = Object.fromEntries(content.idea.fields.map((f) => [f.id, 'текст']));
     const v = await ctx.svc.saveIdea(ctx.player, fields, true);
     expect(v.status).toBe('finished');
     expect(v.idea!.submittedAt).toBeTruthy();
@@ -79,7 +79,7 @@ describe('прохождение тура', () => {
     expect(list).toHaveLength(1);
     expect(JSON.stringify(list)).not.toContain('Альпинист');
     expect(JSON.stringify(list)).not.toContain(ctx.player.id);
-    const all = (v: number) => Object.fromEntries(content.stage5.criteria.map((c) => [c.id, v]));
+    const all = (v: number) => Object.fromEntries(content.idea.criteria.map((c) => [c.id, v]));
     await ctx.svc.juryScore(jury[0], list[0].workNo, all(200), 'Отлично');
     await ctx.svc.juryScore(jury[1], list[0].workNo, all(100), '');
     await ctx.svc.juryScore(jury[2], list[0].workNo, all(100), '');
@@ -88,25 +88,25 @@ describe('прохождение тура', () => {
 
     // Пока итоги не опубликованы, участник не видит оценку жюри
     let me = await ctx.svc.me(ctx.player);
-    expect(me.participant!.altitude).toBe(4000);
+    expect(me.participant!.altitude).toBe(5000);
 
     await ctx.svc.orgTour(ctx.org, 'close');
     await ctx.svc.orgTour(ctx.org, 'publish');
     me = await ctx.svc.me(ctx.player);
-    expect(me.participant!.altitude).toBe(4667);
+    expect(me.participant!.altitude).toBe(5667);
     const results = await ctx.svc.orgResults(ctx.org);
-    expect(results.rows[0].stageAltitudes).toEqual([1000, 1000, 1000, 1000, 667]);
+    expect(results.rows[0].stageAltitudes).toEqual([1000, 1000, 1000, 1000, 1000, 667]);
     expect(results.jury[0].scores).toHaveLength(3);
   });
 
   it('черновик идеи отправляется сам, когда кончилось время', async () => {
     const ctx = await openTourWithPlayer();
-    for (const st of [1, 2, 3, 4] as StageNo[]) await solveStage(ctx, st);
-    await ctx.svc.startStage(ctx.player, 5);
+    for (const st of AUTO_STAGES) await solveStage(ctx, st);
+    await ctx.svc.startStage(ctx.player, IDEA_STAGE);
     await ctx.svc.saveIdea(ctx.player, { problem: 'Долгая приёмка' }, false);
     ctx.tick(41 * 60_000);
     const me = await ctx.svc.me(ctx.player);
-    expect(me.participant!.stages[4].status).toBe('finished');
+    expect(me.participant!.stages[5].status).toBe('finished');
     expect((await ctx.store.getIdea(ctx.player.id))!.submittedAt).toBeTruthy();
   });
 
