@@ -3,7 +3,6 @@ import { api } from '../api/index.ts';
 import { Emblem } from '../components/Emblem.tsx';
 import { Gear } from '../components/Gear.tsx';
 import { Mountain } from '../components/Mountain.tsx';
-import { LogoSlot } from '../components/Notice.tsx';
 import { pc } from '../content.ts';
 import { IDEA_STAGE, STAGES, type StageNo, type StageSummary } from '../core/types.ts';
 import { formatDate, meters, serverOffset, useApp, useCountUp, useNow } from '../hooks.ts';
@@ -184,9 +183,6 @@ export function HomeScreen() {
                 <li>При равной высоте выше тот, кто быстрее прошёл вершины 1–5.</li>
                 <li>В финал выходят {pc.settings.finalistsCount} лучших.</li>
               </ul>
-            </div>
-            <div className="row" style={{ justifyContent: 'center', marginTop: 8 }}>
-              <LogoSlot dark />
             </div>
           </div>
         </div>

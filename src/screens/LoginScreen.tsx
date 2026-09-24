@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { api } from '../api/index.ts';
 import { Emblem } from '../components/Emblem.tsx';
-import { LogoSlot } from '../components/Notice.tsx';
 import { Snow } from '../components/Snow.tsx';
 import { DEMO_CODES } from '../core/demoSeed.ts';
 import { pc } from '../content.ts';
@@ -32,10 +31,7 @@ export function LoginScreen({ onLogin }: { onLogin: (code: string) => Promise<vo
         <path d="M0 120 L0 95 L80 60 L140 85 L220 40 L300 80 L360 55 L400 75 L400 120 Z" fill="#f5f3ff" opacity="0.95" />
       </svg>
       <div className="splash-inner">
-        <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <Emblem size={104} />
-          <LogoSlot />
-        </div>
+        <Emblem size={104} />
         <h1>{pc.settings.gameName}</h1>
         <p className="lead">
           {pc.settings.tagline}

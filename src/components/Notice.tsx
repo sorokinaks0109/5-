@@ -11,7 +11,3 @@ export function Toast({ text, kind = 'error', onClose }: { text: string; kind?: 
     </div>
   );
 }
-
-export function LogoSlot({ dark = false }: { dark?: boolean }) {
-  return <div className={`logo-slot ${dark ? 'dark' : ''}`}>Место для логотипа</div>;
-}

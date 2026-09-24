@@ -1,7 +1,7 @@
 // Боевой режим: вход через Supabase Auth, все действия — через серверную функцию «game».
 // Правильные ответы и проверка живут только на сервере.
 import { createClient as createSupabase } from '@supabase/supabase-js';
-import { codeEmail, normalizeCode } from '../core/codes.ts';
+import { codeEmail, hasCyrillic, normalizeCode } from '../core/codes.ts';
 import { GameError } from '../core/errors.ts';
 import type { Transport } from './api.ts';
 
@@ -39,15 +39,23 @@ export function createSupabaseTransport(url: string, anonKey: string): Transport
     mode: 'supabase',
     async login(code) {
       const norm = normalizeCode(code);
+      if (hasCyrillic(code)) throw new GameError('Код набирается латинскими буквами и цифрами. Переключите клавиатуру на английскую раскладку.');
       if (norm.length < 6) throw new GameError('Код слишком короткий.');
       let { error } = await signIn(norm);
+      if (error && /rate|many/i.test(error.message)) throw new GameError('Слишком много попыток. Подождите пару минут.');
       if (error) {
         // Первый вход организатора: сервер создаёт его учётную запись по коду из настроек функции
-        await post({ action: 'bootstrap', code: norm }).catch(() => null);
+        let bootstrapError = '';
+        await post({ action: 'bootstrap', code: norm }).catch((e: unknown) => {
+          bootstrapError = e instanceof Error ? e.message : String(e);
+        });
         ({ error } = await signIn(norm));
+        // Код не организатора — обычное «не найден». Любая другая ошибка сервера показывается как есть.
+        if (error && bootstrapError && !/Код не найден/.test(bootstrapError)) throw new GameError(bootstrapError);
       }
       if (error) {
         if (/rate|many/i.test(error.message)) throw new GameError('Слишком много попыток. Подождите пару минут.');
+        if (/confirm/i.test(error.message)) throw new GameError('Вход не подтверждён: проверьте настройки входа в Supabase (README, шаг 3).');
         throw new GameError('Код не найден. Проверьте, нет ли опечатки.');
       }
     },
