@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" font-family="Arial, sans-serif">
+  <!-- ЧЕРНОВИК: иллюстрация «Склад № 1, стеллажное хранение и упаковка». Можно заменить своей картинкой 800×500. -->
+  <defs>
+    <g id="bx">
+      <rect width="40" height="30" fill="#c99a5b" stroke="#7a5a2e" stroke-width="2"/>
+      <line x1="20" y1="0" x2="20" y2="30" stroke="#e8d3a8" stroke-width="4"/>
+    </g>
+  </defs>
+  <rect width="800" height="320" fill="#e4ebf2"/>
+  <rect y="320" width="800" height="180" fill="#bcc6d1"/>
+  <line x1="0" y1="320" x2="800" y2="320" stroke="#8a97a6" stroke-width="3"/>
+  <text x="20" y="30" font-size="20" font-weight="700" fill="#34495e">СКЛАД № 1 · ХРАНЕНИЕ И УПАКОВКА</text>
+
+  <!-- Стеллаж -->
+  <g>
+    <rect x="24" y="62" width="8" height="258" fill="#2f4b6e"/>
+    <rect x="166" y="62" width="8" height="258" fill="#2f4b6e"/>
+    <rect x="306" y="62" width="8" height="258" fill="#2f4b6e"/>
+    <rect x="24" y="148" width="290" height="7" fill="#e07b39"/>
+    <rect x="24" y="232" width="290" height="7" fill="#e07b39"/>
+    <rect x="24" y="313" width="290" height="7" fill="#e07b39"/>
+    <!-- Списанные коробки -->
+    <rect x="38" y="84" width="58" height="62" fill="#9b8f80" stroke="#5c5146" stroke-width="2"/>
+    <rect x="98" y="96" width="62" height="50" fill="#9b8f80" stroke="#5c5146" stroke-width="2"/>
+    <text x="67" y="118" font-size="11" font-weight="700" fill="#b42318" text-anchor="middle">СПИСАНО</text>
+    <text x="67" y="132" font-size="11" font-weight="700" fill="#b42318" text-anchor="middle">2023</text>
+    <text x="129" y="126" font-size="11" font-weight="700" fill="#b42318" text-anchor="middle">СПИСАНО</text>
+    <!-- Нормальные ячейки -->
+    <use href="#bx" x="186" y="116"/><use href="#bx" x="240" y="116"/>
+    <use href="#bx" x="40" y="200"/><use href="#bx" x="96" y="200"/>
+    <use href="#bx" x="186" y="200"/><use href="#bx" x="246" y="200"/>
+    <use href="#bx" x="40" y="281"/><use href="#bx" x="186" y="281"/><use href="#bx" x="246" y="281"/>
+    <!-- Ровные печатные бирки слева -->
+    <g font-size="10" font-weight="700" fill="#0b2545">
+      <rect x="60" y="238" width="52" height="14" fill="#fff" stroke="#0b2545"/><text x="66" y="249">Б-01-2</text>
+    </g>
+    <!-- Разнобой бирок справа -->
+    <rect x="182" y="156" width="46" height="18" fill="#fff59d" transform="rotate(-6 205 165)"/>
+    <text x="186" y="170" font-size="12" fill="#1d4273" font-style="italic" transform="rotate(-6 205 165)">болты??</text>
+    <rect x="240" y="158" width="58" height="14" fill="#fff" stroke="#b42318"/>
+    <text x="244" y="169" font-size="10" fill="#b42318">гайки м12</text>
+    <rect x="186" y="241" width="40" height="20" fill="#c8e6c9" transform="rotate(5 206 251)"/>
+    <text x="190" y="256" font-size="12" fill="#333" transform="rotate(5 206 251)">Ш-3</text>
+    <rect x="246" y="242" width="54" height="14" fill="#ffd6e0"/>
+    <text x="250" y="253" font-size="10" fill="#5a1a2a">не трогать!</text>
+  </g>
+
+  <!-- Мусор под стеллажом -->
+  <g fill="#e9eef3" stroke="#8a97a6" stroke-width="1.5">
+    <path d="M40 350 q20 -18 40 0 q-10 12 -40 0z"/>
+    <path d="M110 358 q25 -20 50 -2 q-20 16 -50 2z"/>
+    <path d="M200 346 q15 -14 34 -2 q-12 12 -34 2z"/>
+    <path d="M250 362 q18 -10 36 2 q-16 10 -36 -2z"/>
+  </g>
+  <rect x="160" y="352" width="30" height="8" fill="#a07b4f" transform="rotate(20 175 356)"/>
+  <circle cx="92" cy="368" r="5" fill="#6c6c6c"/>
+
+  <!-- Доска для инструмента с контурами (в порядке, но инструмент не на месте) -->
+  <g>
+    <rect x="428" y="70" width="180" height="110" fill="#f4f7fb" stroke="#34495e" stroke-width="3"/>
+    <text x="518" y="90" font-size="12" font-weight="700" fill="#34495e" text-anchor="middle">МЕСТО ДЛЯ ИНСТРУМЕНТА</text>
+    <rect x="446" y="104" width="12" height="60" fill="none" stroke="#8da9c4" stroke-width="2" stroke-dasharray="4 3"/>
+    <rect x="480" y="110" width="44" height="14" fill="none" stroke="#8da9c4" stroke-width="2" stroke-dasharray="4 3"/>
+    <rect x="540" y="104" width="52" height="40" fill="none" stroke="#8da9c4" stroke-width="2" stroke-dasharray="4 3"/>
+  </g>
+
+  <!-- Стол упаковки с разбросанным инструментом -->
+  <rect x="410" y="250" width="220" height="14" fill="#8b6b4a"/>
+  <rect x="420" y="264" width="10" height="66" fill="#6b5037"/>
+  <rect x="610" y="264" width="10" height="66" fill="#6b5037"/>
+  <g>
+    <rect x="428" y="238" width="60" height="10" fill="#555" transform="rotate(-12 458 243)"/>
+    <rect x="500" y="232" width="14" height="18" fill="#d62828"/>
+    <rect x="522" y="240" width="46" height="8" fill="#3a7bd5" transform="rotate(20 545 244)"/>
+    <circle cx="590" cy="240" r="9" fill="none" stroke="#333" stroke-width="4"/>
+    <rect x="560" y="228" width="8" height="22" fill="#f2a900" transform="rotate(-30 564 239)"/>
+    <text x="520" y="287" font-size="12" fill="#34495e" text-anchor="middle">СТОЛ УПАКОВКИ</text>
+  </g>
+
+  <!-- Проход -->
+  <rect x="320" y="372" width="480" height="5" fill="#f2c14e"/>
+  <rect x="320" y="488" width="480" height="5" fill="#f2c14e"/>
+  <!-- Удлинитель поперёк прохода -->
+  <path d="M330 440 C380 400, 420 460, 470 420 S560 450, 590 410" fill="none" stroke="#222" stroke-width="5"/>
+  <rect x="580" y="398" width="24" height="16" fill="#f4f7fb" stroke="#222" stroke-width="2"/>
+
+  <!-- График уборки (не заполняется) -->
+  <g>
+    <rect x="642" y="42" width="132" height="136" fill="#fff" stroke="#34495e" stroke-width="3"/>
+    <rect x="642" y="42" width="132" height="24" fill="#0b2545"/>
+    <text x="708" y="59" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">ГРАФИК УБОРКИ</text>
+    <g stroke="#8da9c4">
+      <line x1="652" y1="86" x2="764" y2="86"/><line x1="652" y1="106" x2="764" y2="106"/>
+      <line x1="652" y1="126" x2="764" y2="126"/><line x1="652" y1="146" x2="764" y2="146"/>
+      <line x1="652" y1="166" x2="764" y2="166"/>
+    </g>
+    <text x="656" y="82" font-size="10" fill="#34495e">март ✓</text>
+    <text x="656" y="102" font-size="10" fill="#8da9c4">апр.</text>
+    <text x="656" y="122" font-size="10" fill="#8da9c4">май</text>
+    <text x="656" y="142" font-size="10" fill="#8da9c4">июнь</text>
+  </g>
+</svg>

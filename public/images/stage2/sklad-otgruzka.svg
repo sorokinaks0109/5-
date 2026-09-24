@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" font-family="Arial, sans-serif">
+  <!-- ЧЕРНОВИК: иллюстрация «Площадка отгрузки, база пос. Северный». Можно заменить своей картинкой 800×500. -->
+  <defs>
+    <g id="cr">
+      <rect width="56" height="42" fill="#c99a5b" stroke="#7a5a2e" stroke-width="2"/>
+      <line x1="0" y1="21" x2="56" y2="21" stroke="#7a5a2e" stroke-width="2"/>
+    </g>
+  </defs>
+  <rect width="800" height="270" fill="#d9e2ec"/>
+  <rect y="270" width="800" height="230" fill="#aeb9c5"/>
+  <line x1="0" y1="270" x2="800" y2="270" stroke="#8a97a6" stroke-width="3"/>
+  <text x="400" y="26" font-size="18" font-weight="700" fill="#34495e" text-anchor="middle">БАЗА ПОС. СЕВЕРНЫЙ · ОТГРУЗКА</text>
+
+  <!-- Пустой стенд «Инструкция по креплению» -->
+  <rect x="30" y="44" width="150" height="130" fill="#fff" stroke="#34495e" stroke-width="3"/>
+  <rect x="30" y="44" width="150" height="34" fill="#0b2545"/>
+  <text x="105" y="58" font-size="11" font-weight="700" fill="#fff" text-anchor="middle">ИНСТРУКЦИЯ ПО</text>
+  <text x="105" y="72" font-size="11" font-weight="700" fill="#fff" text-anchor="middle">КРЕПЛЕНИЮ ГРУЗА</text>
+  <text x="105" y="130" font-size="12" fill="#b0bccb" text-anchor="middle">(пусто)</text>
+
+  <!-- Лист аудита 5С -->
+  <rect x="230" y="44" width="132" height="122" fill="#fff" stroke="#34495e" stroke-width="3"/>
+  <text x="296" y="66" font-size="13" font-weight="700" fill="#0b2545" text-anchor="middle">АУДИТ 5С</text>
+  <g font-size="11" fill="#34495e">
+    <text x="240" y="90">План: ежемесячно</text>
+    <text x="240" y="112">Январь: —</text>
+    <text x="240" y="130">Февраль: —</text>
+  </g>
+  <text x="296" y="154" font-size="12" font-weight="700" fill="#b42318" text-anchor="middle">НЕ ПРОВОДИЛСЯ</text>
+
+  <!-- Ворота с видом на зимник -->
+  <rect x="470" y="96" width="240" height="318" fill="#5c7089"/>
+  <rect x="486" y="112" width="208" height="302" fill="#eef4fb"/>
+  <path d="M486 330 L560 290 L620 318 L694 280 L694 414 L486 414 Z" fill="#fff"/>
+  <path d="M486 300 L530 250 L570 280 L620 220 L694 290 L694 300 Z" fill="#8da9c4" opacity="0.5"/>
+  <text x="590" y="150" font-size="12" fill="#5c7089" text-anchor="middle">зимник →</text>
+  <!-- Снег и лёд у ворот -->
+  <path d="M480 470 q30 -30 70 -10 q40 -24 80 -4 q40 -16 70 8 l0 20 l-220 0z" fill="#fff" stroke="#b8c7d6"/>
+  <ellipse cx="610" cy="448" rx="60" ry="12" fill="#bfe3ff" opacity="0.9"/>
+  <path d="M540 430 l30 6 M600 440 l24 -4" stroke="#8da9c4" stroke-width="2"/>
+
+  <!-- Бочки из-под ГСМ -->
+  <g>
+    <rect x="36" y="300" width="48" height="66" rx="6" fill="#4a5d74" stroke="#2c3b4d" stroke-width="2"/>
+    <rect x="92" y="306" width="48" height="66" rx="6" fill="#5c7089" stroke="#2c3b4d" stroke-width="2"/>
+    <rect x="58" y="350" width="48" height="66" rx="6" fill="#3e5064" stroke="#2c3b4d" stroke-width="2" transform="rotate(80 82 383)"/>
+    <text x="60" y="336" font-size="10" fill="#fff" text-anchor="middle">ГСМ</text>
+    <text x="116" y="342" font-size="10" fill="#fff" text-anchor="middle">пуст.</text>
+  </g>
+
+  <!-- Грузы вперемешку -->
+  <g font-size="10" font-weight="700">
+    <use href="#cr" x="200" y="350"/><rect x="204" y="354" width="48" height="12" fill="#fff"/><text x="206" y="364" fill="#1d4273">СЕВЕРНЫЙ</text>
+    <use href="#cr" x="262" y="356"/><rect x="266" y="360" width="48" height="12" fill="#ffd6a5"/><text x="268" y="370" fill="#7a3b00">ТАЁЖНЫЙ</text>
+    <use href="#cr" x="324" y="348"/><rect x="328" y="352" width="48" height="12" fill="#fff"/><text x="330" y="362" fill="#1d4273">СЕВЕРНЫЙ</text>
+    <use href="#cr" x="232" y="306"/><rect x="236" y="310" width="48" height="12" fill="#c8e6c9"/><text x="240" y="320" fill="#1b5e20">ЛЕСНОЙ</text>
+    <use href="#cr" x="296" y="300" /><rect x="300" y="304" width="48" height="12" fill="#ffd6a5"/><text x="302" y="314" fill="#7a3b00">ТАЁЖНЫЙ</text>
+    <use href="#cr" x="372" y="352"/><rect x="376" y="356" width="48" height="12" fill="#c8e6c9"/><text x="380" y="366" fill="#1b5e20">ЛЕСНОЙ</text>
+  </g>
+
+  <!-- Лопаты и лом у ворот -->
+  <g stroke-linecap="round">
+    <line x1="728" y1="236" x2="746" y2="380" stroke="#8b6b4a" stroke-width="6"/>
+    <path d="M740 372 l20 -4 l6 30 l-22 4z" fill="#5c7089"/>
+    <line x1="770" y1="232" x2="752" y2="382" stroke="#8b6b4a" stroke-width="6"/>
+    <path d="M744 376 l18 2 l-4 28 l-20 -2z" fill="#4a5d74"/>
+    <line x1="782" y1="250" x2="776" y2="392" stroke="#333" stroke-width="5"/>
+  </g>
+</svg>

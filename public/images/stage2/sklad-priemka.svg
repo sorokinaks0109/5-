@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" font-family="Arial, sans-serif">
+  <!-- ЧЕРНОВИК: иллюстрация «Склад № 3, зона приёмки». Можно заменить своей картинкой 800×500. -->
+  <defs>
+    <g id="box">
+      <rect width="44" height="34" fill="#c99a5b" stroke="#7a5a2e" stroke-width="2"/>
+      <line x1="22" y1="0" x2="22" y2="34" stroke="#e8d3a8" stroke-width="5"/>
+    </g>
+  </defs>
+  <rect width="800" height="300" fill="#dfe7f0"/>
+  <rect y="300" width="800" height="200" fill="#b9c4cf"/>
+  <line x1="0" y1="300" x2="800" y2="300" stroke="#8a97a6" stroke-width="3"/>
+  <text x="20" y="32" font-size="20" font-weight="700" fill="#34495e">СКЛАД № 3 · ЗОНА ПРИЁМКИ</text>
+
+  <!-- Стеллаж А (в порядке: есть адреса) -->
+  <g>
+    <rect x="40" y="75" width="8" height="225" fill="#2f4b6e"/>
+    <rect x="160" y="75" width="8" height="225" fill="#2f4b6e"/>
+    <rect x="282" y="75" width="8" height="225" fill="#2f4b6e"/>
+    <rect x="40" y="140" width="250" height="7" fill="#e07b39"/>
+    <rect x="40" y="215" width="250" height="7" fill="#e07b39"/>
+    <rect x="40" y="290" width="250" height="7" fill="#e07b39"/>
+    <use href="#box" x="60" y="106"/><use href="#box" x="108" y="106"/><use href="#box" x="182" y="106"/><use href="#box" x="230" y="106"/>
+    <use href="#box" x="60" y="181"/><use href="#box" x="182" y="181"/><use href="#box" x="230" y="181"/>
+    <use href="#box" x="60" y="256"/><use href="#box" x="108" y="256"/><use href="#box" x="182" y="256"/>
+    <g font-size="11" font-weight="700" fill="#0b2545">
+      <rect x="84" y="147" width="46" height="16" fill="#fff" stroke="#0b2545"/><text x="89" y="159">А-01-1</text>
+      <rect x="206" y="147" width="46" height="16" fill="#fff" stroke="#0b2545"/><text x="211" y="159">А-02-1</text>
+      <rect x="84" y="222" width="46" height="16" fill="#fff" stroke="#0b2545"/><text x="89" y="234">А-01-2</text>
+      <rect x="206" y="222" width="46" height="16" fill="#fff" stroke="#0b2545"/><text x="211" y="234">А-02-2</text>
+    </g>
+    <rect x="130" y="52" width="70" height="20" fill="#0b2545"/><text x="143" y="67" font-size="14" font-weight="700" fill="#fff">РЯД А</text>
+  </g>
+
+  <!-- Стеллаж Б (нарушение: нет адресов, коробки навалом) -->
+  <g>
+    <rect x="330" y="75" width="8" height="225" fill="#2f4b6e"/>
+    <rect x="440" y="75" width="8" height="225" fill="#2f4b6e"/>
+    <rect x="552" y="75" width="8" height="225" fill="#2f4b6e"/>
+    <rect x="330" y="140" width="230" height="7" fill="#e07b39"/>
+    <rect x="330" y="215" width="230" height="7" fill="#e07b39"/>
+    <rect x="330" y="290" width="230" height="7" fill="#e07b39"/>
+    <use href="#box" x="345" y="106"/><use href="#box" x="380" y="98" transform="rotate(8 402 115)"/><use href="#box" x="460" y="106"/><use href="#box" x="500" y="100" transform="rotate(-6 522 117)"/>
+    <use href="#box" x="350" y="181"/><use href="#box" x="392" y="181"/><use href="#box" x="455" y="181"/>
+    <use href="#box" x="345" y="256"/><use href="#box" x="470" y="256"/><use href="#box" x="505" y="256"/>
+    <rect x="410" y="52" width="70" height="20" fill="#8da9c4"/><text x="428" y="67" font-size="14" font-weight="700" fill="#fff">???</text>
+  </g>
+
+  <!-- Урна (в порядке) -->
+  <rect x="515" y="306" width="36" height="44" rx="4" fill="#3a7bd5"/>
+  <text x="533" y="333" font-size="10" fill="#fff" text-anchor="middle">мусор</text>
+
+  <!-- Стенд 5С с заброшенным чек-листом -->
+  <g>
+    <rect x="598" y="55" width="126" height="122" fill="#fff" stroke="#34495e" stroke-width="3"/>
+    <rect x="598" y="55" width="126" height="24" fill="#0b2545"/>
+    <text x="661" y="72" font-size="13" font-weight="700" fill="#fff" text-anchor="middle">ЧЕК-ЛИСТ 5С</text>
+    <g font-size="12" fill="#34495e">
+      <text x="608" y="98">Январь</text><text x="690" y="98" fill="#1f7a4a" font-weight="700">✓</text>
+      <text x="608" y="118">Февраль</text><text x="690" y="118">—</text>
+      <text x="608" y="138">Март</text><text x="690" y="138">—</text>
+      <text x="608" y="158">Апрель</text><text x="690" y="158">—</text>
+    </g>
+  </g>
+
+  <!-- Огнетушитель, заставленный коробками -->
+  <g>
+    <rect x="728" y="200" width="42" height="22" fill="#d62828"/>
+    <text x="749" y="215" font-size="10" fill="#fff" text-anchor="middle" font-weight="700">ОГНЕТ.</text>
+    <rect x="736" y="232" width="24" height="64" rx="10" fill="#d62828" stroke="#8d1b1b" stroke-width="2"/>
+    <rect x="742" y="224" width="12" height="10" fill="#333"/>
+    <use href="#box" x="712" y="266"/><use href="#box" x="744" y="272"/><use href="#box" x="726" y="236"/>
+  </g>
+
+  <!-- Место стоянки погрузчика (в порядке, размечено) -->
+  <rect x="28" y="325" width="110" height="120" fill="none" stroke="#f2c14e" stroke-width="4" stroke-dasharray="12 8"/>
+  <g>
+    <rect x="45" y="360" width="70" height="50" rx="6" fill="#f2a900" stroke="#9c6d00" stroke-width="2"/>
+    <rect x="58" y="330" width="40" height="32" fill="none" stroke="#333" stroke-width="4"/>
+    <rect x="112" y="340" width="6" height="80" fill="#555"/>
+    <rect x="112" y="415" width="30" height="5" fill="#555"/>
+    <circle cx="60" cy="415" r="11" fill="#222"/><circle cx="102" cy="415" r="11" fill="#222"/>
+  </g>
+  <!-- Масляное пятно -->
+  <ellipse cx="205" cy="424" rx="62" ry="20" fill="#2b2b2b" opacity="0.8"/>
+  <ellipse cx="190" cy="418" rx="22" ry="6" fill="#6c6c6c" opacity="0.6"/>
+
+  <!-- Проход с разметкой -->
+  <rect x="300" y="345" width="500" height="5" fill="#f2c14e"/>
+  <rect x="300" y="488" width="500" height="5" fill="#f2c14e"/>
+  <text x="620" y="340" font-size="12" fill="#34495e">ПРОХОД</text>
+  <!-- Коробки в проходе -->
+  <use href="#box" x="378" y="410"/><use href="#box" x="424" y="412"/><use href="#box" x="400" y="378"/>
+
+  <!-- Сломанные поддоны -->
+  <g stroke="#6b4a22" stroke-width="2">
+    <rect x="605" y="440" width="100" height="14" fill="#b07d3f" transform="rotate(-4 655 447)"/>
+    <rect x="612" y="420" width="96" height="14" fill="#a8743a" transform="rotate(9 660 427)"/>
+    <rect x="600" y="398" width="60" height="12" fill="#b07d3f" transform="rotate(-18 630 404)"/>
+    <rect x="662" y="395" width="52" height="12" fill="#9a6a33" transform="rotate(24 688 401)"/>
+    <line x1="640" y1="445" x2="652" y2="458"/>
+    <line x1="690" y1="420" x2="700" y2="434"/>
+  </g>
+</svg>
