@@ -3,6 +3,7 @@ import { useState } from 'react';
 import type { AnswerRecord, AnswerValue, PublicItem, ReviewEntry } from '../core/types.ts';
 import { meters } from '../hooks.ts';
 import { pc } from '../content.ts';
+import { Burst } from '../components/Burst.tsx';
 import { ChoiceInput, FlagsInput, HotspotsInput, MatchInput, MultiInput, NumberInput, OrderInput } from './Inputs.tsx';
 
 type Answer = Omit<AnswerRecord, 'answeredAt'>;
@@ -67,6 +68,7 @@ export function ItemCard({
   blocked,
   hintsLeft,
   flagsOrder,
+  fx,
   onAnswer,
   onHint,
 }: {
@@ -78,6 +80,8 @@ export function ItemCard({
   blocked?: string;
   hintsLeft: number;
   flagsOrder?: string[];
+  /** Эффект только что данного ответа: конфетти или «непогода» */
+  fx?: { key: number; points: number; fraction: number };
   onAnswer: (value: AnswerValue) => Promise<void>;
   onHint: () => Promise<void>;
 }) {
@@ -135,7 +139,11 @@ export function ItemCard({
   }
 
   return (
-    <section className="card">
+    <section
+      key={fx?.key}
+      className={`card item-card ${fx ? (fx.fraction > 0 ? 'glow-ok' : 'shake') : ''}`}
+    >
+      {fx && <Burst key={fx.key} points={fx.points} fraction={fx.fraction} />}
       <div className="item-title">
         <h2 style={{ margin: 0 }}>{item.title}</h2>
         <span className="tag">до {meters(item.maxPoints)}</span>
@@ -166,7 +174,7 @@ export function ItemCard({
           </button>
           {item.hasHint && !hint && (
             <button className="btn btn-ghost" disabled={busy || hintsLeft <= 0} onClick={takeHint}>
-              Подсказка (−{Math.round(pc.settings.hintPenalty * 100)}%)
+              🧗 Подсказка (−{Math.round(pc.settings.hintPenalty * 100)}%)
             </button>
           )}
           <span className="small muted">Ответ окончательный.</span>

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { MeView } from './core/types.ts';
 
 /** Текущее время по часам сервера: offset = серверное время − время устройства. */
@@ -59,4 +59,25 @@ export function formatDate(iso: string | null): string {
 
 export function meters(n: number): string {
   return `${n.toLocaleString('ru-RU')} м`;
+}
+
+/** Плавный счётчик: число «набегает» от 0 (или прежнего значения) до нового. */
+export function useCountUp(target: number, ms = 1200): number {
+  const [value, setValue] = useState(0);
+  const current = useRef(0);
+  useEffect(() => {
+    const start = performance.now();
+    const base = current.current;
+    let raf = 0;
+    const step = (t: number) => {
+      const k = Math.min(1, (t - start) / ms);
+      const v = Math.round(base + (target - base) * (1 - Math.pow(1 - k, 3)));
+      current.current = v;
+      setValue(v);
+      if (k < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [target, ms]);
+  return value;
 }

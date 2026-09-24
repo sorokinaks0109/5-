@@ -28,16 +28,20 @@ export function LoginScreen({ onLogin }: { onLogin: (code: string) => Promise<vo
     <div className="splash">
       <Snow />
       <svg className="splash-mountains" viewBox="0 0 400 120" preserveAspectRatio="none" aria-hidden="true">
-        <path d="M0 120 L0 70 L60 30 L110 60 L180 5 L250 55 L320 20 L400 60 L400 120 Z" fill="#8da9c4" opacity="0.35" />
-        <path d="M0 120 L0 95 L80 60 L140 85 L220 40 L300 80 L360 55 L400 75 L400 120 Z" fill="#e6edf5" opacity="0.9" />
+        <path d="M0 120 L0 70 L60 30 L110 60 L180 5 L250 55 L320 20 L400 60 L400 120 Z" fill="#a78bfa" opacity="0.45" />
+        <path d="M0 120 L0 95 L80 60 L140 85 L220 40 L300 80 L360 55 L400 75 L400 120 Z" fill="#f5f3ff" opacity="0.95" />
       </svg>
       <div className="splash-inner">
         <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <Badge5 size={104} />
           <LogoSlot />
         </div>
-        <h1>Пять вершин</h1>
-        <p className="lead">{pc.settings.tourName}</p>
+        <h1>{pc.settings.gameName}</h1>
+        <p className="lead">
+          {pc.settings.tagline}
+          <br />
+          <b>{pc.settings.tourName}</b>
+        </p>
         <div className="card">
           <form
             onSubmit={(e) => {

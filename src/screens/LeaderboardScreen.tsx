@@ -25,15 +25,15 @@ export function RatingMountain({ rows }: { rows: PublicRatingRow[] }) {
   const sorted = rows.slice().sort((a, b) => a.altitude - b.altitude);
   return (
     <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Гора рейтинга" style={{ width: '100%', display: 'block' }}>
-      <rect width={W} height={H} fill="#13315c" rx="14" />
-      <path d={`M10 ${BASE_Y + 15} L${TOP.x} ${TOP.y} L${W - 10} ${BASE_Y + 15} Z`} fill="#8da9c4" />
+      <rect width={W} height={H} fill="#312e81" rx="14" />
+      <path d={`M10 ${BASE_Y + 15} L${TOP.x} ${TOP.y} L${W - 10} ${BASE_Y + 15} Z`} fill="#a5b4fc" />
       <path d={`M${TOP.x - 40} ${TOP.y + 55} L${TOP.x} ${TOP.y} L${TOP.x + 40} ${TOP.y + 55} L${TOP.x + 15} ${TOP.y + 45} L${TOP.x} ${TOP.y + 58} L${TOP.x - 18} ${TOP.y + 44} Z`} fill="#f4f7fb" />
       {[1000, 2000, 3000, 4000, 5000].map((m) => {
         const y = BASE_Y - (m / max) * (BASE_Y - TOP.y - 12);
         return (
           <g key={m}>
-            <line x1="8" x2="60" y1={y} y2={y} stroke="#cfe0f1" strokeDasharray="3 4" opacity="0.6" />
-            <text x="10" y={y - 3} fontSize="9" fill="#cfe0f1">
+            <line x1="8" x2="60" y1={y} y2={y} stroke="#e0e7ff" strokeDasharray="3 4" opacity="0.6" />
+            <text x="10" y={y - 3} fontSize="9" fill="#e0e7ff">
               {m} м
             </text>
           </g>
@@ -41,7 +41,7 @@ export function RatingMountain({ rows }: { rows: PublicRatingRow[] }) {
       })}
       {sorted.map((r, i) => {
         const p = flagPos(r, i, max);
-        const color = r.me ? '#ff7a1a' : r.finalist ? '#ffd166' : '#f4f7fb';
+        const color = r.me ? '#ff6b2c' : r.finalist ? '#facc15' : '#f5f3ff';
         return (
           <g key={`${r.nick}-${i}`} className="flag-move" style={{ transform: `translate(${p.x}px, ${p.y}px) scale(${r.me ? 1 : 0.7})` }}>
             <title>{`${r.place}. ${r.nick} — ${r.altitude} м`}</title>

@@ -5,7 +5,10 @@ import { Oxygen } from '../components/Oxygen.tsx';
 import { Weather } from '../components/Weather.tsx';
 import { pc } from '../content.ts';
 import type { AnswerValue, StageNo, StageView } from '../core/types.ts';
-import { meters, serverOffset, useApp, useNow } from '../hooks.ts';
+import { meters, serverOffset, useApp, useCountUp, useNow } from '../hooks.ts';
+import { Snow } from '../components/Snow.tsx';
+import { Burst } from '../components/Burst.tsx';
+import { STAGE_THEME, WEATHER_BG } from '../theme.ts';
 import { ItemCard } from '../items/ItemCard.tsx';
 
 /** Задания, которые нужно решать строго по порядку (цепочка «5 почему»). */
@@ -26,6 +29,12 @@ export function StageScreen({ stage }: { stage: StageNo }) {
   const [offset, setOffset] = useState(0);
   const now = useNow(offset);
   const reloading = useRef(false);
+  const [fx, setFx] = useState<{ itemId: string; key: number; points: number; fraction: number } | null>(null);
+  const [streak, setStreak] = useState(0);
+  const [justFinished, setJustFinished] = useState(false);
+  const shownAltitude = useCountUp(view?.altitude ?? 0);
+  const theme = STAGE_THEME[stage - 1];
+  useEffect(() => setFx(null), [idx]);
 
   const load = useCallback(async () => {
     try {
@@ -77,7 +86,12 @@ export function StageScreen({ stage }: { stage: StageNo }) {
         weather: r.weather,
       };
       setView(next);
+      setFx({ itemId: item.id, key: Date.now(), points: r.points, fraction: r.fraction });
+      setStreak((x) => (r.fraction >= 1 ? x + 1 : 0));
+      if (r.fraction === 0) navigator.vibrate?.(180);
       if (Object.keys(next.answers).length === view.items.length) {
+        await new Promise((res) => setTimeout(res, 1100));
+        setJustFinished(true);
         await load();
         await refresh();
         window.scrollTo(0, 0);
@@ -105,6 +119,7 @@ export function StageScreen({ stage }: { stage: StageNo }) {
     if (!window.confirm(msg)) return;
     try {
       setView(await api.finishStage(stage));
+      setJustFinished(true);
       await refresh();
       setIdx(0);
       window.scrollTo(0, 0);
@@ -122,7 +137,8 @@ export function StageScreen({ stage }: { stage: StageNo }) {
   const flagsOrder = view.answers['s3-order']?.value as string[] | undefined;
 
   return (
-    <>
+    <div className="stage-page" style={{ backgroundColor: finished ? theme.soft : WEATHER_BG[view.weather.level] }}>
+      {!finished && <Snow count={[0, 12, 35, 70, 120][view.weather.level]} windy={view.weather.level >= 3} />}
       <div className="stage-bar">
         <button className="btn btn-ghost btn-small" style={{ color: '#fff' }} onClick={() => go('/')} aria-label="На главную">
           ←
@@ -130,21 +146,24 @@ export function StageScreen({ stage }: { stage: StageNo }) {
         <div className="name">
           {pc.stages[stage - 1].name}
           <small>
-            {meters(view.altitude)} · {answeredCount}/{view.items.length}
+            {meters(shownAltitude)} · {answeredCount}/{view.items.length}
           </small>
         </div>
+        {streak >= 2 && !finished && <span className="streak">🔥 {streak}</span>}
         <Weather weather={view.weather} />
         {!finished && <Oxygen startedAt={view.startedAt} deadline={view.deadline} now={now} />}
       </div>
       <main className="container">
         {finished ? (
-          <div className="card" style={{ background: 'var(--ok-soft)' }}>
-            <h1>Вершина пройдена!</h1>
-            <p>
-              Набрано: <b>{meters(view.altitude)}</b> из {meters(pc.settings.stageMaxAltitude)}. Ошибок: {view.errors}. Погода:{' '}
-              {view.weather.name.toLowerCase()}.
+          <div className="card summit" style={{ background: `linear-gradient(160deg, ${theme.color}, #4c1d95)` }}>
+            {justFinished && <Burst points={view.altitude} fraction={1} noText />}
+            <div className="medal">{theme.icon}</div>
+            <h1 style={{ color: '#fff', marginBottom: 4 }}>Вершина «{pc.stages[stage - 1].name}» пройдена!</h1>
+            <div className="big">+{meters(shownAltitude)}</div>
+            <p style={{ marginTop: 6 }}>
+              из {meters(pc.settings.stageMaxAltitude)} · ошибок: {view.errors} · погода: {view.weather.name.toLowerCase()}
             </p>
-            <p className="small">Ниже — разбор с правильными ответами. Он полезен для практики на работе.</p>
+            <p className="small">Ниже — разбор с правильными ответами. Он пригодится в работе.</p>
             <button className="btn" onClick={() => go('/')}>
               К маршруту
             </button>
@@ -189,6 +208,7 @@ export function StageScreen({ stage }: { stage: StageNo }) {
           blocked={blockedReason(view, idx)}
           hintsLeft={view.hintsLeft}
           flagsOrder={flagsOrder}
+          fx={fx && fx.itemId === item.id ? fx : undefined}
           onAnswer={onAnswer}
           onHint={onHint}
         />
@@ -210,6 +230,6 @@ export function StageScreen({ stage }: { stage: StageNo }) {
           </div>
         )}
       </main>
-    </>
+    </div>
   );
 }
