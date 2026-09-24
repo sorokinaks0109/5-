@@ -67,7 +67,8 @@ export function createSupabaseTransport(url: string, anonKey: string): Transport
       return !!data.session;
     },
     call(action, payload) {
-      return post({ action, ...(payload ?? {}) });
+      // Параметры отдельно от названия действия: у orgTour есть свой параметр «action»
+      return post({ action, payload: payload ?? {} });
     },
   };
 }
