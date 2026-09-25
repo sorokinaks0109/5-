@@ -11,7 +11,7 @@
     } catch (e) { /* хранилище недоступно — работаем без него */ }
     return null;
   }
-  const S = Object.assign({ grade: 1, selected: {}, stats: {}, mine: {}, stories: [], custom: {} }, load() || {});
+  const S = Object.assign({ grade: 1, selected: {}, stats: {}, mine: {}, stories: [], custom: {}, stars: 0, best: {} }, load() || {});
   function save() {
     try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* ничего */ }
   }
@@ -44,7 +44,7 @@
         const inner = src.slice(i + 1, end);
         if (inner.includes('|')) {
           const alts = inner.split('|');
-          parts.push({ s: alts[0], t: true, alts });
+          parts.push({ s: alts[0], t: true, alts, explicit: true });
         } else {
           parts.push({ s: inner, t: true, alts: defaultAlts(inner) });
         }
@@ -180,10 +180,15 @@
   const isDouble = (a) => a.length === 2 && a[0].toLowerCase() === a[1].toLowerCase();
   function groupOf(p, i, w) {
     const s = p.s;
-    if (i === 1 && w.parts[0].s.toLowerCase() === 'пр' && /^[еи]$/i.test(s)) return {
-      key: 'ПРЕ/ПРИ', mark: 'пре·при', title: 'Приставки ПРЕ- и ПРИ-', song: 'приставки ПРЕ и ПРИ',
-      tip: 'ПРЕ- — это «очень» (премилый) или «пере-» (превратить = переделать, преградить = перегородить). ПРИ- — приближение (прибыть), присоединение (пришить), близость (пришкольный), неполное действие (приоткрыть). Можно заменить на «очень» или «пере-» — пишем ПРЕ.',
-    };
+    if (p.explicit && i === 1 && w.parts[0].s.toLowerCase() === 'пр' && /^[еи]$/i.test(s)) {
+      return s.toLowerCase() === 'е' ? {
+        key: 'ПРЕ', mark: 'пре', title: 'Приставка ПРЕ-', song: 'приставку ПРЕ',
+        tip: 'ПРЕ- значит «очень» (премилый = очень милый) или «пере-» (превратить = переделать, прекратить = перестать). Если можно заменить на «очень» или «пере-» — пишем ПРЕ. Ещё есть слова, которые надо просто запомнить: предмет, премьера, препятствие.',
+      } : {
+        key: 'ПРИ', mark: 'при', title: 'Приставка ПРИ-', song: 'приставку ПРИ',
+        tip: 'ПРИ- значит: приближение (прибыть, прийти), присоединение (пришить, приклеить), близость (пришкольный) или неполное действие (приоткрыть, притворить дверь). Всё, что «пришло поближе», — это ПРИ.',
+      };
+    }
     if (p.alts && p.alts.includes('')) return { key: 'тихие', mark: '★', title: 'Тихие буквы', song: 'тихие буквы', tip: 'Эта буква тихоня: её не слышно, но она есть. Произнеси слово по слогам так, как пишется.' };
     if (isDouble(s) || (p.alts && p.alts.some(isDouble))) return { key: 'двойные', mark: 'нн', title: 'Одна или две буквы?', song: 'двойные буквы', tip: 'Посчитай буквы: одна или две? Двойные стоят рядом, как близнецы, — не разлучай их. А одиночку не удваивай.' };
     const L = s.toUpperCase();
@@ -196,6 +201,67 @@
     return [...m.values()];
   }
   const noteHtml = (w) => (w.note ? ` <small class="muted">(${esc(w.note)})</small>` : '');
+
+  // ---------- Рисунки (хранятся в IndexedDB этого браузера) ----------
+  const PICS = new Map();
+  let picDb = null;
+  function openPicDb() {
+    return new Promise((resolve) => {
+      try {
+        const r = indexedDB.open('slovarik', 1);
+        r.onupgradeneeded = () => r.result.createObjectStore('pics');
+        r.onsuccess = () => resolve(r.result);
+        r.onerror = () => resolve(null);
+      } catch (e) { resolve(null); }
+    });
+  }
+  openPicDb().then((db) => {
+    picDb = db;
+    if (!db) return;
+    try {
+      const req = db.transaction('pics').objectStore('pics').openCursor();
+      req.onsuccess = () => {
+        const c = req.result;
+        if (c) { PICS.set(c.key, c.value); c.continue(); } else if (PICS.size && !V.draw) render();
+      };
+    } catch (e) { /* без рисунков */ }
+  });
+  function putPic(id, data) {
+    PICS.set(id, data);
+    try { if (picDb) picDb.transaction('pics', 'readwrite').objectStore('pics').put(data, id); } catch (e) { /* ничего */ }
+  }
+  function delPic(id) {
+    PICS.delete(id);
+    try { if (picDb) picDb.transaction('pics', 'readwrite').objectStore('pics').delete(id); } catch (e) { /* ничего */ }
+  }
+  /** Картинка слова: рисунок ребёнка, если есть, иначе эмодзи. */
+  const pic = (w) => (PICS.has(w.id) ? `<img class="drawn" src="${PICS.get(w.id)}" alt="">` : w.emoji);
+  const thumb = (w) => (PICS.has(w.id) ? `<img class="thumb" src="${PICS.get(w.id)}" alt="">` : `<span class="e" aria-hidden="true">${w.emoji}</span>`);
+
+  // ---------- Звёзды и конфетти ----------
+  function addStars(n) {
+    if (n <= 0) return;
+    S.stars = (S.stars || 0) + n; save();
+    const el = document.getElementById('starCount');
+    if (el) { el.textContent = S.stars; el.parentElement.classList.remove('pop'); void el.offsetWidth; el.parentElement.classList.add('pop'); }
+  }
+  function confetti() {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const box = document.createElement('div');
+    box.className = 'confetti';
+    const bits = ['⭐', '🎉', '✨', '💫', '🌟', '🎈'];
+    for (let i = 0; i < 22; i++) {
+      const b = document.createElement('span');
+      b.textContent = bits[i % bits.length];
+      const ang = Math.random() * Math.PI * 2, dist = 90 + Math.random() * 160;
+      b.style.setProperty('--x', Math.cos(ang) * dist + 'px');
+      b.style.setProperty('--y', Math.sin(ang) * dist - 60 + 'px');
+      b.style.animationDelay = Math.random() * 0.15 + 's';
+      box.appendChild(b);
+    }
+    document.body.appendChild(box);
+    setTimeout(() => box.remove(), 1600);
+  }
 
   // ---------- Озвучка ----------
   let ruVoice = null;
@@ -220,7 +286,7 @@
   }
 
   // ---------- Состояние экрана ----------
-  const V = { tab: 'words', learn: 0, train: null, storyGen: {}, draft: '', trainSet: 'selected' };
+  const V = { tab: 'words', learn: 0, train: null, story: {}, excl: {}, theme: 'any', draft: '', trainSet: 'selected', draw: null, bolt: null };
   const app = document.getElementById('app');
   const tabs = document.getElementById('tabs');
   const toastEl = document.getElementById('toast');
@@ -239,7 +305,7 @@
 
   function header() {
     return `<header class="top">
-      <h1 class="logo">Слов<b>а</b>рик</h1>
+      <div class="row" style="gap:12px"><h1 class="logo">Слов<b>а</b>рик</h1><span class="stars" title="Звёзды за успехи">⭐ <b id="starCount">${S.stars || 0}</b></span></div>
       <div class="grades" role="group" aria-label="Класс">
         <span>Класс</span>
         ${GRADES.map((g) => `<button class="grade" data-act="grade" data-g="${g}" aria-pressed="${String(S.grade) === g}">${g}</button>`).join('')}
@@ -252,11 +318,13 @@
     tabs.innerHTML = TABS.map(([id, ic, name]) =>
       `<button class="tab" data-act="tab" data-tab="${id}" ${V.tab === id ? 'aria-current="page"' : ''}><i aria-hidden="true">${ic}</i>${name}</button>`).join('');
     let body = '';
-    if (V.tab === 'words') body = viewWords();
+    if (V.draw && byId(V.draw)) body = viewDraw();
+    else if (V.tab === 'words') body = viewWords();
     else if (V.tab === 'learn') body = viewLearn();
     else if (V.tab === 'stories') body = viewStories();
     else body = viewTrain();
     app.innerHTML = header() + body;
+    if (V.draw && byId(V.draw)) setupCanvas();
     afterRender();
   }
 
@@ -302,7 +370,7 @@
       </div>
       <div class="words">
         ${ws.map((w) => `<button class="word" data-act="toggle" data-id="${esc(w.id)}" aria-pressed="${sel.has(w.id)}">
-          <span class="e" aria-hidden="true">${w.emoji}</span><span>${marked(w.parts)}${noteHtml(w)}</span><span class="dot ${status(w.id)}"></span>
+          ${thumb(w)}<span>${marked(w.parts)}${noteHtml(w)}</span><span class="dot ${status(w.id)}"></span>
         </button>`).join('')}
       </div>
       <details class="panel">
@@ -332,11 +400,13 @@
       <h2>Запоминаю слова</h2>
       <p class="lead">Посмотри на красную букву, прочитай подсказку и придумай свою. Своя подсказка запоминается лучше всего!</p>
       <article class="panel card">
-        <div class="pic" aria-hidden="true">${w.emoji}</div>
+        <div class="pic" aria-hidden="true">${pic(w)}</div>
         <div class="big">${marked(w.parts)}</div>
         ${w.note ? `<div class="muted">(${esc(w.note)})</div>` : ''}
         <div class="row" style="justify-content:center">
           ${canSpeak() ? `<button class="btn small ghost" data-act="say" data-text="${esc(w.id)}">🔊 Послушать</button>` : ''}
+          <button class="btn small" data-act="draw" data-id="${esc(w.id)}">🎨 ${PICS.has(w.id) ? 'Перерисовать' : 'Нарисуй своё'}</button>
+          ${PICS.has(w.id) ? `<button class="btn small ghost" data-act="unpic" data-id="${esc(w.id)}">Вернуть эмодзи</button>` : ''}
         </div>
         <div class="muted">Скажи по слогам так, как пишется:<br><b style="font-size:24px;color:var(--ink)">${syllables(w)}</b></div>
         ${w.hint ? `<div class="hint"><span class="label">Подсказка</span>${esc(w.hint)}</div>` : ''}
@@ -356,55 +426,251 @@
       </div>`;
   }
 
+  // ---------- Рисование ----------
+  const COLORS = ['#1d2b4f', '#d7322b', '#2451c7', '#22844d', '#f3c233', '#ff8a1f', '#8b5a2b', '#ff6fa5', '#8e44ad'];
+  const SIZES = [['6', 'Тонко'], ['14', 'Средне'], ['30', 'Толсто']];
+  const D = { color: COLORS[1], size: 14, eraser: false, undo: [], ghost: true, ctx: null, cv: null };
+
+  function viewDraw() {
+    const w = byId(V.draw);
+    return `
+      <section class="draw">
+        <div class="row between"><h2>Нарисуй: <span class="big" style="font-size:30px">${marked(w.parts)}</span></h2>
+          <button class="btn small ghost" data-dact="cancel">Отмена</button></div>
+        <p class="lead">Преврати красную букву в часть рисунка: у коровы глаза-О, у карандаша острый кончик-А, у ёжика иголки-Е. Рисуй прямо поверх бледного слова — потом оно исчезнет, а буква останется в рисунке.</p>
+        <div class="canvasWrap">
+          <div class="ghostWord" id="ghostWord" ${D.ghost ? '' : 'hidden'}>${marked(w.parts)}</div>
+          <canvas id="cv" width="600" height="600" aria-label="Холст для рисунка"></canvas>
+        </div>
+        <div class="palette" role="group" aria-label="Цвет">
+          ${COLORS.map((c) => `<button class="swatch" data-dact="color" data-c="${c}" style="background:${c}" aria-label="Цвет" aria-pressed="${!D.eraser && D.color === c}"></button>`).join('')}
+        </div>
+        <div class="row" role="group" aria-label="Кисть">
+          ${SIZES.map(([v, n]) => `<button class="chip" data-dact="size" data-s="${v}" aria-pressed="${String(D.size) === v}">${n}</button>`).join('')}
+          <button class="chip" data-dact="eraser" aria-pressed="${D.eraser}">🧽 Ластик</button>
+        </div>
+        <div class="row">
+          <button class="btn small ghost" data-dact="undo">↩️ Отменить</button>
+          <button class="btn small ghost" data-dact="clear">🗑 Очистить</button>
+          <button class="btn small ghost" data-dact="ghost">👁 Слово под рисунком</button>
+          <label class="btn small ghost" for="photo" style="display:inline-flex;align-items:center">📷 Фото рисунка с бумаги</label>
+          <input type="file" id="photo" accept="image/*" hidden>
+        </div>
+        <button class="btn" data-dact="save" style="align-self:flex-start">💾 Сохранить рисунок</button>
+      </section>`;
+  }
+
+  function setupCanvas() {
+    const cv = document.getElementById('cv');
+    const ctx = cv.getContext('2d');
+    D.cv = cv; D.ctx = ctx; D.undo = [];
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    if (PICS.has(V.draw)) {
+      const img = new Image();
+      img.onload = () => ctx.drawImage(img, 0, 0, cv.width, cv.height);
+      img.src = PICS.get(V.draw);
+    }
+    let drawing = false, last = null;
+    const pos = (e) => {
+      const r = cv.getBoundingClientRect();
+      return { x: (e.clientX - r.left) * (cv.width / r.width), y: (e.clientY - r.top) * (cv.height / r.height) };
+    };
+    const line = (a, b) => {
+      ctx.globalCompositeOperation = D.eraser ? 'destination-out' : 'source-over';
+      ctx.strokeStyle = D.color;
+      ctx.lineWidth = D.eraser ? D.size * 2.2 : D.size;
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    };
+    cv.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      pushUndo();
+      drawing = true; last = pos(e);
+      try { cv.setPointerCapture(e.pointerId); } catch (err) { /* ничего */ }
+      line(last, { x: last.x + 0.1, y: last.y + 0.1 });
+    });
+    cv.addEventListener('pointermove', (e) => {
+      if (!drawing) return;
+      const p = pos(e); line(last, p); last = p;
+    });
+    const stop = () => { drawing = false; };
+    cv.addEventListener('pointerup', stop);
+    cv.addEventListener('pointercancel', stop);
+  }
+  function pushUndo() {
+    try {
+      D.undo.push(D.ctx.getImageData(0, 0, D.cv.width, D.cv.height));
+      if (D.undo.length > 20) D.undo.shift();
+    } catch (e) { /* ничего */ }
+  }
+  function drawAction(el) {
+    const a = el.dataset.dact;
+    if (a === 'cancel') { V.draw = null; render(); return; }
+    if (a === 'color') { D.color = el.dataset.c; D.eraser = false; }
+    if (a === 'size') D.size = +el.dataset.s;
+    if (a === 'eraser') D.eraser = !D.eraser;
+    if (a === 'undo' && D.undo.length) D.ctx.putImageData(D.undo.pop(), 0, 0);
+    if (a === 'clear') { pushUndo(); D.ctx.clearRect(0, 0, D.cv.width, D.cv.height); }
+    if (a === 'ghost') { D.ghost = !D.ghost; document.getElementById('ghostWord').hidden = !D.ghost; }
+    if (a === 'save') {
+      const out = document.createElement('canvas');
+      out.width = 360; out.height = 360;
+      const o = out.getContext('2d');
+      o.fillStyle = '#ffffff'; o.fillRect(0, 0, 360, 360);
+      o.drawImage(D.cv, 0, 0, 360, 360);
+      const first = !PICS.has(V.draw);
+      putPic(V.draw, out.toDataURL('image/jpeg', 0.8));
+      if (first) addStars(2);
+      V.draw = null;
+      render(); window.scrollTo(0, 0); confetti(); toast('Рисунок сохранён — теперь он на карточке и в тренировке');
+      return;
+    }
+    // Обновляем только кнопки, холст не трогаем.
+    document.querySelectorAll('[data-dact="color"]').forEach((b) => b.setAttribute('aria-pressed', String(!D.eraser && b.dataset.c === D.color)));
+    document.querySelectorAll('[data-dact="size"]').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.s === D.size)));
+    const er = document.querySelector('[data-dact="eraser"]');
+    if (er) er.setAttribute('aria-pressed', String(D.eraser));
+  }
+  function loadPhoto(file) {
+    if (!file || !D.ctx) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        pushUndo();
+        const cw = D.cv.width, k = Math.max(cw / img.width, cw / img.height);
+        const w = img.width * k, h = img.height * k;
+        D.ctx.globalCompositeOperation = 'source-over';
+        D.ctx.drawImage(img, (cw - w) / 2, (cw - h) / 2, w, h);
+        D.ghost = false; document.getElementById('ghostWord').hidden = true;
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
   // ---------- Вкладка «Истории» ----------
-  const TEMPLATES = [
-    'Жили-были {list}. Однажды они все вместе полетели на Луну на воздушном шаре!',
-    'Представь: {list} стоят в очереди за мороженым и спорят, кто тут самый главный.',
-    'Мне приснилось, что {list} танцуют на крыше и поют песню про {song}.',
-    'Пошёл дождь. Под одним зонтиком спрятались {list}. Тесно, зато весело!',
-    'В цирке выступали {list}. Зрители так хохотали, что попадали со стульев.',
-    '{List} сели в один автобус и поехали к бабушке на блины.',
-    'На физкультуре {list} прыгали через скакалку. Победила дружба!',
-    '{List} решили стать космонавтами и первым делом надели шлемы задом наперёд.',
-    'В классе новенькие: {list}. Учительница удивилась, но поставила всем пятёрки.',
+  const THEMES = [
+    ['any', '🎲 Любая'], ['space', '🚀 Космос'], ['school', '🏫 Школа'], ['food', '🍕 Еда'],
+    ['tale', '🧚 Сказка'], ['detective', '🕵️ Детектив'], ['sport', '⚽ Спорт'], ['animals', '🐱 Звери'],
   ];
+  // Шаблоны: слова подставляются в начальной форме, поэтому везде перечисление после двоеточия
+  // или подлежащее с глаголом во множественном числе.
+  const STORY = {
+    noun: [
+      ['space', 'Срочно! На космическую станцию прибыли новые космонавты: {list}. Командир посмотрел и сказал: «Хьюстон, у нас проблемы».'],
+      ['space', 'Инопланетяне увезли с Земли самое ценное: {list}. Теперь на Марсе праздник.'],
+      ['space', 'Из чёрной дыры вылетели: {list} — и почему-то один носок.'],
+      ['space', '{List} решили стать космонавтами и первым делом надели шлемы задом наперёд.'],
+      ['space', 'Первый экипаж ракеты «Пятёрочка»: {list}. Взлетели, но забыли бутерброды.'],
+      ['school', 'Классный журнал. Отсутствовали: {list}. Причина: улетели на юг.'],
+      ['school', 'На родительское собрание пришли: {list}. Учительница решила, что заболела.'],
+      ['school', 'В классе новенькие: {list}. Учительница удивилась, но поставила всем пятёрки.'],
+      ['school', 'Дежурные по классу на этой неделе: {list}. Доска чистая, класс — нет.'],
+      ['school', 'Что нашли в портфеле Пети: {list}. Учебника не нашли.'],
+      ['food', 'Рецепт бабушкиного супа: {list}. Варить три дня, есть — никогда.'],
+      ['food', 'В холодильнике нашлись: {list}. Мама закрыла дверцу и сделала вид, что ничего не видела.'],
+      ['food', 'Новая пицца «Сюрприз»: {list} и сыр. Повар уволился.'],
+      ['food', 'Меню школьной столовой на понедельник: {list}. Компот — по записи.'],
+      ['tale', 'Жили-были {list}. И жили они так дружно, что соседи вызвали полицию.'],
+      ['tale', 'Колобок катился по лесу и встретил компанию: {list}. Все пошли к лисе на чай. Лиса обиделась.'],
+      ['tale', 'Щука исполнила желание, и в избе появились {list}. Емеля до сих пор в шоке.'],
+      ['tale', 'Мне приснилось, что {list} танцуют на крыше и поют песню про {song}.'],
+      ['tale', 'Три богатыря позвали на подмогу новых друзей: {list}. Змей Горыныч сдался без боя.'],
+      ['detective', 'Подозреваемые в краже торта: {list}. Улика одна — крошки на усах.'],
+      ['detective', 'Сыщик записал в блокнот: «Свидетели: {list}. Все врут».'],
+      ['detective', 'Пропажа века! Из музея исчезли {list}. Нашлись под кроватью у кота.'],
+      ['detective', 'Шерлок Холмс открыл дверь, а там — {list}. «Элементарно», — сказал Холмс и упал в обморок.'],
+      ['sport', 'На старт вышли: {list}. Победила дружба, второе место заняла газировка.'],
+      ['sport', 'Сборная класса по футболу: {list}. Вратарь — кот.'],
+      ['sport', 'Олимпиада по прыжкам в лужу. Участники: {list}. Судья промок первым.'],
+      ['sport', 'На физкультуре {list} прыгали через скакалку. Победила дружба!'],
+      ['animals', 'Новости: в зоопарке поселились {list}. Слон в шоке.'],
+      ['animals', 'Кот Барсик привёл домой друзей: {list}. Мама считает до десяти.'],
+      ['animals', 'В цирке выступали {list}. Зрители так хохотали, что попадали со стульев.'],
+      ['animals', 'Пошёл дождь. Под одним зонтиком спрятались {list}. Тесно, зато весело!'],
+      ['animals', '{List} стоят в очереди к ветеринару и спорят, кто тут самый больной.'],
+    ],
+    verb: [
+      ['space', 'Инструкция для инопланетянина: {list}. Удачи на Земле!'],
+      ['space', 'Что должен уметь космонавт: {list}. И не бояться невесомости.'],
+      ['school', 'Домашнее задание от кота: {list}. Сдать до пятницы.'],
+      ['school', 'Правила поведения в столовой: {list}. Нарушителей отправят мыть кастрюли.'],
+      ['school', 'Идеальный ученик должен {list}. Таких в нашей школе пока не нашли.'],
+      ['food', 'Рецепт идеального бутерброда: {list}. Съесть, пока не увидел брат.'],
+      ['food', 'Мама сказала: «Сегодня нужно {list}». Папа спрятался под диван.'],
+      ['tale', 'Царь велел Ивану: «{List}! А не то голова с плеч». Иван попросил выходной.'],
+      ['tale', 'Бабушкины советы на все случаи жизни: {list}. И шапку надень!'],
+      ['tale', 'Что Дед Мороз делает летом: {list}. И загорает.'],
+      ['detective', 'Задание от агента 007: {list}. Сообщение самоуничтожится через 5 секунд.'],
+      ['detective', 'План Игоря на понедельник: {list}. Что может пойти не так?'],
+      ['sport', 'Тренер сказал: «Сегодня нужно {list}». Команда тихо ушла домой.'],
+      ['sport', 'Супергерой умеет {list}. А домашку делать — нет.'],
+      ['animals', 'Кот Барсик составил список дел: {list}. И всё это до обеда!'],
+      ['animals', 'Что хомяк мечтает сделать ночью: {list}. Утром делает вид, что спал.'],
+      ['animals', 'Собака записала в дневник: «Завтра {list}. И погрызть тапок».'],
+    ],
+    adj: [
+      ['any', 'Бабушка связала шарф — {list}. Носить страшно, но приходится.'],
+      ['animals', 'Объявление: «Пропал кот. Приметы: {list}. Нашедшему — торт!»'],
+      ['animals', 'Мой новый хомяк — {list}. Мама сказала: «Это не хомяк, это чудо!»'],
+      ['school', 'Характеристика ученика Пети: {list}. Особенно на перемене.'],
+      ['school', 'Каким должен быть новый директор? {List}. И с пирожками.'],
+      ['food', 'Новый торт от повара: {list}. Съели вместе с тарелкой.'],
+      ['space', 'Инопланетянин описал землянина: {list}. И пахнет котлетами.'],
+      ['tale', 'Змей Горыныч описал себя в анкете: {list}. И немного огнеопасный.'],
+      ['detective', 'Приметы преступника: {list}. Очень любит пирожки.'],
+      ['sport', 'Каким должен быть мяч чемпиона? {List}. И чтобы сам летел в ворота.'],
+    ],
+    other: [
+      ['any', 'Попугай выучил новые слова: «{list}!» Теперь он не замолкает.'],
+      ['space', 'Навигатор ракеты сошёл с ума и твердит: «{list}!» Мы прилетели на Юпитер.'],
+      ['school', 'Робот-учитель знает только эти слова: «{list}». Урок прошёл отлично.'],
+      ['tale', 'Волшебное заклинание: «{list}!» — и двойка превратилась в пятёрку.'],
+      ['detective', 'Пароль от секретной базы: «{list}». Никому не говори!'],
+      ['sport', 'Кричалка болельщиков: «{list}! Наша команда лучше всех!»'],
+      ['food', 'Повар кричит на кухне: «{list}!» Котлеты разбегаются.'],
+      ['animals', 'Кот Барсик во сне бормочет: «{list}…» Что ему снится?'],
+    ],
+  };
+  const KIND_NAMES = { noun: 'предметов', verb: 'действий', adj: 'признаков', other: 'прочих слов' };
   function joinList(arr) {
     return arr.length === 1 ? arr[0] : arr.slice(0, -1).join(', ') + ' и ' + arr[arr.length - 1];
   }
-  const TEMPLATES_BY_KIND = {
-    noun: TEMPLATES,
-    verb: [
-      'План Игоря на понедельник: {list}. Что может пойти не так?',
-      'Кот Барсик составил список дел: {list}. И всё это до обеда!',
-      'Мама сказала: «Сегодня нужно {list}». Папа спрятался под диван.',
-      'Супергерой умеет {list}. А домашку делать — нет.',
-      'Инструкция для инопланетянина: {list}. Удачи на Земле!',
-    ],
-    adj: [
-      'Бабушка связала шарф — {list}. Носить страшно, но приходится.',
-      'Объявление: «Пропал кот. Приметы: {list}. Нашедшему — торт!»',
-      'Мой новый диван — {list}. Мама сказала: «Это не диван, это чудо!»',
-    ],
-  };
-  /** Какой вид слов в группе самый многочисленный (для историй нужно хотя бы два одного вида). */
+  /** Какой вид слов в наборе самый многочисленный. Истории не смешивают виды: только предметы, или только действия… */
   function storyKind(ws) {
-    const cnt = { noun: 0, verb: 0, adj: 0 };
-    ws.forEach((w) => { if (w.kind in cnt) cnt[w.kind]++; });
+    const cnt = { noun: 0, verb: 0, adj: 0, other: 0 };
+    ws.forEach((w) => { cnt[w.kind]++; });
     const best = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0];
     return cnt[best] >= 2 ? best : null;
   }
   function makeStory(group, ws) {
     const kind = storyKind(ws);
-    if (!kind) return '';
-    const pick = shuffle(ws.filter((w) => w.kind === kind)).slice(0, kind === 'noun' ? 4 : 5);
-    const list = TEMPLATES_BY_KIND[kind];
-    const t = list[Math.floor(Math.random() * list.length)];
+    if (!kind) return null;
+    const pick = shuffle(ws.filter((w) => w.kind === kind)).slice(0, kind === 'verb' ? 5 : 4);
+    let pool = STORY[kind].filter(([th]) => V.theme === 'any' || th === V.theme);
+    if (!pool.length) pool = STORY[kind];
+    const fresh = pool.filter(([, t]) => t !== V.lastStory);
+    const t = (fresh.length ? fresh : pool)[Math.floor(Math.random() * (fresh.length || pool.length))][1];
+    V.lastStory = t;
     const first = t.startsWith('{List}');
     const items = pick.map((w, i) => (first && i === 0 ? capMarked(w.marked) : w.marked) + (w.note ? ' ' + w.note : ''));
-    return t.replace('{List}', joinList(items)).replace('{list}', joinList(items)).replace('{song}', group.song);
+    return { text: t.replace('{List}', joinList(items)).replace('{list}', joinList(items)).replace('{song}', group.song), kind, fix: null };
   }
   function capMarked(m) {
     return m.startsWith('[') ? '[' + m.charAt(1).toUpperCase() + m.slice(2) : cap(m);
+  }
+
+  /** История в режиме «Почини»: трудные буквы — кнопки-пропуски. */
+  function fixHtml(key, st) {
+    const parts = parseMarked(st.text);
+    const f = st.fix;
+    return parts.map((p, i) => {
+      if (!p.t) return esc(p.s);
+      const ans = f.answers[i];
+      let cls = 'sgap';
+      if (f.checked) cls += ans === p.s ? ' right' : ' wrong';
+      return `<button class="${cls}" data-act="fixTap" data-k="${esc(key)}" data-i="${i}" aria-label="Пропуск">${ans == null ? '?' : ans === '' ? '·' : esc(ans)}</button>`;
+    }).join('');
   }
 
   function selectedGroups() {
@@ -453,18 +719,31 @@
     const own = highlightOwn(V.draft, ws);
     return `
       <h2>Смешные истории</h2>
-      <p class="lead">Собери слова с одной и той же трудной буквой в одну смешную историю. Чем смешнее, тем лучше запомнится: мозг любит нелепые картинки.</p>
+      <p class="lead">Слова с одной и той же трудной буквой собираются в одну смешную историю. Чем нелепее картинка в голове, тем лучше запомнится буква.</p>
       ${ws.length ? `
       <section class="panel">
-        <div class="group" style="margin-bottom:6px"><span class="label">Твои слова по трудным буквам</span></div>
+        <div class="group" style="margin-bottom:6px">
+          <span class="label">Тема истории</span>
+          <div class="chips">${THEMES.map(([k, n]) => `<button class="chip" data-act="theme" data-k="${k}" aria-pressed="${V.theme === k}">${n}</button>`).join('')}</div>
+        </div>
         ${groups.length ? groups.map(({ g, ws: gw }) => {
-          const story = V.storyGen[g.key];
+          const ex = V.excl[g.key] || {};
+          const on = gw.filter((w) => !ex[w.id]);
+          const kind = storyKind(on);
+          const st = V.story[g.key];
           return `<div class="group">
             <div class="row"><span class="letter" ${g.mark.length > 2 ? 'style="font-size:28px"' : ''}>${esc(g.mark)}</span><b>${esc(g.title)}</b><span class="muted">· ${gw.length} ${plural(gw.length, 'слово', 'слова', 'слов')}</span></div>
-            <div class="chips">${gw.map((w) => `<span class="chip">${w.emoji} ${marked(w.parts)}${noteHtml(w)}</span>`).join('')}</div>
-            ${story ? `<p class="story">${markedText(story)}</p>` : ''}
-            <div class="row"><button class="btn small ${story ? 'ghost' : ''}" data-act="gen" data-k="${esc(g.key)}">${story ? '🎲 Другая история' : '🎲 Придумай историю'}</button>
-            ${storyKind(gw) ? '' : '<span class="muted">Для истории нужно хотя бы два слова одного вида: два предмета, два действия или два признака</span>'}</div>
+            <div class="chips">${gw.map((w) => `<button class="chip pick ${kind && w.kind !== kind && !ex[w.id] ? 'faded' : ''}" data-act="exclTog" data-k="${esc(g.key)}" data-id="${esc(w.id)}" aria-pressed="${!ex[w.id]}">${marked(w.parts)}${noteHtml(w)}</button>`).join('')}</div>
+            <p class="muted" style="margin:0">${kind ? `Нажми на слово, чтобы убрать его из истории. Сочиняем из ${KIND_NAMES[kind]} — разные виды слов не смешиваем.` : 'Для истории нужно хотя бы два слова одного вида: два предмета, два действия или два признака.'}</p>
+            ${st ? `<p class="story">${st.fix ? fixHtml(g.key, st) : markedText(st.text)}</p>` : ''}
+            <div class="row">
+              <button class="btn small ${st ? 'ghost' : ''}" data-act="gen" data-k="${esc(g.key)}" ${kind ? '' : 'disabled'}>${st ? '🎲 Ещё смешнее' : '🎲 Сочинить историю'}</button>
+              ${st && !st.fix ? `<button class="btn small" data-act="fixStart" data-k="${esc(g.key)}">🧩 Почини историю</button>
+                <button class="btn small ghost" data-act="saveGen" data-k="${esc(g.key)}">💾 В мои истории</button>` : ''}
+              ${st && st.fix ? `<button class="btn small" data-act="fixCheck" data-k="${esc(g.key)}">Проверить</button>
+                <button class="btn small ghost" data-act="fixStop" data-k="${esc(g.key)}">Показать ответ</button>` : ''}
+            </div>
+            ${st && st.fix ? '<p class="muted" style="margin:0">В истории пропали трудные буквы. Нажимай на «?», чтобы выбрать букву, потом — «Проверить».</p>' : ''}
           </div>`;
         }).join('') : '<p class="muted">Среди выбранных слов нет двух с одинаковой трудной буквой. Выбери ещё слова — и появятся группы.</p>'}
       </section>
@@ -478,7 +757,7 @@
       </section>` : needSelection('Истории собираются из твоих выбранных слов.')}
       ${mine.length ? `<section class="panel" style="display:flex;flex-direction:column;gap:12px">
         <span class="label">Мои истории</span>
-        ${mine.map((s) => `<div class="saved row between"><p class="story" style="flex:1 1 240px">${highlightOwn(s.text, words()).html}</p><button class="btn small ghost" data-act="delStory" data-t="${s.t}">Удалить</button></div>`).join('')}
+        ${mine.map((s) => `<div class="saved row between"><p class="story" style="flex:1 1 240px">${s.gen ? markedText(s.text) : highlightOwn(s.text, words()).html}</p><button class="btn small ghost" data-act="delStory" data-t="${s.t}">Удалить</button></div>`).join('')}
       </section>` : ''}
       ${ready.length ? `<section class="panel" style="display:flex;flex-direction:column;gap:12px">
         <span class="label">Готовые истории для ${S.grade} класса</span>
@@ -492,7 +771,77 @@
     choose: { e: '🔍', name: 'Найди верное', about: 'Слово написано по-разному. Только один вариант правильный.' },
     write: { e: '✍️', name: 'Напиши сам', about: 'Послушай слово или посмотри на картинку и напиши его целиком.' },
     look: { e: '👀', name: 'Посмотри и напиши', about: 'Слово видно 5 секунд. Запомни его и напиши по памяти.' },
+    bolt: { e: '⚡', name: 'Молния', about: '60 секунд: жми на правильное написание как можно быстрее. Побей свой рекорд!' },
   };
+
+  // ---------- «Молния»: игра на время ----------
+  let boltTimer = 0;
+  function startBolt() {
+    const pool = trainPool().filter((w) => wrongVariants(w).length);
+    if (!pool.length) { toast('Нет слов для игры'); return; }
+    clearInterval(boltTimer);
+    V.bolt = { pool, end: Date.now() + 60000, score: 0, miss: 0, cur: null, flash: null, done: false, record: false };
+    nextBolt();
+    boltTimer = setInterval(tickBolt, 200);
+  }
+  function nextBolt() {
+    const B = V.bolt;
+    let w;
+    do { w = B.pool[Math.floor(Math.random() * B.pool.length)]; } while (B.pool.length > 1 && B.cur && w.id === B.cur.w.id);
+    B.cur = { w, opts: shuffle([w.id, wrongVariants(w)[0]]) };
+    B.flash = null;
+    render();
+  }
+  function tickBolt() {
+    const B = V.bolt;
+    if (!B || B.done) { clearInterval(boltTimer); return; }
+    const left = Math.max(0, B.end - Date.now());
+    const clock = document.getElementById('boltClock');
+    const bar = document.getElementById('boltBar');
+    if (clock) clock.textContent = Math.ceil(left / 1000);
+    if (bar) bar.style.width = (left / 600) + '%';
+    if (left <= 0) {
+      clearInterval(boltTimer);
+      B.done = true;
+      const best = S.best[S.grade] || 0;
+      if (B.score > best) { S.best[S.grade] = B.score; B.record = best > 0 || B.score > 0; }
+      save();
+      addStars(Math.floor(B.score / 2));
+      render();
+      if (B.record) confetti();
+    }
+  }
+  function stopBolt() { clearInterval(boltTimer); V.bolt = null; }
+  function viewBolt() {
+    const B = V.bolt;
+    if (B.done) {
+      return `<article class="panel card">
+        <div class="result">⚡ ${B.score}</div>
+        <h2>${B.record ? 'Новый рекорд!' : 'Время вышло!'}</h2>
+        <p class="lead">Правильных ответов: <b>${B.score}</b>, ошибок: <b>${B.miss}</b>. Рекорд ${S.grade} класса: <b>${S.best[S.grade] || 0}</b>.</p>
+        <div class="row" style="justify-content:center">
+          <button class="btn" data-act="start" data-mode="bolt">Ещё раз</button>
+          <button class="btn ghost" data-act="stopBolt">Другой режим</button>
+        </div>
+      </article>`;
+    }
+    const w = B.cur.w;
+    const left = Math.max(0, B.end - Date.now());
+    return `<div class="row between"><span class="label">⚡ Молния · очки: <b style="font-size:18px;color:var(--pen)">${B.score}</b> · рекорд: ${S.best[S.grade] || 0}</span>
+        <button class="btn small ghost" data-act="stopBolt">Стоп</button></div>
+      <div class="progress" aria-hidden="true"><div id="boltBar" style="width:${left / 600}%;background:var(--pencil)"></div></div>
+      <article class="panel card bolt">
+        <div class="clock" id="boltClock">${Math.ceil(left / 1000)}</div>
+        <div class="pic" aria-hidden="true">${pic(w)}</div>
+        ${w.note ? `<p class="muted" style="margin:0">(${esc(w.note)})</p>` : ''}
+        <div class="opts">${B.cur.opts.map((v) => {
+          let cls = '';
+          if (B.flash) { if (v === w.id) cls = 'right'; else if (v === B.flash) cls = 'wrong'; }
+          return `<button class="opt wide boltopt ${cls}" data-act="boltPick" data-v="${esc(v)}">${esc(v)}</button>`;
+        }).join('')}</div>
+      </article>`;
+  }
+
 
   function trainPool() {
     if (V.trainSet === 'mistakes') return words().filter((w) => stat(w.id).bad > 0 && status(w.id) !== 'learned');
@@ -509,7 +858,11 @@
 
   function nextTask() {
     const T = V.train;
-    if (T.pos >= T.queue.length) { T.task = null; T.done = true; render(); return; }
+    if (T.pos >= T.queue.length) {
+      T.task = null; T.done = true; render();
+      if (T.total && T.firstTry / T.total >= 0.9) confetti();
+      return;
+    }
     const w = byId(T.queue[T.pos]);
     const task = { id: w.id, w, wrong: false, solved: false };
     if (T.mode === 'fill') {
@@ -559,7 +912,7 @@
     const again = T.repeated.has(t.id);
     if (!again) {
       record(t.id, ok);
-      if (ok) T.firstTry++;
+      if (ok) { T.firstTry++; addStars(1); }
     }
     if (!ok && !again) {
       T.mistakes.push(t.id);
@@ -593,6 +946,7 @@
   }
 
   function viewTrain() {
+    if (V.bolt) return viewBolt();
     const T = V.train;
     if (T && T.done) return viewTrainResult();
     if (T && T.task) return viewTask();
@@ -632,7 +986,7 @@
     if (T.mode === 'fill') {
       const cur = t.gaps[t.gi];
       inner = `
-        <div class="pic" aria-hidden="true">${w.emoji}</div>
+        <div class="pic" aria-hidden="true">${pic(w)}</div>
         <div class="gapword">${w.parts.map((p, i) => {
           if (!p.t) return `<span>${esc(p.s)}</span>`;
           if (i in t.filled) return `<span class="gap filled">${esc(p.s) || '·'}</span>`;
@@ -643,7 +997,7 @@
         ${t.wrong && !t.solved && w.hint ? `<div class="hint"><span class="label">Подсказка</span>${esc(w.hint)}</div>` : ''}`;
     } else if (T.mode === 'choose') {
       inner = `
-        <div class="pic" aria-hidden="true">${w.emoji}</div>
+        <div class="pic" aria-hidden="true">${pic(w)}</div>
         <p class="lead">Какое слово написано правильно?</p>
         <div class="opts">${t.variants.map((v) => {
           let cls = '';
@@ -653,7 +1007,7 @@
         ${t.picked !== null ? (t.picked === w.id ? verdictGood(w) : verdictBad(w, t.picked, true)) : ''}`;
     } else if (T.mode === 'look' && t.showing) {
       inner = `
-        <div class="pic" aria-hidden="true">${w.emoji}</div>
+        <div class="pic" aria-hidden="true">${pic(w)}</div>
         <div class="big">${marked(w.parts)}</div>
         <p class="muted">Запоминай! Особенно красные буквы.</p>
         <div class="progress" style="width:100%;max-width:320px"><div class="shrink"></div></div>
@@ -662,7 +1016,7 @@
       const speakable = canSpeak();
       const masked = w.parts.map((p) => (p.t ? '<span class="gap">&nbsp;</span>' : esc(p.s))).join('');
       inner = `
-        <div class="pic" aria-hidden="true">${w.emoji}</div>
+        <div class="pic" aria-hidden="true">${pic(w)}</div>
         ${T.mode === 'write' ? (speakable
           ? `<button class="speak" data-act="say" data-text="${esc(w.id)}" aria-label="Послушать слово">🔊</button><p class="muted">Нажми, чтобы послушать ещё раз</p>`
           : `<div class="gapword" style="font-size:32px">${masked}</div><p class="muted">Напиши слово целиком, вставив пропущенные буквы</p>`) : '<p class="muted">Какое слово ты видел(а)? Напиши его.</p>'}
@@ -731,13 +1085,15 @@
 
   // ---------- События ----------
   document.addEventListener('click', (e) => {
+    const d = e.target.closest('[data-dact]');
+    if (d) { drawAction(d); return; }
     const el = e.target.closest('[data-act]');
     if (!el) return;
     const act = el.dataset.act;
     const T = V.train;
     switch (act) {
-      case 'tab': V.tab = el.dataset.tab; if (V.tab !== 'train' && T && T.done) V.train = null; window.scrollTo(0, 0); break;
-      case 'grade': S.grade = el.dataset.g; V.learn = 0; V.train = null; V.storyGen = {}; save(); break;
+      case 'tab': V.draw = null; if (V.bolt) stopBolt(); V.tab = el.dataset.tab; if (V.tab !== 'train' && T && T.done) V.train = null; window.scrollTo(0, 0); break;
+      case 'grade': V.draw = null; stopBolt(); S.grade = el.dataset.g; V.learn = 0; V.train = null; V.story = {}; V.excl = {}; save(); break;
       case 'toggle': {
         const ids = selectedIds();
         const id = el.dataset.id;
@@ -768,12 +1124,60 @@
       }
       case 'delWord': S.custom[S.grade].splice(+el.dataset.i, 1); save(); break;
       case 'say': speak(el.dataset.text); return;
+      case 'draw': V.draw = el.dataset.id; D.ghost = !PICS.has(V.draw); D.eraser = false; window.scrollTo(0, 0); break;
+      case 'unpic': delPic(el.dataset.id); toast('Вернули эмодзи'); break;
       case 'learnPrev': V.learn = Math.max(0, V.learn - 1); break;
       case 'learnNext': V.learn++; break;
       case 'learnGo': V.learn = +el.dataset.i; break;
       case 'gen': {
         const grp = selectedGroups().find((x) => x.g.key === el.dataset.k);
-        if (grp) V.storyGen[grp.g.key] = makeStory(grp.g, grp.ws);
+        if (grp) {
+          const ex = V.excl[grp.g.key] || {};
+          V.story[grp.g.key] = makeStory(grp.g, grp.ws.filter((w) => !ex[w.id]));
+        }
+        break;
+      }
+      case 'theme': V.theme = el.dataset.k; break;
+      case 'exclTog': {
+        const ex = (V.excl[el.dataset.k] = V.excl[el.dataset.k] || {});
+        ex[el.dataset.id] = !ex[el.dataset.id];
+        break;
+      }
+      case 'fixStart': {
+        const st = V.story[el.dataset.k];
+        const parts = parseMarked(st.text);
+        const orders = {};
+        parts.forEach((p, i) => { if (p.t) orders[i] = shuffle(p.alts); });
+        st.fix = { answers: {}, orders, checked: false };
+        break;
+      }
+      case 'fixTap': {
+        const f = V.story[el.dataset.k].fix;
+        const i = +el.dataset.i;
+        const ord = f.orders[i];
+        const cur = f.answers[i];
+        f.answers[i] = cur == null ? ord[0] : ord[(ord.indexOf(cur) + 1) % ord.length];
+        f.checked = false;
+        break;
+      }
+      case 'fixCheck': {
+        const st = V.story[el.dataset.k];
+        const parts = parseMarked(st.text);
+        const gaps = parts.map((p, i) => [p, i]).filter(([p]) => p.t);
+        if (gaps.some(([, i]) => st.fix.answers[i] == null)) { toast('Заполни все пропуски'); return; }
+        st.fix.checked = true;
+        const bad = gaps.filter(([p, i]) => st.fix.answers[i] !== p.s).length;
+        if (!bad) {
+          st.fix = null; addStars(3); render(); confetti(); toast('История починена! +3 ⭐'); return;
+        }
+        toast(`Ошибок: ${bad}. Красные пропуски — нажми на них ещё раз`);
+        break;
+      }
+      case 'fixStop': V.story[el.dataset.k].fix = null; break;
+      case 'saveGen': {
+        const st = V.story[el.dataset.k];
+        S.stories.unshift({ g: S.grade, text: st.text, t: Date.now(), gen: true }); save();
+        toast('История сохранена');
         break;
       }
       case 'saveStory': {
@@ -785,7 +1189,17 @@
       }
       case 'delStory': S.stories = S.stories.filter((s) => String(s.t) !== el.dataset.t); save(); break;
       case 'set': V.trainSet = el.dataset.k; break;
-      case 'start': startTrain(el.dataset.mode); return;
+      case 'start': if (el.dataset.mode === 'bolt') { V.train = null; startBolt(); } else startTrain(el.dataset.mode); return;
+      case 'stopBolt': stopBolt(); break;
+      case 'boltPick': {
+        const B = V.bolt;
+        if (!B || B.flash || B.done) return;
+        if (el.dataset.v === B.cur.w.id) { B.score++; nextBolt(); return; }
+        B.miss++; B.flash = el.dataset.v;
+        render();
+        setTimeout(() => { if (V.bolt === B && !B.done) nextBolt(); }, 900);
+        return;
+      }
       case 'retryMistakes': startTrain(T.mode, T.mistakes.map(byId).filter(Boolean)); return;
       case 'stopTrain': V.train = null; break;
       case 'next': goNext(); return;
@@ -836,6 +1250,10 @@
       finishTask(false);
     }
     render();
+  });
+
+  document.addEventListener('change', (e) => {
+    if (e.target.id === 'photo') loadPhoto(e.target.files && e.target.files[0]);
   });
 
   document.addEventListener('input', (e) => {
