@@ -226,6 +226,18 @@ img.thumb { width: 28px; height: 28px; border-radius: 7px; object-fit: cover; bo
 .bolt .opts { flex-direction: column; width: 100%; max-width: 440px; }
 .boltopt { min-height: 70px; width: 100%; overflow-wrap: anywhere; line-height: 1.15; }
 
+/* Коты-реакции */
+.react { position: fixed; right: 10px; top: calc(10px + env(safe-area-inset-top, 0px)); z-index: 15; width: 118px; background: #fff; border: 3px solid #1d2b4f; border-radius: 18px; overflow: hidden; box-shadow: 0 6px 18px rgba(0,0,0,.25); transform: translateY(-20px) scale(.7) rotate(6deg); opacity: 0; transition: transform .25s cubic-bezier(.3,1.6,.5,1), opacity .2s; pointer-events: none; }
+.react.show { transform: none; opacity: 1; }
+.react.bad { border-color: #d7322b; }
+.react .rimg { width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; padding: 6px; background: #fff; }
+.react .rimg img { width: 100%; height: 100%; object-fit: cover; border-radius: 10px; }
+.react .rcap { background: #1d2b4f; color: #fff; font: 900 11px/1.15 var(--body); text-align: center; padding: 6px 6px 7px; letter-spacing: .03em; }
+.react.bad .rcap { background: #d7322b; }
+.ownreact { position: relative; }
+.ownreact img { width: 64px; height: 64px; border-radius: 12px; object-fit: cover; border: 2px solid var(--line); display: block; }
+.ownreact button { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; border: 0; background: var(--red); color: #fff; font-size: 12px; line-height: 22px; padding: 0; }
+
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 .word > span:nth-child(2) { min-width: 0; overflow-wrap: anywhere; }
 @media (max-width: 420px) {

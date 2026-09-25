@@ -268,6 +268,107 @@
     setTimeout(() => box.remove(), 1600);
   }
 
+  // ---------- Коты-реакции ----------
+  // Мультяшный кот рисуется кодом: мех, глаза, рот и «аксессуар» меняются.
+  function catSvg(o) {
+    const fur = o.fur, ink = '#2b2320';
+    const eyes = {
+      happy: `<path d="M36 60 q8 -9 16 0 M68 60 q8 -9 16 0" stroke="${ink}" stroke-width="4" fill="none" stroke-linecap="round"/>`,
+      shock: `<circle cx="44" cy="58" r="10" fill="#fff" stroke="${ink}" stroke-width="2"/><circle cx="76" cy="58" r="10" fill="#fff" stroke="${ink}" stroke-width="2"/><circle cx="44" cy="58" r="3.5" fill="${ink}"/><circle cx="76" cy="58" r="3.5" fill="${ink}"/>`,
+      heart: `<path d="M44 66 l-8 -8 a4.5 4.5 0 0 1 8 -5 a4.5 4.5 0 0 1 8 5z M76 66 l-8 -8 a4.5 4.5 0 0 1 8 -5 a4.5 4.5 0 0 1 8 5z" fill="#e8344a"/>`,
+      cool: `<path d="M30 54 h26 v8 q-2 8 -13 8 q-11 0 -13 -8z M64 54 h26 v8 q-2 8 -13 8 q-11 0 -13 -8z M56 57 h8" fill="${ink}" stroke="${ink}" stroke-width="3"/><path d="M36 58 l6 -2" stroke="#fff" stroke-width="2"/>`,
+      cry: `<path d="M36 58 q8 7 16 0 M68 58 q8 7 16 0" stroke="${ink}" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M40 64 q-4 10 0 14 q4 -4 0 -14z M80 64 q-4 10 0 14 q4 -4 0 -14z" fill="#5ab4f0"/>`,
+      side: `<path d="M34 58 h20 M66 58 h20" stroke="${ink}" stroke-width="3" stroke-linecap="round"/><circle cx="50" cy="61" r="3.5" fill="${ink}"/><circle cx="82" cy="61" r="3.5" fill="${ink}"/>`,
+      star: `<path d="M44 49 l3 7 7 1 -5 5 1 7 -6 -3 -6 3 1 -7 -5 -5 7 -1z M76 49 l3 7 7 1 -5 5 1 7 -6 -3 -6 3 1 -7 -5 -5 7 -1z" fill="#f5c211" stroke="${ink}" stroke-width="1.5"/>`,
+    }[o.eyes];
+    const mouth = {
+      w: `<path d="M50 80 q5 6 10 0 q5 6 10 0" stroke="${ink}" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+      grin: `<path d="M48 78 q12 16 24 0z" fill="#8a1c24" stroke="${ink}" stroke-width="2.5"/><path d="M54 84 q6 5 12 0" fill="#f28ba0"/>`,
+      o: `<ellipse cx="60" cy="84" rx="6" ry="8" fill="#8a1c24" stroke="${ink}" stroke-width="2.5"/>`,
+      flat: `<path d="M52 83 h16" stroke="${ink}" stroke-width="3" stroke-linecap="round"/>`,
+      frown: `<path d="M50 86 q10 -9 20 0" stroke="${ink}" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+    }[o.mouth];
+    const extra = {
+      none: '',
+      thumb: `<g transform="translate(92 86)"><rect x="-10" y="-2" width="20" height="18" rx="7" fill="${fur}" stroke="${ink}" stroke-width="2.5"/><rect x="-6" y="-16" width="9" height="18" rx="4.5" fill="${fur}" stroke="${ink}" stroke-width="2.5"/></g>`,
+      hat: `<path d="M60 4 l14 30 h-28z" fill="#8e44ad" stroke="${ink}" stroke-width="2.5"/><circle cx="60" cy="4" r="5" fill="#f5c211" stroke="${ink}" stroke-width="2"/><path d="M52 22 l6 3 M64 16 l5 4" stroke="#f5c211" stroke-width="3"/>`,
+      sweat: `<path d="M92 38 q-6 10 0 14 q6 -4 0 -14z" fill="#5ab4f0" stroke="${ink}" stroke-width="1.5"/>`,
+      q: `<text x="96" y="30" font-size="30" font-weight="900" fill="#2451c7" font-family="Nunito, sans-serif">?</text>`,
+      crown: `<path d="M40 30 l6 -18 8 12 6 -16 6 16 8 -12 6 18z" fill="#f5c211" stroke="${ink}" stroke-width="2.5"/>`,
+      paws: `<ellipse cx="38" cy="96" rx="11" ry="8" fill="${fur}" stroke="${ink}" stroke-width="2.5"/><ellipse cx="82" cy="96" rx="11" ry="8" fill="${fur}" stroke="${ink}" stroke-width="2.5"/>`,
+    }[o.extra || 'none'];
+    const stripes = o.stripes ? `<path d="M52 36 q8 4 16 0 M50 44 q10 4 20 0" stroke="${o.stripes}" stroke-width="4" fill="none" stroke-linecap="round"/>` : '';
+    return `<svg viewBox="0 0 120 112" width="100%" height="100%" aria-hidden="true">
+      <path d="M22 50 L26 10 L52 32z M98 50 L94 10 L68 32z" fill="${fur}" stroke="${ink}" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M29 38 L31 20 L43 32z M91 38 L89 20 L77 32z" fill="#f4a6b8"/>
+      <ellipse cx="60" cy="66" rx="42" ry="36" fill="${fur}" stroke="${ink}" stroke-width="3"/>
+      ${stripes}${eyes}
+      <path d="M56 70 h8 l-4 5z" fill="#f28ba0" stroke="${ink}" stroke-width="1.5" stroke-linejoin="round"/>
+      ${mouth}
+      <path d="M14 70 l22 3 M14 80 l22 -2 M106 70 l-22 3 M106 80 l-22 -2" stroke="${ink}" stroke-width="2" stroke-linecap="round"/>
+      ${extra}</svg>`;
+  }
+  const GINGER = { fur: '#f5a54a', stripes: '#d77a1c' }, GREY = { fur: '#b8c0cc', stripes: '#8b94a3' }, WHITE = { fur: '#fbf7f0' }, BLACK = { fur: '#4a4a52' };
+  const CATS_GOOD = [
+    ['КОТ ОДОБРЯЕТ', { ...GINGER, eyes: 'happy', mouth: 'w', extra: 'thumb' }],
+    ['МУРР-ВЕЛИКОЛЕПНО', { ...WHITE, eyes: 'heart', mouth: 'w' }],
+    ['ПЯТЁРКА С ЛАПКОЙ', { ...GREY, eyes: 'star', mouth: 'grin', extra: 'paws' }],
+    ['ТЫ ГЕНИЙ, ЧЕЛОВЕК', { ...BLACK, eyes: 'cool', mouth: 'w' }],
+    ['ВЕЧЕРИНКА В ЧЕСТЬ ТЕБЯ', { ...GINGER, eyes: 'happy', mouth: 'grin', extra: 'hat' }],
+    ['КОРОЛЬ СЛОВАРЯ', { ...GREY, eyes: 'happy', mouth: 'w', extra: 'crown' }],
+    ['Я ГОРЖУСЬ ТОБОЙ', { ...WHITE, eyes: 'cry', mouth: 'w' }],
+  ];
+  const CATS_BAD = [
+    ['КОТ В ШОКЕ', { ...WHITE, eyes: 'shock', mouth: 'o' }],
+    ['ЭТО ЧТО СЕЙЧАС БЫЛО?', { ...GINGER, eyes: 'side', mouth: 'flat', extra: 'q' }],
+    ['НУ ТАКОЕ…', { ...GREY, eyes: 'side', mouth: 'frown', extra: 'sweat' }],
+    ['КОТ ПЛАЧЕТ ГОРЬКО', { ...BLACK, eyes: 'cry', mouth: 'frown' }],
+    ['ДАВАЙ ЕЩЁ РАЗ, Я ВЕРЮ', { ...GINGER, eyes: 'happy', mouth: 'flat', extra: 'paws' }],
+    ['ХМ… ПОДУМАЙ', { ...WHITE, eyes: 'side', mouth: 'flat', extra: 'q' }],
+  ];
+  const ownReacts = (kind) => [...PICS.keys()].filter((k) => k.startsWith('react:' + kind + ':'));
+  let reactTimer = 0;
+  function react(ok) {
+    if (S.cats === false) return;
+    const kind = ok ? 'good' : 'bad';
+    const own = ownReacts(kind);
+    const set = ok ? CATS_GOOD : CATS_BAD;
+    let img, cap;
+    if (own.length && Math.random() < 0.6) {
+      img = `<img src="${PICS.get(own[Math.floor(Math.random() * own.length)])}" alt="">`;
+      cap = set[Math.floor(Math.random() * set.length)][0];
+    } else {
+      const [c, o] = set[Math.floor(Math.random() * set.length)];
+      img = catSvg(o); cap = c;
+    }
+    let el = document.getElementById('react');
+    if (!el) { el = document.createElement('div'); el.id = 'react'; document.body.appendChild(el); }
+    el.className = 'react ' + kind;
+    el.innerHTML = `<div class="rimg">${img}</div><div class="rcap">${esc(cap)}</div>`;
+    el.hidden = false;
+    void el.offsetWidth; el.classList.add('show');
+    clearTimeout(reactTimer);
+    reactTimer = setTimeout(() => { el.classList.remove('show'); setTimeout(() => { el.hidden = true; }, 300); }, 1900);
+  }
+  function loadReact(file, kind) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const c = document.createElement('canvas'); c.width = 300; c.height = 300;
+        const x = c.getContext('2d');
+        const k = Math.max(300 / img.width, 300 / img.height);
+        x.fillStyle = '#fff'; x.fillRect(0, 0, 300, 300);
+        x.drawImage(img, (300 - img.width * k) / 2, (300 - img.height * k) / 2, img.width * k, img.height * k);
+        putPic('react:' + kind + ':' + Date.now(), c.toDataURL('image/jpeg', 0.8));
+        render(); react(kind === 'good');
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
   // ---------- Озвучка ----------
   let ruVoice = null;
   function pickVoice() {
@@ -806,6 +907,7 @@
       addStars(Math.floor(B.score / 2));
       render();
       if (B.record) confetti();
+      react(B.score > B.miss);
     }
   }
   function stopBolt() { clearInterval(boltTimer); V.bolt = null; }
@@ -912,6 +1014,7 @@
     if (!again) {
       record(t.id, ok);
       if (ok) { T.firstTry++; addStars(1); }
+      react(ok);
     }
     if (!ok && !again) {
       T.mistakes.push(t.id);
@@ -968,6 +1071,21 @@
         ${Object.entries(MODES).map(([k, m]) => `<button class="mode" data-act="start" data-mode="${k}">
           <span class="e" aria-hidden="true">${m.e}</span><b>${m.name}</b><span class="muted">${m.about}</span></button>`).join('')}
       </div>
+      <details class="panel">
+        <summary>🐱 Коты-реакции и свои картинки</summary>
+        <div style="display:flex;flex-direction:column;gap:12px;margin-top:12px">
+          <div class="row"><button class="chip" data-act="cats" aria-pressed="${S.cats !== false}">${S.cats !== false ? '🐱 Коты включены' : '🙈 Коты выключены'}</button>
+            <button class="btn small ghost" data-act="catTest" data-ok="1">Показать доброго кота</button>
+            <button class="btn small ghost" data-act="catTest" data-ok="">Показать кота в шоке</button></div>
+          <p class="muted" style="margin:0">После ответа в углу выскакивает кот с подписью. Можно добавить свои картинки — например, фото вашего кота или смешные рисунки. Они будут показываться вместе с нарисованными котами. Хранятся только на этом устройстве.</p>
+          ${['good', 'bad'].map((k) => `<div style="display:flex;flex-direction:column;gap:8px">
+            <span class="label">${k === 'good' ? 'Когда правильно' : 'Когда ошибка'}</span>
+            <div class="row">${ownReacts(k).map((id) => `<span class="ownreact"><img src="${PICS.get(id)}" alt=""><button data-act="delReact" data-id="${id}" aria-label="Удалить">✕</button></span>`).join('')}
+              <label class="btn small ghost" for="react-${k}" style="display:inline-flex;align-items:center">＋ Добавить картинку</label>
+              <input type="file" id="react-${k}" accept="image/*" hidden></div>
+          </div>`).join('')}
+        </div>
+      </details>
       ${!canSpeak() ? '<p class="muted">На этом устройстве нет русского голоса, поэтому в режиме «Напиши сам» вместо озвучки будет картинка и подсказка.</p>' : ''}`;
   }
 
@@ -1123,6 +1241,9 @@
       }
       case 'delWord': S.custom[S.grade].splice(+el.dataset.i, 1); save(); break;
       case 'say': speak(el.dataset.text); return;
+      case 'cats': S.cats = S.cats === false; save(); break;
+      case 'catTest': react(!!el.dataset.ok); return;
+      case 'delReact': delPic(el.dataset.id); break;
       case 'draw': V.draw = el.dataset.id; D.ghost = !PICS.has(V.draw); D.eraser = false; window.scrollTo(0, 0); break;
       case 'unpic': delPic(el.dataset.id); toast('Вернули эмодзи'); break;
       case 'learnPrev': V.learn = Math.max(0, V.learn - 1); break;
@@ -1167,7 +1288,7 @@
         st.fix.checked = true;
         const bad = gaps.filter(([p, i]) => st.fix.answers[i] !== p.s).length;
         if (!bad) {
-          st.fix = null; addStars(3); render(); confetti(); toast('История починена! +3 ⭐'); return;
+          st.fix = null; addStars(3); render(); confetti(); react(true); toast('История починена! +3 ⭐'); return;
         }
         toast(`Ошибок: ${bad}. Красные пропуски — нажми на них ещё раз`);
         break;
@@ -1253,6 +1374,7 @@
 
   document.addEventListener('change', (e) => {
     if (e.target.id === 'photo') loadPhoto(e.target.files && e.target.files[0]);
+    if (e.target.id === 'react-good' || e.target.id === 'react-bad') loadReact(e.target.files && e.target.files[0], e.target.id.slice(6));
   });
 
   document.addEventListener('input', (e) => {
