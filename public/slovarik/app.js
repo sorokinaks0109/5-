@@ -2,6 +2,8 @@
 (function () {
   'use strict';
 
+  const CFG = Object.assign({ appName: 'Словарик', author: '', blogUrl: '', blogTitle: '', feedbackUrl: '', metrikaId: '' }, window.SLOVARIK_CONFIG || {});
+
   // ---------- Хранение ----------
   const KEY = 'slovarik:v1';
   function load() {
@@ -103,18 +105,53 @@
   function selectedWords() { return selectedIds().map(byId).filter(Boolean); }
 
   // ---------- Прогресс ----------
-  function stat(id) { return S.stats[id] || { s: 0, ok: 0, bad: 0 }; }
+  // Интервальное повторение: у слова есть «коробка» 0–5. Правильный ответ в день, когда слово
+  // пора повторять, переводит его в следующую коробку, и следующий повтор — через 1, 3, 7, 14, 30 дней.
+  // Ошибка возвращает слово в коробку 0. Выучено — коробка 3 и выше (правильно в разные дни).
+  const DAY = 86400000;
+  const INTERVALS = [0, 1, 3, 7, 14, 30];
+  const today = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); };
+  const dayKey = (t) => { const d = new Date(t || Date.now()); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  function stat(id) {
+    const st = Object.assign({ s: 0, ok: 0, bad: 0 }, S.stats[id]);
+    if (st.box === undefined) {
+      // Прогресс из старой версии: 3 правильных подряд считаем почти выученным.
+      st.box = st.s >= 3 ? 3 : st.ok > 0 ? 1 : 0;
+      st.due = today() + INTERVALS[st.box] * DAY;
+    }
+    return st;
+  }
   function status(id) {
     const st = stat(id);
-    if (st.s >= 3) return 'learned';
-    if (st.ok + st.bad > 0) return 'learning';
-    return 'new';
+    if (st.ok + st.bad === 0) return 'new';
+    if (st.box >= 1 && st.due <= today()) return 'due';
+    if (st.box >= 3) return 'learned';
+    return 'learning';
   }
   function record(id, ok) {
-    const st = Object.assign({ s: 0, ok: 0, bad: 0 }, S.stats[id]);
-    if (ok) { st.ok++; st.s++; } else { st.bad++; st.s = 0; }
+    const st = stat(id);
+    const t = today();
+    if (ok) {
+      st.ok++; st.s++;
+      if (st.box === 0 || st.due <= t) { st.box = Math.min(5, st.box + 1); st.due = t + INTERVALS[st.box] * DAY; }
+    } else {
+      st.bad++; st.s = 0; st.box = 0; st.due = t;
+    }
+    st.last = Date.now();
     S.stats[id] = st;
+    const k = dayKey();
+    S.days = S.days || {};
+    const d = (S.days[k] = S.days[k] || { ok: 0, bad: 0 });
+    if (ok) d.ok++; else d.bad++;
     save();
+  }
+  /** Сколько дней подряд были занятия (сегодня или вчера — серия ещё жива). */
+  function streakDays() {
+    const days = S.days || {};
+    let n = 0, t = today();
+    if (!days[dayKey(t)]) t -= DAY;
+    while (days[dayKey(t)]) { n++; t -= DAY; }
+    return n;
   }
 
   // ---------- Помощники ----------
@@ -271,60 +308,97 @@
   // ---------- Коты-реакции ----------
   // Мультяшный кот рисуется кодом: мех, глаза, рот и «аксессуар» меняются.
   function catSvg(o) {
-    const fur = o.fur, ink = '#2b2320';
+    const ink = '#2b2320';
+    const line = o.dark ? '#fff1d6' : ink; // черты мордочки на тёмном коте — светлые
+    const fur = o.fur, muzzle = o.muzzle || '#fff8ee';
+    const eyeCol = o.dark ? '#f7d046' : ink;
+    const sparkle = (cx, cy, dx = 0, dy = 0, big = 1) => `<g class="blink" style="transform-origin:${cx}px ${cy}px">
+      <ellipse cx="${cx}" cy="${cy}" rx="${7 * big}" ry="${9 * big}" fill="${eyeCol}"/>
+      ${o.dark ? `<ellipse cx="${cx + dx}" cy="${cy + dy}" rx="${3 * big}" ry="${7 * big}" fill="#15151a"/>` : ''}
+      <circle cx="${cx + 2.5 * big + dx}" cy="${cy - 3.5 * big + dy}" r="${3 * big}" fill="#fff"/>
+      <circle cx="${cx - 2.5 * big + dx}" cy="${cy + 3.5 * big + dy}" r="${1.4 * big}" fill="#fff"/></g>`;
+    const arc = (x) => `<path d="M${x - 8} 64 q8 -10 16 0" stroke="${line}" stroke-width="4.5" fill="none" stroke-linecap="round"/>`;
+    const heart = (x, y, k, c) => `<path transform="translate(${x} ${y}) scale(${k})" d="M0 6 C-9 -1 -6 -9 0 -4 C6 -9 9 -1 0 6z" fill="${c}"/>`;
+    const star = (x, y) => `<path transform="translate(${x} ${y})" d="M0 -10 l3 6.5 7 1 -5 5 1.2 7 -6.2 -3.3 -6.2 3.3 1.2 -7 -5 -5 7 -1z" fill="#ffd23f" stroke="#e79a00" stroke-width="1.5" stroke-linejoin="round"/>`;
     const eyes = {
-      happy: `<path d="M36 60 q8 -9 16 0 M68 60 q8 -9 16 0" stroke="${ink}" stroke-width="4" fill="none" stroke-linecap="round"/>`,
-      shock: `<circle cx="44" cy="58" r="10" fill="#fff" stroke="${ink}" stroke-width="2"/><circle cx="76" cy="58" r="10" fill="#fff" stroke="${ink}" stroke-width="2"/><circle cx="44" cy="58" r="3.5" fill="${ink}"/><circle cx="76" cy="58" r="3.5" fill="${ink}"/>`,
-      heart: `<path d="M44 66 l-8 -8 a4.5 4.5 0 0 1 8 -5 a4.5 4.5 0 0 1 8 5z M76 66 l-8 -8 a4.5 4.5 0 0 1 8 -5 a4.5 4.5 0 0 1 8 5z" fill="#e8344a"/>`,
-      cool: `<path d="M30 54 h26 v8 q-2 8 -13 8 q-11 0 -13 -8z M64 54 h26 v8 q-2 8 -13 8 q-11 0 -13 -8z M56 57 h8" fill="${ink}" stroke="${ink}" stroke-width="3"/><path d="M36 58 l6 -2" stroke="#fff" stroke-width="2"/>`,
-      cry: `<path d="M36 58 q8 7 16 0 M68 58 q8 7 16 0" stroke="${ink}" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M40 64 q-4 10 0 14 q4 -4 0 -14z M80 64 q-4 10 0 14 q4 -4 0 -14z" fill="#5ab4f0"/>`,
-      side: `<path d="M34 58 h20 M66 58 h20" stroke="${ink}" stroke-width="3" stroke-linecap="round"/><circle cx="50" cy="61" r="3.5" fill="${ink}"/><circle cx="82" cy="61" r="3.5" fill="${ink}"/>`,
-      star: `<path d="M44 49 l3 7 7 1 -5 5 1 7 -6 -3 -6 3 1 -7 -5 -5 7 -1z M76 49 l3 7 7 1 -5 5 1 7 -6 -3 -6 3 1 -7 -5 -5 7 -1z" fill="#f5c211" stroke="${ink}" stroke-width="1.5"/>`,
+      sparkle: sparkle(42, 62) + sparkle(78, 62),
+      up: sparkle(42, 62, 0, -3) + sparkle(78, 62, 0, -3),
+      happy: arc(42) + arc(78),
+      wink: arc(42) + sparkle(78, 62),
+      love: heart(42, 62, 1.35, '#ff4f7b') + heart(78, 62, 1.35, '#ff4f7b') + '<circle cx="37" cy="58" r="2" fill="#fff"/><circle cx="73" cy="58" r="2" fill="#fff"/>',
+      star: star(42, 62) + star(78, 62),
+      cool: `<path d="M28 55 h28 v7 q-2 10 -14 10 q-12 0 -14 -10z M64 55 h28 v7 q-2 10 -14 10 q-12 0 -14 -10z M56 58 h8" fill="#1b1b22" stroke="#1b1b22" stroke-width="3" stroke-linejoin="round"/><path d="M34 60 l7 -3 M70 60 l7 -3" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity=".8"/>`,
+      laugh: `<path d="M34 56 l12 7 -12 7 M86 56 l-12 7 12 7" stroke="${line}" stroke-width="4.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`,
+      cry: sparkle(42, 63, 0, 0, 1.2) + sparkle(78, 63, 0, 0, 1.2) + `<path d="M36 73 q-3 10 1 20 q4 -6 2 -20z M84 73 q3 10 -1 20 q-4 -6 -2 -20z" fill="#7cc7ff" opacity=".9"/>`,
+      shock: `<circle cx="42" cy="61" r="11" fill="#fff" stroke="${ink}" stroke-width="2.5"/><circle cx="78" cy="61" r="11" fill="#fff" stroke="${ink}" stroke-width="2.5"/><circle cx="42" cy="61" r="3.2" fill="${ink}"/><circle cx="78" cy="61" r="3.2" fill="${ink}"/><path d="M32 45 q9 -6 18 -1 M70 44 q9 -5 18 1" stroke="${line}" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+      side: `<ellipse cx="44" cy="63" rx="7" ry="6" fill="${eyeCol}"/><ellipse cx="80" cy="63" rx="7" ry="6" fill="${eyeCol}"/><path d="M32 58 h22 M68 58 h22" stroke="${line}" stroke-width="3.5" stroke-linecap="round"/><circle cx="47" cy="62" r="1.8" fill="#fff"/><circle cx="83" cy="62" r="1.8" fill="#fff"/>`,
     }[o.eyes];
     const mouth = {
-      w: `<path d="M50 80 q5 6 10 0 q5 6 10 0" stroke="${ink}" stroke-width="3" fill="none" stroke-linecap="round"/>`,
-      grin: `<path d="M48 78 q12 16 24 0z" fill="#8a1c24" stroke="${ink}" stroke-width="2.5"/><path d="M54 84 q6 5 12 0" fill="#f28ba0"/>`,
-      o: `<ellipse cx="60" cy="84" rx="6" ry="8" fill="#8a1c24" stroke="${ink}" stroke-width="2.5"/>`,
-      flat: `<path d="M52 83 h16" stroke="${ink}" stroke-width="3" stroke-linecap="round"/>`,
-      frown: `<path d="M50 86 q10 -9 20 0" stroke="${ink}" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+      w: `<path d="M51 80 q4.5 5 9 0 q4.5 5 9 0" stroke="${line}" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+      grin: `<path d="M49 79 q11 17 22 0z" fill="#9c2a3a" stroke="${line}" stroke-width="2.5" stroke-linejoin="round"/><path d="M54 86 q6 5 12 0 q-6 -4 -12 0" fill="#ff8aa5"/>`,
+      o: `<ellipse cx="60" cy="84" rx="5" ry="6.5" fill="#9c2a3a" stroke="${line}" stroke-width="2.5"/>`,
+      flat: `<path d="M53 82 h14" stroke="${line}" stroke-width="3" stroke-linecap="round"/>`,
+      wobble: `<path d="M49 84 q2.75 -3 5.5 0 q2.75 3 5.5 0 q2.75 -3 5.5 0 q2.75 3 5.5 0" stroke="${line}" stroke-width="2.8" fill="none" stroke-linecap="round"/>`,
+      frown: `<path d="M52 86 q8 -7 16 0" stroke="${line}" stroke-width="3" fill="none" stroke-linecap="round"/>`,
     }[o.mouth];
     const extra = {
       none: '',
-      thumb: `<g transform="translate(92 86)"><rect x="-10" y="-2" width="20" height="18" rx="7" fill="${fur}" stroke="${ink}" stroke-width="2.5"/><rect x="-6" y="-16" width="9" height="18" rx="4.5" fill="${fur}" stroke="${ink}" stroke-width="2.5"/></g>`,
-      hat: `<path d="M60 4 l14 30 h-28z" fill="#8e44ad" stroke="${ink}" stroke-width="2.5"/><circle cx="60" cy="4" r="5" fill="#f5c211" stroke="${ink}" stroke-width="2"/><path d="M52 22 l6 3 M64 16 l5 4" stroke="#f5c211" stroke-width="3"/>`,
-      sweat: `<path d="M92 38 q-6 10 0 14 q6 -4 0 -14z" fill="#5ab4f0" stroke="${ink}" stroke-width="1.5"/>`,
-      q: `<text x="96" y="30" font-size="30" font-weight="900" fill="#2451c7" font-family="Nunito, sans-serif">?</text>`,
-      crown: `<path d="M40 30 l6 -18 8 12 6 -16 6 16 8 -12 6 18z" fill="#f5c211" stroke="${ink}" stroke-width="2.5"/>`,
-      paws: `<ellipse cx="38" cy="96" rx="11" ry="8" fill="${fur}" stroke="${ink}" stroke-width="2.5"/><ellipse cx="82" cy="96" rx="11" ry="8" fill="${fur}" stroke="${ink}" stroke-width="2.5"/>`,
+      thumb: `<g class="wave" style="transform-origin:98px 104px"><rect x="86" y="84" width="22" height="20" rx="9" fill="${fur}" stroke="${ink}" stroke-width="2.5"/><rect x="90" y="70" width="10" height="20" rx="5" fill="${fur}" stroke="${ink}" stroke-width="2.5"/><path d="M92 98 v4 M98 98 v4 M104 98 v4" stroke="${ink}" stroke-width="1.5" stroke-linecap="round"/></g>`,
+      hat: `<path d="M60 0 l15 30 h-30z" fill="#8e5bd6" stroke="${ink}" stroke-width="2.5" stroke-linejoin="round"/><circle cx="60" cy="1" r="5" fill="#ffd23f" stroke="${ink}" stroke-width="2"/><circle cx="55" cy="20" r="2.5" fill="#ffd23f"/><circle cx="64" cy="13" r="2.5" fill="#6fe0ff"/>`,
+      sweat: `<path d="M97 34 q-7 11 0 16 q7 -5 0 -16z" fill="#8fd3ff" stroke="${ink}" stroke-width="1.5"/>`,
+      q: `<text x="96" y="30" font-size="30" font-weight="900" fill="#2451c7" font-family="Nunito, sans-serif" class="bob">?</text>`,
+      crown: `<path d="M38 30 l7 -20 9 12 6 -16 6 16 9 -12 7 20z" fill="#ffd23f" stroke="${ink}" stroke-width="2.5" stroke-linejoin="round"/><circle cx="60" cy="22" r="3" fill="#ff4f7b"/>`,
+      paws: `<ellipse cx="38" cy="104" rx="12" ry="8" fill="${fur}" stroke="${ink}" stroke-width="2.5"/><ellipse cx="82" cy="104" rx="12" ry="8" fill="${fur}" stroke="${ink}" stroke-width="2.5"/><path d="M33 102 v4 M38 102 v4 M43 102 v4 M77 102 v4 M82 102 v4 M87 102 v4" stroke="${ink}" stroke-width="1.5" stroke-linecap="round"/>`,
+      hearts: `<g class="floaty">${heart(100, 22, 1, '#ff4f7b')}${heart(88, 10, .7, '#ff8aa5')}${heart(20, 18, .8, '#ff8aa5')}</g>`,
+      sparkles: `<g class="floaty"><path d="M100 18 l2 6 6 2 -6 2 -2 6 -2 -6 -6 -2 6 -2z M18 26 l1.5 4 4 1.5 -4 1.5 -1.5 4 -1.5 -4 -4 -1.5 4 -1.5z" fill="#ffd23f"/></g>`,
+      rain: `<g class="bob"><ellipse cx="60" cy="10" rx="20" ry="8" fill="#c9d3e3"/><ellipse cx="48" cy="12" rx="10" ry="7" fill="#c9d3e3"/><ellipse cx="72" cy="12" rx="10" ry="7" fill="#c9d3e3"/><path d="M50 22 l-2 5 M60 22 l-2 5 M70 22 l-2 5" stroke="#7cc7ff" stroke-width="2.5" stroke-linecap="round"/></g>`,
+      think: `<g><ellipse cx="86" cy="96" rx="11" ry="9" fill="${fur}" stroke="${ink}" stroke-width="2.5"/><text x="94" y="34" font-size="22" font-weight="900" fill="#2451c7" font-family="Nunito, sans-serif" class="bob">…</text></g>`,
     }[o.extra || 'none'];
-    const stripes = o.stripes ? `<path d="M52 36 q8 4 16 0 M50 44 q10 4 20 0" stroke="${o.stripes}" stroke-width="4" fill="none" stroke-linecap="round"/>` : '';
-    return `<svg viewBox="0 0 120 112" width="100%" height="100%" aria-hidden="true">
-      <path d="M22 50 L26 10 L52 32z M98 50 L94 10 L68 32z" fill="${fur}" stroke="${ink}" stroke-width="3" stroke-linejoin="round"/>
-      <path d="M29 38 L31 20 L43 32z M91 38 L89 20 L77 32z" fill="#f4a6b8"/>
-      <ellipse cx="60" cy="66" rx="42" ry="36" fill="${fur}" stroke="${ink}" stroke-width="3"/>
-      ${stripes}${eyes}
-      <path d="M56 70 h8 l-4 5z" fill="#f28ba0" stroke="${ink}" stroke-width="1.5" stroke-linejoin="round"/>
+    const stripes = o.stripes ? `<path d="M52 33 q8 5 16 0 M49 41 q11 5 22 0 M20 62 q6 1 9 4 M100 62 q-6 1 -9 4" stroke="${o.stripes}" stroke-width="4" fill="none" stroke-linecap="round"/>` : '';
+    return `<svg viewBox="0 0 120 120" width="100%" height="100%" aria-hidden="true" class="kitty">
+      <ellipse cx="60" cy="112" rx="30" ry="12" fill="${fur}" stroke="${ink}" stroke-width="3"/>
+      <g class="ears">
+        <path d="M22 52 Q15 14 30 11 Q41 14 55 34z" fill="${fur}" stroke="${ink}" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M98 52 Q105 14 90 11 Q79 14 65 34z" fill="${fur}" stroke="${ink}" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M28 42 Q25 22 32 19 Q39 22 46 33z M92 42 Q95 22 88 19 Q81 22 74 33z" fill="#ffb3c4"/>
+      </g>
+      <ellipse cx="60" cy="66" rx="46" ry="38" fill="${fur}" stroke="${ink}" stroke-width="3"/>
+      ${stripes}
+      <ellipse cx="60" cy="81" rx="17" ry="12" fill="${muzzle}"/>
+      <ellipse cx="30" cy="77" rx="8" ry="4.5" fill="#ff8fab" opacity=".55"/>
+      <ellipse cx="90" cy="77" rx="8" ry="4.5" fill="#ff8fab" opacity=".55"/>
+      ${eyes}
+      <path d="M56.5 73 q3.5 -2 7 0 q-1 3.5 -3.5 4.5 q-2.5 -1 -3.5 -4.5z" fill="#ff7f9c" stroke="${ink}" stroke-width="1.2"/>
       ${mouth}
-      <path d="M14 70 l22 3 M14 80 l22 -2 M106 70 l-22 3 M106 80 l-22 -2" stroke="${ink}" stroke-width="2" stroke-linecap="round"/>
+      <path d="M8 70 q12 0 22 4 M8 80 q12 -2 22 -1 M112 70 q-12 0 -22 4 M112 80 q-12 -2 -22 -1" stroke="${o.dark ? '#d9d2c4' : '#6b5d57'}" stroke-width="1.6" fill="none" stroke-linecap="round"/>
       ${extra}</svg>`;
   }
-  const GINGER = { fur: '#f5a54a', stripes: '#d77a1c' }, GREY = { fur: '#b8c0cc', stripes: '#8b94a3' }, WHITE = { fur: '#fbf7f0' }, BLACK = { fur: '#4a4a52' };
+  const GINGER = { fur: '#f7a54b', stripes: '#e07f22', muzzle: '#fff1dc' };
+  const GREY = { fur: '#b3bdcc', stripes: '#8e9aad', muzzle: '#f1f4f8' };
+  const WHITE = { fur: '#fffaf3', muzzle: '#ffffff' };
+  const BLACK = { fur: '#3d3e48', muzzle: '#5b5d69', dark: true };
+  const CREAM = { fur: '#f3dfc1', stripes: '#dcbb8c', muzzle: '#fffaf0' };
   const CATS_GOOD = [
-    ['КОТ ОДОБРЯЕТ', { ...GINGER, eyes: 'happy', mouth: 'w', extra: 'thumb' }],
-    ['МУРР-ВЕЛИКОЛЕПНО', { ...WHITE, eyes: 'heart', mouth: 'w' }],
-    ['ПЯТЁРКА С ЛАПКОЙ', { ...GREY, eyes: 'star', mouth: 'grin', extra: 'paws' }],
-    ['ТЫ ГЕНИЙ, ЧЕЛОВЕК', { ...BLACK, eyes: 'cool', mouth: 'w' }],
-    ['ВЕЧЕРИНКА В ЧЕСТЬ ТЕБЯ', { ...GINGER, eyes: 'happy', mouth: 'grin', extra: 'hat' }],
-    ['КОРОЛЬ СЛОВАРЯ', { ...GREY, eyes: 'happy', mouth: 'w', extra: 'crown' }],
-    ['Я ГОРЖУСЬ ТОБОЙ', { ...WHITE, eyes: 'cry', mouth: 'w' }],
+    ['', { ...GINGER, eyes: 'happy', mouth: 'w', extra: 'thumb' }],
+    ['', { ...WHITE, eyes: 'love', mouth: 'w', extra: 'hearts' }],
+    ['', { ...GREY, eyes: 'star', mouth: 'grin', extra: 'sparkles' }],
+    ['', { ...BLACK, eyes: 'cool', mouth: 'w' }],
+    ['', { ...GINGER, eyes: 'laugh', mouth: 'grin', extra: 'hat' }],
+    ['', { ...GREY, eyes: 'happy', mouth: 'w', extra: 'crown' }],
+    ['', { ...CREAM, eyes: 'wink', mouth: 'grin', extra: 'thumb' }],
+    ['', { ...WHITE, eyes: 'sparkle', mouth: 'grin', extra: 'paws' }],
+    ['', { ...BLACK, eyes: 'love', mouth: 'w', extra: 'hearts' }],
+    ['', { ...CREAM, eyes: 'star', mouth: 'w', extra: 'crown' }],
   ];
   const CATS_BAD = [
-    ['КОТ В ШОКЕ', { ...WHITE, eyes: 'shock', mouth: 'o' }],
-    ['ЭТО ЧТО СЕЙЧАС БЫЛО?', { ...GINGER, eyes: 'side', mouth: 'flat', extra: 'q' }],
-    ['НУ ТАКОЕ…', { ...GREY, eyes: 'side', mouth: 'frown', extra: 'sweat' }],
-    ['КОТ ПЛАЧЕТ ГОРЬКО', { ...BLACK, eyes: 'cry', mouth: 'frown' }],
-    ['ДАВАЙ ЕЩЁ РАЗ, Я ВЕРЮ', { ...GINGER, eyes: 'happy', mouth: 'flat', extra: 'paws' }],
-    ['ХМ… ПОДУМАЙ', { ...WHITE, eyes: 'side', mouth: 'flat', extra: 'q' }],
+    ['', { ...WHITE, eyes: 'shock', mouth: 'o', extra: 'sweat' }],
+    ['', { ...GINGER, eyes: 'side', mouth: 'flat', extra: 'q' }],
+    ['', { ...GREY, eyes: 'cry', mouth: 'wobble', extra: 'rain' }],
+    ['', { ...BLACK, eyes: 'shock', mouth: 'o' }],
+    ['', { ...CREAM, eyes: 'up', mouth: 'flat', extra: 'think' }],
+    ['', { ...GINGER, eyes: 'cry', mouth: 'wobble' }],
+    ['', { ...GREY, eyes: 'side', mouth: 'wobble', extra: 'sweat' }],
+    ['', { ...WHITE, eyes: 'sparkle', mouth: 'frown', extra: 'paws' }],
   ];
   // Подписи: {n} — имя ребёнка. Только настоящее время, чтобы не зависеть от рода.
   const CAPS_GOOD = [
@@ -359,7 +433,7 @@
     let el = document.getElementById('react');
     if (!el) { el = document.createElement('div'); el.id = 'react'; document.body.appendChild(el); }
     el.className = 'react ' + kind;
-    el.innerHTML = `<div class="rimg">${img}</div><div class="rcap">${esc(cap)}</div>`;
+    el.innerHTML = `<div class="rimg ${ok ? 'happy' : 'sad'}">${img}</div><div class="rcap">${esc(cap)}</div>`;
     el.hidden = false;
     void el.offsetWidth; el.classList.add('show');
     clearTimeout(reactTimer);
@@ -382,6 +456,44 @@
       img.src = reader.result;
     };
     reader.readAsDataURL(file);
+  }
+
+  // ---------- Яндекс Метрика (только если в config.js указан номер счётчика) ----------
+  function goal(name) {
+    try { if (CFG.metrikaId && window.ym) window.ym(+CFG.metrikaId, 'reachGoal', name); } catch (e) { /* ничего */ }
+  }
+  if (/^\d+$/.test(String(CFG.metrikaId))) {
+    try {
+      window.ym = window.ym || function () { (window.ym.a = window.ym.a || []).push(arguments); };
+      window.ym.l = +new Date();
+      const sc = document.createElement('script');
+      sc.async = true; sc.src = 'https://mc.yandex.ru/metrika/tag.js';
+      document.head.appendChild(sc);
+      window.ym(+CFG.metrikaId, 'init', { clickmap: true, trackLinks: true, accurateTrackBounce: true });
+    } catch (e) { /* без статистики */ }
+  }
+
+  // ---------- Установка на телефон ----------
+  let installEvt = null;
+  const isStandalone = () => (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+  const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
+  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvt = e; if (V.tab === 'me') render(); });
+  if ('serviceWorker' in navigator && location.protocol === 'https:' && /github\.io$|\.ru$|\.рф$|\.com$/.test(location.hostname)) {
+    window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => { /* без офлайна */ }); });
+  }
+  async function shareApp() {
+    const url = location.href.split('#')[0];
+    const text = `${CFG.appName}: словарные слова с котами, смешными историями и тренировкой. Попробуй!`;
+    try {
+      if (navigator.share) { await navigator.share({ title: CFG.appName, text, url }); goal('share'); return; }
+    } catch (e) { if (e && e.name === 'AbortError') return; }
+    try { await navigator.clipboard.writeText(text + ' ' + url); toast('Ссылка скопирована — отправьте её другу'); goal('share'); } catch (e) { toast(url); }
+  }
+  async function copyText(t) {
+    try { await navigator.clipboard.writeText(t); toast('Текст скопирован'); } catch (e) {
+      const ta = document.getElementById('reportText');
+      if (ta) { ta.focus(); ta.select(); toast('Выделите текст и скопируйте'); }
+    }
   }
 
   // ---------- Озвучка ----------
@@ -419,14 +531,15 @@
 
   const TABS = [
     ['words', '📚', 'Слова'],
-    ['learn', '💡', 'Запоминаю'],
+    ['learn', '💡', 'Учу'],
     ['stories', '😂', 'Истории'],
     ['train', '✍️', 'Тренировка'],
+    ['me', '📊', 'Итоги'],
   ];
 
   function header() {
     return `<header class="top">
-      <div class="row" style="gap:12px"><h1 class="logo">Слов<b>а</b>рик</h1><span class="stars" title="Звёзды за успехи">⭐ <b id="starCount">${S.stars || 0}</b></span>
+      <div class="row" style="gap:12px"><h1 class="logo">${CFG.appName === 'Словарик' ? 'Слов<b>а</b>рик' : esc(CFG.appName)}</h1><span class="stars" title="Звёзды за успехи">⭐ <b id="starCount">${S.stars || 0}</b></span>
         ${S.name ? `<button class="hi" data-act="editName" title="Изменить имя">👋 ${esc(S.name)}</button>` : ''}</div>
       <div class="grades" role="group" aria-label="Класс">
         <span>Класс</span>
@@ -445,7 +558,9 @@
     else if (V.tab === 'words') body = viewWords();
     else if (V.tab === 'learn') body = viewLearn();
     else if (V.tab === 'stories') body = viewStories();
+    else if (V.tab === 'me') body = viewMe();
     else body = viewTrain();
+    if (V.report) body = viewReport() + body;
     app.innerHTML = header() + body;
     if (V.draw && byId(V.draw)) setupCanvas();
     afterRender();
@@ -494,6 +609,11 @@
         <div class="stat sel"><b>${sel.size}</b><span class="muted">выбрано сейчас</span></div>
         <div class="stat ok"><b>${learned}</b><span class="muted">уже ${plural(learned, 'выучено', 'выучены', 'выучено')}</span></div>
       </div>
+      ${(() => {
+        const due = ws.filter((w) => status(w.id) === 'due').length;
+        return due ? `<div class="duebanner"><span>🔁 Пора повторить: <b>${due}</b> ${plural(due, 'слово', 'слова', 'слов')}. Так они не забудутся.</span>
+          <button class="btn small" data-act="reviewDue">Повторить</button></div>` : '';
+      })()}
       <div class="row">
         <button class="btn" data-act="pick10">Взять 10 новых</button>
         <button class="btn ghost" data-act="clearSel" ${sel.size ? '' : 'disabled'}>Снять выбор</button>
@@ -502,7 +622,8 @@
       <div class="legend">
         <span><i style="background:var(--line)"></i>новое</span>
         <span><i style="background:var(--pencil)"></i>учу</span>
-        <span><i style="background:var(--green)"></i>выучено (3 раза подряд без ошибок)</span>
+        <span><i style="background:var(--green)"></i>выучено</span>
+        <span><i style="background:var(--orange)"></i>пора повторить</span>
       </div>
       ${(() => {
         const byLetter = new Map();
@@ -554,6 +675,7 @@
           ${canSpeak() ? `<button class="btn small ghost" data-act="say" data-text="${esc(w.id)}">🔊 Послушать</button>` : ''}
           <button class="btn small" data-act="draw" data-id="${esc(w.id)}">🎨 ${PICS.has(w.id) ? 'Перерисовать' : 'Нарисуй своё'}</button>
           ${PICS.has(w.id) ? `<button class="btn small ghost" data-act="unpic" data-id="${esc(w.id)}">Вернуть эмодзи</button>` : ''}
+          <button class="btn small ghost" data-act="report" data-id="${esc(w.id)}">⚠️ Ошибка?</button>
         </div>
         <div class="muted">Скажи по слогам так, как пишется:<br><b style="font-size:24px;color:var(--ink)">${syllables(w)}</b></div>
         ${w.hint ? `<div class="hint"><span class="label">Подсказка</span>${esc(w.hint)}</div>` : ''}
@@ -571,6 +693,104 @@
           ? '<button class="btn" data-act="learnNext">Дальше →</button>'
           : '<button class="btn" data-act="tab" data-tab="train">Проверить себя ✍️</button>'}
       </div>`;
+  }
+
+  // ---------- Вкладка «Прогресс» (для ребёнка и родителей) ----------
+  function viewMe() {
+    const streak = streakDays();
+    const days = S.days || {};
+    const last = [];
+    for (let i = 13; i >= 0; i--) { const k = dayKey(today() - i * DAY); last.push([k, days[k] || { ok: 0, bad: 0 }]); }
+    const maxN = Math.max(5, ...last.map(([, d]) => d.ok + d.bad));
+    const totalAns = Object.values(days).reduce((a, d) => a + d.ok + d.bad, 0);
+    const gradeRows = GRADES.map((g) => {
+      const ws = gradeWords(g);
+      const c = { learned: 0, learning: 0, due: 0, new: 0 };
+      ws.forEach((w) => { c[status(w.id)]++; });
+      return { g, total: ws.length, ...c };
+    }).filter((r) => r.learned + r.learning + r.due > 0 || String(r.g) === String(S.grade));
+    const hard = words().map((w) => [w, stat(w.id)]).filter(([, st]) => st.bad > 0)
+      .sort((a, b) => b[1].bad - a[1].bad).slice(0, 8);
+    const wd = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+    return `
+      <h2>${S.name ? esc(S.name) + ', твой прогресс' : 'Прогресс'}</h2>
+      <div class="stats">
+        <div class="stat"><b>🔥 ${streak}</b><span class="muted">${plural(streak, 'день', 'дня', 'дней')} подряд</span></div>
+        <div class="stat"><b>⭐ ${S.stars || 0}</b><span class="muted">звёзд</span></div>
+        <div class="stat"><b>${totalAns}</b><span class="muted">${plural(totalAns, 'ответ', 'ответа', 'ответов')} всего</span></div>
+      </div>
+      <section class="panel" style="display:flex;flex-direction:column;gap:10px">
+        <span class="label">Занятия за 2 недели</span>
+        <div class="chart" role="img" aria-label="Ответы по дням">
+          ${last.map(([k, d]) => {
+            const dt = new Date(k + 'T12:00:00');
+            const hOk = Math.round((d.ok / maxN) * 100), hBad = Math.round((d.bad / maxN) * 100);
+            return `<div class="bar" title="${dt.getDate()}.${dt.getMonth() + 1}: верно ${d.ok}, ошибок ${d.bad}">
+              <div class="stack"><i class="b" style="height:${hBad}%"></i><i class="g" style="height:${hOk}%"></i></div>
+              <span>${wd[dt.getDay()]}</span></div>`;
+          }).join('')}
+        </div>
+        <div class="legend"><span><i style="background:var(--green)"></i>верно</span><span><i style="background:var(--red)"></i>ошибки</span></div>
+      </section>
+      <section class="panel" style="display:flex;flex-direction:column;gap:10px">
+        <span class="label">Слова по классам</span>
+        <div class="tablewrap"><table class="gtable">
+          <thead><tr><th>Класс</th><th>Выучено</th><th>Учу</th><th>Повтор.</th><th>Всего</th></tr></thead>
+          <tbody>${gradeRows.map((r) => `<tr><td>${r.g}</td><td class="ok">${r.learned}</td><td>${r.learning}</td><td class="due">${r.due}</td><td>${r.total}</td></tr>`).join('')}</tbody>
+        </table></div>
+        ${hard.length ? `<span class="label">Самые трудные слова ${S.grade} класса</span>
+          <div class="chips">${hard.map(([w, st]) => `<span class="chip">${marked(w.parts)} <small class="muted">×${st.bad}</small></span>`).join('')}</div>` : ''}
+        <p class="muted" style="margin:0">Прогресс хранится только на этом устройстве. Слово считается выученным, когда ребёнок ответил правильно в разные дни.</p>
+      </section>
+      <section class="panel" style="display:flex;flex-direction:column;gap:10px">
+        <span class="label">Приложение</span>
+        <div class="row">
+          ${isStandalone() ? '<span class="chip on">📲 Установлено на телефон</span>' : `<button class="btn small" data-act="install">📲 Установить на телефон</button>`}
+          <button class="btn small ghost" data-act="share">🔗 Поделиться с другом</button>
+          <button class="btn small ghost" data-act="report" data-id="">⚠️ Нашли ошибку?</button>
+          <button class="btn small ghost" data-act="editName">✏️ Изменить имя</button>
+        </div>
+        ${V.installHelp ? `<p class="hint" style="margin:0">${isIOS()
+          ? 'На iPhone: нажмите кнопку «Поделиться» внизу Safari (квадрат со стрелкой) → «На экран Домой».'
+          : 'Откройте меню браузера (три точки) → «Установить приложение» или «Добавить на главный экран».'}</p>` : ''}
+      </section>
+      <details class="panel" id="catsBox">
+        <summary>🐱 Коты-реакции и свои картинки</summary>
+        <div style="display:flex;flex-direction:column;gap:12px;margin-top:12px">
+          <div class="row"><button class="chip" data-act="cats" aria-pressed="${S.cats !== false}">${S.cats !== false ? '🐱 Коты включены' : '🙈 Коты выключены'}</button>
+            <button class="btn small ghost" data-act="catTest" data-ok="1">Показать доброго кота</button>
+            <button class="btn small ghost" data-act="catTest" data-ok="">Показать кота в шоке</button></div>
+          <p class="muted" style="margin:0">После ответа в углу выскакивает кот с подписью. Можно добавить свои картинки — например, фото вашего кота или смешные рисунки. Они будут показываться вместе с нарисованными котами. Хранятся только на этом устройстве.</p>
+          ${['good', 'bad'].map((k) => `<div style="display:flex;flex-direction:column;gap:8px">
+            <span class="label">${k === 'good' ? 'Когда правильно' : 'Когда ошибка'}</span>
+            <div class="row">${ownReacts(k).map((id) => `<span class="ownreact"><img src="${PICS.get(id)}" alt=""><button data-act="delReact" data-id="${id}" aria-label="Удалить">✕</button></span>`).join('')}
+              <label class="btn small ghost" for="react-${k}" style="display:inline-flex;align-items:center">＋ Добавить картинку</label>
+              <input type="file" id="react-${k}" accept="image/*" hidden></div>
+          </div>`).join('')}
+        </div>
+      </details>
+      ${CFG.blogUrl ? `<a class="panel blog" href="${esc(CFG.blogUrl)}" target="_blank" rel="noopener">
+        <span style="font-size:30px" aria-hidden="true">💌</span>
+        <span><b>${esc(CFG.blogTitle || 'Блог автора')}</b><br><span class="muted">Новые игры, словари и советы родителям</span></span></a>` : ''}
+      ${CFG.author ? `<p class="muted" style="text-align:center">Сделано с любовью: ${esc(CFG.author)}</p>` : ''}`;
+  }
+
+  // ---------- «Нашли ошибку?» ----------
+  function viewReport() {
+    const w = V.report.id ? byId(V.report.id) : null;
+    const text = w
+      ? `Ошибка в словаре «${CFG.appName}»: слово «${w.id}», ${S.grade} класс. Что не так: `
+      : `Сообщение для «${CFG.appName}» (${S.grade} класс): `;
+    return `<section class="panel report" role="dialog" aria-label="Сообщить об ошибке">
+      <div class="row between"><h2>Нашли ошибку?</h2><button class="btn small ghost" data-act="reportClose">Закрыть</button></div>
+      <p class="muted" style="margin:0">Спасибо, что помогаете! Допишите, что не так, скопируйте текст и отправьте автору${CFG.feedbackUrl ? ' через форму' : CFG.blogUrl ? ' в блог' : ''}.</p>
+      <textarea id="reportText" spellcheck="true">${esc(text)}</textarea>
+      <div class="row">
+        <button class="btn small" data-act="reportCopy">📋 Скопировать текст</button>
+        ${CFG.feedbackUrl ? `<a class="btn small ghost" href="${esc(CFG.feedbackUrl)}" target="_blank" rel="noopener">Открыть форму</a>` : ''}
+        ${!CFG.feedbackUrl && CFG.blogUrl ? `<a class="btn small ghost" href="${esc(CFG.blogUrl)}" target="_blank" rel="noopener">Написать в блог</a>` : ''}
+      </div>
+    </section>`;
   }
 
   // ---------- Рисование ----------
@@ -986,12 +1206,14 @@
 
 
   function trainPool() {
+    if (V.trainSet === 'due') return words().filter((w) => status(w.id) === 'due');
     if (V.trainSet === 'mistakes') return words().filter((w) => stat(w.id).bad > 0 && status(w.id) !== 'learned');
     if (V.trainSet === 'all') return words();
     return selectedWords();
   }
 
   function startTrain(mode, pool) {
+    goal('train_' + mode);
     const list = shuffle(pool || trainPool()).slice(0, 15);
     if (!list.length) { toast('Нет слов для тренировки'); return; }
     V.combo = 0;
@@ -1052,6 +1274,7 @@
     const t = T.task;
     if (t.solved) return;
     t.solved = true;
+    t.ok = ok;
     const again = T.repeated.has(t.id);
     if (!again) {
       record(t.id, ok);
@@ -1097,15 +1320,18 @@
     if (T && T.task) return viewTask();
     const sel = selectedWords().length;
     const mist = words().filter((w) => stat(w.id).bad > 0 && status(w.id) !== 'learned').length;
-    if (V.trainSet === 'selected' && !sel) V.trainSet = mist ? 'mistakes' : 'all';
+    const due = words().filter((w) => status(w.id) === 'due').length;
+    if (V.trainSet === 'selected' && !sel) V.trainSet = due ? 'due' : mist ? 'mistakes' : 'all';
+    if (V.trainSet === 'due' && !due) V.trainSet = sel ? 'selected' : 'all';
     const sets = [
+      ['due', `🔁 Пора повторить (${due})`, due],
       ['selected', `Выбранные (${sel})`, sel],
       ['mistakes', `С ошибками (${mist})`, mist],
       ['all', `Все слова ${S.grade} класса`, words().length],
     ];
     return `
       <h2>Тренировка</h2>
-      <p class="lead">Начни с «Вставь букву», а когда будет получаться — пиши слова целиком. Слово считается выученным, когда ты напишешь его правильно 3 раза подряд.</p>
+      <p class="lead">Начни с «Вставь букву», а когда будет получаться — пиши слова целиком. Слово выучено, когда ты ответишь правильно в разные дни: сегодня, завтра, через 3 дня. Потом кот сам напомнит его повторить.</p>
       <div class="row" role="group" aria-label="Какие слова">
         <span class="label">Какие слова:</span>
         ${sets.map(([k, name, n]) => `<button class="chip" data-act="set" data-k="${k}" aria-pressed="${V.trainSet === k}" ${n ? '' : 'disabled'}>${name}</button>`).join('')}
@@ -1114,21 +1340,6 @@
         ${Object.entries(MODES).map(([k, m]) => `<button class="mode" data-act="start" data-mode="${k}">
           <span class="e" aria-hidden="true">${m.e}</span><b>${m.name}</b><span class="muted">${m.about}</span></button>`).join('')}
       </div>
-      <details class="panel">
-        <summary>🐱 Коты-реакции и свои картинки</summary>
-        <div style="display:flex;flex-direction:column;gap:12px;margin-top:12px">
-          <div class="row"><button class="chip" data-act="cats" aria-pressed="${S.cats !== false}">${S.cats !== false ? '🐱 Коты включены' : '🙈 Коты выключены'}</button>
-            <button class="btn small ghost" data-act="catTest" data-ok="1">Показать доброго кота</button>
-            <button class="btn small ghost" data-act="catTest" data-ok="">Показать кота в шоке</button></div>
-          <p class="muted" style="margin:0">После ответа в углу выскакивает кот с подписью. Можно добавить свои картинки — например, фото вашего кота или смешные рисунки. Они будут показываться вместе с нарисованными котами. Хранятся только на этом устройстве.</p>
-          ${['good', 'bad'].map((k) => `<div style="display:flex;flex-direction:column;gap:8px">
-            <span class="label">${k === 'good' ? 'Когда правильно' : 'Когда ошибка'}</span>
-            <div class="row">${ownReacts(k).map((id) => `<span class="ownreact"><img src="${PICS.get(id)}" alt=""><button data-act="delReact" data-id="${id}" aria-label="Удалить">✕</button></span>`).join('')}
-              <label class="btn small ghost" for="react-${k}" style="display:inline-flex;align-items:center">＋ Добавить картинку</label>
-              <input type="file" id="react-${k}" accept="image/*" hidden></div>
-          </div>`).join('')}
-        </div>
-      </details>
       ${!canSpeak() ? '<p class="muted">На этом устройстве нет русского голоса, поэтому в режиме «Напиши сам» вместо озвучки будет картинка и подсказка.</p>' : ''}`;
   }
 
@@ -1192,7 +1403,7 @@
     const note = w.note ? `<p class="muted" style="margin:0">(${esc(w.note)})</p>` : '';
     return `${taskTop()}
       <article class="panel card">${inner.replace('</div>', '</div>' + note)}</article>
-      ${canNext ? '<div class="row" style="justify-content:center"><button class="btn" data-act="next" id="nextBtn">Дальше →</button></div>' : ''}`;
+      ${canNext ? '<div class="row" style="justify-content:center"><button class="btn nextbtn" data-act="next" id="nextBtn">Дальше →<span class="nextbar" id="nextBar"></span></button></div>' : ''}`;
   }
 
   function verdictGood(w, note) {
@@ -1238,7 +1449,20 @@
       </article>`;
   }
 
+  /** После ответа следующее слово появляется само: быстро, если верно, и чуть позже, если была ошибка. */
+  function scheduleNext() {
+    const T = V.train;
+    const t = T && T.task;
+    if (!t || !t.solved || t.copy || t.autoSet || V.tab !== 'train') return;
+    t.autoSet = true;
+    const delay = t.ok ? 1300 : 3200;
+    const bar = document.getElementById('nextBar');
+    if (bar) bar.style.animationDuration = delay + 'ms';
+    setTimeout(() => { if (V.train === T && T.task === t && V.tab === 'train') goNext(); }, delay);
+  }
+
   function afterRender() {
+    scheduleNext();
     const input = document.getElementById('answer');
     if (input) input.focus();
     const nextBtn = document.getElementById('nextBtn');
@@ -1281,6 +1505,14 @@
         toast(`Выбрано ${take.length} ${plural(take.length, 'слово', 'слова', 'слов')}`);
         break;
       }
+      case 'install':
+        if (installEvt) { installEvt.prompt(); installEvt.userChoice.then(() => { installEvt = null; render(); }); goal('install'); return; }
+        V.installHelp = true; break;
+      case 'share': shareApp(); return;
+      case 'report': V.report = { id: el.dataset.id }; window.scrollTo(0, 0); break;
+      case 'reportClose': V.report = null; break;
+      case 'reportCopy': copyText(document.getElementById('reportText').value); return;
+      case 'reviewDue': V.trainSet = 'due'; V.tab = 'train'; V.train = null; window.scrollTo(0, 0); break;
       case 'clearSel': S.selected[S.grade] = []; save(); break;
       case 'addWord': {
         const inp = document.getElementById('newWord');
