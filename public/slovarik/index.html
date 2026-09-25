@@ -176,7 +176,7 @@ textarea { min-height: 80px; resize: vertical; font-family: var(--hand); font-si
 @keyframes shrink { to { width: 0; } }
 .opts { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
 .opt { min-width: 76px; min-height: 64px; border-radius: 16px; border: 3px solid var(--line); background: var(--paper-2); font-size: 32px; font-weight: 900; }
-.opt.wide { font-size: 22px; padding: 8px 16px; min-width: 0; }
+.opt.wide { font-size: 22px; padding: 8px 16px; min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
 .opt.right { border-color: var(--green); background: var(--green-soft); color: var(--green); }
 .opt.wrong { border-color: var(--red); background: var(--red-soft); color: var(--red); }
 .answer { font-size: 30px; text-align: center; font-weight: 800; letter-spacing: .04em; max-width: 420px; }
@@ -223,7 +223,8 @@ img.thumb { width: 28px; height: 28px; border-radius: 7px; object-fit: cover; bo
 /* Молния */
 .bolt { position: relative; }
 .clock { position: absolute; top: 12px; right: 16px; font: 400 40px/1 var(--hand); color: var(--red); font-variant-numeric: tabular-nums; }
-.boltopt { font-size: 26px; min-height: 74px; flex: 1 1 140px; }
+.bolt .opts { flex-direction: column; width: 100%; max-width: 440px; }
+.boltopt { min-height: 70px; width: 100%; overflow-wrap: anywhere; line-height: 1.15; }
 
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 .word > span:nth-child(2) { min-width: 0; overflow-wrap: anywhere; }

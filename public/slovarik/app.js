@@ -63,10 +63,15 @@
     if (nm) { marked = nm[1]; note = nm[2]; }
     const parts = parseMarked(marked);
     const id = parts.map((p) => p.s).join('');
-    const noun = !(flag && flag.trim().toLowerCase() === 'н');
-    let kind = 'noun';
-    if (!noun) kind = /(ть|ти|ться|тись)$/.test(id) ? 'verb' : /(ый|ий|ой|ая|ое|ее)$/.test(id) ? 'adj' : 'other';
-    return { id, marked, note, parts, emoji: emoji || '📘', hint: hint || '', noun, kind };
+    // Последнее поле: «н» — не предмет; «д: ~ торт» — действие для историй; «п: ~ крокодил» — признак с предметом.
+    let kind = 'noun', phrase = '';
+    const fm = (flag || '').trim().match(/^([ндп])\s*(?::\s*(.*))?$/i);
+    if (fm) {
+      const k = fm[1].toLowerCase();
+      kind = k === 'д' ? 'verb' : k === 'п' ? 'noun' : 'other';
+      if (fm[2]) phrase = fm[2].replace('~', marked);
+    }
+    return { id, marked, note, parts, emoji: emoji || '📘', hint: hint || '', noun: kind === 'noun', kind, phrase };
   }
   // Разделитель полей — « | » с пробелами, чтобы не путать с «[в|]» внутри слова.
   function splitFields(line) {
@@ -596,7 +601,8 @@
       ['school', 'Домашнее задание от кота: {list}. Сдать до пятницы.'],
       ['school', 'Правила поведения в столовой: {list}. Нарушителей отправят мыть кастрюли.'],
       ['school', 'Идеальный ученик должен {list}. Таких в нашей школе пока не нашли.'],
-      ['food', 'Рецепт идеального бутерброда: {list}. Съесть, пока не увидел брат.'],
+      ['food', 'Повар объявил конкурс. Задания: {list}. Приз — ведро мороженого.'],
+      ['school', 'Список дел на каникулы: {list}. Отдыхать некогда!'],
       ['food', 'Мама сказала: «Сегодня нужно {list}». Папа спрятался под диван.'],
       ['tale', 'Царь велел Ивану: «{List}! А не то голова с плеч». Иван попросил выходной.'],
       ['tale', 'Бабушкины советы на все случаи жизни: {list}. И шапку надень!'],
@@ -609,18 +615,6 @@
       ['animals', 'Что хомяк мечтает сделать ночью: {list}. Утром делает вид, что спал.'],
       ['animals', 'Собака записала в дневник: «Завтра {list}. И погрызть тапок».'],
     ],
-    adj: [
-      ['any', 'Бабушка связала шарф — {list}. Носить страшно, но приходится.'],
-      ['animals', 'Объявление: «Пропал кот. Приметы: {list}. Нашедшему — торт!»'],
-      ['animals', 'Мой новый хомяк — {list}. Мама сказала: «Это не хомяк, это чудо!»'],
-      ['school', 'Характеристика ученика Пети: {list}. Особенно на перемене.'],
-      ['school', 'Каким должен быть новый директор? {List}. И с пирожками.'],
-      ['food', 'Новый торт от повара: {list}. Съели вместе с тарелкой.'],
-      ['space', 'Инопланетянин описал землянина: {list}. И пахнет котлетами.'],
-      ['tale', 'Змей Горыныч описал себя в анкете: {list}. И немного огнеопасный.'],
-      ['detective', 'Приметы преступника: {list}. Очень любит пирожки.'],
-      ['sport', 'Каким должен быть мяч чемпиона? {List}. И чтобы сам летел в ворота.'],
-    ],
     other: [
       ['any', 'Попугай выучил новые слова: «{list}!» Теперь он не замолкает.'],
       ['space', 'Навигатор ракеты сошёл с ума и твердит: «{list}!» Мы прилетели на Юпитер.'],
@@ -632,13 +626,13 @@
       ['animals', 'Кот Барсик во сне бормочет: «{list}…» Что ему снится?'],
     ],
   };
-  const KIND_NAMES = { noun: 'предметов', verb: 'действий', adj: 'признаков', other: 'прочих слов' };
+  const KIND_NAMES = { noun: 'предметов', verb: 'действий', other: 'прочих слов' };
   function joinList(arr) {
     return arr.length === 1 ? arr[0] : arr.slice(0, -1).join(', ') + ' и ' + arr[arr.length - 1];
   }
   /** Какой вид слов в наборе самый многочисленный. Истории не смешивают виды: только предметы, или только действия… */
   function storyKind(ws) {
-    const cnt = { noun: 0, verb: 0, adj: 0, other: 0 };
+    const cnt = { noun: 0, verb: 0, other: 0 };
     ws.forEach((w) => { cnt[w.kind]++; });
     const best = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0];
     return cnt[best] >= 2 ? best : null;
@@ -646,14 +640,17 @@
   function makeStory(group, ws) {
     const kind = storyKind(ws);
     if (!kind) return null;
-    const pick = shuffle(ws.filter((w) => w.kind === kind)).slice(0, kind === 'verb' ? 5 : 4);
+    const pick = shuffle(ws.filter((w) => w.kind === kind)).slice(0, 4);
     let pool = STORY[kind].filter(([th]) => V.theme === 'any' || th === V.theme);
     if (!pool.length) pool = STORY[kind];
     const fresh = pool.filter(([, t]) => t !== V.lastStory);
     const t = (fresh.length ? fresh : pool)[Math.floor(Math.random() * (fresh.length || pool.length))][1];
     V.lastStory = t;
     const first = t.startsWith('{List}');
-    const items = pick.map((w, i) => (first && i === 0 ? capMarked(w.marked) : w.marked) + (w.note ? ' ' + w.note : ''));
+    const items = pick.map((w, i) => {
+      const text = w.phrase || w.marked + (w.note ? ' ' + w.note : '');
+      return first && i === 0 ? capMarked(text) : text;
+    });
     return { text: t.replace('{List}', joinList(items)).replace('{list}', joinList(items)).replace('{song}', group.song), kind, fix: null };
   }
   function capMarked(m) {
@@ -734,7 +731,7 @@
           return `<div class="group">
             <div class="row"><span class="letter" ${g.mark.length > 2 ? 'style="font-size:28px"' : ''}>${esc(g.mark)}</span><b>${esc(g.title)}</b><span class="muted">· ${gw.length} ${plural(gw.length, 'слово', 'слова', 'слов')}</span></div>
             <div class="chips">${gw.map((w) => `<button class="chip pick ${kind && w.kind !== kind && !ex[w.id] ? 'faded' : ''}" data-act="exclTog" data-k="${esc(g.key)}" data-id="${esc(w.id)}" aria-pressed="${!ex[w.id]}">${marked(w.parts)}${noteHtml(w)}</button>`).join('')}</div>
-            <p class="muted" style="margin:0">${kind ? `Нажми на слово, чтобы убрать его из истории. Сочиняем из ${KIND_NAMES[kind]} — разные виды слов не смешиваем.` : 'Для истории нужно хотя бы два слова одного вида: два предмета, два действия или два признака.'}</p>
+            <p class="muted" style="margin:0">${kind ? `Нажми на слово, чтобы убрать его из истории. Сочиняем из ${KIND_NAMES[kind]} — разные виды слов не смешиваем.` : 'Для истории нужно хотя бы два слова одного вида: два предмета или два действия.'}</p>
             ${st ? `<p class="story">${st.fix ? fixHtml(g.key, st) : markedText(st.text)}</p>` : ''}
             <div class="row">
               <button class="btn small ${st ? 'ghost' : ''}" data-act="gen" data-k="${esc(g.key)}" ${kind ? '' : 'disabled'}>${st ? '🎲 Ещё смешнее' : '🎲 Сочинить историю'}</button>
@@ -837,7 +834,9 @@
         <div class="opts">${B.cur.opts.map((v) => {
           let cls = '';
           if (B.flash) { if (v === w.id) cls = 'right'; else if (v === B.flash) cls = 'wrong'; }
-          return `<button class="opt wide boltopt ${cls}" data-act="boltPick" data-v="${esc(v)}">${esc(v)}</button>`;
+          const len = Math.max(...B.cur.opts.map((o) => o.length));
+          const fs = len > 16 ? 20 : len > 12 ? 23 : 28;
+          return `<button class="opt wide boltopt ${cls}" style="font-size:${fs}px" data-act="boltPick" data-v="${esc(v)}">${esc(v)}</button>`;
         }).join('')}</div>
       </article>`;
   }
