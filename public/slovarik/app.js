@@ -56,16 +56,17 @@
   }
 
   function parseLine(line) {
-    const [marked, emoji, hint, flag] = splitFields(line);
+    let [marked, emoji, hint, flag] = splitFields(line);
+    // Уточнение в скобках: «пр[е|и]бывать (на работе)».
+    let note = '';
+    const nm = marked.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+    if (nm) { marked = nm[1]; note = nm[2]; }
     const parts = parseMarked(marked);
-    return {
-      id: parts.map((p) => p.s).join(''),
-      marked,
-      parts,
-      emoji: emoji || '📘',
-      hint: hint || '',
-      noun: !(flag && flag.trim().toLowerCase() === 'н'),
-    };
+    const id = parts.map((p) => p.s).join('');
+    const noun = !(flag && flag.trim().toLowerCase() === 'н');
+    let kind = 'noun';
+    if (!noun) kind = /(ть|ти|ться|тись)$/.test(id) ? 'verb' : /(ый|ий|ой|ая|ое|ее)$/.test(id) ? 'adj' : 'other';
+    return { id, marked, note, parts, emoji: emoji || '📘', hint: hint || '', noun, kind };
   }
   // Разделитель полей — « | » с пробелами, чтобы не путать с «[в|]» внутри слова.
   function splitFields(line) {
@@ -176,19 +177,25 @@
     Ё: 'У Ё две точки — как два глаза.',
     У: 'У — как рогатка.',
   };
-  function groupOf(p) {
+  const isDouble = (a) => a.length === 2 && a[0].toLowerCase() === a[1].toLowerCase();
+  function groupOf(p, i, w) {
     const s = p.s;
-    if (p.alts && p.alts.includes('')) return { key: 'тихие', title: 'Тихие буквы', song: 'тихие буквы', tip: 'Эта буква тихоня: её не слышно, но она есть. Произнеси слово по слогам так, как пишется.' };
-    if (s.length === 2 && s[0].toLowerCase() === s[1].toLowerCase()) return { key: 'двойные', title: 'Двойные буквы', song: 'двойные буквы', tip: 'Две одинаковые буквы стоят рядом, как близнецы. Не разлучай их!' };
+    if (i === 1 && w.parts[0].s.toLowerCase() === 'пр' && /^[еи]$/i.test(s)) return {
+      key: 'ПРЕ/ПРИ', mark: 'пре·при', title: 'Приставки ПРЕ- и ПРИ-', song: 'приставки ПРЕ и ПРИ',
+      tip: 'ПРЕ- — это «очень» (премилый) или «пере-» (превратить = переделать, преградить = перегородить). ПРИ- — приближение (прибыть), присоединение (пришить), близость (пришкольный), неполное действие (приоткрыть). Можно заменить на «очень» или «пере-» — пишем ПРЕ.',
+    };
+    if (p.alts && p.alts.includes('')) return { key: 'тихие', mark: '★', title: 'Тихие буквы', song: 'тихие буквы', tip: 'Эта буква тихоня: её не слышно, но она есть. Произнеси слово по слогам так, как пишется.' };
+    if (isDouble(s) || (p.alts && p.alts.some(isDouble))) return { key: 'двойные', mark: 'нн', title: 'Одна или две буквы?', song: 'двойные буквы', tip: 'Посчитай буквы: одна или две? Двойные стоят рядом, как близнецы, — не разлучай их. А одиночку не удваивай.' };
     const L = s.toUpperCase();
-    if (VOWELS.includes(s.toLowerCase())) return { key: L, title: 'Буква ' + L, song: 'букву ' + L, tip: LETTER_TIPS[L] || '' };
-    return { key: 'согласные', title: 'Хитрые согласные', song: 'хитрые согласные', tip: 'Проговори слово так, как пишется, чётко выговаривая эту букву.' };
+    if (VOWELS.includes(s.toLowerCase())) return { key: L, mark: L, title: 'Буква ' + L, song: 'букву ' + L, tip: LETTER_TIPS[L] || '' };
+    return { key: 'согласные', mark: '★', title: 'Хитрые согласные', song: 'хитрые согласные', tip: 'Проговори слово так, как пишется, чётко выговаривая эту букву.' };
   }
   function groupsOf(w) {
     const m = new Map();
-    w.parts.filter((p) => p.t).forEach((p) => { const g = groupOf(p); m.set(g.key, g); });
+    w.parts.forEach((p, i) => { if (p.t) { const g = groupOf(p, i, w); m.set(g.key, g); } });
     return [...m.values()];
   }
+  const noteHtml = (w) => (w.note ? ` <small class="muted">(${esc(w.note)})</small>` : '');
 
   // ---------- Озвучка ----------
   let ruVoice = null;
@@ -295,7 +302,7 @@
       </div>
       <div class="words">
         ${ws.map((w) => `<button class="word" data-act="toggle" data-id="${esc(w.id)}" aria-pressed="${sel.has(w.id)}">
-          <span class="e" aria-hidden="true">${w.emoji}</span><span>${marked(w.parts)}</span><span class="dot ${status(w.id)}"></span>
+          <span class="e" aria-hidden="true">${w.emoji}</span><span>${marked(w.parts)}${noteHtml(w)}</span><span class="dot ${status(w.id)}"></span>
         </button>`).join('')}
       </div>
       <details class="panel">
@@ -309,7 +316,9 @@
       </details>
       <p class="muted">${+S.grade <= 4
         ? 'Списки взяты из словариков учебника «Русский язык» (УМК «Школа России»).'
-        : 'Списки взяты из учебника «Русский язык» Ладыженской, Баранова, Тростенцовой.'} Если в вашем учебнике другие слова, добавьте их выше.</p>`;
+        : +S.grade === 6
+          ? 'Слова из орфографического словаря учебника «Русский язык. 6 класс» Ладыженской, Баранова, Тростенцовой (ФГОС, 2023).'
+          : 'Черновой список по учебнику «Русский язык» Ладыженской, Баранова, Тростенцовой.'} Если в вашем учебнике другие слова, добавьте их выше.</p>`;
   }
 
   // ---------- Вкладка «Запоминаю» ----------
@@ -325,6 +334,7 @@
       <article class="panel card">
         <div class="pic" aria-hidden="true">${w.emoji}</div>
         <div class="big">${marked(w.parts)}</div>
+        ${w.note ? `<div class="muted">(${esc(w.note)})</div>` : ''}
         <div class="row" style="justify-content:center">
           ${canSpeak() ? `<button class="btn small ghost" data-act="say" data-text="${esc(w.id)}">🔊 Послушать</button>` : ''}
         </div>
@@ -361,12 +371,36 @@
   function joinList(arr) {
     return arr.length === 1 ? arr[0] : arr.slice(0, -1).join(', ') + ' и ' + arr[arr.length - 1];
   }
+  const TEMPLATES_BY_KIND = {
+    noun: TEMPLATES,
+    verb: [
+      'План Игоря на понедельник: {list}. Что может пойти не так?',
+      'Кот Барсик составил список дел: {list}. И всё это до обеда!',
+      'Мама сказала: «Сегодня нужно {list}». Папа спрятался под диван.',
+      'Супергерой умеет {list}. А домашку делать — нет.',
+      'Инструкция для инопланетянина: {list}. Удачи на Земле!',
+    ],
+    adj: [
+      'Бабушка связала шарф — {list}. Носить страшно, но приходится.',
+      'Объявление: «Пропал кот. Приметы: {list}. Нашедшему — торт!»',
+      'Мой новый диван — {list}. Мама сказала: «Это не диван, это чудо!»',
+    ],
+  };
+  /** Какой вид слов в группе самый многочисленный (для историй нужно хотя бы два одного вида). */
+  function storyKind(ws) {
+    const cnt = { noun: 0, verb: 0, adj: 0 };
+    ws.forEach((w) => { if (w.kind in cnt) cnt[w.kind]++; });
+    const best = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0];
+    return cnt[best] >= 2 ? best : null;
+  }
   function makeStory(group, ws) {
-    const pick = shuffle(ws.filter((w) => w.noun)).slice(0, 4);
-    if (pick.length < 2) return '';
-    const t = TEMPLATES[Math.floor(Math.random() * TEMPLATES.length)];
+    const kind = storyKind(ws);
+    if (!kind) return '';
+    const pick = shuffle(ws.filter((w) => w.kind === kind)).slice(0, kind === 'noun' ? 4 : 5);
+    const list = TEMPLATES_BY_KIND[kind];
+    const t = list[Math.floor(Math.random() * list.length)];
     const first = t.startsWith('{List}');
-    const items = pick.map((w, i) => (first && i === 0 ? capMarked(w.marked) : w.marked));
+    const items = pick.map((w, i) => (first && i === 0 ? capMarked(w.marked) : w.marked) + (w.note ? ' ' + w.note : ''));
     return t.replace('{List}', joinList(items)).replace('{list}', joinList(items)).replace('{song}', group.song);
   }
   function capMarked(m) {
@@ -426,11 +460,11 @@
         ${groups.length ? groups.map(({ g, ws: gw }) => {
           const story = V.storyGen[g.key];
           return `<div class="group">
-            <div class="row"><span class="letter">${g.key.length === 1 ? esc(g.key) : '★'}</span><b>${esc(g.title)}</b><span class="muted">· ${gw.length} ${plural(gw.length, 'слово', 'слова', 'слов')}</span></div>
-            <div class="chips">${gw.map((w) => `<span class="chip">${w.emoji} ${marked(w.parts)}</span>`).join('')}</div>
+            <div class="row"><span class="letter" ${g.mark.length > 2 ? 'style="font-size:28px"' : ''}>${esc(g.mark)}</span><b>${esc(g.title)}</b><span class="muted">· ${gw.length} ${plural(gw.length, 'слово', 'слова', 'слов')}</span></div>
+            <div class="chips">${gw.map((w) => `<span class="chip">${w.emoji} ${marked(w.parts)}${noteHtml(w)}</span>`).join('')}</div>
             ${story ? `<p class="story">${markedText(story)}</p>` : ''}
             <div class="row"><button class="btn small ${story ? 'ghost' : ''}" data-act="gen" data-k="${esc(g.key)}">${story ? '🎲 Другая история' : '🎲 Придумай историю'}</button>
-            ${gw.filter((w) => w.noun).length < 2 ? '<span class="muted">Для истории нужно хотя бы два слова-предмета</span>' : ''}</div>
+            ${storyKind(gw) ? '' : '<span class="muted">Для истории нужно хотя бы два слова одного вида: два предмета, два действия или два признака</span>'}</div>
           </div>`;
         }).join('') : '<p class="muted">Среди выбранных слов нет двух с одинаковой трудной буквой. Выбери ещё слова — и появятся группы.</p>'}
       </section>
@@ -641,8 +675,9 @@
         </form>` : ''}`;
     }
     const canNext = t.solved && !t.copy;
+    const note = w.note ? `<p class="muted" style="margin:0">(${esc(w.note)})</p>` : '';
     return `${taskTop()}
-      <article class="panel card">${inner}</article>
+      <article class="panel card">${inner.replace('</div>', '</div>' + note)}</article>
       ${canNext ? '<div class="row" style="justify-content:center"><button class="btn" data-act="next" id="nextBtn">Дальше →</button></div>' : ''}`;
   }
 
