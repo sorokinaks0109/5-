@@ -326,21 +326,36 @@
     ['ДАВАЙ ЕЩЁ РАЗ, Я ВЕРЮ', { ...GINGER, eyes: 'happy', mouth: 'flat', extra: 'paws' }],
     ['ХМ… ПОДУМАЙ', { ...WHITE, eyes: 'side', mouth: 'flat', extra: 'q' }],
   ];
+  // Подписи: {n} — имя ребёнка. Только настоящее время, чтобы не зависеть от рода.
+  const CAPS_GOOD = [
+    '{n}, ТЫ ИМБА', 'ЭТО БАЗА, {n}', '{n} — ЛЕГЕНДА СЛОВАРЯ', 'ТЫ ГЕНИЙ, {n}', 'КОТ ОДОБРЯЕТ, {n}',
+    'ВАЙБ ОТЛИЧНИКА', 'ЛЮТЫЙ ОТВЕТ', 'АГОНЬ! {n}, ГО ЕЩЁ', '{n}, ИЗИ КАТКА', 'КОТ В ВОСТОРГЕ',
+    '{n}, ТЫ ТОП', 'МУРР-ВЕЛИКОЛЕПНО', 'ЧИСТАЯ ПЯТЁРКА, БЕЗ КРИНЖА', 'УЧИТЕЛЬ ПЛАЧЕТ ОТ СЧАСТЬЯ',
+    '{n}, ЭТО ВООБЩЕ ЗАКОННО?', 'ПРОКАЧКА МОЗГА +100', 'КОРОЛЬ СЛОВАРЯ — ЭТО {n}', 'КОТ ЗАСКРИНИЛ. ЛЕГЕНДАРНО',
+  ];
+  const CAPS_BAD = [
+    'КРИНЖ… НО МЫ СПРАВИМСЯ', '{n}, ЭТО ЧТО СЕЙЧАС БЫЛО?', 'КОТ СЛОВИЛ КРИНЖ', 'НУ ТАКОЕ, {n}',
+    'ЖИЗА, Я ТОЖЕ ОШИБАЮСЬ', 'РОФЛ? ДАВАЙ ЕЩЁ РАЗ', '{n}, Я ВЕРЮ В ТЕБЯ', 'ОШИБКА — НЕ КРИНЖ, А ОПЫТ',
+    'КОТ В ШОКЕ, {n}', 'ХМ… ПОДУМАЙ ЕЩЁ', 'БУКВА ОБИДЕЛАСЬ', '{n}, НЕ СДАЁМСЯ!', 'ДАЖЕ ГЕНИИ ОШИБАЮТСЯ',
+  ];
+  const CAPS_COMBO = {
+    3: ['{n}, ТРИ ИЗ ТРЁХ — ТЫ НА ВАЙБЕ', 'КОМБО x3! БАЗА'],
+    5: ['КОМБО x5! {n}, ЭТО ЗАКОННО?', 'ПЯТЬ ПОДРЯД. КОТ УПАЛ В ОБМОРОК'],
+    10: ['x10!!! {n} — БОСС СЛОВАРЯ', 'ДЕСЯТЬ ПОДРЯД. КОТ ПИШЕТ ТЕБЕ ОДУ'],
+  };
+  const pickOne = (a) => a[Math.floor(Math.random() * a.length)];
+  const withName = (c) => c.replace(/\{n\}/g, (S.name || 'человек').toUpperCase());
   const ownReacts = (kind) => [...PICS.keys()].filter((k) => k.startsWith('react:' + kind + ':'));
   let reactTimer = 0;
-  function react(ok) {
+  /** Кот выскакивает в углу. caption — своя подпись (например, за серию ответов). */
+  function react(ok, caption) {
     if (S.cats === false) return;
     const kind = ok ? 'good' : 'bad';
     const own = ownReacts(kind);
-    const set = ok ? CATS_GOOD : CATS_BAD;
-    let img, cap;
-    if (own.length && Math.random() < 0.6) {
-      img = `<img src="${PICS.get(own[Math.floor(Math.random() * own.length)])}" alt="">`;
-      cap = set[Math.floor(Math.random() * set.length)][0];
-    } else {
-      const [c, o] = set[Math.floor(Math.random() * set.length)];
-      img = catSvg(o); cap = c;
-    }
+    const img = own.length && Math.random() < 0.6
+      ? `<img src="${PICS.get(pickOne(own))}" alt="">`
+      : catSvg(pickOne(ok ? CATS_GOOD : CATS_BAD)[1]);
+    const cap = withName(caption || pickOne(ok ? CAPS_GOOD : CAPS_BAD));
     let el = document.getElementById('react');
     if (!el) { el = document.createElement('div'); el.id = 'react'; document.body.appendChild(el); }
     el.className = 'react ' + kind;
@@ -411,7 +426,8 @@
 
   function header() {
     return `<header class="top">
-      <div class="row" style="gap:12px"><h1 class="logo">Слов<b>а</b>рик</h1><span class="stars" title="Звёзды за успехи">⭐ <b id="starCount">${S.stars || 0}</b></span></div>
+      <div class="row" style="gap:12px"><h1 class="logo">Слов<b>а</b>рик</h1><span class="stars" title="Звёзды за успехи">⭐ <b id="starCount">${S.stars || 0}</b></span>
+        ${S.name ? `<button class="hi" data-act="editName" title="Изменить имя">👋 ${esc(S.name)}</button>` : ''}</div>
       <div class="grades" role="group" aria-label="Класс">
         <span>Класс</span>
         ${GRADES.map((g) => `<button class="grade" data-act="grade" data-g="${g}" aria-pressed="${String(S.grade) === g}">${g}</button>`).join('')}
@@ -424,7 +440,8 @@
     tabs.innerHTML = TABS.map(([id, ic, name]) =>
       `<button class="tab" data-act="tab" data-tab="${id}" ${V.tab === id ? 'aria-current="page"' : ''}><i aria-hidden="true">${ic}</i>${name}</button>`).join('');
     let body = '';
-    if (V.draw && byId(V.draw)) body = viewDraw();
+    if (S.name === undefined || V.editName) body = viewHello();
+    else if (V.draw && byId(V.draw)) body = viewDraw();
     else if (V.tab === 'words') body = viewWords();
     else if (V.tab === 'learn') body = viewLearn();
     else if (V.tab === 'stories') body = viewStories();
@@ -432,6 +449,19 @@
     app.innerHTML = header() + body;
     if (V.draw && byId(V.draw)) setupCanvas();
     afterRender();
+  }
+
+  function viewHello() {
+    return `<section class="panel card hello">
+      <div class="hellocat">${catSvg({ ...GINGER, eyes: 'happy', mouth: 'grin', extra: 'paws' })}</div>
+      <h2>Привет! Я Кот-Словарик</h2>
+      <p class="lead">Буду болеть за тебя на каждом слове. Как тебя зовут?</p>
+      <form id="nameForm" class="row" style="justify-content:center;width:100%">
+        <input type="text" id="nameInput" class="answer" maxlength="20" autocomplete="off" placeholder="Твоё имя" value="${esc(S.name || '')}" aria-label="Имя">
+        <button class="btn" type="submit">Го!</button>
+      </form>
+      ${S.name === undefined ? '<button class="btn small ghost" data-act="skipName">Пропустить</button>' : ''}
+    </section>`;
   }
 
   function needSelection(what) {
@@ -474,11 +504,22 @@
         <span><i style="background:var(--pencil)"></i>учу</span>
         <span><i style="background:var(--green)"></i>выучено (3 раза подряд без ошибок)</span>
       </div>
-      <div class="words">
-        ${ws.map((w) => `<button class="word" data-act="toggle" data-id="${esc(w.id)}" aria-pressed="${sel.has(w.id)}">
-          ${thumb(w)}<span>${marked(w.parts)}${noteHtml(w)}</span><span class="dot ${status(w.id)}"></span>
-        </button>`).join('')}
-      </div>
+      ${(() => {
+        const byLetter = new Map();
+        ws.forEach((w) => {
+          const L = w.id.charAt(0).toUpperCase().replace('Ё', 'Е');
+          if (!byLetter.has(L)) byLetter.set(L, []);
+          byLetter.get(L).push(w);
+        });
+        const letters = [...byLetter.keys()];
+        return `<nav class="abc" aria-label="Буквы">${letters.map((L) => `<button data-act="jump" data-l="${L}">${L}</button>`).join('')}</nav>
+        ${letters.map((L) => `<section class="letterblock" id="L-${L}">
+          <h3 class="alpha">${L}<span>${byLetter.get(L).length}</span></h3>
+          <div class="words">${byLetter.get(L).map((w) => `<button class="word" data-act="toggle" data-id="${esc(w.id)}" aria-pressed="${sel.has(w.id)}">
+            ${thumb(w)}<span>${marked(w.parts)}${noteHtml(w)}</span><span class="dot ${status(w.id)}"></span>
+          </button>`).join('')}</div>
+        </section>`).join('')}`;
+      })()}
       <details class="panel">
         <summary>Добавить слово, которого нет в списке</summary>
         <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
@@ -953,6 +994,7 @@
   function startTrain(mode, pool) {
     const list = shuffle(pool || trainPool()).slice(0, 15);
     if (!list.length) { toast('Нет слов для тренировки'); return; }
+    V.combo = 0;
     V.train = { mode, queue: list.map((w) => w.id), total: list.length, pos: 0, firstTry: 0, mistakes: [], repeated: new Set(), task: null };
     nextTask();
   }
@@ -1014,7 +1056,8 @@
     if (!again) {
       record(t.id, ok);
       if (ok) { T.firstTry++; addStars(1); }
-      react(ok);
+      V.combo = ok ? (V.combo || 0) + 1 : 0;
+      react(ok, ok && CAPS_COMBO[V.combo] ? pickOne(CAPS_COMBO[V.combo]) : null);
     }
     if (!ok && !again) {
       T.mistakes.push(t.id);
@@ -1181,6 +1224,8 @@
     return `
       <article class="panel card">
         <div class="result">${'★'.repeat(stars)}<span style="color:var(--line)">${'★'.repeat(3 - stars)}</span></div>
+        <div class="resultcat">${catSvg(stars === 3 ? { ...BLACK, eyes: 'cool', mouth: 'grin', extra: 'crown' } : stars === 2 ? { ...GINGER, eyes: 'happy', mouth: 'w', extra: 'thumb' } : { ...WHITE, eyes: 'side', mouth: 'flat', extra: 'paws' })}</div>
+        <div class="meme">${esc(withName(stars === 3 ? pickOne(['{n}, ЭТО БАЗА. ТЫ ИМБА', 'КОТ В ШОКЕ: {n} — ЛЕГЕНДА', 'БЕЗ КРИНЖА. ЧИСТЫЙ ВАЙБ ОТЛИЧНИКА']) : stars === 2 ? pickOne(['{n}, НОРМ! ЕЩЁ ЧУТЬ-ЧУТЬ — И ИМБА', 'ХОРОШО, НО КОТ ЖДЁТ ЛЕГЕНДАРНОГО']) : pickOne(['{n}, БЕЗ ПАНИКИ. ОШИБКИ — ЭТО ОПЫТ', 'КОТ ВЕРИТ В ТЕБЯ. ГО ЕЩЁ РАЗ'])))}</div>
         <h2>${stars === 3 ? 'Отлично!' : stars === 2 ? 'Хорошо!' : 'Надо ещё потренироваться'}</h2>
         <p class="lead">Без ошибок с первого раза: <b>${good} из ${total}</b></p>
         ${mist.length ? `<div style="display:flex;flex-direction:column;gap:8px;align-items:center"><span class="label">Повтори эти слова</span>
@@ -1202,12 +1247,19 @@
 
   // ---------- События ----------
   document.addEventListener('click', (e) => {
+    const j = e.target.closest('[data-act="jump"]');
+    if (j) {
+      const sec = document.getElementById('L-' + j.dataset.l);
+      if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
     const d = e.target.closest('[data-dact]');
     if (d) { drawAction(d); return; }
     const el = e.target.closest('[data-act]');
     if (!el) return;
     const act = el.dataset.act;
     const T = V.train;
+    const keepY = window.scrollY;
     switch (act) {
       case 'tab': V.draw = null; if (V.bolt) stopBolt(); V.tab = el.dataset.tab; if (V.tab !== 'train' && T && T.done) V.train = null; window.scrollTo(0, 0); break;
       case 'grade': V.draw = null; stopBolt(); S.grade = el.dataset.g; V.learn = 0; V.train = null; V.story = {}; V.excl = {}; save(); break;
@@ -1241,6 +1293,8 @@
       }
       case 'delWord': S.custom[S.grade].splice(+el.dataset.i, 1); save(); break;
       case 'say': speak(el.dataset.text); return;
+      case 'skipName': S.name = ''; save(); break;
+      case 'editName': V.editName = true; break;
       case 'cats': S.cats = S.cats === false; save(); break;
       case 'catTest': react(!!el.dataset.ok); return;
       case 'delReact': delPic(el.dataset.id); break;
@@ -1347,9 +1401,18 @@
       default: return;
     }
     render();
+    if (act === 'toggle' || act === 'exclTog' || act === 'fixTap') window.scrollTo(0, keepY);
   });
 
   document.addEventListener('submit', (e) => {
+    if (e.target.id === 'nameForm') {
+      e.preventDefault();
+      const first = S.name === undefined;
+      S.name = document.getElementById('nameInput').value.trim().slice(0, 20);
+      save(); V.editName = false; render();
+      if (S.name) react(true, first ? 'ПРИВЕТ, {n}! ГО УЧИТЬ СЛОВА' : 'ТЕПЕРЬ ТЫ {n}. ЗАПОМНИЛ');
+      return;
+    }
     if (e.target.id !== 'writeForm') return;
     e.preventDefault();
     const t = V.train && V.train.task;

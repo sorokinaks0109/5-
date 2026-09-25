@@ -226,6 +226,19 @@ img.thumb { width: 28px; height: 28px; border-radius: 7px; object-fit: cover; bo
 .bolt .opts { flex-direction: column; width: 100%; max-width: 440px; }
 .boltopt { min-height: 70px; width: 100%; overflow-wrap: anywhere; line-height: 1.15; }
 
+/* Буквы в списке слов */
+.abc { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 4; display: flex; gap: 4px; overflow-x: auto; padding: 8px 0; background: var(--paper); scrollbar-width: none; }
+.abc button { flex: none; min-width: 34px; height: 34px; border-radius: 10px; border: 2px solid var(--line); background: var(--paper-2); font-weight: 900; color: var(--pen); }
+.letterblock { display: flex; flex-direction: column; gap: 8px; scroll-margin-top: 60px; }
+.alpha { font: 400 36px/1 var(--hand); color: var(--red); margin: 6px 0 0; display: flex; align-items: baseline; gap: 10px; border-bottom: 2px dashed var(--line); padding-bottom: 4px; }
+.alpha span { font: 700 13px/1 var(--body); color: var(--ink-soft); }
+
+/* Знакомство */
+.hi { border: 2px solid var(--line); background: var(--paper-2); border-radius: 999px; padding: 2px 10px; font-weight: 800; font-size: 14px; color: var(--ink); }
+.hellocat { width: 150px; height: 140px; }
+.resultcat { width: 120px; height: 112px; }
+.meme { background: #1d2b4f; color: #fff; font: 900 15px/1.2 var(--body); letter-spacing: .03em; padding: 8px 14px; border-radius: 12px; max-width: 340px; }
+
 /* Коты-реакции */
 .react { position: fixed; right: 10px; top: calc(10px + env(safe-area-inset-top, 0px)); z-index: 15; width: 118px; background: #fff; border: 3px solid #1d2b4f; border-radius: 18px; overflow: hidden; box-shadow: 0 6px 18px rgba(0,0,0,.25); transform: translateY(-20px) scale(.7) rotate(6deg); opacity: 0; transition: transform .25s cubic-bezier(.3,1.6,.5,1), opacity .2s; pointer-events: none; }
 .react.show { transform: none; opacity: 1; }
@@ -239,7 +252,7 @@ img.thumb { width: 28px; height: 28px; border-radius: 7px; object-fit: cover; bo
 .ownreact button { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; border: 0; background: var(--red); color: #fff; font-size: 12px; line-height: 22px; padding: 0; }
 
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
-.word > span:nth-child(2) { min-width: 0; overflow-wrap: anywhere; }
+.word > span:nth-child(2) { min-width: 0; overflow-wrap: break-word; hyphens: auto; }
 @media (max-width: 420px) {
   .words { grid-template-columns: repeat(2, 1fr); }
   .word { font-size: 15px; padding: 8px; gap: 6px; }
