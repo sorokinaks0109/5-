@@ -1,4 +1,4 @@
-/* Словарик «Школы России»: выбор класса, запоминание, истории, тренировка. */
+/* Школьный словарик: выбор класса, запоминание, истории, тренировка. */
 (function () {
   'use strict';
 
@@ -79,7 +79,7 @@
   const BUILTIN = {};
   const WORD_SRC = window.SLOVARIK_WORDS || {};
   Object.keys(WORD_SRC).forEach((g) => { BUILTIN[g] = parseList(WORD_SRC[g]); });
-  const GRADES = Object.keys(BUILTIN).sort();
+  const GRADES = Object.keys(BUILTIN).sort((a, b) => a - b);
 
   function gradeWords(g) {
     const custom = (S.custom[g] || []).map(parseLine);
@@ -307,7 +307,9 @@
           ${custom.length ? `<div class="chips">${custom.map((c, i) => `<span class="chip">${marked(parseLine(c).parts)} <button class="btn small ghost" style="min-height:0;padding:0 6px;border:0" data-act="delWord" data-i="${i}" aria-label="Удалить">✕</button></span>`).join('')}</div>` : ''}
         </div>
       </details>
-      <p class="muted">Списки взяты из словариков учебника «Русский язык» (УМК «Школа России»). Если в вашем учебнике другие слова, добавьте их выше.</p>`;
+      <p class="muted">${+S.grade <= 4
+        ? 'Списки взяты из словариков учебника «Русский язык» (УМК «Школа России»).'
+        : 'Списки взяты из учебника «Русский язык» Ладыженской, Баранова, Тростенцовой.'} Если в вашем учебнике другие слова, добавьте их выше.</p>`;
   }
 
   // ---------- Вкладка «Запоминаю» ----------

@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Словарик «Школы России»</title>
-<meta name="description" content="Словарные слова 1–4 класса: запоминаем с ассоциациями, сочиняем смешные истории и пишем диктант">
+<title>Школьный словарик</title>
+<meta name="description" content="Словарные слова 1–8 класса: запоминаем с ассоциациями, сочиняем смешные истории и пишем диктант">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Neucha&family=Nunito:wght@500;700;800;900&display=swap">
@@ -74,11 +74,11 @@ button { cursor: pointer; }
 .top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding-top: 16px; }
 .logo { font: 400 34px/1 var(--hand); color: var(--pen); margin: 0; letter-spacing: .5px; }
 .logo b { color: var(--red); font-weight: 400; }
-.grades { display: flex; gap: 6px; align-items: center; }
+.grades { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .grades span { font-size: 13px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .08em; margin-right: 4px; font-weight: 800; }
 .grade {
-  width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--line);
-  background: var(--paper-2); font-weight: 900; font-size: 19px; color: var(--ink-soft);
+  width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--line);
+  background: var(--paper-2); font-weight: 900; font-size: 18px; color: var(--ink-soft);
 }
 .grade[aria-pressed="true"] { background: var(--pen); border-color: var(--pen); color: var(--paper-2); }
 
@@ -192,7 +192,14 @@ textarea { min-height: 80px; resize: vertical; font-family: var(--hand); font-si
 .toast { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--paper); padding: 10px 18px; border-radius: 12px; font-weight: 700; z-index: 9; max-width: calc(100% - 32px); }
 details summary { cursor: pointer; font-weight: 800; color: var(--pen); }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
-@media (max-width: 420px) { .words { grid-template-columns: repeat(2, 1fr); } .word { font-size: 16px; } }
+.word > span:nth-child(2) { min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 420px) {
+  .words { grid-template-columns: repeat(2, 1fr); }
+  .word { font-size: 15px; padding: 8px; gap: 6px; }
+  .word .e { font-size: 19px; }
+  .grades { gap: 4px; }
+  .grade { width: 34px; height: 34px; font-size: 16px; }
+}
 </style>
 </head>
 <body>
