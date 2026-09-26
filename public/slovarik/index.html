@@ -317,6 +317,11 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; }
 .pwords { max-height: 260px; overflow-y: auto; padding: 2px; }
 .pwords .chip { font-size: 15px; }
 
+.parententry { display: flex; flex-direction: column; gap: 6px; align-items: center; border-top: 2px dashed var(--line); padding-top: 14px; margin-top: 4px; width: 100%; }
+.forparents { display: flex; flex-direction: column; gap: 10px; border-color: var(--pen); background: var(--pen-soft); }
+.kid { display: flex; flex-direction: column; gap: 10px; }
+.howto { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+
 /* Коты-реакции */
 .react { position: fixed; right: 10px; top: calc(10px + env(safe-area-inset-top, 0px)); z-index: 15; width: 118px; background: #fff; border: 3px solid #1d2b4f; border-radius: 18px; overflow: hidden; box-shadow: 0 6px 18px rgba(0,0,0,.25); transform: translateY(-20px) scale(.7) rotate(6deg); opacity: 0; transition: transform .25s cubic-bezier(.3,1.6,.5,1), opacity .2s; pointer-events: none; }
 .react.show { transform: none; opacity: 1; }
