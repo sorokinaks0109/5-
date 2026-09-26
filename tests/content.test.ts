@@ -9,36 +9,44 @@ describe('content.json', () => {
 
   it('банк больше, чем выдаётся на один проход', () => {
     const d = content.settings.draw;
-    expect(content.stage1.situations.length).toBeGreaterThanOrEqual(20);
-    expect(content.stage1.situations.length).toBeGreaterThan(d.stage1Situations);
-    expect(content.stage2.images.length).toBeGreaterThan(d.stage2Images);
-    expect(content.stage3.processes.length).toBeGreaterThan(d.stage3Processes);
-    expect(content.stage4.cases.length).toBeGreaterThan(d.stage4Cases);
-    expect(content.stage4.questions.length).toBeGreaterThan(d.stage4Questions);
+    expect(content.waste.situations.length).toBeGreaterThanOrEqual(20);
+    expect(content.waste.situations.length).toBeGreaterThan(d.wasteSituations);
+    expect(content.fiveS.variants.filter((v) => v.type === 'inbox').length).toBeGreaterThan(1);
+    expect(content.fiveS.variants.filter((v) => v.type !== 'inbox').length).toBeGreaterThan(1);
+    expect(content.flow.processes.length).toBeGreaterThan(d.flowProcesses);
+    expect(content.flow.little.length).toBeGreaterThan(1);
+    expect(content.eightSteps.situations.length).toBeGreaterThan(d.eightStepsSituations);
+    expect(content.eightSteps.tools.length).toBeGreaterThan(d.eightStepsTools);
+    expect(content.whys.cases.length).toBeGreaterThan(d.whysCases);
+    expect(content.whys.questions.length).toBeGreaterThan(d.whysQuestions);
   });
 
   it('публичная часть не содержит заданий и ответов', () => {
     const pub = JSON.stringify(toPublicContent(content));
-    expect(pub).not.toContain('situations');
+    expect(pub).not.toContain('"situations":[');
+    expect(pub).not.toContain('"emails"');
     expect(pub).not.toContain('"answer"');
     expect(pub).not.toContain('zones');
   });
 
   it('находит ошибки в испорченном контенте', () => {
     const broken = structuredClone(content);
-    broken.stage1.situations[0].answer = 'нет-такого';
-    broken.settings.points.stage2.order = 1;
+    broken.waste.situations[0].answer = 'нет-такого';
+    broken.settings.points.fiveS.order = 1;
     const errors = validateContent(broken);
     expect(errors.some((e) => e.includes('нет-такого'))).toBe(true);
-    expect(errors.some((e) => e.includes('points.stage2'))).toBe(true);
+    expect(errors.some((e) => e.includes('points.fiveS'))).toBe(true);
   });
 
-  it('на каждой картинке 5С ровно по одному нарушению на шаг', () => {
-    for (const img of content.stage2.images) {
-      expect(img.zones.map((z) => z.step).sort()).toEqual(content.stage2.steps.map((s) => s.id).sort());
+  it('в каждом варианте 5С ровно по одному нарушению на шаг', () => {
+    for (const v of content.fiveS.variants) {
+      const violations = v.type === 'inbox' ? v.violations : v.zones;
+      expect(violations.map((z) => z.step).sort()).toEqual(content.fiveS.steps.map((s) => s.id).sort());
     }
     const broken = structuredClone(content);
-    broken.stage2.images[0].zones.pop();
+    const first = broken.fiveS.variants[0];
+    if (first.type === 'inbox') first.violations.pop();
+    else first.zones.pop();
     expect(validateContent(broken).some((e) => e.includes('по одному на каждый шаг'))).toBe(true);
   });
 });

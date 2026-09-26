@@ -100,6 +100,12 @@ export class MemoryStore implements Store {
   async listIdeaScores() {
     return clone(this.data.scores);
   }
+  async resetResults() {
+    this.data.runs = [];
+    this.data.ideas = [];
+    this.data.scores = [];
+    this.changed();
+  }
   async saveIdeaScore(score: IdeaScore) {
     const rest = this.data.scores.filter((s) => !(s.ideaAccountId === score.ideaAccountId && s.juryId === score.juryId));
     this.data.scores = [...rest, clone(score)];

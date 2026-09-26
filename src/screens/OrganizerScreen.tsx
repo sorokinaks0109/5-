@@ -4,7 +4,7 @@ import { api } from '../api/index.ts';
 import { Emblem } from '../components/Emblem.tsx';
 import { pc } from '../content.ts';
 import { prettyCode } from '../core/codes.ts';
-import { STAGES, type Account, type ProgressRow, type ResultsView, type StageStatus } from '../core/types.ts';
+import { AUTO_STAGES, STAGES, type Account, type ProgressRow, type ResultsView, type StageStatus } from '../core/types.ts';
 import { formatDate, meters, useApp } from '../hooks.ts';
 import { downloadCsv, downloadXlsx, stamp, type Sheet } from '../lib/export.ts';
 import { RatingMountain } from './LeaderboardScreen.tsx';
@@ -144,6 +144,33 @@ function TourTab() {
             </div>
           </div>
         )}
+        <div className="card">
+          <h3>Перед настоящим туром</h3>
+          <p className="small">
+            Сотрите результаты пробных прохождений: вершины, идеи и оценки жюри. Коды и ники останутся, а тур вернётся в
+            состояние «не открыт».
+          </p>
+          <button
+            className="btn btn-ghost"
+            disabled={busy}
+            onClick={async () => {
+              if (!window.confirm('Стереть все результаты: пройденные вершины, идеи и оценки жюри? Коды и ники останутся.')) return;
+              if (!window.confirm('Точно? Вернуть результаты будет нельзя.')) return;
+              setBusy(true);
+              try {
+                await api.orgReset();
+                await refresh();
+                info('Результаты очищены. Тур можно открывать заново.');
+              } catch (e) {
+                error(e);
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            🧹 Очистить результаты
+          </button>
+        </div>
         {api.mode === 'demo' && (
           <div className="card">
             <span className="tag draft">ДЕМО</span>
@@ -402,7 +429,7 @@ function ResultsTab() {
       'Код',
       ...pc.stages.map((s, i) => `В${i + 1} ${s.name}, м`),
       'Итого, м',
-      'Время В1–В5, мин',
+      `Время В1–В${AUTO_STAGES.length}, мин`,
       'Подсказок',
       'Оценок жюри',
     ],
@@ -477,9 +504,9 @@ function ResultsTab() {
                 <tr>
                   <th>Место</th>
                   <th>Ник</th>
-                  <th>В1–В6</th>
+                  <th>В1–В{STAGES.length}</th>
                   <th>Итого</th>
-                  <th>Время В1–5</th>
+                  <th>Время В1–{AUTO_STAGES.length}</th>
                 </tr>
               </thead>
               <tbody>

@@ -1,4 +1,5 @@
 // Поля ввода для разных видов заданий.
+import { useState } from 'react';
 import {
   DndContext,
   KeyboardSensor,
@@ -270,10 +271,67 @@ export function FlagsInput({
 }
 
 // ---------- Число ----------
+/** Тренажёр закона Литтла: срок = заявки в работе ÷ скорость */
+function LittleCalc({
+  calc,
+  onPick,
+  disabled,
+}: {
+  calc: { wip: number; cr: number; target: number };
+  onPick: (wip: number) => void;
+  disabled: boolean;
+}) {
+  const [wip, setWip] = useState(calc.wip);
+  const [cr, setCr] = useState(calc.cr);
+  const lt = Math.round((wip / cr) * 10) / 10;
+  const ok = lt <= calc.target;
+  const scaleMax = Math.max(calc.wip / calc.cr, calc.target) * 1.3;
+  const icons = Math.min(40, Math.round(wip / Math.max(1, Math.ceil(calc.wip / 40))));
+  return (
+    <div className="little">
+      <div className="little-formula">
+        Срок = <b>{wip}</b> заявок ÷ <b>{cr}</b> в день = <b className={ok ? 'good' : 'bad'}>{String(lt).replace('.', ',')} дн.</b>
+      </div>
+      <div className="little-meter" aria-hidden="true">
+        <span className={`little-fill ${ok ? 'good' : 'bad'}`} style={{ width: `${Math.min(100, (lt / scaleMax) * 100)}%` }} />
+        <span className="little-target" style={{ left: `${(calc.target / scaleMax) * 100}%` }}>
+          цель {String(calc.target).replace('.', ',')} дн.
+        </span>
+      </div>
+      <div className="little-queue" aria-hidden="true">
+        {Array.from({ length: icons }, (_, i) => (
+          <span key={i}>📄</span>
+        ))}
+      </div>
+      <label className="little-slider">
+        <span>
+          Заявок в работе: <b>{wip}</b>
+        </span>
+        <input type="range" min={1} max={Math.round(calc.wip * 1.5)} value={wip} onChange={(e) => setWip(Number(e.target.value))} />
+      </label>
+      <label className="little-slider">
+        <span>
+          Скорость, заявок в день: <b>{cr}</b>
+        </span>
+        <input type="range" min={1} max={Math.round(calc.cr * 2)} value={cr} onChange={(e) => setCr(Number(e.target.value))} />
+      </label>
+      <p className="small muted" style={{ margin: '4px 0 0' }}>
+        {ok ? '✅ Срок в пределах цели.' : '⏳ Пока дольше цели.'} Меньше заявок в работе или выше скорость, и срок сокращается.
+      </p>
+      {!disabled && (
+        <button type="button" className="btn btn-ghost btn-small" style={{ marginTop: 8 }} onClick={() => onPick(wip)}>
+          Взять {wip} в ответ
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function NumberInput({ item, value, onChange, disabled, review }: Props<NumberItem, string>) {
   const c = review?.correct as { answer: number; tolerance: number } | undefined;
   return (
     <div>
+      {item.calc && <LittleCalc calc={item.calc} disabled={disabled} onPick={(w) => onChange(String(w))} />}
       <div className="row" style={{ flexWrap: 'nowrap' }}>
         <input
           type="text"

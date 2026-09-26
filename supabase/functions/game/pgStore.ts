@@ -74,7 +74,7 @@ export class PgStore implements Store {
     check(
       await this.db
         .from('tour')
-        .update({ state: t.state, opens_at: t.opensAt, closes_at: t.closesAt, results_published: t.resultsPublished })
+        .update({ state: t.state, opens_at: t.opensAt, closes_at: t.closesAt, results_published: t.resultsPublished, salt: t.salt })
         .eq('id', 1),
     );
   }
@@ -186,6 +186,13 @@ export class PgStore implements Store {
         updated_at: i.updatedAt,
       }),
     );
+  }
+
+  async resetResults() {
+    // Удаляем всё: фильтр нужен, потому что Supabase не даёт удалять без условия
+    check(await this.db.from('idea_scores').delete().not('jury_id', 'is', null));
+    check(await this.db.from('ideas').delete().not('account_id', 'is', null));
+    check(await this.db.from('stage_runs').delete().not('account_id', 'is', null));
   }
 
   async listIdeaScores() {

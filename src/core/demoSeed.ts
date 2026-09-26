@@ -63,8 +63,10 @@ function wrongAnswer(key: AnswerKey, rng: Rng): AnswerValue {
       return shuffle(key.order, rng);
     case 'hotspots':
       return key.zones.slice(0, Math.ceil(key.zones.length / 2)).map((z) => ({ x: z.x + 1, y: z.y + 1 }));
+    case 'inbox':
     case 'fishbone': {
       const ids = Object.keys(key.placement);
+      // Три карточки «теряются», остальные на своих местах
       return Object.fromEntries(ids.map((id, i) => [id, i < 3 ? 'none-x' : key.placement[id]]));
     }
     case 'match': {

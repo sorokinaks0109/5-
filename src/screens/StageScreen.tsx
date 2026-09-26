@@ -14,12 +14,14 @@ import { ItemCard } from '../items/ItemCard.tsx';
 /** Задания, которые нужно решать строго по порядку (цепочка «5 почему»). */
 function blockedReason(view: StageView, idx: number): string | undefined {
   const id = view.items[idx].id;
-  const why = id.match(/^s4-why-(\d+)$/);
-  if (why && Number(why[1]) > 1 && !view.answers[`s4-why-${Number(why[1]) - 1}`])
+  const why = id.match(/^whys-why-(\d+)$/);
+  if (why && Number(why[1]) > 1 && !view.answers[`whys-why-${Number(why[1]) - 1}`])
     return 'Сначала ответьте на предыдущий шаг «почему».';
-  if (id === 's2-match' && !view.answers['s2-hotspots'])
-    return 'Сначала найдите нарушения на картинке: здесь будут те же самые нарушения.';
-  if (id === 's4-root' && view.items.some((i) => i.id.startsWith('s4-why-') && !view.answers[i.id]))
+  if (id === 'fiveS-match' && !view.answers['fiveS-find'])
+    return view.items.some((i) => i.kind === 'inbox')
+      ? 'Сначала разберите почту, а потом переходите к этому заданию.'
+      : 'Сначала найдите нарушения на картинке: здесь будут те же самые нарушения.';
+  if (id === 'whys-root' && view.items.some((i) => i.id.startsWith('whys-why-') && !view.answers[i.id]))
     return 'Сначала пройдите все шаги «5 почему».';
   return undefined;
 }
@@ -136,7 +138,7 @@ export function StageScreen({ stage }: { stage: StageNo }) {
     return `dot ${st} ${i === idx ? 'current' : ''}`;
   };
 
-  const flagsOrder = view.answers['s3-order']?.value as string[] | undefined;
+  const flagsOrder = view.answers['flow-order']?.value as string[] | undefined;
 
   return (
     <div className="stage-page" style={{ backgroundColor: finished ? theme.soft : WEATHER_BG[view.weather.level] }}>
