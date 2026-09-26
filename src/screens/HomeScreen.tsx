@@ -96,7 +96,7 @@ export function HomeScreen() {
               </div>
             </section>
             <div className="card" style={{ padding: 8 }}>
-              <Mountain stages={p.stages} nick={me.nick} onPeak={(st) => start(p.stages[st - 1])} />
+              <Mountain stages={p.stages} nick={me.nick} published={published} onPeak={(st) => start(p.stages[st - 1])} />
             </div>
             <TourInfo />
           </div>
