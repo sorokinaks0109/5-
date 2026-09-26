@@ -46,6 +46,7 @@ export function createClient(t: Transport) {
     juryScore: (workNo: number, scores: Record<string, number>, comment: string) =>
       c<JuryWork[]>('juryScore', { workNo, scores, comment }),
     orgTour: (action: TourAction, closesAt?: string) => c<TourView>('orgTour', { action, closesAt }),
+    orgReset: () => c<TourView>('orgReset'),
     orgGenerateCodes: (role: 'participant' | 'jury', count: number) => c<Account[]>('orgGenerateCodes', { role, count }),
     orgCodes: () => c<Account[]>('orgCodes'),
     orgProgress: () => c<ProgressRow[]>('orgProgress'),

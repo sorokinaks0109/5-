@@ -1,11 +1,17 @@
 // Общие типы игры. Файл без зависимостей: используется и в браузере, и в серверной функции.
 
 export type Role = 'participant' | 'jury' | 'organizer';
-export type StageNo = 1 | 2 | 3 | 4 | 5 | 6;
-export const STAGES: StageNo[] = [1, 2, 3, 4, 5, 6];
-/** Вершина с идеей — оценивает жюри. Остальные проверяются автоматически. */
-export const IDEA_STAGE: StageNo = 6;
-export const AUTO_STAGES: StageNo[] = [1, 2, 3, 4, 5];
+export type StageNo = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+export const STAGES: StageNo[] = [1, 2, 3, 4, 5, 6, 7];
+
+/** Что за вершина стоит на каждом месте маршрута. Раздел content.json называется так же. */
+export type StageKind = 'waste' | 'fiveS' | 'flow' | 'eightSteps' | 'whys' | 'fishbone' | 'idea';
+export const STAGE_KINDS: StageKind[] = ['waste', 'fiveS', 'flow', 'eightSteps', 'whys', 'fishbone', 'idea'];
+export const kindOf = (stage: StageNo): StageKind => STAGE_KINDS[stage - 1];
+
+/** Вершина с идеей: её оценивает жюри. Остальные проверяются автоматически. */
+export const IDEA_STAGE: StageNo = 7;
+export const AUTO_STAGES: StageNo[] = [1, 2, 3, 4, 5, 6];
 
 // ---------- Контент (content.json) ----------
 
@@ -34,19 +40,23 @@ export interface ContentSettings {
   stageMaxAltitude: number;
   /** Сколько секунд после окончания таймера сервер ещё принимает ответ (задержка сети) */
   graceSeconds: number;
+  /** Доля участников, которым на вершине 5С выпадает почта, а не склад (0.5 = половина) */
+  fiveSOfficeShare: number;
   draw: {
-    stage1Situations: number;
-    stage2Images: number;
-    stage3Processes: number;
-    stage4Cases: number;
-    stage4Questions: number;
-    stage5Cases: number;
+    wasteSituations: number;
+    flowProcesses: number;
+    eightStepsSituations: number;
+    eightStepsTools: number;
+    whysCases: number;
+    whysQuestions: number;
+    fishboneCases: number;
   };
   points: {
-    stage2: { order: number; hotspots: number; match: number };
-    stage3: { order: number; flags: number; number: number };
-    stage4: { whys: number; root: number; measures: number; questions: number };
-    stage5: { fishbone: number; focus: number; next: number };
+    fiveS: { order: number; find: number; match: number };
+    flow: { order: number; flags: number; number: number; littleCalc: number; littleTarget: number };
+    eightSteps: { order: number; phases: number; tools: number; situations: number; loop: number };
+    whys: { whys: number; root: number; measures: number; questions: number };
+    fishbone: { fishbone: number; focus: number; next: number };
   };
 }
 
@@ -64,22 +74,28 @@ export interface Situation {
   explanation?: string;
 }
 
-export interface Zone {
+/** Нарушение 5С: что не так и какой шаг нарушен */
+export interface Violation {
   id: string;
-  /** Координаты прямоугольника в процентах от ширины/высоты картинки */
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  /** Что за нарушение (участник видит после ответа и в задании на сопоставление) */
-  label: string;
   /** Какой шаг 5С нарушен: sort, order, shine, standard, sustain */
   step: string;
+  /** Что за нарушение (участник видит его в задании на сопоставление и в разборе) */
+  label: string;
   /** Короткое пояснение для разбора */
   explain?: string;
 }
 
+/** Нарушение на картинке: прямоугольник в процентах от ширины/высоты */
+export interface Zone extends Violation {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** Вариант 5С «склад»: найти нарушения на картинке */
 export interface WarehouseImage {
+  type?: 'picture';
   id: string;
   title: string;
   description: string;
@@ -88,9 +104,35 @@ export interface WarehouseImage {
   aspect: number;
   /** Нарушения: по одному на каждый шаг 5С */
   zones: Zone[];
-  hints?: { order?: string; hotspots?: string; match?: string };
-  explanations?: { hotspots?: string; match?: string };
+  hints?: { find?: string; match?: string };
+  explanations?: { find?: string; match?: string };
 }
+
+export interface Email {
+  id: string;
+  from: string;
+  subject: string;
+  date: string;
+  /** Куда правильно убрать письмо: id папки */
+  answer: string;
+}
+
+/** Вариант 5С «почта»: разобрать входящие */
+export interface InboxVariant {
+  type: 'inbox';
+  id: string;
+  title: string;
+  description: string;
+  folders: (Option & { icon: string; hint?: string })[];
+  emails: Email[];
+  /** Нарушения 5С в работе с почтой: по одному на каждый шаг */
+  violations: Violation[];
+  hints?: { find?: string; match?: string };
+  explanations?: { find?: string; match?: string };
+}
+
+export type FiveSVariant = WarehouseImage | InboxVariant;
+export const isInbox = (v: FiveSVariant): v is InboxVariant => v.type === 'inbox';
 
 export interface ProcessCard {
   id: string;
@@ -112,6 +154,36 @@ export interface Process {
   savingTolerance: number;
   hints?: { order?: string; flags?: string; number?: string };
   explanations?: { order?: string; flags?: string; number?: string };
+}
+
+/** Закон Литтла: срок = заявки в работе / скорость */
+export interface LittleTask {
+  id: string;
+  context: string;
+  wip: number;
+  cr: number;
+  /** Цель по сроку для второго вопроса */
+  target: number;
+  tolerance: number;
+  explanation?: string;
+}
+
+export interface EightStep {
+  id: string;
+  text: string;
+  question: string;
+  /** id этапа: problem, solution, implementation */
+  phase: string;
+}
+
+export interface EightStepsContent {
+  steps: EightStep[];
+  phases: Option[];
+  tools: (Option & { answer: string })[];
+  situations: (Option & { answer: string; hint?: string; explanation?: string })[];
+  loop: ChoiceQuestion;
+  hints?: { order?: string; phases?: string; tools?: string };
+  explanations?: { order?: string; phases?: string; tools?: string };
 }
 
 export interface ChoiceQuestion {
@@ -181,19 +253,21 @@ export interface Criterion {
 
 export interface Content {
   settings: ContentSettings;
+  /** Названия и вступления вершин, по порядку маршрута */
   stages: StageText[];
-  stage1: { wasteTypes: (Option & { description: string })[]; situations: Situation[] };
-  stage2: {
-    /** Шаги 5С. look — подсказка «что искать на картинке» */
+  waste: { wasteTypes: (Option & { description: string })[]; situations: Situation[] };
+  fiveS: {
+    /** Шаги 5С. look — подсказка «что искать» */
     steps: (Option & { description: string; look?: string })[];
     orderQuestion: string;
     orderHint?: string;
     orderExplanation?: string;
-    images: WarehouseImage[];
+    variants: FiveSVariant[];
   };
-  stage3: { processes: Process[] };
-  stage4: { cases: Case[]; questions: (ChoiceQuestion & { id: string })[] };
-  stage5: {
+  flow: { processes: Process[]; little: LittleTask[] };
+  eightSteps: EightStepsContent;
+  whys: { cases: Case[]; questions: (ChoiceQuestion & { id: string })[] };
+  fishbone: {
     categories: (Option & { icon: string; hint: string })[];
     cases: FishboneCase[];
     next: ChoiceQuestion;
@@ -205,14 +279,14 @@ export interface Content {
 export interface PublicContent {
   settings: ContentSettings;
   stages: Content['stages'];
-  wasteTypes: Content['stage1']['wasteTypes'];
-  steps: Content['stage2']['steps'];
+  wasteTypes: Content['waste']['wasteTypes'];
+  steps: Content['fiveS']['steps'];
   idea: Content['idea'];
 }
 
 // ---------- Задания, которые видит участник ----------
 
-export type ItemKind = 'choice' | 'multi' | 'order' | 'hotspots' | 'match' | 'flags' | 'number' | 'fishbone';
+export type ItemKind = 'choice' | 'multi' | 'order' | 'hotspots' | 'match' | 'flags' | 'number' | 'fishbone' | 'inbox';
 
 export interface PublicItemBase {
   id: string;
@@ -254,6 +328,8 @@ export interface FlagsItem extends PublicItemBase {
 export interface NumberItem extends PublicItemBase {
   kind: 'number';
   unit: string;
+  /** Тренажёр закона Литтла: бегунки «заявок в работе» и «скорость», срок считается на лету */
+  calc?: { wip: number; cr: number; target: number };
 }
 
 /** Диаграмма Исикавы: разложить причины по «костям» 6М */
@@ -266,7 +342,23 @@ export interface FishboneItem extends PublicItemBase {
   allowNone: boolean;
 }
 
-export type PublicItem = ChoiceItem | MultiItem | OrderItem | HotspotsItem | MatchItem | FlagsItem | NumberItem | FishboneItem;
+/** Почта 5С: разложить письма по папкам */
+export interface InboxItem extends PublicItemBase {
+  kind: 'inbox';
+  folders: (Option & { icon: string; hint?: string })[];
+  emails: { id: string; from: string; subject: string; date: string }[];
+}
+
+export type PublicItem =
+  | ChoiceItem
+  | MultiItem
+  | OrderItem
+  | HotspotsItem
+  | MatchItem
+  | FlagsItem
+  | NumberItem
+  | FishboneItem
+  | InboxItem;
 
 /** Ключ ответа — живёт только на сервере (или в демо) */
 export type AnswerKey =
@@ -277,7 +369,8 @@ export type AnswerKey =
   | { kind: 'match'; pairs: Record<string, string> }
   | { kind: 'flags'; answers: string[] }
   | { kind: 'number'; answer: number; tolerance: number }
-  | { kind: 'fishbone'; placement: Record<string, string> };
+  | { kind: 'fishbone'; placement: Record<string, string> }
+  | { kind: 'inbox'; placement: Record<string, string> };
 
 export interface InternalItem {
   item: PublicItem;
@@ -386,6 +479,8 @@ export interface Store {
   saveIdea(idea: Idea): Promise<void>;
   listIdeaScores(): Promise<IdeaScore[]>;
   saveIdeaScore(score: IdeaScore): Promise<void>;
+  /** Стирает прохождения, идеи и оценки. Коды и ники остаются. */
+  resetResults(): Promise<void>;
 }
 
 // ---------- Ответы сервиса (что уходит в браузер) ----------

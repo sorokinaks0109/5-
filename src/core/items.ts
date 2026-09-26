@@ -2,6 +2,8 @@
 import { GameError } from './errors.ts';
 import { splitPoints } from './scoring.ts';
 import type {
+  ChoiceQuestion,
+  Violation,
   AnswerKey,
   AnswerValue,
   Assignment,
@@ -12,7 +14,7 @@ import type {
   ReviewEntry,
   StageNo,
 } from './types.ts';
-import { NOT_A_CAUSE } from './types.ts';
+import { NOT_A_CAUSE, isInbox, kindOf } from './types.ts';
 
 function byOrder<T extends { id: string }>(list: T[], order?: string[]): T[] {
   if (!order) return list.slice();
@@ -30,287 +32,399 @@ function opts(list: Option[]): Option[] {
 
 /** Заголовок и вводный текст этапа (кейс, процесс или картинка). */
 export function stageIntro(stage: StageNo, content: Content, a: Assignment): { title: string; text: string } | undefined {
-  if (stage === 2) {
-    const img = content.stage2.images.find((i) => i.id === a.group);
-    return img && { title: img.title, text: img.description };
+  const find = <T extends { id: string }>(list: T[]) => list.find((x) => x.id === a.group);
+  switch (kindOf(stage)) {
+    case 'fiveS': {
+      const v = find(content.fiveS.variants);
+      return v && { title: v.title, text: v.description };
+    }
+    case 'flow': {
+      const p = find(content.flow.processes);
+      return p && { title: p.title, text: p.description };
+    }
+    case 'whys': {
+      const c = find(content.whys.cases);
+      return c && { title: c.title, text: c.text };
+    }
+    case 'fishbone': {
+      const c = find(content.fishbone.cases);
+      return c && { title: c.title, text: c.text };
+    }
+    default:
+      return undefined;
   }
-  if (stage === 3) {
-    const p = content.stage3.processes.find((i) => i.id === a.group);
-    return p && { title: p.title, text: p.description };
-  }
-  if (stage === 4) {
-    const c = content.stage4.cases.find((i) => i.id === a.group);
-    return c && { title: c.title, text: c.text };
-  }
-  if (stage === 5) {
-    const c = content.stage5.cases.find((i) => i.id === a.group);
-    return c && { title: c.title, text: c.text };
-  }
-  return undefined;
 }
+
+/** Вопрос с одним ответом из content.json → задание */
+function choiceItem(
+  id: string,
+  title: string,
+  q: ChoiceQuestion,
+  maxPoints: number,
+  order?: string[],
+): InternalItem {
+  return {
+    item: { id, kind: 'choice', title, prompt: q.question, maxPoints, hasHint: !!q.hint, options: opts(byOrder(q.options, order)) },
+    key: { kind: 'choice', answer: q.answer },
+    hint: q.hint,
+    explanation: q.explanation,
+  };
+}
+
+const round1 = (n: number) => Math.round(n * 10) / 10;
+/** Число по-русски: 1,5 вместо 1.5 */
+const ru = (n: number) => String(round1(n)).replace('.', ',');
 
 export function buildItems(stage: StageNo, content: Content, a: Assignment): InternalItem[] {
   const pts = content.settings.points;
   const max = content.settings.stageMaxAltitude;
 
-  if (stage === 1) {
-    const split = splitPoints(max, a.items.length);
-    return a.items.map((ai, i) => {
-      const s = content.stage1.situations.find((x) => x.id === ai.ref);
-      if (!s) throw new Error(`Ситуация «${ai.ref}» не найдена`);
-      return {
-        item: {
-          id: ai.id,
-          kind: 'choice',
-          title: `Ситуация ${i + 1}`,
-          prompt: s.text,
-          maxPoints: split[i],
-          hasHint: !!s.hint,
-          options: opts(byOrder(content.stage1.wasteTypes, ai.order)),
-        },
-        key: { kind: 'choice', answer: s.answer },
-        hint: s.hint,
-        explanation: s.explanation,
-      };
-    });
-  }
-
-  if (stage === 2) {
-    const img = content.stage2.images.find((x) => x.id === a.group);
-    if (!img) throw new Error(`Картинка «${a.group}» не найдена`);
-    const steps = content.stage2.steps;
-    return a.items.map((ai): InternalItem => {
-      if (ai.ref === 'order') {
-        return {
-          item: {
-            id: ai.id,
-            kind: 'order',
-            title: 'Шаги 5С по порядку',
-            prompt: content.stage2.orderQuestion,
-            maxPoints: pts.stage2.order,
-            hasHint: !!content.stage2.orderHint,
-            elements: opts(byOrder(steps, ai.order)),
-          },
-          key: { kind: 'order', order: steps.map((s) => s.id) },
-          hint: content.stage2.orderHint,
-          explanation: content.stage2.orderExplanation,
-        };
-      }
-      if (ai.ref === 'hotspots') {
-        return {
-          item: {
-            id: ai.id,
-            kind: 'hotspots',
-            title: 'Найдите нарушения',
-            prompt: `На картинке спрятаны ${img.zones.length} нарушений, по одному на каждый шаг 5С. Найдите их и отметьте касанием. Меток можно поставить не больше ${img.zones.length}, а за лишние снимаются метры.`,
-            maxPoints: pts.stage2.hotspots,
-            hasHint: !!img.hints?.hotspots,
-            image: img.image,
-            aspect: img.aspect,
-            markers: img.zones.length,
-          },
-          key: { kind: 'hotspots', zones: img.zones },
-          hint: img.hints?.hotspots,
-          explanation: img.explanations?.hotspots,
-        };
-      }
-      // match
-      return {
-        item: {
-          id: ai.id,
-          kind: 'match',
-          title: 'Какой шаг 5С нарушен?',
-          prompt: 'Вот те же нарушения с картинки. Для каждого выберите шаг 5С, который здесь не соблюдается.',
-          maxPoints: pts.stage2.match,
-          hasHint: !!img.hints?.match,
-          left: byOrder(img.zones, ai.order).map((z) => ({ id: z.id, text: z.label })),
-          right: opts(byOrder(steps, ai.order2)),
-        },
-        key: { kind: 'match', pairs: Object.fromEntries(img.zones.map((z) => [z.id, z.step])) },
-        hint: img.hints?.match,
-        explanation: img.explanations?.match,
-      };
-    });
-  }
-
-  if (stage === 3) {
-    const p = content.stage3.processes.find((x) => x.id === a.group);
-    if (!p) throw new Error(`Процесс «${a.group}» не найден`);
-    const nva = p.cards.filter((c) => !c.valueAdded);
-    return a.items.map((ai): InternalItem => {
-      if (ai.ref === 'order') {
-        return {
-          item: {
-            id: ai.id,
-            kind: 'order',
-            title: 'Соберите процесс',
-            prompt: 'Расставьте операции в том порядке, в котором они идут на самом деле.',
-            maxPoints: pts.stage3.order,
-            hasHint: !!p.hints?.order,
-            elements: byOrder(p.cards, ai.order).map((c) => ({ id: c.id, text: c.text, note: `${c.minutes} ${p.unit ?? 'мин'}` })),
-          },
-          key: { kind: 'order', order: p.cards.map((c) => c.id) },
-          hint: p.hints?.order,
-          explanation: p.explanations?.order,
-        };
-      }
-      if (ai.ref === 'flags') {
-        return {
-          item: {
-            id: ai.id,
-            kind: 'flags',
-            title: 'Операции без ценности',
-            prompt: 'Отметьте операции, которые НЕ добавляют ценности для потребителя (за них он не готов платить).',
-            maxPoints: pts.stage3.flags,
-            hasHint: !!p.hints?.flags,
-            unit: p.unit ?? 'мин',
-            elements: byOrder(p.cards, ai.order).map((c) => ({ id: c.id, text: c.text, minutes: c.minutes })),
-          },
-          key: { kind: 'flags', answers: nva.map((c) => c.id) },
-          hint: p.hints?.flags,
-          explanation: p.explanations?.flags,
-        };
-      }
-      return {
-        item: {
-          id: ai.id,
-          kind: 'number',
-          title: 'Расчёт экономии',
-          prompt: p.savingQuestion,
-          maxPoints: pts.stage3.number,
-          hasHint: !!p.hints?.number,
-          unit: p.unit ?? 'мин',
-        },
-        key: { kind: 'number', answer: nva.reduce((s, c) => s + c.minutes, 0), tolerance: p.savingTolerance },
-        hint: p.hints?.number,
-        explanation: p.explanations?.number,
-      };
-    });
-  }
-
-  if (stage === 4) {
-    const cs = content.stage4.cases.find((x) => x.id === a.group);
-    if (!cs) throw new Error(`Кейс «${a.group}» не найден`);
-    const whyItems = a.items.filter((x) => x.ref.startsWith('why:'));
-    const qItems = a.items.filter((x) => x.ref.startsWith('q:'));
-    const whySplit = splitPoints(pts.stage4.whys, whyItems.length);
-    const qSplit = splitPoints(pts.stage4.questions, qItems.length);
-    return a.items.map((ai: AssignmentItem): InternalItem => {
-      if (ai.ref.startsWith('why:')) {
-        const i = Number(ai.ref.slice(4));
-        const w = cs.whys[i];
+  switch (kindOf(stage)) {
+    case 'waste': {
+      const split = splitPoints(max, a.items.length);
+      return a.items.map((ai, i) => {
+        const s = content.waste.situations.find((x) => x.id === ai.ref);
+        if (!s) throw new Error(`Ситуация «${ai.ref}» не найдена`);
         return {
           item: {
             id: ai.id,
             kind: 'choice',
-            title: `Почему? Шаг ${i + 1} из ${cs.whys.length}`,
-            prompt: w.question,
-            maxPoints: whySplit[i],
-            hasHint: !!w.hint,
-            options: opts(byOrder(w.options, ai.order)),
+            title: `Ситуация ${i + 1}`,
+            prompt: s.text,
+            maxPoints: split[i],
+            hasHint: !!s.hint,
+            options: opts(byOrder(content.waste.wasteTypes, ai.order)),
           },
-          key: { kind: 'choice', answer: w.answer },
-          hint: w.hint,
-          explanation: w.explanation,
+          key: { kind: 'choice', answer: s.answer },
+          hint: s.hint,
+          explanation: s.explanation,
         };
-      }
-      if (ai.ref === 'root') {
-        return {
-          item: {
-            id: ai.id,
-            kind: 'choice',
-            title: 'Корневая причина',
-            prompt: cs.root.question,
-            maxPoints: pts.stage4.root,
-            hasHint: !!cs.root.hint,
-            options: opts(byOrder(cs.root.options, ai.order)),
-          },
-          key: { kind: 'choice', answer: cs.root.answer },
-          hint: cs.root.hint,
-          explanation: cs.root.explanation,
-        };
-      }
-      if (ai.ref === 'measures') {
-        return {
-          item: {
-            id: ai.id,
-            kind: 'multi',
-            title: 'Меры',
-            prompt: cs.measures.question,
-            maxPoints: pts.stage4.measures,
-            hasHint: !!cs.measures.hint,
-            options: opts(byOrder(cs.measures.options, ai.order)),
-          },
-          key: { kind: 'multi', answers: cs.measures.answers },
-          hint: cs.measures.hint,
-          explanation: cs.measures.explanation,
-        };
-      }
-      const qid = ai.ref.slice(2);
-      const q = content.stage4.questions.find((x) => x.id === qid);
-      if (!q) throw new Error(`Вопрос «${qid}» не найден`);
-      const qi = qItems.indexOf(ai);
-      return {
-        item: {
-          id: ai.id,
-          kind: 'choice',
-          title: `Регулярный менеджмент: вопрос ${qi + 1}`,
-          prompt: q.question,
-          maxPoints: qSplit[qi],
-          hasHint: !!q.hint,
-          options: opts(byOrder(q.options, ai.order)),
-        },
-        key: { kind: 'choice', answer: q.answer },
-        hint: q.hint,
-        explanation: q.explanation,
-      };
-    });
-  }
+      });
+    }
 
-  if (stage === 5) {
-    const fc = content.stage5.cases.find((x) => x.id === a.group);
-    if (!fc) throw new Error(`Кейс Исикавы «${a.group}» не найден`);
-    const cats = content.stage5.categories;
-    return a.items.map((ai): InternalItem => {
-      if (ai.ref === 'fishbone') {
+    case 'fiveS': {
+      const v = content.fiveS.variants.find((x) => x.id === a.group);
+      if (!v) throw new Error(`Вариант 5С «${a.group}» не найден`);
+      const steps = content.fiveS.steps;
+      const violations: Violation[] = isInbox(v) ? v.violations : v.zones;
+      return a.items.map((ai): InternalItem => {
+        if (ai.ref === 'order') {
+          return {
+            item: {
+              id: ai.id,
+              kind: 'order',
+              title: 'Шаги 5С по порядку',
+              prompt: content.fiveS.orderQuestion,
+              maxPoints: pts.fiveS.order,
+              hasHint: !!content.fiveS.orderHint,
+              elements: opts(byOrder(steps, ai.order)),
+            },
+            key: { kind: 'order', order: steps.map((s) => s.id) },
+            hint: content.fiveS.orderHint,
+            explanation: content.fiveS.orderExplanation,
+          };
+        }
+        if (ai.ref === 'inbox' && isInbox(v)) {
+          return {
+            item: {
+              id: ai.id,
+              kind: 'inbox',
+              title: 'Наведите порядок во входящих',
+              prompt:
+                'Разберите письма: коснитесь письма, а потом папки, куда его убрать. Ненужное смело отправляйте в корзину.',
+              maxPoints: pts.fiveS.find,
+              hasHint: !!v.hints?.find,
+              folders: v.folders.map((f) => ({ id: f.id, text: f.text, icon: f.icon, hint: f.hint })),
+              emails: byOrder(v.emails, ai.order).map((e) => ({ id: e.id, from: e.from, subject: e.subject, date: e.date })),
+            },
+            key: { kind: 'inbox', placement: Object.fromEntries(v.emails.map((e) => [e.id, e.answer])) },
+            hint: v.hints?.find,
+            explanation: v.explanations?.find,
+          };
+        }
+        if (ai.ref === 'picture' && !isInbox(v)) {
+          return {
+            item: {
+              id: ai.id,
+              kind: 'hotspots',
+              title: 'Найдите нарушения',
+              prompt: `На картинке спрятаны ${v.zones.length} нарушений, по одному на каждый шаг 5С. Найдите их и отметьте касанием. Меток можно поставить не больше ${v.zones.length}, а за лишние снимаются метры.`,
+              maxPoints: pts.fiveS.find,
+              hasHint: !!v.hints?.find,
+              image: v.image,
+              aspect: v.aspect,
+              markers: v.zones.length,
+            },
+            key: { kind: 'hotspots', zones: v.zones },
+            hint: v.hints?.find,
+            explanation: v.explanations?.find,
+          };
+        }
+        // match
         return {
           item: {
             id: ai.id,
-            kind: 'fishbone',
-            title: 'Соберите «рыбью кость»',
-            prompt:
-              'Разложите причины по «костям» диаграммы Исикавы (6М). Коснитесь карточки, а потом нужной кости. Можно и просто перетащить. Если факт на проблему не влияет, отправьте его в корзину «Не причина».',
-            maxPoints: pts.stage5.fishbone,
-            hasHint: !!fc.hints?.fishbone,
-            problem: fc.problem,
-            categories: cats.map((c) => ({ id: c.id, text: c.text, icon: c.icon, hint: c.hint })),
-            cards: opts(byOrder(fc.causes, ai.order)),
-            allowNone: fc.causes.some((c) => c.category === NOT_A_CAUSE),
+            kind: 'match',
+            title: 'Какой шаг 5С нарушен?',
+            prompt: isInbox(v)
+              ? 'Вот что обычно творится с почтой. Для каждой ситуации выберите шаг 5С, который здесь не соблюдается.'
+              : 'Вот те же нарушения с картинки. Для каждого выберите шаг 5С, который здесь не соблюдается.',
+            maxPoints: pts.fiveS.match,
+            hasHint: !!v.hints?.match,
+            left: byOrder(violations, ai.order).map((z) => ({ id: z.id, text: z.label })),
+            right: opts(byOrder(steps, ai.order2)),
           },
-          key: { kind: 'fishbone', placement: Object.fromEntries(fc.causes.map((c) => [c.id, c.category])) },
-          hint: fc.hints?.fishbone,
-          explanation: fc.explanations?.fishbone,
+          key: { kind: 'match', pairs: Object.fromEntries(violations.map((z) => [z.id, z.step])) },
+          hint: v.hints?.match,
+          explanation: v.explanations?.match ?? violations.map((z) => `${z.label}: ${z.explain ?? ''}`.trim()).join(' '),
         };
-      }
-      const q = ai.ref === 'focus' ? fc.focus : content.stage5.next;
-      return {
-        item: {
-          id: ai.id,
-          kind: 'choice',
-          title: ai.ref === 'focus' ? 'Главная причина' : 'Что дальше?',
-          prompt: q.question,
-          maxPoints: ai.ref === 'focus' ? pts.stage5.focus : pts.stage5.next,
-          hasHint: !!q.hint,
-          options: opts(byOrder(q.options, ai.order)),
-        },
-        key: { kind: 'choice', answer: q.answer },
-        hint: q.hint,
-        explanation: q.explanation,
-      };
-    });
-  }
+      });
+    }
 
-  return [];
+    case 'flow': {
+      const p = content.flow.processes.find((x) => x.id === a.group);
+      if (!p) throw new Error(`Процесс «${a.group}» не найден`);
+      const nva = p.cards.filter((c) => !c.valueAdded);
+      const unit = p.unit ?? 'мин';
+      return a.items.map((ai): InternalItem => {
+        if (ai.ref === 'order') {
+          return {
+            item: {
+              id: ai.id,
+              kind: 'order',
+              title: 'Соберите процесс',
+              prompt: 'Расставьте операции в том порядке, в котором они идут на самом деле.',
+              maxPoints: pts.flow.order,
+              hasHint: !!p.hints?.order,
+              elements: byOrder(p.cards, ai.order).map((c) => ({ id: c.id, text: c.text, note: `${c.minutes} ${unit}` })),
+            },
+            key: { kind: 'order', order: p.cards.map((c) => c.id) },
+            hint: p.hints?.order,
+            explanation: p.explanations?.order,
+          };
+        }
+        if (ai.ref === 'flags') {
+          return {
+            item: {
+              id: ai.id,
+              kind: 'flags',
+              title: 'Операции без ценности',
+              prompt: 'Отметьте операции, которые НЕ добавляют ценности: за них заказчик платить не готов.',
+              maxPoints: pts.flow.flags,
+              hasHint: !!p.hints?.flags,
+              unit,
+              elements: byOrder(p.cards, ai.order).map((c) => ({ id: c.id, text: c.text, minutes: c.minutes })),
+            },
+            key: { kind: 'flags', answers: nva.map((c) => c.id) },
+            hint: p.hints?.flags,
+            explanation: p.explanations?.flags,
+          };
+        }
+        if (ai.ref === 'number') {
+          return {
+            item: {
+              id: ai.id,
+              kind: 'number',
+              title: 'Расчёт экономии',
+              prompt: p.savingQuestion,
+              maxPoints: pts.flow.number,
+              hasHint: !!p.hints?.number,
+              unit,
+            },
+            key: { kind: 'number', answer: nva.reduce((s, c) => s + c.minutes, 0), tolerance: p.savingTolerance },
+            hint: p.hints?.number,
+            explanation: p.explanations?.number,
+          };
+        }
+        // Закон Литтла
+        const [kind, lid] = ai.ref.split(':');
+        const l = content.flow.little.find((x) => x.id === lid);
+        if (!l) throw new Error(`Задача Литтла «${lid}» не найдена`);
+        if (kind === 'little') {
+          return {
+            item: {
+              id: ai.id,
+              kind: 'number',
+              title: 'Закон Литтла: сколько ждать?',
+              prompt: `${l.context} В работе ${l.wip} заявок, склад закрывает ${l.cr} заявок в день. Сколько дней в среднем проходит от поступления заявки до её выполнения?`,
+              maxPoints: pts.flow.littleCalc,
+              hasHint: true,
+              unit: 'дн.',
+            },
+            key: { kind: 'number', answer: round1(l.wip / l.cr), tolerance: l.tolerance },
+            hint: 'Закон Литтла: срок выполнения = заявки в работе ÷ скорость выполнения (LT = WIP / CR).',
+            explanation: l.explanation ?? `${l.wip} ÷ ${l.cr} = ${ru(l.wip / l.cr)} дн.`,
+          };
+        }
+        return {
+          item: {
+            id: ai.id,
+            kind: 'number',
+            title: 'Закон Литтла: тренажёр',
+            prompt: `Скорость прежняя: ${l.cr} заявок в день. Сколько заявок можно держать в работе одновременно, чтобы срок был не больше ${ru(l.target)} дн.? Покрутите бегунки и найдите ответ.`,
+            maxPoints: pts.flow.littleTarget,
+            hasHint: false,
+            unit: 'заявок',
+            calc: { wip: l.wip, cr: l.cr, target: l.target },
+          },
+          key: { kind: 'number', answer: l.cr * l.target, tolerance: Math.max(1, Math.round(l.cr * 0.1)) },
+          explanation: `WIP = LT × CR = ${ru(l.target)} × ${l.cr} = ${l.cr * l.target}. Меньше заявок в работе, и каждая проходит быстрее.`,
+        };
+      });
+    }
+
+    case 'eightSteps': {
+      const e = content.eightSteps;
+      const sitItems = a.items.filter((x) => x.ref.startsWith('sit:'));
+      const sitSplit = splitPoints(pts.eightSteps.situations, sitItems.length);
+      const stepName = (id: string) => e.steps.find((s) => s.id === id)?.text ?? id;
+      return a.items.map((ai): InternalItem => {
+        if (ai.ref === 'order') {
+          return {
+            item: {
+              id: ai.id,
+              kind: 'order',
+              title: 'Восемь шагов по порядку',
+              prompt: 'Расставьте шаги решения проблем по порядку: первый шаг сверху.',
+              maxPoints: pts.eightSteps.order,
+              hasHint: !!e.hints?.order,
+              elements: byOrder(e.steps, ai.order).map((s) => ({ id: s.id, text: s.text, note: s.question })),
+            },
+            key: { kind: 'order', order: e.steps.map((s) => s.id) },
+            hint: e.hints?.order,
+            explanation: e.explanations?.order,
+          };
+        }
+        if (ai.ref === 'phases') {
+          return {
+            item: {
+              id: ai.id,
+              kind: 'match',
+              title: 'Три этапа',
+              prompt: 'Восемь шагов делятся на три этапа. Для каждого шага выберите, к какому этапу он относится.',
+              maxPoints: pts.eightSteps.phases,
+              hasHint: !!e.hints?.phases,
+              left: byOrder(e.steps, ai.order).map((s) => ({ id: s.id, text: s.text })),
+              right: opts(byOrder(e.phases, ai.order2)),
+            },
+            key: { kind: 'match', pairs: Object.fromEntries(e.steps.map((s) => [s.id, s.phase])) },
+            hint: e.hints?.phases,
+            explanation: e.explanations?.phases,
+          };
+        }
+        if (ai.ref === 'tools') {
+          const tools = byOrder(e.tools, ai.order).filter((t) => ai.order?.includes(t.id) ?? true);
+          return {
+            item: {
+              id: ai.id,
+              kind: 'match',
+              title: 'Инструмент к шагу',
+              prompt: 'На каком шаге пригодится каждый инструмент?',
+              maxPoints: pts.eightSteps.tools,
+              hasHint: !!e.hints?.tools,
+              left: opts(tools),
+              right: opts(byOrder(e.steps, ai.order2)),
+            },
+            key: { kind: 'match', pairs: Object.fromEntries(tools.map((t) => [t.id, t.answer])) },
+            hint: e.hints?.tools,
+            explanation: e.explanations?.tools ?? tools.map((t) => `${t.text}: шаг «${stepName(t.answer)}».`).join(' '),
+          };
+        }
+        if (ai.ref.startsWith('sit:')) {
+          const sid = ai.ref.slice(4);
+          const s = e.situations.find((x) => x.id === sid);
+          if (!s) throw new Error(`Ситуация «${sid}» не найдена`);
+          const k = sitItems.indexOf(ai);
+          return {
+            item: {
+              id: ai.id,
+              kind: 'choice',
+              title: `На каком мы шаге? ${k + 1} из ${sitItems.length}`,
+              prompt: s.text,
+              maxPoints: sitSplit[k],
+              hasHint: !!s.hint,
+              options: opts(byOrder(e.steps, ai.order)),
+            },
+            key: { kind: 'choice', answer: s.answer },
+            hint: s.hint,
+            explanation: s.explanation,
+          };
+        }
+        return choiceItem(ai.id, 'Решение не сработало', e.loop, pts.eightSteps.loop, ai.order);
+      });
+    }
+
+    case 'whys': {
+      const cs = content.whys.cases.find((x) => x.id === a.group);
+      if (!cs) throw new Error(`Кейс «${a.group}» не найден`);
+      const whyItems = a.items.filter((x) => x.ref.startsWith('why:'));
+      const qItems = a.items.filter((x) => x.ref.startsWith('q:'));
+      const whySplit = splitPoints(pts.whys.whys, whyItems.length);
+      const qSplit = splitPoints(pts.whys.questions, qItems.length);
+      return a.items.map((ai: AssignmentItem): InternalItem => {
+        if (ai.ref.startsWith('why:')) {
+          const i = Number(ai.ref.slice(4));
+          return choiceItem(ai.id, `Почему? Шаг ${i + 1} из ${cs.whys.length}`, cs.whys[i], whySplit[i], ai.order);
+        }
+        if (ai.ref === 'root') return choiceItem(ai.id, 'Корневая причина', cs.root, pts.whys.root, ai.order);
+        if (ai.ref === 'measures') {
+          return {
+            item: {
+              id: ai.id,
+              kind: 'multi',
+              title: 'Меры',
+              prompt: cs.measures.question,
+              maxPoints: pts.whys.measures,
+              hasHint: !!cs.measures.hint,
+              options: opts(byOrder(cs.measures.options, ai.order)),
+            },
+            key: { kind: 'multi', answers: cs.measures.answers },
+            hint: cs.measures.hint,
+            explanation: cs.measures.explanation,
+          };
+        }
+        const qid = ai.ref.slice(2);
+        const q = content.whys.questions.find((x) => x.id === qid);
+        if (!q) throw new Error(`Вопрос «${qid}» не найден`);
+        const qi = qItems.indexOf(ai);
+        return choiceItem(ai.id, `Регулярный менеджмент: вопрос ${qi + 1}`, q, qSplit[qi], ai.order);
+      });
+    }
+
+    case 'fishbone': {
+      const fc = content.fishbone.cases.find((x) => x.id === a.group);
+      if (!fc) throw new Error(`Кейс Исикавы «${a.group}» не найден`);
+      const cats = content.fishbone.categories;
+      return a.items.map((ai): InternalItem => {
+        if (ai.ref === 'fishbone') {
+          return {
+            item: {
+              id: ai.id,
+              kind: 'fishbone',
+              title: 'Соберите «рыбью кость»',
+              prompt:
+                'Разложите причины по «костям» диаграммы Исикавы (6М). Коснитесь карточки, а потом нужной кости. Можно и просто перетащить. Если факт на проблему не влияет, отправьте его в корзину «Не причина».',
+              maxPoints: pts.fishbone.fishbone,
+              hasHint: !!fc.hints?.fishbone,
+              problem: fc.problem,
+              categories: cats.map((c) => ({ id: c.id, text: c.text, icon: c.icon, hint: c.hint })),
+              cards: opts(byOrder(fc.causes, ai.order)),
+              allowNone: fc.causes.some((c) => c.category === NOT_A_CAUSE),
+            },
+            key: { kind: 'fishbone', placement: Object.fromEntries(fc.causes.map((c) => [c.id, c.category])) },
+            hint: fc.hints?.fishbone,
+            explanation: fc.explanations?.fishbone,
+          };
+        }
+        return ai.ref === 'focus'
+          ? choiceItem(ai.id, 'Главная причина', fc.focus, pts.fishbone.focus, ai.order)
+          : choiceItem(ai.id, 'Что дальше?', content.fishbone.next, pts.fishbone.next, ai.order);
+      });
+    }
+
+    case 'idea':
+      return [];
+  }
 }
 
 // ---------- Проверка ответа ----------
@@ -364,7 +478,8 @@ export function gradeAnswer(key: AnswerKey, value: AnswerValue): number {
     }
 
     case 'match':
-    case 'fishbone': {
+    case 'fishbone':
+    case 'inbox': {
       if (!value || typeof value !== 'object' || Array.isArray(value)) throw bad();
       const v = value as Record<string, unknown>;
       const pairs = key.kind === 'match' ? key.pairs : key.placement;
@@ -397,6 +512,7 @@ export function reviewFor(it: InternalItem): ReviewEntry {
     case 'match':
       return { ...base, correct: k.pairs };
     case 'fishbone':
+    case 'inbox':
       return { ...base, correct: k.placement };
     case 'number':
       return { ...base, correct: { answer: k.answer, tolerance: k.tolerance } };
@@ -418,6 +534,7 @@ export function perfectAnswer(key: AnswerKey): AnswerValue {
     case 'match':
       return { ...key.pairs };
     case 'fishbone':
+    case 'inbox':
       return { ...key.placement };
     case 'number':
       return key.answer;

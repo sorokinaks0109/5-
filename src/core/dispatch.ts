@@ -17,6 +17,7 @@ export type Action =
   | 'juryList'
   | 'juryScore'
   | 'orgTour'
+  | 'orgReset'
   | 'orgGenerateCodes'
   | 'orgCodes'
   | 'orgProgress'
@@ -53,6 +54,8 @@ export async function dispatch(svc: GameService, actorId: string | null, action:
       return svc.juryScore(acc, Number(p.workNo), p.scores ?? {}, p.comment ?? '');
     case 'orgTour':
       return svc.orgTour(acc, p.action as TourAction, p.closesAt);
+    case 'orgReset':
+      return svc.orgReset(acc);
     case 'orgGenerateCodes':
       return svc.orgGenerateCodes(acc, p.role, Number(p.count));
     case 'orgCodes':

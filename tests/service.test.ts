@@ -19,16 +19,16 @@ describe('прохождение тура', () => {
     await expect(ctx.svc.startStage(ctx.player, 2)).rejects.toThrow(/предыдущей/);
     await solveStage(ctx, 1);
     const me = await ctx.svc.me(ctx.player);
-    expect(me.participant!.stages.map((s) => s.status)).toEqual(['finished', 'available', 'locked', 'locked', 'locked', 'locked']);
+    expect(me.participant!.stages.map((s) => s.status)).toEqual(['finished', 'available', 'locked', 'locked', 'locked', 'locked', 'locked']);
   });
 
-  it('идеальное прохождение автоматических вершин 1–5 даёт 5000 м', async () => {
+  it('идеальное прохождение автоматических вершин 1–6 даёт 6000 м', async () => {
     const ctx = await openTourWithPlayer();
     for (const st of AUTO_STAGES) await solveStage(ctx, st);
     const me = await ctx.svc.me(ctx.player);
-    expect(me.participant!.altitude).toBe(5000);
+    expect(me.participant!.altitude).toBe(6000);
     expect(me.participant!.place).toBe(1);
-    expect(me.participant!.stages[5].status).toBe('available');
+    expect(me.participant!.stages[6].status).toBe('available');
   });
 
   it('ответ окончательный, ошибка портит погоду', async () => {
@@ -36,7 +36,7 @@ describe('прохождение тура', () => {
     const v = await ctx.svc.startStage(ctx.player, 1);
     const run = (await ctx.store.getRun(ctx.player.id, 1))!;
     const it = buildItems(1, content, run.assignment)[0];
-    const wrong = content.stage1.wasteTypes.find((w) => w.id !== (it.key as { answer: string }).answer)!.id;
+    const wrong = content.waste.wasteTypes.find((w) => w.id !== (it.key as { answer: string }).answer)!.id;
     const res = await ctx.svc.answer(ctx.player, 1, v.items[0].id, wrong);
     expect(res.fraction).toBe(0);
     expect(res.weather.level).toBeGreaterThan(0);
@@ -88,14 +88,14 @@ describe('прохождение тура', () => {
 
     // Пока итоги не опубликованы, участник не видит оценку жюри
     let me = await ctx.svc.me(ctx.player);
-    expect(me.participant!.altitude).toBe(5000);
+    expect(me.participant!.altitude).toBe(6000);
 
     await ctx.svc.orgTour(ctx.org, 'close');
     await ctx.svc.orgTour(ctx.org, 'publish');
     me = await ctx.svc.me(ctx.player);
-    expect(me.participant!.altitude).toBe(5667);
+    expect(me.participant!.altitude).toBe(6667);
     const results = await ctx.svc.orgResults(ctx.org);
-    expect(results.rows[0].stageAltitudes).toEqual([1000, 1000, 1000, 1000, 1000, 667]);
+    expect(results.rows[0].stageAltitudes).toEqual([1000, 1000, 1000, 1000, 1000, 1000, 667]);
     expect(results.jury[0].scores).toHaveLength(3);
   });
 
@@ -106,7 +106,7 @@ describe('прохождение тура', () => {
     await ctx.svc.saveIdea(ctx.player, { problem: 'Долгая приёмка' }, false);
     ctx.tick(41 * 60_000);
     const me = await ctx.svc.me(ctx.player);
-    expect(me.participant!.stages[5].status).toBe('finished');
+    expect(me.participant!.stages[6].status).toBe('finished');
     expect((await ctx.store.getIdea(ctx.player.id))!.submittedAt).toBeTruthy();
   });
 
@@ -158,5 +158,47 @@ describe('демо-режим', () => {
     expect(accounts.filter((a) => a.role === 'jury')).toHaveLength(3);
     expect(accounts.find((a) => a.code === 'ORG2027')?.role).toBe('organizer');
     expect((await store.listRuns()).length).toBeGreaterThan(10);
+  });
+});
+
+describe('новые задания', () => {
+  it('5С даёт 1000 м за идеальный ответ и на складе, и в почте', async () => {
+    const { assignStage } = await import('../src/core/assign.ts');
+    const seen = new Set<string>();
+    for (let i = 0; i < 40 && seen.size < 2; i++) {
+      const a = assignStage(2, content, `salt:p${i}:2`);
+      const items = buildItems(2, content, a);
+      const kind = items[1].item.kind;
+      seen.add(kind);
+      const { gradeAnswer } = await import('../src/core/items.ts');
+      const total = items.reduce((s, it) => s + it.item.maxPoints * gradeAnswer(it.key, perfectAnswer(it.key)), 0);
+      expect(total).toBe(1000);
+    }
+    expect([...seen].sort()).toEqual(['hotspots', 'inbox']);
+  });
+
+  it('закон Литтла: срок = заявки ÷ скорость, цель = скорость × срок', () => {
+    const l = content.flow.little[0];
+    const items = buildItems(3, content, {
+      group: content.flow.processes[0].id,
+      items: [
+        { id: 'flow-little', ref: `little:${l.id}` },
+        { id: 'flow-target', ref: `target:${l.id}` },
+      ],
+    });
+    expect(items[0].key).toMatchObject({ kind: 'number', answer: Math.round((l.wip / l.cr) * 10) / 10 });
+    expect(items[1].key).toMatchObject({ kind: 'number', answer: l.cr * l.target });
+    expect(items[1].item.kind === 'number' && items[1].item.calc).toBeTruthy();
+  });
+
+  it('организатор очищает результаты перед настоящим туром', async () => {
+    const ctx = await openTourWithPlayer();
+    await solveStage(ctx, 1);
+    await ctx.svc.orgReset(ctx.org);
+    expect(await ctx.store.listRuns()).toHaveLength(0);
+    const me = await ctx.svc.me(ctx.player);
+    expect(me.tour.state).toBe('draft');
+    expect(me.nick).toBe('Альпинист');
+    await expect(ctx.svc.orgReset(ctx.player)).rejects.toThrow(/прав/);
   });
 });

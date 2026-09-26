@@ -519,6 +519,20 @@ export class GameService {
     return this.tourView(tour);
   }
 
+  /** Очистить результаты перед настоящим туром: прохождения, идеи, оценки. Тур возвращается в «не открыт». */
+  async orgReset(acc: Account): Promise<TourView> {
+    this.require(acc, 'organizer');
+    await this.store.resetResults();
+    const tour = await this.store.getTour();
+    tour.state = 'draft';
+    tour.opensAt = null;
+    tour.closesAt = null;
+    tour.resultsPublished = false;
+    tour.salt = Math.floor(this.rng() * 2 ** 32).toString(16) + Math.floor(this.rng() * 2 ** 32).toString(16);
+    await this.store.saveTour(tour);
+    return this.tourView(tour);
+  }
+
   async orgGenerateCodes(acc: Account, role: 'participant' | 'jury', count: number): Promise<Account[]> {
     this.require(acc, 'organizer');
     if (role !== 'participant' && role !== 'jury') throw new GameError('Коды можно создать для участников или жюри.');

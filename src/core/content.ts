@@ -1,12 +1,12 @@
 // Проверка content.json и выделение публичной части (без заданий и ответов).
-import { NOT_A_CAUSE, STAGES, type ChoiceQuestion, type Content, type PublicContent } from './types.ts';
+import { NOT_A_CAUSE, STAGES, isInbox, type ChoiceQuestion, type Content, type PublicContent } from './types.ts';
 
 export function toPublicContent(c: Content): PublicContent {
   return {
     settings: c.settings,
     stages: c.stages,
-    wasteTypes: c.stage1.wasteTypes,
-    steps: c.stage2.steps,
+    wasteTypes: c.waste.wasteTypes,
+    steps: c.fiveS.steps,
     idea: c.idea,
   };
 }
@@ -17,6 +17,7 @@ export function validateContent(c: Content): string[] {
   const err = (m: string) => errors.push(m);
   const s = c.settings;
   const max = s.stageMaxAltitude;
+  const sum = (o: Record<string, number>) => Object.values(o).reduce((a, b) => a + b, 0);
 
   const uniq = (where: string, ids: string[]) => {
     const seen = new Set<string>();
@@ -36,94 +37,129 @@ export function validateContent(c: Content): string[] {
   if (s.stageMinutes?.length !== STAGES.length)
     err(`settings.stageMinutes: нужно ${STAGES.length} чисел, по минутам на каждую вершину`);
   if (s.hintPenalty < 0 || s.hintPenalty > 1) err('settings.hintPenalty: число от 0 до 1 (0.3 = 30 %)');
+  if (!(s.fiveSOfficeShare >= 0 && s.fiveSOfficeShare <= 1)) err('settings.fiveSOfficeShare: число от 0 до 1 (0.5 = половина)');
   if (s.juryCount < 1) err('settings.juryCount: нужен хотя бы один судья');
   if (c.stages?.length !== STAGES.length) err(`stages: нужно описание для ${STAGES.length} вершин`);
 
-  // Этап 1
-  const waste = c.stage1.wasteTypes.map((w) => w.id);
-  uniq('stage1.wasteTypes', waste);
-  uniq('stage1.situations', c.stage1.situations.map((x) => x.id));
-  c.stage1.situations.forEach((x) => {
-    if (!waste.includes(x.answer)) err(`stage1, ситуация «${x.id}»: вид потерь «${x.answer}» не найден в wasteTypes`);
+  // Потери
+  const waste = c.waste.wasteTypes.map((w) => w.id);
+  uniq('waste.wasteTypes', waste);
+  uniq('waste.situations', c.waste.situations.map((x) => x.id));
+  c.waste.situations.forEach((x) => {
+    if (!waste.includes(x.answer)) err(`waste, ситуация «${x.id}»: вид потерь «${x.answer}» не найден в wasteTypes`);
   });
-  if (c.stage1.situations.length < s.draw.stage1Situations)
-    err(`stage1: в банке ${c.stage1.situations.length} ситуаций, а выдаётся ${s.draw.stage1Situations}`);
+  if (c.waste.situations.length < s.draw.wasteSituations)
+    err(`waste: в банке ${c.waste.situations.length} ситуаций, а выдаётся ${s.draw.wasteSituations}`);
 
-  // Этап 2
-  const steps = c.stage2.steps.map((x) => x.id);
-  uniq('stage2.steps', steps);
-  uniq('stage2.images', c.stage2.images.map((x) => x.id));
-  c.stage2.images.forEach((img) => {
-    uniq(`stage2, картинка «${img.id}», zones`, img.zones.map((z) => z.id));
-    if (!img.zones.length) err(`stage2, картинка «${img.id}»: нет зон с нарушениями`);
-    img.zones.forEach((z) => {
-      if (z.x < 0 || z.y < 0 || z.x + z.w > 100 || z.y + z.h > 100)
-        err(`stage2, картинка «${img.id}», зона «${z.id}»: координаты должны быть в процентах от 0 до 100`);
+  // 5С
+  const steps = c.fiveS.steps.map((x) => x.id);
+  uniq('fiveS.steps', steps);
+  uniq('fiveS.variants', c.fiveS.variants.map((x) => x.id));
+  c.fiveS.variants.forEach((v) => {
+    const where = `fiveS, вариант «${v.id}»`;
+    const violations = isInbox(v) ? v.violations : v.zones;
+    uniq(`${where}, нарушения`, violations.map((z) => z.id));
+    violations.forEach((z) => {
+      if (!steps.includes(z.step)) err(`${where}, «${z.id}»: шаг «${z.step}» не найден в steps`);
     });
-    img.zones.forEach((z) => {
-      if (!steps.includes(z.step)) err(`stage2, картинка «${img.id}», зона «${z.id}»: шаг «${z.step}» не найден в steps`);
-    });
-    const covered = new Set(img.zones.map((z) => z.step));
-    if (img.zones.length !== steps.length || covered.size !== steps.length)
-      err(`stage2, картинка «${img.id}»: нужно ровно ${steps.length} нарушений, по одному на каждый шаг 5С`);
+    const covered = new Set(violations.map((z) => z.step));
+    if (violations.length !== steps.length || covered.size !== steps.length)
+      err(`${where}: нужно ровно ${steps.length} нарушений, по одному на каждый шаг 5С`);
+    if (isInbox(v)) {
+      const folders = v.folders.map((f) => f.id);
+      uniq(`${where}, папки`, folders);
+      uniq(`${where}, письма`, v.emails.map((e) => e.id));
+      if (v.emails.length < 4) err(`${where}: нужно хотя бы 4 письма`);
+      v.emails.forEach((e) => {
+        if (!folders.includes(e.answer)) err(`${where}, письмо «${e.id}»: папка «${e.answer}» не найдена`);
+      });
+    } else {
+      v.zones.forEach((z) => {
+        if (z.x < 0 || z.y < 0 || z.x + z.w > 100 || z.y + z.h > 100)
+          err(`${where}, зона «${z.id}»: координаты должны быть в процентах от 0 до 100`);
+      });
+    }
   });
-  if (c.stage2.images.length < s.draw.stage2Images) err('stage2: картинок в банке меньше, чем выдаётся');
-  const p2 = s.points.stage2;
-  if (p2.order + p2.hotspots + p2.match !== max) err(`settings.points.stage2: сумма должна быть ${max}`);
+  if (!c.fiveS.variants.length) err('fiveS: нет ни одного варианта');
+  if (sum(s.points.fiveS) !== max) err(`settings.points.fiveS: сумма должна быть ${max}`);
 
-  // Этап 3
-  uniq('stage3.processes', c.stage3.processes.map((x) => x.id));
-  c.stage3.processes.forEach((p) => {
-    uniq(`stage3, процесс «${p.id}»`, p.cards.map((x) => x.id));
-    if (p.cards.length < 3) err(`stage3, процесс «${p.id}»: нужно хотя бы 3 карточки`);
-    if (!p.cards.some((x) => !x.valueAdded)) err(`stage3, процесс «${p.id}»: нет операций без ценности`);
+  // Поток
+  uniq('flow.processes', c.flow.processes.map((x) => x.id));
+  c.flow.processes.forEach((p) => {
+    uniq(`flow, процесс «${p.id}»`, p.cards.map((x) => x.id));
+    if (p.cards.length < 3) err(`flow, процесс «${p.id}»: нужно хотя бы 3 карточки`);
+    if (!p.cards.some((x) => !x.valueAdded)) err(`flow, процесс «${p.id}»: нет операций без ценности`);
     p.cards.forEach((x) => {
-      if (!(x.minutes >= 0)) err(`stage3, процесс «${p.id}», «${x.id}»: minutes должно быть числом`);
+      if (!(x.minutes >= 0)) err(`flow, процесс «${p.id}», «${x.id}»: minutes должно быть числом`);
     });
   });
-  if (c.stage3.processes.length < s.draw.stage3Processes) err('stage3: процессов в банке меньше, чем выдаётся');
-  const p3 = s.points.stage3;
-  if (p3.order + p3.flags + p3.number !== max) err(`settings.points.stage3: сумма должна быть ${max}`);
+  if (c.flow.processes.length < s.draw.flowProcesses) err('flow: процессов в банке меньше, чем выдаётся');
+  uniq('flow.little', c.flow.little.map((x) => x.id));
+  if (!c.flow.little.length) err('flow.little: нужна хотя бы одна задача на закон Литтла');
+  c.flow.little.forEach((l) => {
+    if (!(l.wip > 0 && l.cr > 0 && l.target > 0)) err(`flow.little «${l.id}»: wip, cr и target должны быть больше 0`);
+  });
+  if (sum(s.points.flow) !== max) err(`settings.points.flow: сумма должна быть ${max}`);
 
-  // Этап 4
-  uniq('stage4.cases', c.stage4.cases.map((x) => x.id));
-  uniq('stage4.questions', c.stage4.questions.map((x) => x.id));
-  c.stage4.cases.forEach((cs) => {
-    if (!cs.whys.length) err(`stage4, кейс «${cs.id}»: нет шагов «почему»`);
-    cs.whys.forEach((w, i) => choice(`stage4, кейс «${cs.id}», почему ${i + 1}`, w));
-    choice(`stage4, кейс «${cs.id}», корневая причина`, cs.root);
-    uniq(`stage4, кейс «${cs.id}», меры`, cs.measures.options.map((o) => o.id));
+  // Восемь шагов
+  const e = c.eightSteps;
+  const eSteps = e.steps.map((x) => x.id);
+  const phases = e.phases.map((x) => x.id);
+  uniq('eightSteps.steps', eSteps);
+  uniq('eightSteps.phases', phases);
+  e.steps.forEach((x) => {
+    if (!phases.includes(x.phase)) err(`eightSteps, шаг «${x.id}»: этап «${x.phase}» не найден в phases`);
+  });
+  uniq('eightSteps.tools', e.tools.map((x) => x.id));
+  e.tools.forEach((t) => {
+    if (!eSteps.includes(t.answer)) err(`eightSteps, инструмент «${t.id}»: шаг «${t.answer}» не найден`);
+  });
+  uniq('eightSteps.situations', e.situations.map((x) => x.id));
+  e.situations.forEach((t) => {
+    if (!eSteps.includes(t.answer)) err(`eightSteps, ситуация «${t.id}»: шаг «${t.answer}» не найден`);
+  });
+  if (e.situations.length < s.draw.eightStepsSituations) err('eightSteps: ситуаций в банке меньше, чем выдаётся');
+  if (e.tools.length < 2) err('eightSteps: нужно хотя бы 2 инструмента');
+  choice('eightSteps.loop', e.loop);
+  if (sum(s.points.eightSteps) !== max) err(`settings.points.eightSteps: сумма должна быть ${max}`);
+
+  // 5 почему и регулярный менеджмент
+  uniq('whys.cases', c.whys.cases.map((x) => x.id));
+  uniq('whys.questions', c.whys.questions.map((x) => x.id));
+  c.whys.cases.forEach((cs) => {
+    if (!cs.whys.length) err(`whys, кейс «${cs.id}»: нет шагов «почему»`);
+    cs.whys.forEach((w, i) => choice(`whys, кейс «${cs.id}», почему ${i + 1}`, w));
+    choice(`whys, кейс «${cs.id}», корневая причина`, cs.root);
+    uniq(`whys, кейс «${cs.id}», меры`, cs.measures.options.map((o) => o.id));
     cs.measures.answers.forEach((a) => {
-      if (!cs.measures.options.some((o) => o.id === a)) err(`stage4, кейс «${cs.id}», меры: ответ «${a}» не найден`);
+      if (!cs.measures.options.some((o) => o.id === a)) err(`whys, кейс «${cs.id}», меры: ответ «${a}» не найден`);
     });
-    if (!cs.measures.answers.length) err(`stage4, кейс «${cs.id}», меры: нет правильных ответов`);
+    if (!cs.measures.answers.length) err(`whys, кейс «${cs.id}», меры: нет правильных ответов`);
   });
-  c.stage4.questions.forEach((q) => choice(`stage4, вопрос «${q.id}»`, q));
-  if (c.stage4.cases.length < s.draw.stage4Cases) err('stage4: кейсов в банке меньше, чем выдаётся');
-  if (c.stage4.questions.length < s.draw.stage4Questions) err('stage4: вопросов в банке меньше, чем выдаётся');
-  const p4 = s.points.stage4;
-  if (p4.whys + p4.root + p4.measures + p4.questions !== max) err(`settings.points.stage4: сумма должна быть ${max}`);
+  c.whys.questions.forEach((q) => choice(`whys, вопрос «${q.id}»`, q));
+  if (c.whys.cases.length < s.draw.whysCases) err('whys: кейсов в банке меньше, чем выдаётся');
+  if (c.whys.questions.length < s.draw.whysQuestions) err('whys: вопросов в банке меньше, чем выдаётся');
+  if (sum(s.points.whys) !== max) err(`settings.points.whys: сумма должна быть ${max}`);
 
-  // Этап 5 — диаграмма Исикавы
-  const cats = c.stage5.categories.map((x) => x.id);
-  uniq('stage5.categories', cats);
-  if (cats.includes(NOT_A_CAUSE)) err(`stage5.categories: id «${NOT_A_CAUSE}» зарезервирован для корзины «Не причина»`);
-  uniq('stage5.cases', c.stage5.cases.map((x) => x.id));
-  c.stage5.cases.forEach((fc) => {
-    uniq(`stage5, кейс «${fc.id}», причины`, fc.causes.map((x) => x.id));
+  // Диаграмма Исикавы
+  const cats = c.fishbone.categories.map((x) => x.id);
+  uniq('fishbone.categories', cats);
+  if (cats.includes(NOT_A_CAUSE)) err(`fishbone.categories: id «${NOT_A_CAUSE}» занят корзиной «Не причина»`);
+  uniq('fishbone.cases', c.fishbone.cases.map((x) => x.id));
+  c.fishbone.cases.forEach((fc) => {
+    uniq(`fishbone, кейс «${fc.id}», причины`, fc.causes.map((x) => x.id));
     fc.causes.forEach((x) => {
       if (x.category !== NOT_A_CAUSE && !cats.includes(x.category))
-        err(`stage5, кейс «${fc.id}», причина «${x.id}»: категория «${x.category}» не найдена в categories`);
+        err(`fishbone, кейс «${fc.id}», причина «${x.id}»: категория «${x.category}» не найдена в categories`);
     });
-    if (fc.causes.length < 4) err(`stage5, кейс «${fc.id}»: нужно хотя бы 4 причины`);
-    choice(`stage5, кейс «${fc.id}», главная причина`, fc.focus);
+    if (fc.causes.length < 4) err(`fishbone, кейс «${fc.id}»: нужно хотя бы 4 причины`);
+    choice(`fishbone, кейс «${fc.id}», главная причина`, fc.focus);
   });
-  choice('stage5.next', c.stage5.next);
-  if (c.stage5.cases.length < s.draw.stage5Cases) err('stage5: кейсов в банке меньше, чем выдаётся');
-  const p5 = s.points.stage5;
-  if (p5.fishbone + p5.focus + p5.next !== max) err(`settings.points.stage5: сумма должна быть ${max}`);
+  choice('fishbone.next', c.fishbone.next);
+  if (c.fishbone.cases.length < s.draw.fishboneCases) err('fishbone: кейсов в банке меньше, чем выдаётся');
+  if (sum(s.points.fishbone) !== max) err(`settings.points.fishbone: сумма должна быть ${max}`);
 
-  // Вершина с идеей
+  // Идея
   uniq('idea.fields', c.idea.fields.map((x) => x.id));
   uniq('idea.criteria', c.idea.criteria.map((x) => x.id));
   const critSum = c.idea.criteria.reduce((a, x) => a + x.max, 0);

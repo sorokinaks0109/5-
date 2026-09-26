@@ -50,11 +50,11 @@ create table if not exists public.stage_runs (
   primary key (account_id, stage)
 );
 
--- Вершин шесть: 1–5 проверяются автоматически, 6 — идея для жюри
+-- Вершин семь: 1–6 проверяются автоматически, 7 — идея для жюри
 alter table public.stage_runs drop constraint if exists stage_runs_stage_check;
-alter table public.stage_runs add constraint stage_runs_stage_check check (stage between 1 and 6);
+alter table public.stage_runs add constraint stage_runs_stage_check check (stage between 1 and 7);
 
--- Идеи (вершина 6). work_no — анонимный номер работы для жюри.
+-- Идеи (вершина 7). work_no — анонимный номер работы для жюри.
 create table if not exists public.ideas (
   account_id uuid primary key references public.accounts (id) on delete cascade,
   work_no int not null unique,

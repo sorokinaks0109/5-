@@ -1657,3 +1657,270 @@ tr.finalist td:first-child {
   display: grid;
   gap: 6px;
 }
+
+/* ---------- 5С в почте ---------- */
+.inbox-folders {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+.inbox-folder {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  column-gap: 8px;
+  text-align: left;
+  padding: 10px;
+  border-radius: 12px;
+  border: 2px solid #c7d2fe;
+  background: #f5f3ff;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease, box-shadow 0.15s ease;
+}
+.inbox-folder:disabled {
+  cursor: default;
+  opacity: 0.75;
+}
+.inbox-folder.target {
+  animation: boneCall 1.4s ease-in-out infinite;
+  --bone: #7c3aed;
+}
+.inbox-folder.target:active {
+  transform: scale(0.97);
+}
+.inbox-folder.trash {
+  background: #fff1f2;
+  border-color: #fecdd3;
+  --bone: #e11d48;
+}
+.inbox-folder-icon {
+  font-size: 1.4rem;
+  grid-row: span 2;
+}
+.inbox-folder-name {
+  font-size: 0.92rem;
+  line-height: 1.2;
+}
+.inbox-folder-hint {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--muted);
+  line-height: 1.2;
+}
+.inbox-count {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  min-width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: #7c3aed;
+  color: #fff;
+  font-size: 0.8rem;
+  display: grid;
+  place-items: center;
+  padding: 0 6px;
+}
+.inbox-window {
+  border: 2px solid #c7d2fe;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fff;
+}
+.inbox-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: linear-gradient(90deg, #eef2ff, #f5f3ff);
+  border-bottom: 1px solid #e0e7ff;
+}
+.inbox-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.inbox-mail {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 12px 1fr auto;
+  gap: 10px;
+  align-items: start;
+  text-align: left;
+  padding: 10px 12px;
+  border: none;
+  border-bottom: 1px solid #eef2ff;
+  background: #fff;
+  cursor: pointer;
+  font: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+.inbox-mail.selected {
+  background: #fff1f2;
+  box-shadow: inset 4px 0 0 #e11d48;
+}
+.inbox-mail.placed {
+  background: #fafaff;
+}
+.inbox-mail.placed .inbox-from,
+.inbox-mail.placed .inbox-subject {
+  color: var(--muted);
+  font-weight: 500;
+}
+.inbox-mail.ok {
+  background: var(--ok-soft);
+}
+.inbox-mail.bad {
+  background: var(--bad-soft);
+}
+.inbox-dot {
+  width: 10px;
+  height: 10px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: #3b82f6;
+}
+.inbox-dot.read {
+  background: transparent;
+  border: 2px solid #c7d2fe;
+}
+.inbox-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.inbox-from {
+  font-weight: 800;
+  font-size: 0.9rem;
+}
+.inbox-subject {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.inbox-tag {
+  justify-self: start;
+  margin-top: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #ede9fe;
+  color: #4c1d95;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.inbox-right {
+  font-size: 0.8rem;
+  color: var(--ok);
+  font-weight: 700;
+}
+.inbox-date {
+  font-size: 0.75rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* ---------- Тренажёр закона Литтла ---------- */
+.little {
+  margin-bottom: 14px;
+  padding: 12px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #e0f2fe, #ede9fe);
+  border: 2px solid #bae6fd;
+}
+.little-formula {
+  font-size: 1.05rem;
+  margin-bottom: 10px;
+}
+.little-formula .good {
+  color: var(--ok);
+}
+.little-formula .bad {
+  color: var(--bad);
+}
+.little-meter {
+  position: relative;
+  height: 18px;
+  border-radius: 999px;
+  background: #fff;
+  margin: 18px 0 8px;
+}
+.little-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.25s ease;
+}
+.little-fill.good {
+  background: linear-gradient(90deg, #34d399, #10b981);
+}
+.little-fill.bad {
+  background: linear-gradient(90deg, #fb923c, #e11d48);
+}
+.little-target {
+  position: absolute;
+  top: -18px;
+  transform: translateX(-50%);
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #1e1b4b;
+  white-space: nowrap;
+}
+.little-target::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 14px;
+  width: 3px;
+  height: 22px;
+  background: #1e1b4b;
+}
+.little-queue {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px;
+  font-size: 0.9rem;
+  min-height: 22px;
+  margin-bottom: 6px;
+}
+.little-slider {
+  display: grid;
+  gap: 2px;
+  margin-top: 6px;
+}
+.little-slider input {
+  width: 100%;
+  accent-color: #7c3aed;
+}
+
+/* Папки почты всегда под рукой: панель прилипает к верху экрана */
+.inbox-folders {
+  position: sticky;
+  top: 70px;
+  z-index: 5;
+  background: #fff;
+  padding: 6px 0;
+}
+@media (max-width: 639px) {
+  .inbox-folders {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .inbox-folder {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+    padding: 6px 4px;
+  }
+  .inbox-folder-icon {
+    grid-row: auto;
+    font-size: 1.2rem;
+  }
+  .inbox-folder-name {
+    font-size: 0.74rem;
+  }
+  .inbox-folder-hint {
+    display: none;
+  }
+}

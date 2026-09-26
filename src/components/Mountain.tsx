@@ -6,14 +6,27 @@ import { STAGE_THEME } from '../theme.ts';
 
 const BASE = { x: 24, y: 238 };
 export const PEAKS = [
-  { x: 60, y: 200 },
-  { x: 116, y: 176 },
-  { x: 172, y: 150 },
-  { x: 228, y: 124 },
-  { x: 284, y: 96 },
-  { x: 348, y: 40 },
+  { x: 52, y: 206 },
+  { x: 100, y: 186 },
+  { x: 148, y: 164 },
+  { x: 196, y: 142 },
+  { x: 244, y: 120 },
+  { x: 292, y: 96 },
+  { x: 350, y: 40 },
 ];
 const LAST = PEAKS.length - 1;
+
+/** Хребет: вершины и ложбинки между ними */
+const RIDGE = (() => {
+  const pts: string[] = ['M0 260', 'L0 244', 'L26 232'];
+  PEAKS.forEach((p, i) => {
+    pts.push(`L${p.x} ${p.y}`);
+    const next = PEAKS[i + 1];
+    if (next) pts.push(`L${(p.x + next.x) / 2} ${Math.max(p.y, next.y) + 12}`);
+  });
+  pts.push('L380 84', 'L400 98', 'L400 260 Z');
+  return pts.join(' ');
+})();
 
 export function Flag({ color = '#ff6b2c', label }: { color?: string; label?: string }) {
   return (
@@ -101,7 +114,7 @@ export function Mountain({
 
         <path d="M0 260 L0 170 L60 120 L110 150 L180 80 L250 130 L320 70 L400 120 L400 260 Z" fill="#7c3aed" opacity="0.45" />
         <path
-          d="M0 260 L0 244 L32 230 L60 200 L88 212 L116 176 L144 188 L172 150 L200 162 L228 124 L256 138 L284 96 L314 112 L348 40 L378 84 L400 98 L400 260 Z"
+          d={RIDGE}
           fill="url(#rock)"
         />
         {/* снежные шапки */}
@@ -146,7 +159,7 @@ export function Mountain({
                 x={p.x}
                 y={p.y + (i === LAST ? 27 : i % 2 ? 34 : 22)}
                 textAnchor="middle"
-                fontSize="8.5"
+                fontSize="7.5"
                 fontWeight="800"
                 fill="#1e1b4b"
                 stroke="#fff"

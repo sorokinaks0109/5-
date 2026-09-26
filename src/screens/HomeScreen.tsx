@@ -4,7 +4,7 @@ import { Emblem } from '../components/Emblem.tsx';
 import { Gear } from '../components/Gear.tsx';
 import { Mountain } from '../components/Mountain.tsx';
 import { pc } from '../content.ts';
-import { IDEA_STAGE, STAGES, type StageNo, type StageSummary } from '../core/types.ts';
+import { AUTO_STAGES, IDEA_STAGE, STAGES, type StageNo, type StageSummary } from '../core/types.ts';
 import { formatDate, meters, serverOffset, useApp, useCountUp, useNow } from '../hooks.ts';
 import { STAGE_THEME } from '../theme.ts';
 import { formatClock, remainingMs } from '../core/timer.ts';
@@ -180,7 +180,7 @@ export function HomeScreen() {
                   {Math.round(pc.settings.hintPenalty * 100)}%.
                 </li>
                 <li>Ошибки портят погоду, но не останавливают игру.</li>
-                <li>При равной высоте выше тот, кто быстрее прошёл вершины 1–5.</li>
+                <li>При равной высоте выше тот, кто быстрее прошёл вершины 1–{AUTO_STAGES.length}.</li>
                 <li>В финал выходят {pc.settings.finalistsCount} лучших.</li>
               </ul>
             </div>
