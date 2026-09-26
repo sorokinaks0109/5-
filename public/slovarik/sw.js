@@ -1,7 +1,7 @@
 /* Работа без интернета. Сначала пробуем взять свежий файл из сети (не дольше 3 секунд),
    а если сети нет или она медленная — берём из кэша телефона. Поэтому обновления
    видны сразу при следующем открытии. Меняйте VERSION при крупных изменениях. */
-const VERSION = 'slovarik-v13';
+const VERSION = 'slovarik-v14';
 const FILES = ['./', 'index.html', 'app.js', 'words.js', 'config.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-180.png'];
 
 self.addEventListener('install', (e) => {

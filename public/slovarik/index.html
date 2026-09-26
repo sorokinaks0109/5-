@@ -296,6 +296,7 @@ img.thumb { width: 28px; height: 28px; border-radius: 7px; object-fit: cover; bo
 /* Знакомство */
 .setup { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 420px; text-align: center; }
 .setup .answer { max-width: none; }
+.answer[readonly] { cursor: default; caret-color: transparent; }
 .kbd { display: flex; flex-direction: column; gap: 6px; width: 100%; max-width: 520px; margin: 4px auto 0; user-select: none; }
 .kbdrow { display: flex; gap: 4px; justify-content: center; }
 .key { flex: 1 1 0; min-width: 0; max-width: 44px; height: 46px; padding: 0; border: 2px solid var(--line); border-bottom-width: 4px; border-radius: 10px; background: var(--paper-2); color: var(--ink); font: 800 20px/1 var(--body); touch-action: manipulation; -webkit-tap-highlight-color: transparent; }

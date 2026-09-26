@@ -647,7 +647,7 @@
       <p class="lead">${S.setup ? 'Здесь можно поменять имя и класс.' : 'Буду болеть за тебя на каждом слове. Давай познакомимся!'}</p>
       <form id="nameForm" class="setup">
         <label class="label" for="nameInput">Как тебя зовут?</label>
-        <input type="text" id="nameInput" class="answer" maxlength="20" autocomplete="off" placeholder="Твоё имя" value="${esc(name)}">
+        <input type="text" id="nameInput" class="answer" maxlength="20" autocomplete="off" inputmode="text" enterkeyhint="done" placeholder="Твоё имя" value="${esc(name)}">
         <span class="label">Кто будет заниматься?</span>
         <div class="row" style="justify-content:center">
           <button type="button" class="pickbig" data-act="hWho" data-v="kid" aria-pressed="${who === 'kid'}">🎒 Школьник</button>
@@ -733,7 +733,7 @@
         <summary>Добавить слово, которого нет в списке</summary>
         <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
           <p class="muted" style="margin:0">Трудную букву возьми в квадратные скобки. Через « | » можно добавить картинку-эмодзи и подсказку.<br>Например: <b>в[о]кзал | 🚉 | На вокзале круглые часы — О</b></p>
-          <input type="text" id="newWord" placeholder="к[о]р[о]ва | 🐄 | Корова мычит «Мо-о-о»" autocomplete="off" spellcheck="false">
+          <input type="text" id="newWord" inputmode="text" placeholder="к[о]р[о]ва | 🐄 | Корова мычит «Мо-о-о»" autocomplete="off" spellcheck="false">
           <div class="row"><button class="btn small" data-act="addWord">${S.grade === 'all' ? 'Добавить слово' : 'Добавить в ' + S.grade + ' класс'}</button></div>
           ${custom.length ? `<div class="chips">${custom.map((c, i) => `<span class="chip">${marked(parseLine(c).parts)} <button class="btn small ghost" style="min-height:0;padding:0 6px;border:0" data-act="delWord" data-i="${i}" aria-label="Удалить">✕</button></span>`).join('')}</div>` : ''}
         </div>
@@ -1494,7 +1494,7 @@
         ${t.copy ? verdictBad(w, t.answer) : ''}
         ${!t.solved || t.copy ? `
         <form id="writeForm" class="row" style="justify-content:center;width:100%">
-          <input type="text" id="answer" class="answer" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" ${TOUCH ? 'inputmode="none"' : ''} placeholder="${t.copy ? 'Перепиши правильно' : 'Пиши здесь'}" aria-label="Ответ">
+          <input type="text" id="answer" class="answer" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" ${TOUCH ? 'readonly' : ''} placeholder="${t.copy ? 'Перепиши правильно' : 'Пиши здесь'}" aria-label="Ответ">
           <button class="btn" type="submit">${t.copy ? 'Готово' : 'Проверить'}</button>
         </form>
         ${TOUCH ? keyboardHtml() : ''}` : ''}`;
@@ -1572,7 +1572,7 @@
   function afterRender() {
     scheduleNext();
     const input = document.getElementById('answer');
-    if (input) input.focus();
+    if (input && !TOUCH) input.focus();
     const nextBtn = document.getElementById('nextBtn');
     if (nextBtn && !input) nextBtn.focus({ preventScroll: true });
   }
