@@ -169,7 +169,7 @@ textarea { min-height: 80px; resize: vertical; font-family: var(--hand); font-si
 .dots button[aria-current="true"] { background: var(--pen); }
 
 /* Истории */
-.story { font-family: var(--hand); font-size: 23px; line-height: 1.5; margin: 0; }
+.story { font-family: var(--hand); font-size: 23px; line-height: 1.5; margin: 0; min-width: 0; overflow-wrap: anywhere; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { border: 2px solid var(--line); border-radius: 999px; padding: 4px 12px; background: var(--paper-2); font-weight: 700; font-size: 16px; }
 .chip.on { border-color: var(--green); background: var(--green-soft); }
@@ -298,6 +298,13 @@ img.thumb { width: 28px; height: 28px; border-radius: 7px; object-fit: cover; bo
 .setup { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 420px; text-align: center; }
 .setup .answer { max-width: none; }
 .answer[readonly] { cursor: default; caret-color: transparent; }
+.achs { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.ach { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; padding: 10px 6px; border: 2px dashed var(--line); border-radius: 14px; color: var(--ink-soft); }
+.ach .ae { font-size: 30px; line-height: 1.1; filter: grayscale(1); opacity: .6; }
+.ach b { font-size: 13px; line-height: 1.2; }
+.ach small { font-size: 11px; line-height: 1.25; }
+.ach.on { border: 2px solid var(--pencil); background: var(--pencil-soft); color: var(--ink); }
+.ach.on .ae { filter: none; opacity: 1; }
 .kbd { display: flex; flex-direction: column; gap: 6px; width: 100%; max-width: 520px; margin: 4px auto 0; user-select: none; }
 .kbdrow { display: flex; flex-wrap: nowrap; gap: 3px; justify-content: center; }
 .key { flex: 1 1 0; min-width: 0; max-width: 46px; height: 52px; padding: 0; border: 2px solid var(--line); border-bottom-width: 4px; border-radius: 10px; background: var(--paper-2); color: var(--ink); font: 800 23px/1 var(--body); touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
@@ -365,9 +372,10 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; }
 .ownreact button { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; border: 0; background: var(--red); color: #fff; font-size: 12px; line-height: 22px; padding: 0; }
 
 @media (prefers-reduced-motion: reduce) { *:not(.splash) { animation: none !important; transition: none !important; } }
-.word > span:nth-child(2) { min-width: 0; overflow-wrap: break-word; hyphens: auto; }
+.word > span:nth-child(2) { min-width: 0; overflow-wrap: anywhere; hyphens: auto; }
+.word { min-width: 0; }
 @media (max-width: 420px) {
-  .words { grid-template-columns: repeat(2, 1fr); }
+  .words { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .word { font-size: 15px; padding: 8px; gap: 6px; }
   .word .e { font-size: 19px; }
   .grades { gap: 4px; }
@@ -383,6 +391,7 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; }
 <noscript>Для словарика нужно включить JavaScript.</noscript>
 <script src="config.js"></script>
 <script src="words.js"></script>
+<script src="defs.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

@@ -28,7 +28,7 @@
       localStorage.setItem(KEY, JSON.stringify(data));
     } catch (e) { /* ссылка повреждена — просто начинаем заново */ }
   })();
-  const S = Object.assign({ grade: 1, selected: {}, stats: {}, mine: {}, stories: [], custom: {}, stars: 0, best: {} }, load() || {});
+  const S = Object.assign({ grade: 1, selected: {}, stats: {}, mine: {}, stories: [], custom: {}, stars: 0, best: {}, cnt: {} }, load() || {});
   // Остатки старого кабинета родителя больше не нужны.
   ['role', 'assign', 'goal', 'kids', 'kid'].forEach((k) => { delete S[k]; });
   function save() {
@@ -121,12 +121,80 @@
     if (S.grade === 'all') return gen ? 'всех классов' : 'все классы';
     return S.grade + (gen ? ' класса' : ' класс');
   }
+  const DEFS = window.SLOVARIK_DEFS || {};
+  const defOf = (w) => DEFS[w.id] || '';
   function byId(id) { return words().find((w) => w.id === id); }
   function selectedIds() {
     const all = new Set(words().map((w) => w.id));
     return (S.selected[S.grade] || []).filter((id) => all.has(id));
   }
   function selectedWords() { return selectedIds().map(byId).filter(Boolean); }
+
+  // ---------- Достижения ----------
+  // Значки за настоящие успехи. Открываются один раз; при открытии — конфетти и кот.
+  const ACH = [
+    ['first', '👣', 'Первый шаг', 'Ответить правильно в первый раз', (c) => c.ok >= 1],
+    ['learn1', '🌱', 'Первое слово', 'Выучить первое слово', (c) => c.learned >= 1],
+    ['learn10', '🌿', 'Десятка', 'Выучить 10 слов', (c) => c.learned >= 10],
+    ['learn50', '🌳', 'Полсотни', 'Выучить 50 слов', (c) => c.learned >= 50],
+    ['learn100', '🏆', 'Сотня', 'Выучить 100 слов', (c) => c.learned >= 100],
+    ['streak3', '🔥', 'Три дня подряд', 'Заниматься 3 дня подряд', (c) => c.streak >= 3],
+    ['streak7', '📅', 'Неделя без пропусков', 'Заниматься 7 дней подряд', (c) => c.streak >= 7],
+    ['streak30', '🌟', 'Месяц подряд', 'Заниматься 30 дней подряд', (c) => c.streak >= 30],
+    ['combo5', '⚡', 'Пять подряд', '5 правильных ответов подряд', (c) => c.combo >= 5],
+    ['combo15', '🚀', 'Пятнадцать подряд', '15 правильных ответов подряд', (c) => c.combo >= 15],
+    ['perfect', '💯', 'Без единой ошибки', 'Тренировка из 10+ слов без ошибок', (c) => c.perfect >= 1],
+    ['train10', '🎯', 'Упорство', 'Пройти 10 тренировок', (c) => c.trains >= 10],
+    ['fix1', '🩹', 'Работа над ошибками', 'Исправить первую ошибку', (c) => c.fixes >= 1],
+    ['fix10', '🛠️', 'Мастер исправлений', 'Исправить 10 ошибок', (c) => c.fixes >= 10],
+    ['story', '📖', 'Сказочник', 'Сохранить свою историю', (c) => c.stories >= 1],
+    ['storyfix', '🔧', 'Ремонт историй', 'Починить историю', (c) => c.storyFix >= 1],
+    ['bolt10', '⚡', 'Молния', 'Набрать 10 очков в «Молнии»', (c) => c.bolt >= 10],
+    ['bolt25', '🌩️', 'Гроза', 'Набрать 25 очков в «Молнии»', (c) => c.bolt >= 25],
+    ['stars100', '⭐', 'Сто звёзд', 'Собрать 100 звёзд', (c) => c.stars >= 100],
+    ['stars500', '🌠', 'Звездопад', 'Собрать 500 звёзд', (c) => c.stars >= 500],
+  ];
+  function achCtx() {
+    const k = S.cnt || {};
+    const days = Object.values(S.days || {});
+    return {
+      ok: days.reduce((a, d) => a + d.ok, 0),
+      learned: Object.keys(S.stats).filter((id) => stat(id).box >= 3).length,
+      streak: streakDays(),
+      combo: k.bestCombo || 0, perfect: k.perfect || 0, trains: k.trains || 0, fixes: k.fixes || 0,
+      storyFix: k.storyFix || 0, stories: (S.stories || []).length,
+      bolt: Math.max(0, ...Object.values(S.best || {})), stars: S.stars || 0,
+    };
+  }
+  /** Проверяет новые достижения. При первом запуске новой версии открывает заработанные раньше молча. */
+  function checkAch() {
+    const silent = !S.ach;
+    S.ach = S.ach || {};
+    const c = achCtx();
+    const fresh = ACH.filter(([id, , , , test]) => !S.ach[id] && test(c));
+    if (!fresh.length) { if (silent) save(); return; }
+    fresh.forEach(([id]) => { S.ach[id] = Date.now(); });
+    save();
+    if (silent) return;
+    const [, e, name] = fresh[0];
+    setTimeout(() => {
+      confetti();
+      react(true, 'НОВОЕ ДОСТИЖЕНИЕ: ' + name.toUpperCase() + ' ' + e);
+      toast(`${e} Новое достижение: «${name}»${fresh.length > 1 ? ` и ещё ${fresh.length - 1}` : ''}! Смотри в «Итогах»`);
+    }, 1200);
+  }
+  function achHtml() {
+    const got = S.ach || {};
+    const n = ACH.filter(([id]) => got[id]).length;
+    return `<section class="panel" style="display:flex;flex-direction:column;gap:10px">
+      <span class="label">Достижения · ${n} из ${ACH.length}</span>
+      <div class="achs">${ACH.map(([id, e, name, how]) => `<div class="ach ${got[id] ? 'on' : ''}" title="${esc(how)}">
+        <span class="ae" aria-hidden="true">${got[id] ? e : '🔒'}</span><b>${esc(name)}</b><small>${esc(how)}</small></div>`).join('')}</div>
+    </section>`;
+  }
+
+  // ---------- Счётчики для достижений ----------
+  function cnt(k, n = 1) { S.cnt = S.cnt || {}; S.cnt[k] = (S.cnt[k] || 0) + n; }
 
   // ---------- Прогресс ----------
   // Интервальное повторение: у слова есть «коробка» 0–5. Правильный ответ в день, когда слово
@@ -145,6 +213,12 @@
     }
     return st;
   }
+  // Открытая ошибка: слово ошиблись и ещё не ответили правильно после этого.
+  // Правильный ответ в следующей тренировке «исправляет» ошибку — слово уходит из «С ошибками».
+  function hasMistake(id) {
+    const st = stat(id);
+    return st.err !== undefined ? !!st.err : st.bad > 0 && st.s === 0;
+  }
   function status(id) {
     const st = stat(id);
     if (st.ok + st.bad === 0) return 'new';
@@ -156,11 +230,13 @@
     const st = stat(id);
     const t = today();
     if (ok) {
+      if (hasMistake(id)) { st.fixedAt = Date.now(); cnt('fixes'); V.justFixed = id; }
+      st.err = false;
       st.ok++; st.s++;
       if (st.box === 0 || st.due <= t) { st.box = Math.min(5, st.box + 1); st.due = t + INTERVALS[st.box] * DAY; }
       if (st.box >= 3 && !st.learnedAt) st.learnedAt = Date.now();
     } else {
-      st.bad++; st.s = 0; st.box = 0; st.due = t;
+      st.bad++; st.s = 0; st.box = 0; st.due = t; st.err = true;
     }
     st.last = Date.now();
     S.stats[id] = st;
@@ -628,6 +704,7 @@
 
   function render() {
     if (S.grade !== 'all' && !BUILTIN[S.grade]) S.grade = GRADES[0];
+    if (S.setup) checkAch();
     tabs.innerHTML = TABS.map(([id, ic, name]) =>
       `<button class="tab" data-act="tab" data-tab="${id}" ${V.tab === id ? 'aria-current="page"' : ''}><i aria-hidden="true">${ic}</i>${name}</button>`).join('');
     let body = '';
@@ -779,6 +856,7 @@
           <button class="btn small ghost" data-act="report" data-id="${esc(w.id)}">⚠️ Ошибка?</button>
         </div>
         <div class="muted">Скажи по слогам так, как пишется:<br><b style="font-size:24px;color:var(--ink)">${syllables(w)}</b></div>
+        ${defOf(w) ? `<div class="hint"><span class="label">Что значит</span>${esc(defOf(w))}</div>` : ''}
         ${w.hint ? `<div class="hint"><span class="label">Подсказка</span>${esc(w.hint)}</div>` : ''}
         ${groups.map((g) => g.tip ? `<div class="hint"><span class="label">${esc(g.title)}</span>${esc(g.tip)}</div>` : '').join('')}
         <label class="mine" for="mine">
@@ -810,8 +888,9 @@
       ws.forEach((w) => { c[status(w.id)]++; });
       return { g, total: ws.length, ...c };
     }).filter((r) => r.learned + r.learning + r.due > 0 || String(r.g) === String(S.grade));
-    const hard = words().map((w) => [w, stat(w.id)]).filter(([, st]) => st.bad > 0)
-      .sort((a, b) => b[1].bad - a[1].bad).slice(0, 8);
+    const hard = words().filter((w) => hasMistake(w.id)).map((w) => [w, stat(w.id)])
+      .sort((a, b) => b[1].bad - a[1].bad).slice(0, 12);
+    const fixes = (S.cnt && S.cnt.fixes) || 0;
     const wd = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
     return `
       <h2>${S.name ? esc(S.name) + ', твой прогресс' : 'Прогресс'}</h2>
@@ -820,6 +899,7 @@
         <div class="stat"><b>⭐ ${S.stars || 0}</b><span class="muted">звёзд</span></div>
         <div class="stat"><b>${totalAns}</b><span class="muted">${plural(totalAns, 'ответ', 'ответа', 'ответов')} всего</span></div>
       </div>
+      ${achHtml()}
       <section class="panel" style="display:flex;flex-direction:column;gap:10px">
         <span class="label">Занятия за 2 недели</span>
         <div class="chart" role="img" aria-label="Ответы по дням">
@@ -839,8 +919,11 @@
           <thead><tr><th>Класс</th><th>Выучено</th><th>Учу</th><th>Повтор.</th><th>Всего</th></tr></thead>
           <tbody>${gradeRows.map((r) => `<tr><td>${r.g}</td><td class="ok">${r.learned}</td><td>${r.learning}</td><td class="due">${r.due}</td><td>${r.total}</td></tr>`).join('')}</tbody>
         </table></div>
-        ${hard.length ? `<span class="label">Самые трудные слова ${gradeName(true)}</span>
-          <div class="chips">${hard.map(([w, st]) => `<span class="chip">${marked(w.parts)} <small class="muted">×${st.bad}</small></span>`).join('')}</div>` : ''}
+        ${hard.length ? `<span class="label">Работа над ошибками · ${gradeName()}</span>
+          <div class="chips">${hard.map(([w, st]) => `<span class="chip">${marked(w.parts)} <small class="muted">×${st.bad}</small></span>`).join('')}</div>
+          <div class="row"><button class="btn small" data-act="fixMistakes">🩹 Исправить ошибки</button>
+          <span class="muted">Ответь правильно — и слово уйдёт из этого списка.</span></div>`
+          : fixes ? `<p style="margin:0">🩹 Все ошибки исправлены! Исправлено ошибок: <b>${fixes}</b>.</p>` : ''}
         <p class="muted" style="margin:0">Прогресс хранится только на этом устройстве. Слово считается выученным, когда ребёнок ответил правильно в разные дни.</p>
       </section>
       <section class="panel" style="display:flex;flex-direction:column;gap:10px">
@@ -1310,7 +1393,7 @@
 
   function trainPool() {
     if (V.trainSet === 'due') return words().filter((w) => status(w.id) === 'due');
-    if (V.trainSet === 'mistakes') return words().filter((w) => stat(w.id).bad > 0 && status(w.id) !== 'learned');
+    if (V.trainSet === 'mistakes') return words().filter((w) => hasMistake(w.id));
     if (V.trainSet === 'all') return words();
     return selectedWords();
   }
@@ -1328,7 +1411,9 @@
   function nextTask() {
     const T = V.train;
     if (T.pos >= T.queue.length) {
-      T.task = null; T.done = true; goal('train_done', { mode: T.mode }); render();
+      T.task = null; T.done = true; goal('train_done', { mode: T.mode });
+      cnt('trains'); if (T.total >= 10 && !T.mistakes.length) cnt('perfect');
+      save(); render();
       if (T.total && T.firstTry / T.total >= 0.9) confetti();
       return;
     }
@@ -1384,7 +1469,9 @@
       record(t.id, ok);
       if (ok) { T.firstTry++; addStars(1); }
       V.combo = ok ? (V.combo || 0) + 1 : 0;
-      react(ok, ok && CAPS_COMBO[V.combo] ? pickOne(CAPS_COMBO[V.combo]) : null);
+      if (ok && V.justFixed === t.id) { V.justFixed = null; react(true, 'ОШИБКА ИСПРАВЛЕНА! ТАК ДЕРЖАТЬ'); }
+      else react(ok, ok && CAPS_COMBO[V.combo] ? pickOne(CAPS_COMBO[V.combo]) : null);
+      if (ok) S.cnt.bestCombo = Math.max(S.cnt.bestCombo || 0, V.combo);
     }
     if (!ok && !again) {
       T.mistakes.push(t.id);
@@ -1423,7 +1510,7 @@
     if (T && T.done) return viewTrainResult();
     if (T && T.task) return viewTask();
     const sel = selectedWords().length;
-    const mist = words().filter((w) => stat(w.id).bad > 0 && status(w.id) !== 'learned').length;
+    const mist = words().filter((w) => hasMistake(w.id)).length;
     const due = words().filter((w) => status(w.id) === 'due').length;
     if (V.trainSet === 'selected' && !sel) V.trainSet = due ? 'due' : mist ? 'mistakes' : 'all';
     if (V.trainSet === 'due' && !due) V.trainSet = sel ? 'selected' : 'all';
@@ -1499,6 +1586,7 @@
         ${T.mode === 'write' ? (speakable
           ? `<button class="speak" data-act="say" data-text="${esc(w.id)}" aria-label="Послушать слово">🔊</button><p class="muted">Нажми, чтобы послушать ещё раз</p>`
           : `<div class="gapword" style="font-size:32px">${masked}</div><p class="muted">Напиши слово целиком, вставив пропущенные буквы</p>`) : `<p class="muted">Какое слово ты ${g('видел', 'видела')}? Напиши его.</p>`}
+        ${T.mode === 'write' && defOf(w) && !t.solved ? (t.showDef ? defBox(w) : '<button class="btn small ghost" data-act="showDef">❓ Что это за слово?</button>') : ''}
         ${t.solved && !t.copy ? verdictGood(w, t.caseNote) : ''}
         ${t.copy ? verdictBad(w, t.answer) : ''}
         ${!t.solved || t.copy ? `
@@ -1514,6 +1602,8 @@
       <article class="panel card">${inner.replace('</div>', '</div>' + note)}</article>
       ${canNext ? '<div class="row" style="justify-content:center"><button class="btn nextbtn" data-act="next" id="nextBtn">Дальше →<span class="nextbar" id="nextBar"></span></button></div>' : ''}`;
   }
+
+  const defBox = (w) => `<div class="hint defbox"><span class="label">Что это за слово</span>${esc(defOf(w))}</div>`;
 
   function verdictGood(w, note) {
     const praise = ['Верно!', 'Молодец!', 'Точно!', 'Супер!', 'Так держать!'][Math.floor(Math.random() * 5)];
@@ -1656,6 +1746,16 @@
       case 'reportClose': V.report = null; break;
       case 'reportCopy': copyText(document.getElementById('reportText').value); return;
       case 'reviewDue': V.trainSet = 'due'; V.tab = 'train'; V.train = null; window.scrollTo(0, 0); break;
+      case 'showDef': {
+        // Без перерисовки, чтобы не стереть уже набранные буквы.
+        const t = V.train && V.train.task;
+        if (!t) return;
+        t.showDef = true;
+        el.insertAdjacentHTML('afterend', defBox(t.w));
+        el.remove();
+        return;
+      }
+      case 'fixMistakes': V.trainSet = 'mistakes'; V.tab = 'train'; V.train = null; window.scrollTo(0, 0); break;
       case 'clearSel': S.selected[S.grade] = []; save(); break;
       case 'selAll':
         S.selected[S.grade] = words().map((w) => w.id); save(); goal('words_pick');
@@ -1724,7 +1824,7 @@
         st.fix.checked = true;
         const bad = gaps.filter(([p, i]) => st.fix.answers[i] !== p.s).length;
         if (!bad) {
-          st.fix = null; addStars(3); goal('story_fixed'); render(); confetti(); react(true); toast('История починена! +3 ⭐'); return;
+          st.fix = null; addStars(3); goal('story_fixed'); cnt('storyFix'); save(); render(); confetti(); react(true); toast('История починена! +3 ⭐'); return;
         }
         toast(`Ошибок: ${bad}. Красные пропуски — нажми на них ещё раз`);
         break;
