@@ -4,7 +4,7 @@
 
   /** Название с выделенной частью: «Мур» в «Мурфографии», «а» в «Словарике». */
   const logoHtml = (n) => (n === 'Мурфография' ? '<b>Мур</b>фография' : n === 'Словарик' ? 'Слов<b>а</b>рик' : String(n).replace(/[&<>"']/g, ''));
-  const CFG = Object.assign({ appName: 'Мурфография', author: '', blogUrl: '', blogTitle: '', feedbackUrl: '', metrikaId: '' }, window.SLOVARIK_CONFIG || {});
+  const CFG = Object.assign({ appName: 'Мурфография', author: '', blogUrl: '', blogTitle: '', blogSub: '', feedbackUrl: '', metrikaId: '' }, window.SLOVARIK_CONFIG || {});
 
   // ---------- Хранение ----------
   const KEY = 'slovarik:v1';
@@ -864,8 +864,8 @@
         </div>
       </details>
       ${CFG.blogUrl ? `<a class="panel blog" href="${esc(CFG.blogUrl)}" target="_blank" rel="noopener">
-        <span style="font-size:30px" aria-hidden="true">💌</span>
-        <span><b>${esc(CFG.blogTitle || 'Блог автора')}</b><br><span class="muted">Новые игры, словари и советы родителям</span></span></a>` : ''}
+        <span style="font-size:30px" aria-hidden="true">✉️</span>
+        <span><b>${esc(CFG.blogTitle || 'Написать автору')}</b>${CFG.blogSub ? `<br><span class="muted">${esc(CFG.blogSub)}</span>` : ''}</span></a>` : ''}
       ${CFG.author ? `<p class="muted" style="text-align:center">Сделано с любовью: ${esc(CFG.author)}</p>` : ''}`;
   }
 
@@ -1107,12 +1107,12 @@
       : `Сообщение для «${CFG.appName}» (${S.grade} класс): `;
     return `<section class="panel report" role="dialog" aria-label="Сообщить об ошибке">
       <div class="row between"><h2>Нашли ошибку?</h2><button class="btn small ghost" data-act="reportClose">Закрыть</button></div>
-      <p class="muted" style="margin:0">Спасибо, что помогаете! Допишите, что не так, скопируйте текст и отправьте автору${CFG.feedbackUrl ? ' через форму' : CFG.blogUrl ? ' в блог' : ''}.</p>
+      <p class="muted" style="margin:0">Спасибо, что помогаете! Допишите, что не так, скопируйте текст и отправьте автору${CFG.feedbackUrl ? ' через форму' : CFG.blogUrl ? ' в Telegram' : ''}.</p>
       <textarea id="reportText" spellcheck="true">${esc(text)}</textarea>
       <div class="row">
         <button class="btn small" data-act="reportCopy">📋 Скопировать текст</button>
         ${CFG.feedbackUrl ? `<a class="btn small ghost" href="${esc(CFG.feedbackUrl)}" target="_blank" rel="noopener">Открыть форму</a>` : ''}
-        ${!CFG.feedbackUrl && CFG.blogUrl ? `<a class="btn small ghost" href="${esc(CFG.blogUrl)}" target="_blank" rel="noopener">Написать в блог</a>` : ''}
+        ${!CFG.feedbackUrl && CFG.blogUrl ? `<a class="btn small ghost" href="${esc(CFG.blogUrl)}" target="_blank" rel="noopener">Написать в Telegram</a>` : ''}
       </div>
     </section>`;
   }
