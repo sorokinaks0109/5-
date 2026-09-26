@@ -16,6 +16,8 @@
     return null;
   }
   const S = Object.assign({ grade: 1, selected: {}, stats: {}, mine: {}, stories: [], custom: {}, stars: 0, best: {} }, load() || {});
+  // Остатки старого кабинета родителя больше не нужны.
+  ['role', 'assign', 'goal', 'kids', 'kid'].forEach((k) => { delete S[k]; });
   function save() {
     try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* ничего */ }
   }
@@ -91,14 +93,21 @@
   Object.keys(WORD_SRC).forEach((g) => { BUILTIN[g] = parseList(WORD_SRC[g]); });
   const GRADES = Object.keys(BUILTIN).sort((a, b) => a - b);
 
+  // 'all' — режим для взрослых: все слова с 1 по 8 класс одним списком.
   function gradeWords(g) {
     const custom = (S.custom[g] || []).map(parseLine);
-    const all = (BUILTIN[g] || []).concat(custom);
+    const base = g === 'all' ? GRADES.flatMap((k) => BUILTIN[k]) : BUILTIN[g] || [];
+    const all = base.concat(custom);
     const seen = new Set();
     return all.filter((w) => (seen.has(w.id) ? false : seen.add(w.id)))
       .sort((a, b) => a.id.localeCompare(b.id, 'ru'));
   }
   function words() { return gradeWords(S.grade); }
+  // «3 класс» / «3 класса» или «все классы» / «всех классов» для взрослого.
+  function gradeName(gen) {
+    if (S.grade === 'all') return gen ? 'всех классов' : 'все классы';
+    return S.grade + (gen ? ' класса' : ' класс');
+  }
   function byId(id) { return words().find((w) => w.id === id); }
   function selectedIds() {
     const all = new Set(words().map((w) => w.id));
@@ -160,23 +169,6 @@
     const d = (S.days[k] = S.days[k] || { ok: 0, bad: 0 });
     d.sec = (d.sec || 0) + gap / 1000;
   }
-  /** Итоги за последние 7 дней. */
-  function weekStats() {
-    const days = S.days || {};
-    const w = { ok: 0, bad: 0, sec: 0, active: 0, goalDays: 0, list: [] };
-    for (let i = 6; i >= 0; i--) {
-      const k = dayKey(today() - i * DAY);
-      const d = days[k] || { ok: 0, bad: 0, sec: 0 };
-      w.ok += d.ok; w.bad += d.bad; w.sec += d.sec || 0;
-      if (d.ok + d.bad) w.active++;
-      const met = S.goal ? (d.sec || 0) >= S.goal * 60 : d.ok + d.bad > 0;
-      if (met) w.goalDays++;
-      w.list.push({ k, d, met });
-    }
-    w.learned = Object.values(S.stats).filter((st) => st.learnedAt && st.learnedAt >= today() - 6 * DAY).length;
-    return w;
-  }
-  const todayMin = () => Math.floor(((S.days || {})[dayKey()] || {}).sec / 60 || 0);
   /** Сколько дней подряд были занятия (сегодня или вчера — серия ещё жива). */
   function streakDays() {
     const days = S.days || {};
@@ -590,31 +582,24 @@
     return `<header class="top">
       <div class="row" style="gap:12px"><h1 class="logo">${logoHtml(CFG.appName)}</h1><span class="stars" title="Звёзды за успехи">⭐ <b id="starCount">${S.stars || 0}</b></span>
       </div>
-      ${S.role === 'parent' && !V.editName ? `<div class="row" style="gap:8px"><span class="hi">👨‍👩‍👧 Кабинет родителя</span>
-        <button class="hi switch" data-act="beChild">🔄 Режим ученика</button></div>` : S.setup ? `<div class="row" style="gap:8px">
-        <button class="hi" data-act="editName" title="Поменять класс">📘 ${S.grade} класс</button>
+      ${S.setup ? `<div class="row" style="gap:8px">
+        <button class="hi" data-act="editName" title="Настройки">${S.grade === 'all' ? '🧑 Все слова' : '📘 ' + S.grade + ' класс'}</button>
         ${S.name ? `<button class="hi" data-act="editName" title="Поменять имя">👋 ${esc(S.name)}</button>` : ''}
-        <button class="hi" data-act="toParent" title="Для родителей">👨‍👩‍👧</button>
       </div>` : ''}
     </header>`;
   }
 
   function render() {
-    if (!BUILTIN[S.grade]) S.grade = GRADES[0];
+    if (S.grade !== 'all' && !BUILTIN[S.grade]) S.grade = GRADES[0];
     tabs.innerHTML = TABS.map(([id, ic, name]) =>
       `<button class="tab" data-act="tab" data-tab="${id}" ${V.tab === id ? 'aria-current="page"' : ''}><i aria-hidden="true">${ic}</i>${name}</button>`).join('');
     let body = '';
-    const parentHome = S.role === 'parent' && !V.editName;
-    tabs.hidden = parentHome || !!V.incoming || !!V.modePick;
-    if (V.modePick) body = viewModePick();
-    else if (V.incoming) body = viewIncoming();
-    else if (parentHome) body = viewParentHome();
-    else if (!S.setup || V.editName) body = viewHello();
+    if (!S.setup || V.editName) body = viewHello();
     else if (V.draw && byId(V.draw)) body = viewDraw();
     else if (V.tab === 'words') body = viewWords();
     else if (V.tab === 'learn') body = viewLearn();
     else if (V.tab === 'stories') body = viewStories();
-    else if (V.tab === 'me') body = V.parent ? viewParent() : V.gate ? viewGate() : viewMe();
+    else if (V.tab === 'me') body = viewMe();
     else body = viewTrain();
     if (V.report) body = viewReport() + body;
     app.innerHTML = header() + body;
@@ -623,8 +608,9 @@
   }
 
   function viewHello() {
+    const who = V.hWho !== undefined ? V.hWho : S.setup ? (S.grade === 'all' ? 'adult' : 'kid') : '';
     const gen = V.hGender !== undefined ? V.hGender : S.gender;
-    const gr = V.hGrade !== undefined ? V.hGrade : S.setup ? String(S.grade) : '';
+    const gr = V.hGrade !== undefined ? V.hGrade : S.setup && S.grade !== 'all' ? String(S.grade) : '';
     const name = V.hName !== undefined ? V.hName : S.name || '';
     return `<section class="panel card hello">
       <div class="hellocat">${catSvg({ ...GINGER, eyes: 'happy', mouth: 'grin', extra: 'paws' })}</div>
@@ -633,21 +619,22 @@
       <form id="nameForm" class="setup">
         <label class="label" for="nameInput">Как тебя зовут?</label>
         <input type="text" id="nameInput" class="answer" maxlength="20" autocomplete="off" placeholder="Твоё имя" value="${esc(name)}">
-        <span class="label">Ты…</span>
+        <span class="label">Кто будет заниматься?</span>
         <div class="row" style="justify-content:center">
-          <button type="button" class="pickbig" data-act="hGender" data-v="m" aria-pressed="${gen === 'm'}">👦 Мальчик</button>
-          <button type="button" class="pickbig" data-act="hGender" data-v="f" aria-pressed="${gen === 'f'}">👧 Девочка</button>
+          <button type="button" class="pickbig" data-act="hWho" data-v="kid" aria-pressed="${who === 'kid'}">🎒 Школьник</button>
+          <button type="button" class="pickbig" data-act="hWho" data-v="adult" aria-pressed="${who === 'adult'}">🧑 Взрослый</button>
         </div>
-        <span class="label">В каком ты классе?</span>
-        <div class="gradepick">${GRADES.map((x) => `<button type="button" class="grade" data-act="hGrade" data-v="${x}" aria-pressed="${gr === x}">${x}</button>`).join('')}</div>
+        ${who ? `<span class="label">${who === 'adult' ? 'Как к вам обращаться?' : 'Ты…'}</span>
+        <div class="row" style="justify-content:center">
+          <button type="button" class="pickbig" data-act="hGender" data-v="m" aria-pressed="${gen === 'm'}">${who === 'adult' ? '👨 Мужчина' : '👦 Мальчик'}</button>
+          <button type="button" class="pickbig" data-act="hGender" data-v="f" aria-pressed="${gen === 'f'}">${who === 'adult' ? '👩 Женщина' : '👧 Девочка'}</button>
+        </div>` : ''}
+        ${who === 'kid' ? `<span class="label">В каком ты классе?</span>
+        <div class="gradepick">${GRADES.map((x) => `<button type="button" class="grade" data-act="hGrade" data-v="${x}" aria-pressed="${gr === x}">${x}</button>`).join('')}</div>` : ''}
+        ${who === 'adult' ? '<p class="muted" style="margin:0">Для взрослых — все словарные слова с 1 по 8 класс, без деления по классам. Выбирайте любые и тренируйтесь.</p>' : ''}
         <button class="btn" type="submit" style="align-self:center">${S.setup ? 'Сохранить' : 'Начнём!'}</button>
       </form>
-      ${S.setup ? '<button class="btn small ghost" data-act="setupClose">Отмена</button><button class="btn small ghost" data-act="toParent">👨‍👩‍👧 Режим родителя</button>' : ''}
-      ${!S.setup ? `<div class="parententry">
-        <b>Вы родитель?</b>
-        <span class="muted">Поставьте приложение себе: будете давать ребёнку задания и получать отчёты.</span>
-        <button class="btn small ghost" data-act="beParent">👨‍👩‍👧 Я родитель</button>
-      </div>` : ''}
+      ${S.setup ? '<button class="btn small ghost" data-act="setupClose">Отмена</button>' : ''}
     </section>`;
   }
 
@@ -672,27 +659,15 @@
     return `
       <section class="row between">
         <div style="display:flex;flex-direction:column;gap:6px">
-          <h2>Словарные слова · ${S.grade} класс</h2>
-          <p class="lead">Нажми на слова, которые нужно выучить сейчас. Лучше брать по 5–10 штук.</p>
+          <h2>Словарные слова · ${S.grade === 'all' ? 'все классы' : S.grade + ' класс'}</h2>
+          <p class="lead">${S.grade === 'all' ? 'Нажмите на слова, которые хотите выучить. Лучше брать по 5–10 штук.' : 'Нажми на слова, которые нужно выучить сейчас. Лучше брать по 5–10 штук.'}</p>
         </div>
       </section>
       <div class="stats">
-        <div class="stat"><b>${ws.length}</b><span class="muted">${plural(ws.length, 'слово', 'слова', 'слов')} за год</span></div>
+        <div class="stat"><b>${ws.length}</b><span class="muted">${plural(ws.length, 'слово', 'слова', 'слов')}${S.grade === 'all' ? ' всего' : ' за год'}</span></div>
         <div class="stat sel"><b>${sel.size}</b><span class="muted">выбрано сейчас</span></div>
         <div class="stat ok"><b>${learned}</b><span class="muted">уже ${plural(learned, 'выучено', 'выучены', 'выучено')}</span></div>
       </div>
-      ${S.goal ? (() => {
-        const m = todayMin(), pct = Math.min(100, Math.round((m / S.goal) * 100));
-        return `<div class="goalbar"><span>🎯 Цель на сегодня: <b>${Math.min(m, S.goal)} из ${S.goal}</b> минут${m >= S.goal ? ' — выполнена! 🎉' : ''}</span>
-          <div class="progress"><div style="width:${pct}%"></div></div></div>`;
-      })() : ''}
-      ${S.assign && String(S.assign.grade) === String(S.grade) && S.assign.ids.length ? (() => {
-        const ids = S.assign.ids.filter((id) => byId(id));
-        const done = ids.filter((id) => status(id) === 'learned').length;
-        return `<div class="assign"><div><b>📌 Задание ${esc(fromWhom(S.assign.from))}:</b> ${ids.length} ${plural(ids.length, 'слово', 'слова', 'слов')}, выучено ${done}</div>
-          ${S.assign.note ? `<div class="note">«${esc(S.assign.note)}»</div>` : ''}
-          <div class="row"><button class="btn small" data-act="doAssign">Учить задание</button></div></div>`;
-      })() : ''}
       ${(() => {
         const due = ws.filter((w) => status(w.id) === 'due').length;
         return due ? `<div class="duebanner"><span>🔁 Пора повторить: <b>${due}</b> ${plural(due, 'слово', 'слова', 'слов')}. Так они не забудутся.</span>
@@ -730,11 +705,13 @@
         <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
           <p class="muted" style="margin:0">Трудную букву возьми в квадратные скобки. Через « | » можно добавить картинку-эмодзи и подсказку.<br>Например: <b>в[о]кзал | 🚉 | На вокзале круглые часы — О</b></p>
           <input type="text" id="newWord" placeholder="к[о]р[о]ва | 🐄 | Корова мычит «Мо-о-о»" autocomplete="off" spellcheck="false">
-          <div class="row"><button class="btn small" data-act="addWord">Добавить в ${S.grade} класс</button></div>
+          <div class="row"><button class="btn small" data-act="addWord">${S.grade === 'all' ? 'Добавить слово' : 'Добавить в ' + S.grade + ' класс'}</button></div>
           ${custom.length ? `<div class="chips">${custom.map((c, i) => `<span class="chip">${marked(parseLine(c).parts)} <button class="btn small ghost" style="min-height:0;padding:0 6px;border:0" data-act="delWord" data-i="${i}" aria-label="Удалить">✕</button></span>`).join('')}</div>` : ''}
         </div>
       </details>
-      <p class="muted">${+S.grade <= 4
+      <p class="muted">${S.grade === 'all'
+        ? 'Слова из орфографических словарей учебников «Русский язык»: 1–4 класс — Канакина, Горецкий (УМК «Школа России»), 5–8 класс — Ладыженская, Баранов, Тростенцова.'
+        : +S.grade <= 4
         ? `Слова из орфографического словаря учебника «Русский язык. ${S.grade} класс» Канакиной, Горецкого (УМК «Школа России»).`
         : +S.grade <= 4
         ? 'Списки взяты из словариков учебника «Русский язык» (УМК «Школа России»).'
@@ -800,14 +777,6 @@
     const wd = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
     return `
       <h2>${S.name ? esc(S.name) + ', твой прогресс' : 'Прогресс'}</h2>
-      <section class="panel forparents">
-        <span class="label">👨‍👩‍👧 Родителям</span>
-        <div class="row">
-          <button class="btn small" data-act="sendReport">📤 Отправить отчёт маме или папе</button>
-          <button class="btn small ghost" data-act="parentOpen">🔐 Кабинет родителя на этом телефоне</button>
-        </div>
-        <p class="muted" style="margin:0">Отчёт уходит ссылкой в Telegram или WhatsApp. Родитель открывает её — и видит прогресс у себя.</p>
-      </section>
       <div class="stats">
         <div class="stat"><b>🔥 ${streak}</b><span class="muted">${plural(streak, 'день', 'дня', 'дней')} подряд</span></div>
         <div class="stat"><b>⭐ ${S.stars || 0}</b><span class="muted">звёзд</span></div>
@@ -832,7 +801,7 @@
           <thead><tr><th>Класс</th><th>Выучено</th><th>Учу</th><th>Повтор.</th><th>Всего</th></tr></thead>
           <tbody>${gradeRows.map((r) => `<tr><td>${r.g}</td><td class="ok">${r.learned}</td><td>${r.learning}</td><td class="due">${r.due}</td><td>${r.total}</td></tr>`).join('')}</tbody>
         </table></div>
-        ${hard.length ? `<span class="label">Самые трудные слова ${S.grade} класса</span>
+        ${hard.length ? `<span class="label">Самые трудные слова ${gradeName(true)}</span>
           <div class="chips">${hard.map(([w, st]) => `<span class="chip">${marked(w.parts)} <small class="muted">×${st.bad}</small></span>`).join('')}</div>` : ''}
         <p class="muted" style="margin:0">Прогресс хранится только на этом устройстве. Слово считается выученным, когда ребёнок ответил правильно в разные дни.</p>
       </section>
@@ -869,242 +838,12 @@
       ${CFG.author ? `<p class="muted" style="text-align:center">Сделано с любовью: ${esc(CFG.author)}</p>` : ''}`;
   }
 
-  // ---------- Связь родителя и ребёнка через ссылки ----------
-  // Данные кладём в ссылку после # (задание или отчёт), сервер не нужен.
-  const pack = (o) => btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-  const unpack = (t) => { try { return JSON.parse(decodeURIComponent(escape(atob(t.replace(/-/g, '+').replace(/_/g, '/'))))); } catch (e) { return null; } };
-  /** «Мама» → «от мамы», «Бабушка» → «от бабушки»; необычную подпись показываем как есть. */
-  function fromWhom(f) {
-    const w = String(f || '').trim();
-    if (!w) return 'от родителя';
-    const low = w.toLowerCase();
-    if (/[гкхжшчщ]а$/.test(low)) return 'от ' + low.slice(0, -1) + 'и';
-    if (/а$/.test(low)) return 'от ' + low.slice(0, -1) + 'ы';
-    if (/я$/.test(low)) return 'от ' + low.slice(0, -1) + 'и';
-    return '(' + w + ')';
-  }
-  const appUrl = () => location.href.split('#')[0].split('?')[0];
-  async function shareLink(title, text, url) {
-    try { if (navigator.share) { await navigator.share({ title, text, url }); return true; } } catch (e) { if (e && e.name === 'AbortError') return false; }
-    try { await navigator.clipboard.writeText(text + '\n' + url); toast('Скопировано — вставьте в сообщение'); return true; } catch (e) { toast('Не получилось скопировать: ' + url); return false; }
-  }
-
-  /** Снимок прогресса для отчёта родителю. */
-  function reportData() {
-    const w = weekStats(), ws = words();
-    return {
-      v: 1, k: 'r', at: Date.now(), n: S.name || '', g: S.gender || '', gr: S.grade,
-      st: streakDays(), min: Math.round(w.sec / 60), act: w.active, ok: w.ok, bad: w.bad,
-      goal: S.goal || 0, gd: w.goalDays, wl: w.learned, stars: S.stars || 0,
-      L: ws.filter((x) => status(x.id) === 'learned').length, T: ws.length,
-      due: ws.filter((x) => status(x.id) === 'due').length,
-      hard: ws.map((x) => [x.id, stat(x.id).bad]).filter((x) => x[1] > 0).sort((a, b) => b[1] - a[1]).slice(0, 6),
-      as: S.assign && String(S.assign.grade) === String(S.grade) && S.assign.ids.length
-        ? [S.assign.ids.filter((id) => status(id) === 'learned').length, S.assign.ids.length] : null,
-    };
-  }
-  function sendReport() {
-    const r = reportData();
-    const who = r.n || 'Ребёнок';
-    shareLink('Отчёт — ' + CFG.appName, `${reportText()}\n\nОткрыть отчёт в приложении:`, appUrl() + '#r=' + pack(r)).then((ok) => ok && goal('report_link'));
-  }
-  function reportCard(r, withSave) {
-    const acc = r.ok + r.bad ? Math.round((r.ok / (r.ok + r.bad)) * 100) : 0;
-    const dt = new Date(r.at);
-    return `<article class="panel kid">
-      <div class="row between"><b style="font-size:20px">${r.g === 'f' ? '👧' : r.g === 'm' ? '👦' : '🧒'} ${esc(r.n || 'Ребёнок')}, ${esc(r.gr)} класс</b>
-        <span class="muted">отчёт от ${dt.getDate()}.${String(dt.getMonth() + 1).padStart(2, '0')} ${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}</span></div>
-      <div class="stats">
-        <div class="stat"><b>${r.min}</b><span class="muted">минут за неделю</span></div>
-        <div class="stat"><b>${r.act}/7</b><span class="muted">дней занятий</span></div>
-        <div class="stat ok"><b>${acc}%</b><span class="muted">верных ответов</span></div>
-      </div>
-      <p style="margin:0">🔥 Дней подряд: <b>${r.st}</b> · 📚 Выучено: <b>${r.L} из ${r.T}</b>${r.wl ? ` (+${r.wl} за неделю)` : ''} · ⭐ ${r.stars}</p>
-      ${r.goal ? `<p style="margin:0">🎯 Цель ${r.goal} мин в день выполнена <b>${r.gd} из 7</b> дней</p>` : ''}
-      ${r.as ? `<p style="margin:0">📌 Задание: выучено <b>${r.as[0]} из ${r.as[1]}</b></p>` : ''}
-      ${r.due ? `<p style="margin:0">🔁 Пора повторить: ${r.due}</p>` : ''}
-      ${r.hard && r.hard.length ? `<div class="chips">${r.hard.map(([id, n]) => `<span class="chip">${esc(id)} <small class="muted">ошибок: ${n}</small></span>`).join('')}</div>` : ''}
-      ${withSave ? '' : `<div class="row"><button class="btn small ghost" data-act="kidTask" data-n="${esc(r.n)}" data-gr="${esc(r.gr)}">📌 Дать задание</button>
-        <button class="btn small ghost" data-act="kidDel" data-n="${esc(r.n)}">Удалить</button></div>`}
-    </article>`;
-  }
-
-  /** Что пришло по ссылке: задание (ребёнку) или отчёт (родителю). */
-  function viewIncoming() {
-    const x = V.incoming;
-    if (x.k === 'r') {
-      return `<h2>Отчёт ${esc(x.n ? '— ' + x.n : '')}</h2>
-        ${reportCard(x, true)}
-        <div class="row">
-          <button class="btn" data-act="inSaveReport">💾 Сохранить в кабинет родителя</button>
-          <button class="btn ghost" data-act="inClose">Закрыть</button>
-        </div>
-        <p class="muted">Отчёт сохранится на этом телефоне в кабинете родителя. Новые отчёты от ребёнка будут обновлять карточку.</p>`;
-    }
-    return `<section class="panel card">
-      <div class="hellocat">${catSvg({ ...GINGER, eyes: 'star', mouth: 'grin', extra: 'sparkles' })}</div>
-      <h2>Новое задание ${esc(fromWhom(x.from))}!</h2>
-      <p class="lead">${x.ids.length} ${plural(x.ids.length, 'слово', 'слова', 'слов')} для ${esc(x.gr)} класса${x.goal ? `, цель — ${x.goal} минут в день` : ''}.</p>
-      ${x.note ? `<div class="assign"><div class="note">«${esc(x.note)}»</div></div>` : ''}
-      <div class="chips" style="justify-content:center">${x.ids.map((id) => `<span class="chip">${esc(id)}</span>`).join('')}</div>
-      <div class="row" style="justify-content:center">
-        <button class="btn" data-act="inAcceptTask">Принять задание</button>
-        <button class="btn ghost" data-act="inClose">Не сейчас</button>
-      </div>
-    </section>`;
-  }
-
-  function viewModePick() {
-    return `<section class="panel card">
-      <div style="font-size:48px" aria-hidden="true">👨‍👩‍👧</div>
-      <h2>Для родителей</h2>
-      <div class="modepick">
-        <button class="mode" data-act="modeHere"><b>🔐 Посмотреть прогресс здесь</b><span class="muted">Ребёнок занимается на этом телефоне. Вход по примеру на умножение, потом можно вернуться к ребёнку.</span></button>
-        <button class="mode" data-act="modeParent"><b>📱 Это мой телефон — я родитель</b><span class="muted">Приложение откроется как кабинет родителя: задания ребёнку и его отчёты. Вернуться можно кнопкой «Режим ученика».</span></button>
-      </div>
-      <button class="btn small ghost" data-act="modeClose">Отмена</button>
-    </section>`;
-  }
-
-  // ---------- Кабинет родителя на своём телефоне ----------
-  const HOWTO = `<section class="panel" style="display:flex;flex-direction:column;gap:10px">
-        <span class="label">Как это работает</span>
-        <ol class="howto">
-          <li>Установите приложение ребёнку и откройте его там: ребёнок вводит имя и класс.</li>
-          <li>Здесь соберите задание и нажмите «Отправить ребёнку» — придёт ссылка в мессенджер. Ребёнок откроет её, и задание появится у него на главной.</li>
-          <li>Ребёнок в «Итогах» нажимает «Отправить отчёт маме или папе». Вы открываете ссылку — отчёт сохраняется здесь.</li>
-        </ol>
-      </section>`;
-  function viewParentHome() {
-    const kids = Object.values(S.kids || {}).sort((a, b) => b.at - a.at);
-    const pt = V.pt || (V.pt = { gr: kids[0] ? String(kids[0].gr) : String(S.grade || 1), sel: new Set(), note: '', goal: 10, from: 'Мама' });
-    const ws = gradeWords(pt.gr);
-    return `
-      <h2>Кабинет родителя</h2>
-      <p class="lead">Здесь появляются отчёты ребёнка, и отсюда вы отправляете ему задания. Всё хранится только на этом телефоне.</p>
-      ${kids.length ? '' : HOWTO}
-      ${kids.length ? `<span class="label">Отчёты детей</span>${kids.map((r) => reportCard(r)).join('')}`
-        : '<section class="panel"><p class="muted" style="margin:0">Отчётов пока нет. Попросите ребёнка нажать «📤 Отправить отчёт маме или папе» во вкладке «Итоги».</p></section>'}
-      <section class="panel" style="display:flex;flex-direction:column;gap:10px" id="taskBox">
-        <span class="label">Задание ребёнку</span>
-        <div class="row"><span class="muted">Класс:</span>${GRADES.map((x) => `<button class="chip" data-act="ptGrade" data-v="${x}" aria-pressed="${pt.gr === x}">${x}</button>`).join('')}</div>
-        <p class="muted" style="margin:0">Отметьте слова, которые задали в школе (выбрано: ${pt.sel.size}).</p>
-        <div class="chips pwords">${ws.map((x) => `<button class="chip" data-act="ptWord" data-id="${esc(x.id)}" aria-pressed="${pt.sel.has(x.id)}">${esc(x.id)}</button>`).join('')}</div>
-        <div class="row"><span class="muted">Цель в день:</span>${[0, 5, 10, 15, 20].map((m) => `<button class="chip" data-act="ptGoal" data-v="${m}" aria-pressed="${pt.goal === m}">${m ? m + ' мин' : 'без цели'}</button>`).join('')}</div>
-        <label class="label" for="ptNote">Записка ребёнку</label>
-        <input type="text" id="ptNote" maxlength="140" placeholder="Выучи к пятнице — и идём в кино!" value="${esc(pt.note)}">
-        <label class="label" for="ptFrom">Подпись</label>
-        <input type="text" id="ptFrom" maxlength="20" value="${esc(pt.from)}">
-        <div class="row"><button class="btn" data-act="ptSend" ${pt.sel.size ? '' : 'disabled'}>📤 Отправить ребёнку</button></div>
-      </section>
-      <div class="row">
-        <button class="btn small ghost" data-act="beChild">🧒 Перейти в режим ученика</button>
-      </div>
-      ${kids.length ? `<details class="panel"><summary>Как это работает</summary>${HOWTO}</details>` : ''}`;
-  }
-
-  // ---------- Кабинет родителя ----------
-  function viewGate() {
-    return `<section class="panel card">
-      <div style="font-size:48px" aria-hidden="true">👨‍👩‍👧</div>
-      <h2>Вход для взрослых</h2>
-      <p class="lead">Чтобы открыть кабинет родителя, решите пример:</p>
-      <form id="gateForm" class="row" style="justify-content:center">
-        <span class="big" style="font-size:34px">${V.gate.a} × ${V.gate.b} =</span>
-        <input type="number" inputmode="numeric" id="gateInput" class="answer" style="max-width:120px" aria-label="Ответ">
-        <button class="btn" type="submit">Войти</button>
-      </form>
-      <button class="btn small ghost" data-act="gateCancel">Отмена</button>
-    </section>`;
-  }
-
-  function reportText() {
-    const w = weekStats();
-    const ws = words();
-    const learned = ws.filter((x) => status(x.id) === 'learned').length;
-    const due = ws.filter((x) => status(x.id) === 'due').length;
-    const acc = w.ok + w.bad ? Math.round((w.ok / (w.ok + w.bad)) * 100) : 0;
-    const hard = ws.map((x) => [x, stat(x.id)]).filter(([, st]) => st.bad > 0).sort((a, b) => b[1].bad - a[1].bad).slice(0, 5);
-    const d1 = new Date(today() - 6 * DAY), d2 = new Date();
-    const f = (d) => d.getDate() + '.' + String(d.getMonth() + 1).padStart(2, '0');
-    const who = (S.name || g('Ученик', 'Ученица')) + ', ' + S.grade + ' класс';
-    const lines = [
-      `${CFG.appName} — отчёт за неделю (${f(d1)}–${f(d2)})`,
-      `${S.gender === 'f' ? '👧' : '👦'} ${who}`,
-      `🔥 Дней подряд: ${streakDays()}`,
-      `⏱ За неделю: ${Math.round(w.sec / 60)} мин, занятий ${w.active} ${plural(w.active, 'день', 'дня', 'дней')} из 7` + (S.goal ? ` (цель ${S.goal} мин в день выполнена ${w.goalDays} из 7)` : ''),
-      `✅ Ответов: ${w.ok + w.bad}, верно ${acc}%`,
-      `📚 Выучено слов: ${learned} из ${ws.length}` + (w.learned ? ` (+${w.learned} за неделю)` : ''),
-      due ? `🔁 Пора повторить: ${due}` : '',
-      hard.length ? `⚠️ Трудные слова: ${hard.map(([x, st]) => `${x.id} (${st.bad})`).join(', ')}` : '',
-      S.assign && S.assign.ids.length && String(S.assign.grade) === String(S.grade)
-        ? `📌 Задание: выучено ${S.assign.ids.filter((id) => status(id) === 'learned').length} из ${S.assign.ids.length}` : '',
-      `⭐ Звёзд: ${S.stars || 0}`,
-    ];
-    return lines.filter(Boolean).join('\n');
-  }
-  async function shareReport() {
-    const text = reportText();
-    try { if (navigator.share) { await navigator.share({ title: 'Отчёт — ' + CFG.appName, text }); goal('report'); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
-    try { await navigator.clipboard.writeText(text); toast('Отчёт скопирован — вставьте его в сообщение'); goal('report'); } catch (e) {
-      const ta = document.getElementById('pReport'); if (ta) { ta.focus(); ta.select(); toast('Выделите текст и скопируйте'); }
-    }
-  }
-
-  function viewParent() {
-    const w = weekStats();
-    const acc = w.ok + w.bad ? Math.round((w.ok / (w.ok + w.bad)) * 100) : 0;
-    const ws = words();
-    const hard = ws.map((x) => [x, stat(x.id)]).filter(([, st]) => st.bad > 0).sort((a, b) => b[1].bad - a[1].bad).slice(0, 10);
-    const wd = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
-    if (!V.pSel || V.pSelGrade !== S.grade) {
-      V.pSelGrade = S.grade;
-      V.pSel = new Set(S.assign && String(S.assign.grade) === String(S.grade) ? S.assign.ids : selectedIds());
-    }
-    return `
-      <div class="row between"><h2>Кабинет родителя</h2><button class="btn small ghost" data-act="parentClose">Выйти</button></div>
-      <p class="lead">${esc(S.name || g('Ученик', 'Ученица'))}, ${S.grade} класс. Всё хранится на этом устройстве.</p>
-      <div class="stats">
-        <div class="stat"><b>${Math.round(w.sec / 60)}</b><span class="muted">минут за неделю</span></div>
-        <div class="stat"><b>${w.active}/7</b><span class="muted">дней занятий</span></div>
-        <div class="stat ok"><b>${acc}%</b><span class="muted">верных ответов</span></div>
-      </div>
-      <section class="panel" style="display:flex;flex-direction:column;gap:10px">
-        <span class="label">Цель: минут в день</span>
-        <div class="row">${[0, 5, 10, 15, 20].map((m) => `<button class="chip" data-act="goal" data-v="${m}" aria-pressed="${(S.goal || 0) === m}">${m ? m + ' мин' : 'без цели'}</button>`).join('')}</div>
-        <div class="week">${w.list.map(({ k, d, met }) => {
-          const dt = new Date(k + 'T12:00:00');
-          return `<div class="day ${met ? 'met' : d.ok + d.bad ? 'some' : ''}"><b>${met ? '✓' : Math.round((d.sec || 0) / 60)}</b><span>${wd[dt.getDay()]}</span></div>`;
-        }).join('')}</div>
-        <p class="muted" style="margin:0">${S.goal ? `Галочка — день, когда цель выполнена. Ребёнок видит на главной: «Сегодня 6 из ${S.goal} минут».` : 'Выберите цель — ребёнок будет видеть полоску прогресса на главной.'}</p>
-      </section>
-      <section class="panel" style="display:flex;flex-direction:column;gap:10px">
-        <span class="label">Задание на неделю</span>
-        <p class="muted" style="margin:0">Отметьте слова, которые задали в школе. Ребёнок увидит задание первым на главной странице.</p>
-        <div class="chips pwords">${ws.map((x) => `<button class="chip" data-act="pWord" data-id="${esc(x.id)}" aria-pressed="${V.pSel.has(x.id)}">${esc(x.id)}${status(x.id) === 'learned' ? ' ✓' : ''}</button>`).join('')}</div>
-        <label class="label" for="pNote">Записка ребёнку (необязательно)</label>
-        <input type="text" id="pNote" maxlength="140" placeholder="Выучи к пятнице — и идём в кино!" value="${esc(V.pNote !== undefined ? V.pNote : (S.assign && S.assign.note) || '')}">
-        <div class="row"><button class="btn small" data-act="pSave">💾 Сохранить задание (${V.pSel.size})</button></div>
-      </section>
-      ${hard.length ? `<section class="panel" style="display:flex;flex-direction:column;gap:10px">
-        <span class="label">Трудные слова</span>
-        <div class="chips">${hard.map(([x, st]) => `<span class="chip">${marked(x.parts)} <small class="muted">ошибок: ${st.bad}</small></span>`).join('')}</div>
-      </section>` : ''}
-      <section class="panel" style="display:flex;flex-direction:column;gap:10px">
-        <span class="label">Отчёт</span>
-        <textarea id="pReport" readonly style="font-family:var(--body);font-size:15px;min-height:190px">${esc(reportText())}</textarea>
-        <div class="row"><button class="btn small" data-act="pShare">📤 Отправить отчёт</button></div>
-        <p class="muted" style="margin:0">Откроется выбор: Telegram, WhatsApp, почта. Удобно, если у ребёнка свой телефон: отправьте отчёт себе.</p>
-      </section>
-      <div class="row" style="justify-content:center"><button class="btn" data-act="parentClose">← Вернуться к ребёнку</button></div>`;
-  }
-
   // ---------- «Нашли ошибку?» ----------
   function viewReport() {
     const w = V.report.id ? byId(V.report.id) : null;
     const text = w
-      ? `Ошибка в словаре «${CFG.appName}»: слово «${w.id}», ${S.grade} класс. Что не так: `
-      : `Сообщение для «${CFG.appName}» (${S.grade} класс): `;
+      ? `Ошибка в словаре «${CFG.appName}»: слово «${w.id}», ${gradeName()}. Что не так: `
+      : `Сообщение для «${CFG.appName}» (${gradeName()}): `;
     return `<section class="panel report" role="dialog" aria-label="Сообщить об ошибке">
       <div class="row between"><h2>Нашли ошибку?</h2><button class="btn small ghost" data-act="reportClose">Закрыть</button></div>
       <p class="muted" style="margin:0">Спасибо, что помогаете! Допишите, что не так, скопируйте текст и отправьте автору${CFG.feedbackUrl ? ' через форму' : CFG.blogUrl ? ' в Telegram' : ''}.</p>
@@ -1397,7 +1136,8 @@
   function viewStories() {
     const ws = selectedWords();
     const groups = selectedGroups().filter((x) => x.ws.length >= 2);
-    const ready = (window.SLOVARIK_STORIES || {})[S.grade] || [];
+    const RS = window.SLOVARIK_STORIES || {};
+    const ready = S.grade === 'all' ? GRADES.flatMap((g) => RS[g] || []) : RS[S.grade] || [];
     const mine = S.stories.filter((s) => String(s.g) === String(S.grade));
     const own = highlightOwn(V.draft, ws);
     return `
@@ -1443,7 +1183,7 @@
         ${mine.map((s) => `<div class="saved row between"><p class="story" style="flex:1 1 240px">${s.gen ? markedText(s.text) : highlightOwn(s.text, words()).html}</p><button class="btn small ghost" data-act="delStory" data-t="${s.t}">Удалить</button></div>`).join('')}
       </section>` : ''}
       ${ready.length ? `<section class="panel" style="display:flex;flex-direction:column;gap:12px">
-        <span class="label">Готовые истории для ${S.grade} класса</span>
+        <span class="label">Готовые истории для ${gradeName(true)}</span>
         ${ready.map((s) => `<div class="row" style="align-items:flex-start;flex-wrap:nowrap;gap:12px"><span class="letter">${esc(s.letter)}</span><p class="story">${markedText(s.text)}</p></div>`).join('')}
       </section>` : ''}`;
   }
@@ -1502,7 +1242,7 @@
       return `<article class="panel card">
         <div class="result">⚡ ${B.score}</div>
         <h2>${B.record ? 'Новый рекорд!' : 'Время вышло!'}</h2>
-        <p class="lead">Правильных ответов: <b>${B.score}</b>, ошибок: <b>${B.miss}</b>. Рекорд ${S.grade} класса: <b>${S.best[S.grade] || 0}</b>.</p>
+        <p class="lead">Правильных ответов: <b>${B.score}</b>, ошибок: <b>${B.miss}</b>. Рекорд ${gradeName(true)}: <b>${S.best[S.grade] || 0}</b>.</p>
         <div class="row" style="justify-content:center">
           <button class="btn" data-act="start" data-mode="bolt">Ещё раз</button>
           <button class="btn ghost" data-act="stopBolt">Другой режим</button>
@@ -1651,7 +1391,7 @@
       ['due', `🔁 Пора повторить (${due})`, due],
       ['selected', `Выбранные (${sel})`, sel],
       ['mistakes', `С ошибками (${mist})`, mist],
-      ['all', `Все слова ${S.grade} класса`, words().length],
+      ['all', `Все слова ${gradeName(true)}`, words().length],
     ];
     return `
       <h2>Тренировка</h2>
@@ -1817,7 +1557,7 @@
     const T = V.train;
     const keepY = window.scrollY;
     switch (act) {
-      case 'tab': V.parent = false; V.gate = null; V.draw = null; if (V.bolt) stopBolt(); V.tab = el.dataset.tab; if (V.tab !== 'train' && T && T.done) V.train = null; window.scrollTo(0, 0); break;
+      case 'tab': V.draw = null; if (V.bolt) stopBolt(); V.tab = el.dataset.tab; if (V.tab !== 'train' && T && T.done) V.train = null; window.scrollTo(0, 0); break;
       case 'toggle': {
         const ids = selectedIds();
         const id = el.dataset.id;
@@ -1831,7 +1571,7 @@
         const cur = new Set(selectedIds());
         const fresh = words().filter((w) => status(w.id) !== 'learned' && !cur.has(w.id));
         const take = fresh.slice(0, 10);
-        if (!take.length) { toast('Все слова этого класса уже выучены!'); return; }
+        if (!take.length) { toast(S.grade === 'all' ? 'Все слова уже выучены!' : 'Все слова этого класса уже выучены!'); return; }
         S.selected[S.grade] = take.map((w) => w.id); save(); V.learn = 0;
         toast(`Выбрано ${take.length} ${plural(take.length, 'слово', 'слова', 'слов')}`);
         break;
@@ -1843,61 +1583,6 @@
       case 'report': V.report = { id: el.dataset.id }; window.scrollTo(0, 0); break;
       case 'reportClose': V.report = null; break;
       case 'reportCopy': copyText(document.getElementById('reportText').value); return;
-      case 'doAssign': S.selected[S.grade] = S.assign.ids.filter((id) => byId(id)); save(); V.learn = 0; V.tab = 'learn'; window.scrollTo(0, 0); break;
-      case 'parentOpen': V.gate = { a: 6 + Math.floor(Math.random() * 4), b: 6 + Math.floor(Math.random() * 4) }; window.scrollTo(0, 0); break;
-      case 'parentClose': V.parent = false; V.gate = null; window.scrollTo(0, 0); break;
-      case 'gateCancel': V.gate = null; break;
-      case 'goal': S.goal = +el.dataset.v; save(); break;
-      case 'pWord': {
-        const id = el.dataset.id;
-        if (V.pSel.has(id)) V.pSel.delete(id); else V.pSel.add(id);
-        break;
-      }
-      case 'pSave': {
-        const note = V.pNote !== undefined ? V.pNote : (S.assign && S.assign.note) || '';
-        S.assign = { grade: S.grade, ids: [...V.pSel], note: note.trim().slice(0, 140), at: Date.now() };
-        S.selected[S.grade] = [...V.pSel];
-        save(); toast(V.pSel.size ? 'Задание сохранено — ребёнок увидит его на главной' : 'Задание снято');
-        break;
-      }
-      case 'pShare': shareReport(); return;
-      case 'beParent': S.role = 'parent'; V.editName = false; save(); window.scrollTo(0, 0); break;
-      case 'toParent': V.modePick = true; window.scrollTo(0, 0); break;
-      case 'modeClose': V.modePick = false; break;
-      case 'modeHere': V.modePick = false; V.tab = 'me'; V.gate = { a: 6 + Math.floor(Math.random() * 4), b: 6 + Math.floor(Math.random() * 4) }; break;
-      case 'modeParent': V.modePick = false; S.role = 'parent'; save(); window.scrollTo(0, 0); break;
-      case 'beChild': S.role = 'child'; V.parent = false; V.gate = null; save(); V.tab = 'words'; window.scrollTo(0, 0); toast(S.setup ? 'Режим ученика' : 'Режим ученика: познакомимся!'); break;
-      case 'sendReport': sendReport(); return;
-      case 'ptGrade': V.pt.gr = el.dataset.v; V.pt.sel = new Set(); break;
-      case 'ptWord': { const id = el.dataset.id; if (V.pt.sel.has(id)) V.pt.sel.delete(id); else V.pt.sel.add(id); break; }
-      case 'ptGoal': V.pt.goal = +el.dataset.v; break;
-      case 'ptSend': {
-        const pt = V.pt;
-        const task = { v: 1, k: 't', at: Date.now(), gr: pt.gr, ids: [...pt.sel], note: pt.note.trim(), goal: pt.goal, from: pt.from.trim() };
-        shareLink('Задание — ' + CFG.appName, `📌 Задание в «${CFG.appName}»: ${task.ids.length} ${plural(task.ids.length, 'слово', 'слова', 'слов')}${task.note ? ' — «' + task.note + '»' : ''}. Открой ссылку:`, appUrl() + '#t=' + pack(task))
-          .then((ok) => { if (ok) { toast('Задание отправлено'); goal('task_link'); } });
-        return;
-      }
-      case 'kidTask': V.pt = Object.assign(V.pt || {}, { gr: el.dataset.gr, sel: new Set(), note: '', goal: (V.pt && V.pt.goal) || 10, from: (V.pt && V.pt.from) || 'Мама' }); render(); document.getElementById('taskBox').scrollIntoView({ behavior: 'smooth' }); return;
-      case 'kidDel': delete S.kids[el.dataset.n || '?']; save(); break;
-      case 'inClose': V.incoming = null; window.scrollTo(0, 0); break;
-      case 'inSaveReport': {
-        const r = V.incoming;
-        S.kids = S.kids || {};
-        S.kids[r.n || '?'] = r;
-        S.role = 'parent'; V.incoming = null; save(); toast('Отчёт сохранён в кабинете родителя'); window.scrollTo(0, 0);
-        break;
-      }
-      case 'inAcceptTask': {
-        const x = V.incoming;
-        S.assign = { grade: String(x.gr), ids: x.ids, note: x.note, from: x.from, at: x.at };
-        if (x.goal) S.goal = x.goal;
-        if (!S.setup) { V.hGrade = String(x.gr); } else if (String(S.grade) !== String(x.gr)) { S.grade = String(x.gr); V.story = {}; V.excl = {}; V.train = null; }
-        S.selected[String(x.gr)] = x.ids.slice();
-        S.role = 'child'; V.incoming = null; V.tab = 'words'; save();
-        render(); window.scrollTo(0, 0); react(true, 'ЗАДАНИЕ ПРИНЯТО! ВПЕРЁД, {n}!');
-        return;
-      }
       case 'reviewDue': V.trainSet = 'due'; V.tab = 'train'; V.train = null; window.scrollTo(0, 0); break;
       case 'clearSel': S.selected[S.grade] = []; save(); break;
       case 'addWord': {
@@ -1911,8 +1596,9 @@
       }
       case 'delWord': S.custom[S.grade].splice(+el.dataset.i, 1); save(); break;
       case 'say': speak(el.dataset.text); return;
-      case 'editName': V.editName = true; V.hGender = V.hGrade = V.hName = undefined; window.scrollTo(0, 0); break;
+      case 'editName': V.editName = true; V.hWho = V.hGender = V.hGrade = V.hName = undefined; window.scrollTo(0, 0); break;
       case 'setupClose': V.editName = false; break;
+      case 'hWho': V.hWho = el.dataset.v; break;
       case 'hGender': V.hGender = el.dataset.v; break;
       case 'hGrade': V.hGrade = el.dataset.v; break;
       case 'cats': S.cats = S.cats === false; save(); break;
@@ -2026,24 +1712,19 @@
   });
 
   document.addEventListener('submit', (e) => {
-    if (e.target.id === 'gateForm') {
-      e.preventDefault();
-      const v = +document.getElementById('gateInput').value;
-      if (v === V.gate.a * V.gate.b) { V.gate = null; V.parent = true; V.pSel = null; render(); window.scrollTo(0, 0); }
-      else { toast('Неверно — попробуйте ещё раз'); V.gate = { a: 6 + Math.floor(Math.random() * 4), b: 6 + Math.floor(Math.random() * 4) }; render(); }
-      return;
-    }
     if (e.target.id === 'nameForm') {
       e.preventDefault();
+      const who = V.hWho !== undefined ? V.hWho : S.setup ? (S.grade === 'all' ? 'adult' : 'kid') : '';
       const gen = V.hGender !== undefined ? V.hGender : S.gender;
-      const gr = V.hGrade !== undefined ? V.hGrade : S.setup ? String(S.grade) : '';
-      if (!gen) { toast('Выбери: мальчик или девочка'); return; }
+      const gr = who === 'adult' ? 'all' : V.hGrade !== undefined ? V.hGrade : S.setup && S.grade !== 'all' ? String(S.grade) : '';
+      if (!who) { toast('Выбери: школьник или взрослый'); return; }
+      if (!gen) { toast(who === 'adult' ? 'Выберите, как к вам обращаться' : 'Выбери: мальчик или девочка'); return; }
       if (!gr) { toast('Выбери свой класс'); return; }
       const first = !S.setup;
       if (String(S.grade) !== gr) { stopBolt(); V.learn = 0; V.train = null; V.story = {}; V.excl = {}; V.draw = null; }
       S.name = document.getElementById('nameInput').value.trim().slice(0, 20);
       S.gender = gen; S.grade = gr; S.setup = true;
-      save(); V.editName = false; V.hGender = V.hGrade = V.hName = undefined; V.tab = 'words'; render(); window.scrollTo(0, 0);
+      save(); V.editName = false; V.hWho = V.hGender = V.hGrade = V.hName = undefined; V.tab = 'words'; render(); window.scrollTo(0, 0);
       react(true, first ? (S.name ? 'ПРИВЕТ, {n}! ДАВАЙ УЧИТЬ СЛОВА' : 'ПРИВЕТ! ДАВАЙ УЧИТЬ СЛОВА') : 'ГОТОВО! ВПЕРЁД К ЗНАНИЯМ');
       return;
     }
@@ -2077,9 +1758,6 @@
   document.addEventListener('input', (e) => {
     const el = e.target;
     if (el.id === 'nameInput') { V.hName = el.value; return; }
-    if (el.id === 'pNote') { V.pNote = el.value; return; }
-    if (el.id === 'ptNote') { V.pt.note = el.value; return; }
-    if (el.id === 'ptFrom') { V.pt.from = el.value; return; }
     if (el.id === 'mine') {
       const v = el.value;
       if (v.trim()) S.mine[el.dataset.id] = v; else delete S.mine[el.dataset.id];
@@ -2103,29 +1781,33 @@
 
   render();
 
-  // ---------- Ссылка с заданием или отчётом ----------
-  function readLink() {
-    const m = location.hash.match(/^#([tr])=([A-Za-z0-9_-]+)/);
-    if (!m) return;
-    const data = unpack(m[2]);
-    try { history.replaceState(null, '', appUrl()); } catch (e) { /* ничего */ }
-    if (!data || data.k !== m[1]) { toast('Ссылка повреждена — попросите отправить её ещё раз'); return; }
-    if (data.k === 't') data.ids = (data.ids || []).filter((id) => gradeWords(String(data.gr)).some((w) => w.id === id));
-    V.incoming = data;
-    render(); window.scrollTo(0, 0);
-  }
-  readLink();
-  window.addEventListener('hashchange', readLink);
-
   // ---------- Заставка при открытии: оранжевый экран, кот и название ----------
   (function splash() {
+    // Заставка уже нарисована в index.html, чтобы появиться мгновенно. Здесь только прячем её.
     const el = document.getElementById('splash');
     if (!el) return;
-    el.querySelector('.splashcat').innerHTML = catSvg({ ...WHITE, eyes: 'sparkle', mouth: 'grin', extra: 'paws' });
-    el.querySelector('.splashname').innerHTML = logoHtml(CFG.appName);
-    el.hidden = false;
-    const hide = () => { el.classList.add('hide'); setTimeout(() => { el.hidden = true; }, 450); };
-    el.addEventListener('click', hide);
-    setTimeout(hide, 1600);
+    let done = false;
+    const hide = (delay) => {
+      if (done) return;
+      done = true;
+      setTimeout(() => { el.classList.add('hide'); setTimeout(() => el.remove(), 450); }, delay);
+    };
+    el.addEventListener('click', (e) => {
+      // Нажатие: котик подпрыгивает, разлетаются сердечки — и сразу в приложение.
+      el.classList.add('tap');
+      ['❤️', '⭐', '💛', '✨', '🧡', '⭐'].forEach((c, i) => {
+        const s = document.createElement('span');
+        const ang = (i / 6) * Math.PI * 2;
+        s.className = 'splashpop';
+        s.textContent = c;
+        s.style.left = e.clientX - 14 + 'px';
+        s.style.top = e.clientY - 14 + 'px';
+        s.style.setProperty('--dx', Math.round(Math.cos(ang) * 90) + 'px');
+        s.style.setProperty('--dy', Math.round(Math.sin(ang) * 90) + 'px');
+        el.appendChild(s);
+      });
+      hide(380);
+    });
+    setTimeout(() => hide(0), 2300);
   })();
 })();
