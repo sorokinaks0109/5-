@@ -151,6 +151,8 @@
     ['storyfix', '🔧', 'Ремонт историй', 'Починить историю', (c) => c.storyFix >= 1],
     ['bolt10', '⚡', 'Молния', 'Набрать 10 очков в «Молнии»', (c) => c.bolt >= 10],
     ['bolt25', '🌩️', 'Гроза', 'Набрать 25 очков в «Молнии»', (c) => c.bolt >= 25],
+    ['cw5', '🧠', 'Эрудит', 'Отгадать 5 слов подряд в «Кроссворде»', (c) => c.cw >= 5],
+    ['cw20', '📚', 'Ходячий словарь', 'Отгадать 20 слов подряд в «Кроссворде»', (c) => c.cw >= 20],
     ['stars100', '⭐', 'Сто звёзд', 'Собрать 100 звёзд', (c) => c.stars >= 100],
     ['stars500', '🌠', 'Звездопад', 'Собрать 500 звёзд', (c) => c.stars >= 500],
   ];
@@ -163,7 +165,7 @@
       streak: streakDays(),
       combo: k.bestCombo || 0, perfect: k.perfect || 0, trains: k.trains || 0, fixes: k.fixes || 0,
       storyFix: k.storyFix || 0, stories: (S.stories || []).length,
-      bolt: Math.max(0, ...Object.values(S.best || {})), stars: S.stars || 0,
+      bolt: Math.max(0, ...Object.values(S.best || {})), stars: S.stars || 0, cw: k.cwBestAll || 0,
     };
   }
   /** Проверяет новые достижения. При первом запуске новой версии открывает заработанные раньше молча. */
@@ -1316,7 +1318,78 @@
     write: { e: '✍️', name: 'Напиши сам', about: 'Послушай слово или посмотри на картинку и напиши его целиком.' },
     look: { e: '👀', name: 'Посмотри и напиши', about: 'Слово видно 5 секунд. Запомни его и напиши по памяти.' },
     bolt: { e: '⚡', name: 'Молния', about: '60 секунд: жми на правильное написание как можно быстрее. Побей свой рекорд!' },
+    cross: { e: '🧠', name: 'Кроссворд', about: 'Для самых умных: только толкование и клетки. Сколько слов подряд без единой ошибки?' },
   };
+
+  // ---------- «Кроссворд»: толкование + клетки, до первой ошибки ----------
+  // Слова всего класса, у которых есть толкование (без фраз из нескольких слов и слов через дефис).
+  // Открыты 1–2 буквы — никогда не трудные (они и есть испытание).
+  function startCw() {
+    const pool = shuffle(words().filter((w) => defOf(w) && !/[\s-]/.test(w.id) && w.id.length >= 3));
+    if (!pool.length) { toast('Нет слов для кроссворда'); return; }
+    goal('cross_start');
+    V.cw = { pool, i: 0, score: 0, cur: null, done: false, fail: null, record: false };
+    nextCw();
+  }
+  function nextCw() {
+    const C = V.cw;
+    if (C.i >= C.pool.length) { C.pool = shuffle(C.pool); C.i = 0; }
+    const w = C.pool[C.i++];
+    // Позиции букв: трудные (из разметки) не открываем.
+    const hard = new Set();
+    let pos = 0;
+    w.parts.forEach((p) => { if (p.t) for (let k = 0; k < p.s.length; k++) hard.add(pos + k); pos += p.s.length; });
+    const free = [...w.id].map((c, k) => k).filter((k) => !hard.has(k));
+    const n = w.id.length >= 7 ? 2 : 1;
+    C.cur = { w, open: new Set(shuffle(free).slice(0, n)) };
+    render();
+  }
+  function cwBest() { S.cwBest = S.cwBest || {}; return S.cwBest[S.grade] || 0; }
+  function finishCw(ok, typed) {
+    const C = V.cw;
+    record(C.cur.w.id, ok);
+    if (ok) { C.score++; addStars(1); cnt('cwWords'); react(true); nextCw(); return; }
+    C.done = true; C.fail = { w: C.cur.w, typed };
+    S.cwBest = S.cwBest || {};
+    if (C.score > (S.cwBest[S.grade] || 0)) { S.cwBest[S.grade] = C.score; C.record = C.score > 0; }
+    S.cnt.cwBestAll = Math.max(S.cnt.cwBestAll || 0, C.score);
+    save(); goal('cross_done', { score: C.score });
+    render();
+    if (C.record) confetti();
+    react(C.record || C.score >= 5);
+  }
+  function viewCw() {
+    const C = V.cw;
+    if (C.done) {
+      const w = C.fail.w;
+      return `<article class="panel card">
+        <div class="result">🧠 ${C.score}</div>
+        <h2>${C.record ? 'Новый рекорд!' : C.score ? 'Серия закончилась' : 'Не сдавайся!'}</h2>
+        <p class="lead">${C.fail.typed ? `Ты ${g('написал', 'написала')} «${esc(C.fail.typed)}», а правильно:` : 'Правильный ответ:'}</p>
+        <div class="gapword" style="font-size:34px">${marked(w.parts)}</div>
+        <p class="muted" style="margin:0">${esc(defOf(w))}</p>
+        <p class="lead">Слов подряд: <b>${C.score}</b>. Рекорд ${gradeName(true)}: <b>${cwBest()}</b>.</p>
+        <div class="row" style="justify-content:center">
+          <button class="btn" data-act="start" data-mode="cross">Ещё раз</button>
+          <button class="btn ghost" data-act="stopCw">Другой режим</button>
+        </div>
+      </article>`;
+    }
+    const { w, open } = C.cur;
+    const cells = [...w.id].map((c, k) => `<span class="cell${open.has(k) ? ' open' : ''}">${open.has(k) ? esc(c.toLowerCase()) : ''}</span>`).join('');
+    return `<div class="row between"><span class="label">🧠 Кроссворд · подряд: <b style="font-size:18px;color:var(--pen)">${C.score}</b> · рекорд: ${cwBest()}</span>
+        <button class="btn small ghost" data-act="stopCw">Стоп</button></div>
+      <article class="panel card">
+        <div class="hint defbox" style="font-size:20px"><span class="label">По горизонтали · ${w.id.length} ${plural(w.id.length, 'буква', 'буквы', 'букв')}</span>${esc(defOf(w))}</div>
+        <div class="cells" aria-label="Клетки кроссворда">${cells}</div>
+        <form id="cwForm" class="row" style="justify-content:center;width:100%">
+          <input type="text" id="answer" class="answer" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" ${TOUCH ? 'readonly' : ''} placeholder="Слово целиком" aria-label="Ответ">
+          <button class="btn" type="submit">Проверить</button>
+        </form>
+        ${TOUCH ? keyboardHtml() : ''}
+        <button class="btn small ghost" data-act="cwGiveUp">Сдаюсь</button>
+      </article>`;
+  }
 
   // ---------- «Молния»: игра на время ----------
   let boltTimer = 0;
@@ -1505,6 +1578,7 @@
   }
 
   function viewTrain() {
+    if (V.cw) return viewCw();
     if (V.bolt) return viewBolt();
     const T = V.train;
     if (T && T.done) return viewTrainResult();
@@ -1845,7 +1919,12 @@
       }
       case 'delStory': S.stories = S.stories.filter((s) => String(s.t) !== el.dataset.t); save(); break;
       case 'set': V.trainSet = el.dataset.k; break;
-      case 'start': if (el.dataset.mode === 'bolt') { V.train = null; startBolt(); } else startTrain(el.dataset.mode); return;
+      case 'start':
+        if (el.dataset.mode === 'cross') { V.train = null; stopBolt(); startCw(); return; }
+        V.cw = null;
+        if (el.dataset.mode === 'bolt') { V.train = null; startBolt(); } else startTrain(el.dataset.mode); return;
+      case 'stopCw': V.cw = null; break;
+      case 'cwGiveUp': if (V.cw && !V.cw.done) finishCw(false, ''); return;
       case 'stopBolt': stopBolt(); break;
       case 'boltPick': {
         const B = V.bolt;
@@ -1903,6 +1982,14 @@
       if (first) goal(who === 'adult' ? 'setup_adult' : 'setup_kid', { grade: gr });
       save(); V.editName = false; V.hWho = V.hGender = V.hGrade = V.hName = undefined; V.tab = 'words'; render(); window.scrollTo(0, 0);
       react(true, first ? (S.name ? 'ПРИВЕТ, {n}! ДАВАЙ УЧИТЬ СЛОВА' : 'ПРИВЕТ! ДАВАЙ УЧИТЬ СЛОВА') : 'ГОТОВО! ВПЕРЁД К ЗНАНИЯМ');
+      return;
+    }
+    if (e.target.id === 'cwForm') {
+      e.preventDefault();
+      const C = V.cw;
+      const val = document.getElementById('answer').value;
+      if (!C || C.done || !val.trim()) return;
+      finishCw(norm(val) === norm(C.cur.w.id), val.trim());
       return;
     }
     if (e.target.id !== 'writeForm') return;

@@ -298,6 +298,9 @@ img.thumb { width: 28px; height: 28px; border-radius: 7px; object-fit: cover; bo
 .setup { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 420px; text-align: center; }
 .setup .answer { max-width: none; }
 .answer[readonly] { cursor: default; caret-color: transparent; }
+.cells { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; margin: 6px 0; }
+.cell { width: 30px; height: 36px; border: 2px solid var(--ink-soft); border-radius: 6px; background: var(--paper-2); display: grid; place-items: center; font: 800 20px/1 var(--body); color: var(--ink); }
+.cell.open { background: var(--pencil-soft); border-color: var(--pencil); }
 .achs { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
 .ach { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; padding: 10px 6px; border: 2px dashed var(--line); border-radius: 14px; color: var(--ink-soft); }
 .ach .ae { font-size: 30px; line-height: 1.1; filter: grayscale(1); opacity: .6; }
