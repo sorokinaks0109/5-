@@ -138,9 +138,9 @@ describe('прохождение тура', () => {
     const ctx = await openTourWithPlayer();
     const created = await ctx.svc.orgGenerateCodes(ctx.org, 'participant', 149);
     expect(created).toHaveLength(149);
-    await expect(ctx.svc.orgGenerateCodes(ctx.org, 'participant', 1)).rejects.toThrow(/Лимит/);
+    await expect(ctx.svc.orgGenerateCodes(ctx.org, 'participant', 1)).rejects.toThrow(/не больше/);
     await expect(ctx.svc.orgGenerateCodes(ctx.player, 'participant', 1)).rejects.toThrow(/прав/);
-    await expect(ctx.svc.setProfile(created[0], 'альпинист', content.departments[0])).rejects.toThrow(/занят/);
+    await expect(ctx.svc.setProfile(created[0], 'альпинист')).rejects.toThrow(/занят/);
     const logged = await ctx.svc.loginByCode(created[5].code.toLowerCase());
     expect(logged.id).toBe(created[5].id);
     const progress = await ctx.svc.orgProgress(ctx.org);

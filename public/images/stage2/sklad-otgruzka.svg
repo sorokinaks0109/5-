@@ -23,8 +23,8 @@
   <text x="296" y="66" font-size="13" font-weight="700" fill="#0b2545" text-anchor="middle">АУДИТ 5С</text>
   <g font-size="11" fill="#34495e">
     <text x="240" y="90">План: ежемесячно</text>
-    <text x="240" y="112">Январь: —</text>
-    <text x="240" y="130">Февраль: —</text>
+    <text x="240" y="112">Январь: нет</text>
+    <text x="240" y="130">Февраль: нет</text>
   </g>
   <text x="296" y="154" font-size="12" font-weight="700" fill="#b42318" text-anchor="middle">НЕ ПРОВОДИЛСЯ</text>
 
@@ -58,12 +58,16 @@
     <use href="#cr" x="372" y="352"/><rect x="376" y="356" width="48" height="12" fill="#c8e6c9"/><text x="380" y="366" fill="#1b5e20">ЛЕСНОЙ</text>
   </g>
 
-  <!-- Лопаты и лом у ворот -->
-  <g stroke-linecap="round">
-    <line x1="728" y1="236" x2="746" y2="380" stroke="#8b6b4a" stroke-width="6"/>
-    <path d="M740 372 l20 -4 l6 30 l-22 4z" fill="#5c7089"/>
-    <line x1="770" y1="232" x2="752" y2="382" stroke="#8b6b4a" stroke-width="6"/>
-    <path d="M744 376 l18 2 l-4 28 l-20 -2z" fill="#4a5d74"/>
-    <line x1="782" y1="250" x2="776" y2="392" stroke="#333" stroke-width="5"/>
+  <!-- Лопаты на стойке у ворот, у каждой своё место (здесь всё в порядке) -->
+  <g>
+    <rect x="722" y="226" width="64" height="12" rx="3" fill="#5c7089"/>
+    <text x="754" y="222" font-size="10" fill="#34495e" text-anchor="middle" font-weight="700">ИНВЕНТАРЬ</text>
+    <g stroke-linecap="round">
+      <line x1="734" y1="238" x2="734" y2="352" stroke="#8b6b4a" stroke-width="5"/>
+      <path d="M724 350 h20 v30 h-20 z" fill="#4a5d74"/>
+      <line x1="754" y1="238" x2="754" y2="352" stroke="#8b6b4a" stroke-width="5"/>
+      <path d="M744 350 h20 v30 h-20 z" fill="#5c7089"/>
+      <line x1="774" y1="238" x2="774" y2="372" stroke="#333" stroke-width="4"/>
+    </g>
   </g>
 </svg>

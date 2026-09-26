@@ -32,7 +32,7 @@ export async function dispatch(svc: GameService, actorId: string | null, action:
     case 'me':
       return svc.me(acc);
     case 'setProfile':
-      return svc.setProfile(acc, p.nick, p.department);
+      return svc.setProfile(acc, p.nick);
     case 'startStage':
       return svc.startStage(acc, stage);
     case 'getStage':

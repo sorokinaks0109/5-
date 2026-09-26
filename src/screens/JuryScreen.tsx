@@ -67,7 +67,7 @@ function Scoring({ work, onSaved }: { work: JuryWork; onSaved: (list: JuryWork[]
         <textarea rows={3} value={comment} disabled={locked} maxLength={2000} onChange={(e) => setComment(e.target.value)} />
       </label>
       {locked ? (
-        <div className="notice">Итоги опубликованы — оценки закрыты для изменений.</div>
+        <div className="notice">Итоги опубликованы, менять оценки уже нельзя.</div>
       ) : (
         <button className="btn btn-block" onClick={save} disabled={busy}>
           {busy ? 'Сохраняем…' : work.myScores ? 'Обновить оценку' : 'Сохранить оценку'}
@@ -116,7 +116,7 @@ export function JuryScreen() {
                     {f.group ? `${f.group}: ` : ''}
                     {f.label}
                   </h4>
-                  <p>{work.fields[f.id]?.trim() || <span className="muted">— не заполнено —</span>}</p>
+                  <p>{work.fields[f.id]?.trim() || <span className="muted">не заполнено</span>}</p>
                 </div>
               ))}
             </div>
@@ -128,7 +128,7 @@ export function JuryScreen() {
               <h1>Идеи участников</h1>
               <p>
                 Оценено: <b>{done}</b> из {list.length}. Работы анонимные: вы видите только номер работы. Каждую работу
-                оценивают все {pc.settings.juryCount} судьи, итог — среднее.
+                оценивают все {pc.settings.juryCount} судьи, а итог считается как среднее.
               </p>
             </div>
             {list.length === 0 && <div className="notice">Пока нет отправленных идей.</div>}

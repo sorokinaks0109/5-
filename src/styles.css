@@ -1531,3 +1531,129 @@ tr.finalist td:first-child {
 .fb-head {
   overflow: hidden;
 }
+
+/* ---------- Поиск нарушений: увеличение и полный экран ---------- */
+.hs-legend {
+  margin: 4px 0 12px;
+  border-radius: 12px;
+  background: #f0fdf4;
+  border: 2px solid #bbf7d0;
+  padding: 8px 12px;
+}
+.hs-legend summary {
+  cursor: pointer;
+  font-weight: 800;
+  color: #047857;
+}
+.hs-legend ul {
+  margin: 8px 0 2px;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+  font-size: 0.92rem;
+}
+.hs-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.hs-zoom {
+  display: inline-flex;
+  align-items: center;
+  border: 2px solid var(--stone);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+}
+.hs-zoom button {
+  width: 46px;
+  height: 42px;
+  border: none;
+  background: #f5f3ff;
+  font-size: 1.4rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.hs-zoom button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.hs-zoom span {
+  min-width: 58px;
+  text-align: center;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.hs-btn {
+  min-height: 42px;
+  padding: 6px 12px;
+  border-radius: 12px;
+  border: 2px solid var(--stone);
+  background: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+.hs-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.hs-btn.hs-done {
+  background: var(--grad-btn);
+  color: #fff;
+  border-color: transparent;
+}
+.hs-scroll {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 12px;
+  margin-top: 8px;
+}
+.hs-scroll .hotspot-box {
+  max-width: none;
+  transition: width 0.2s ease;
+}
+.hs-wrap.hs-full {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  padding-top: calc(10px + env(safe-area-inset-top));
+  padding-bottom: calc(10px + env(safe-area-inset-bottom));
+  background: #1e1b4b;
+}
+.hs-full .hs-full-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: #fff;
+}
+.hs-full .hs-scroll {
+  flex: 1;
+  margin: 0;
+  background: #0f0d2e;
+}
+.zone-outline .zone-tag {
+  position: absolute;
+  top: -12px;
+  left: -12px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #fff;
+  font-size: 0.85rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+.hs-review {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}

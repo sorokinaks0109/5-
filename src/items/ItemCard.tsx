@@ -158,7 +158,7 @@ export function ItemCard({
       <p className="prompt">{item.prompt}</p>
       {item.kind === 'multi' && !locked && <p className="small muted">Можно выбрать несколько. Лишний выбор снижает результат.</p>}
       {blocked && !answer && !finished && <div className="notice warn">{blocked}</div>}
-      {input}
+      {blocked && !answer && !finished ? null : input}
 
       {hint && (
         <div className="hint-box">

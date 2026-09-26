@@ -32,4 +32,13 @@ describe('content.json', () => {
     expect(errors.some((e) => e.includes('нет-такого'))).toBe(true);
     expect(errors.some((e) => e.includes('points.stage2'))).toBe(true);
   });
+
+  it('на каждой картинке 5С ровно по одному нарушению на шаг', () => {
+    for (const img of content.stage2.images) {
+      expect(img.zones.map((z) => z.step).sort()).toEqual(content.stage2.steps.map((s) => s.id).sort());
+    }
+    const broken = structuredClone(content);
+    broken.stage2.images[0].zones.pop();
+    expect(validateContent(broken).some((e) => e.includes('по одному на каждый шаг'))).toBe(true);
+  });
 });

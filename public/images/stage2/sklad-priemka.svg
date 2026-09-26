@@ -56,19 +56,20 @@
     <text x="661" y="72" font-size="13" font-weight="700" fill="#fff" text-anchor="middle">ЧЕК-ЛИСТ 5С</text>
     <g font-size="12" fill="#34495e">
       <text x="608" y="98">Январь</text><text x="690" y="98" fill="#1f7a4a" font-weight="700">✓</text>
-      <text x="608" y="118">Февраль</text><text x="690" y="118">—</text>
-      <text x="608" y="138">Март</text><text x="690" y="138">—</text>
-      <text x="608" y="158">Апрель</text><text x="690" y="158">—</text>
+      <text x="608" y="118">Февраль</text><text x="690" y="118">✗</text>
+      <text x="608" y="138">Март</text><text x="690" y="138">✗</text>
+      <text x="608" y="158">Апрель</text><text x="690" y="158">✗</text>
     </g>
   </g>
 
-  <!-- Огнетушитель, заставленный коробками -->
+  <!-- Огнетушитель: подход свободен, место размечено (здесь всё в порядке) -->
   <g>
     <rect x="728" y="200" width="42" height="22" fill="#d62828"/>
     <text x="749" y="215" font-size="10" fill="#fff" text-anchor="middle" font-weight="700">ОГНЕТ.</text>
     <rect x="736" y="232" width="24" height="64" rx="10" fill="#d62828" stroke="#8d1b1b" stroke-width="2"/>
     <rect x="742" y="224" width="12" height="10" fill="#333"/>
-    <use href="#box" x="712" y="266"/><use href="#box" x="744" y="272"/><use href="#box" x="726" y="236"/>
+    <rect x="716" y="300" width="68" height="40" fill="none" stroke="#d62828" stroke-width="3" stroke-dasharray="8 5"/>
+    <text x="750" y="325" font-size="10" fill="#d62828" text-anchor="middle" font-weight="700">НЕ ЗАГОРАЖИВАТЬ</text>
   </g>
 
   <!-- Место стоянки погрузчика (в порядке, размечено) -->

@@ -65,7 +65,7 @@ export function LoginScreen({ onLogin }: { onLogin: (code: string) => Promise<vo
             </button>
           </form>
           <p className="small muted" style={{ marginTop: 12, marginBottom: 0 }}>
-            Код выдаёт организатор. Мы не храним ФИО, телефон и почту — только код, ник и подразделение.
+            Код выдаёт организатор. Мы не храним ни ФИО, ни телефон, ни почту: только код и ваш ник.
           </p>
         </div>
 

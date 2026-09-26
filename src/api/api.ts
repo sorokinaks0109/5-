@@ -34,7 +34,7 @@ export function createClient(t: Transport) {
     hasSession: () => t.hasSession(),
     reset: t.reset?.bind(t),
     me: () => c<MeView>('me'),
-    setProfile: (nick: string, department: string) => c<MeView>('setProfile', { nick, department }),
+    setProfile: (nick: string) => c<MeView>('setProfile', { nick }),
     startStage: (stage: StageNo) => c<StageView>('startStage', { stage }),
     getStage: (stage: StageNo) => c<StageView>('getStage', { stage }),
     answer: (stage: StageNo, itemId: string, value: AnswerValue) => c<AnswerResult>('answer', { stage, itemId, value }),

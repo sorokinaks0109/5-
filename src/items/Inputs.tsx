@@ -1,5 +1,4 @@
 // Поля ввода для разных видов заданий.
-import { useRef } from 'react';
 import {
   DndContext,
   KeyboardSensor,
@@ -15,7 +14,6 @@ import { CSS } from '@dnd-kit/utilities';
 import type {
   ChoiceItem,
   FlagsItem,
-  HotspotsItem,
   MatchItem,
   MultiItem,
   NumberItem,
@@ -24,7 +22,6 @@ import type {
   ReviewEntry,
 } from '../core/types.ts';
 
-const assetUrl = (path: string) => `${import.meta.env.BASE_URL}${path}`.replace(/\/\.\//, '/');
 
 interface Props<I, V> {
   item: I;
@@ -192,68 +189,8 @@ export function OrderInput({ item, value, onChange, disabled, review }: Props<Or
   );
 }
 
-// ---------- Нарушения на картинке ----------
-export function HotspotsInput({ item, value, onChange, disabled, review }: Props<HotspotsItem, { x: number; y: number }[]>) {
-  const box = useRef<HTMLDivElement>(null);
-  const add = (e: React.MouseEvent) => {
-    if (disabled || !box.current) return;
-    if (value.length >= item.markers) return;
-    const r = box.current.getBoundingClientRect();
-    const x = Math.round(((e.clientX - r.left) / r.width) * 1000) / 10;
-    const y = Math.round(((e.clientY - r.top) / r.height) * 1000) / 10;
-    onChange([...value, { x, y }]);
-  };
-  return (
-    <>
-      <p className="small muted">
-        Меток: <b>{value.length}</b> из {item.markers}. {!disabled && 'Нажмите на метку, чтобы убрать её.'}
-      </p>
-      <div
-        ref={box}
-        className="hotspot-box"
-        style={{ aspectRatio: String(item.aspect) }}
-        onClick={add}
-        role="application"
-        aria-label="Картинка склада: нажмите на нарушение, чтобы поставить метку"
-      >
-        <img src={assetUrl(item.image)} alt="Иллюстрация склада" draggable={false} />
-        {review?.zones?.map((z) => (
-          <div
-            key={z.id}
-            className="zone-outline"
-            style={{ left: `${z.x}%`, top: `${z.y}%`, width: `${z.w}%`, height: `${z.h}%` }}
-            title={z.label}
-          />
-        ))}
-        {value.map((m, i) => (
-          <button
-            key={i}
-            type="button"
-            className="marker"
-            style={{ left: `${m.x}%`, top: `${m.y}%` }}
-            aria-label={`Метка ${i + 1}${disabled ? '' : ', убрать'}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (!disabled) onChange(value.filter((_, j) => j !== i));
-            }}
-          >
-            {i + 1}
-          </button>
-        ))}
-      </div>
-      {review?.zones && (
-        <div className="review small">
-          <b>Нарушения (обведены зелёным):</b>
-          <ul style={{ margin: '4px 0 0', paddingLeft: 22 }}>
-            {review.zones.map((z) => (
-              <li key={z.id}>{z.label}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </>
-  );
-}
+// Нарушения на картинке: отдельный файл Hotspots.tsx
+export { HotspotsInput } from './Hotspots.tsx';
 
 // ---------- Сопоставление ----------
 export function MatchInput({ item, value, onChange, disabled, review }: Props<MatchItem, Record<string, string>>) {
@@ -277,7 +214,7 @@ export function MatchInput({ item, value, onChange, disabled, review }: Props<Ma
                 aria-label={`Шаг 5С для: ${l.text}`}
                 style={correct ? { borderColor: ok ? 'var(--ok)' : 'var(--bad)' } : undefined}
               >
-                <option value="">— выберите шаг —</option>
+                <option value="">Выберите шаг…</option>
                 {item.right.map((r) => (
                   <option key={r.id} value={r.id}>
                     {r.text}

@@ -17,11 +17,11 @@ import { NOT_A_CAUSE } from './types.ts';
 function byOrder<T extends { id: string }>(list: T[], order?: string[]): T[] {
   if (!order) return list.slice();
   const map = new Map(list.map((x) => [x.id, x]));
-  return order.map((id) => {
-    const v = map.get(id);
-    if (!v) throw new Error(`В content.json не найден элемент «${id}»`);
-    return v;
-  });
+  // Незнакомые id пропускаем, а недостающие добавляем в конец: так старые прохождения
+  // не ломаются, если задания в content.json поменяли
+  const picked = order.map((id) => map.get(id)).filter((x): x is T => !!x);
+  const rest = list.filter((x) => !order.includes(x.id));
+  return [...picked, ...rest];
 }
 
 function opts(list: Option[]): Option[] {
@@ -102,7 +102,7 @@ export function buildItems(stage: StageNo, content: Content, a: Assignment): Int
             id: ai.id,
             kind: 'hotspots',
             title: 'Найдите нарушения',
-            prompt: `На картинке ${img.zones.length} нарушений порядка. Отметьте их касанием — не больше ${img.zones.length} меток. Лишние метки снижают результат.`,
+            prompt: `На картинке спрятаны ${img.zones.length} нарушений, по одному на каждый шаг 5С. Найдите их и отметьте касанием. Меток можно поставить не больше ${img.zones.length}, а за лишние снимаются метры.`,
             maxPoints: pts.stage2.hotspots,
             hasHint: !!img.hints?.hotspots,
             image: img.image,
@@ -119,14 +119,14 @@ export function buildItems(stage: StageNo, content: Content, a: Assignment): Int
         item: {
           id: ai.id,
           kind: 'match',
-          title: 'Нарушение → шаг 5С',
-          prompt: 'Для каждого нарушения выберите шаг 5С, который поможет его устранить.',
+          title: 'Какой шаг 5С нарушен?',
+          prompt: 'Вот те же нарушения с картинки. Для каждого выберите шаг 5С, который здесь не соблюдается.',
           maxPoints: pts.stage2.match,
           hasHint: !!img.hints?.match,
-          left: opts(byOrder(img.match, ai.order)),
+          left: byOrder(img.zones, ai.order).map((z) => ({ id: z.id, text: z.label })),
           right: opts(byOrder(steps, ai.order2)),
         },
-        key: { kind: 'match', pairs: Object.fromEntries(img.match.map((m) => [m.id, m.answer])) },
+        key: { kind: 'match', pairs: Object.fromEntries(img.zones.map((z) => [z.id, z.step])) },
         hint: img.hints?.match,
         explanation: img.explanations?.match,
       };
@@ -279,7 +279,7 @@ export function buildItems(stage: StageNo, content: Content, a: Assignment): Int
             kind: 'fishbone',
             title: 'Соберите «рыбью кость»',
             prompt:
-              'Разложите причины по «костям» диаграммы Исикавы (6М). Нажмите на карточку, затем на нужную кость — или перетащите карточку. Если факт не влияет на проблему, отправьте его в корзину «Не причина».',
+              'Разложите причины по «костям» диаграммы Исикавы (6М). Коснитесь карточки, а потом нужной кости. Можно и просто перетащить. Если факт на проблему не влияет, отправьте его в корзину «Не причина».',
             maxPoints: pts.stage5.fishbone,
             hasHint: !!fc.hints?.fishbone,
             problem: fc.problem,
