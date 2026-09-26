@@ -410,7 +410,8 @@
   ];
   // Подписи: {n} — имя ребёнка. Только настоящее время, чтобы не зависеть от рода.
   const CAPS_GOOD = [
-    '{n}, ТЫ БОЛЬШОЙ МОЛОДЕЦ!', 'УМНИЦА, {n}!', 'ПРЕВОСХОДНО!', 'ВЕЛИКОЛЕПНО, {n}!', 'БЛЕСТЯЩЕ!',
+    '{n}, ТЫ {БОЛЬШОЙ МОЛОДЕЦ/БОЛЬШАЯ УМНИЦА}!', '{МОЛОДЕЦ/УМНИЧКА}, {n}!', 'ТЫ {ОТЛИЧНО ПОСТАРАЛСЯ/ОТЛИЧНО ПОСТАРАЛАСЬ}!',
+    '{n}, ТЫ {СПРАВИЛСЯ/СПРАВИЛАСЬ} НА ОТЛИЧНО!', 'ТЫ {НАСТОЯЩИЙ ГРАМОТЕЙ/НАСТОЯЩАЯ ГРАМОТЕЙКА}!', 'УМНИЦА, {n}!', 'ПРЕВОСХОДНО!', 'ВЕЛИКОЛЕПНО, {n}!', 'БЛЕСТЯЩЕ!',
     'ЗАМЕЧАТЕЛЬНО!', '{n}, Я ТОБОЙ ГОРЖУСЬ', 'БЕЗУПРЕЧНО!', 'ЧУДЕСНО, {n}!', 'ТАК ДЕРЖАТЬ, {n}!',
     'ОТЛИЧНО! ПЯТЁРКА С ПЛЮСОМ', 'КОТ АПЛОДИРУЕТ СТОЯ', 'ЛУЧШЕ И НЕ НАПИСАТЬ', 'ВОТ ЭТО ЗНАНИЯ!',
     'ПРЕКРАСНЫЙ ОТВЕТ', 'ЗОЛОТАЯ ГОЛОВА, {n}!', 'КОТ МУРЛЫЧЕТ ОТ СЧАСТЬЯ', 'РУССКИЙ ЯЗЫК ГОРДИТСЯ ТОБОЙ',
@@ -418,18 +419,23 @@
     'ГРАМОТНО, КАК В КНИГЕ', 'КОТ ГОВОРИТ: «БРАВО!»', 'ВОТ ЭТО ВНИМАТЕЛЬНОСТЬ!', 'УЧИТЕЛЬ БЫ ПОСТАВИЛ ПЯТЬ',
   ];
   const CAPS_BAD = [
-    'НИЧЕГО СТРАШНОГО, {n}', 'ОШИБКА — ЭТО ШАГ К УСПЕХУ', 'ДАВАЙ ЕЩЁ РАЗ, Я ВЕРЮ В ТЕБЯ', 'ПОЧТИ! ЕЩЁ ЧУТЬ-ЧУТЬ',
+    'НИЧЕГО СТРАШНОГО, {n}', 'ТЫ ПОЧТИ {УГАДАЛ/УГАДАЛА}!', 'ОШИБКА — ЭТО ШАГ К УСПЕХУ', 'ДАВАЙ ЕЩЁ РАЗ, Я ВЕРЮ В ТЕБЯ', 'ПОЧТИ! ЕЩЁ ЧУТЬ-ЧУТЬ',
     'НЕ СДАЁМСЯ, {n}!', 'ДАЖЕ У ВЕЛИКИХ БЫЛИ ОШИБКИ', 'ПОДУМАЙ ЕЩЁ НЕМНОЖКО', 'ТЕРПЕНИЕ И ТРУД ВСЁ ПЕРЕТРУТ',
     'ПОВТОРЕНИЕ — МАТЬ УЧЕНИЯ', 'КОТ ВЕРИТ В ТЕБЯ, {n}', 'НЕ БЕДА! ЗАПОМНИМ ВМЕСТЕ', 'НА ОШИБКАХ УЧАТСЯ',
     'ТИШЕ ЕДЕШЬ — ДАЛЬШЕ БУДЕШЬ', 'ПОСМОТРИ НА КРАСНУЮ БУКВУ', 'В СЛЕДУЮЩИЙ РАЗ ПОЛУЧИТСЯ',
   ];
   const CAPS_COMBO = {
     3: ['{n}, ТРИ ИЗ ТРЁХ — ВЕЛИКОЛЕПНО!', 'ТРИ ПОДРЯД! КОТ В ВОСХИЩЕНИИ'],
-    5: ['ПЯТЬ ПОДРЯД! {n}, ЭТО БЛЕСТЯЩЕ', 'ПЯТЬ ИЗ ПЯТИ — НАСТОЯЩИЙ ЗНАТОК'],
+    5: ['ПЯТЬ ПОДРЯД! {n}, ЭТО БЛЕСТЯЩЕ', 'ПЯТЬ ИЗ ПЯТИ — {НАСТОЯЩИЙ ЗНАТОК/НАСТОЯЩАЯ УМНИЦА}'],
     10: ['ДЕСЯТЬ ПОДРЯД! {n} — ГОРДОСТЬ КЛАССА', 'ДЕСЯТЬ ПОДРЯД! КОТ СНИМАЕТ ШЛЯПУ'],
   };
   const pickOne = (a) => a[Math.floor(Math.random() * a.length)];
-  const withName = (c) => c.replace(/\{n\}/g, (S.name || 'человек').toUpperCase());
+  /** Слово в нужном роде: g('постарался', 'постаралась'). Пока пол не выбран — мужской. */
+  const g = (m, f) => (S.gender === 'f' ? f : m);
+  /** Подпись кота: {n} — имя, {мужской/женский} — вариант по роду. */
+  const withName = (c) => c
+    .replace(/\{([^{}\/]+)\/([^{}]+)\}/g, (x, m, f) => g(m, f))
+    .replace(/\{n\}/g, (S.name || 'друг').toUpperCase());
   const ownReacts = (kind) => [...PICS.keys()].filter((k) => k.startsWith('react:' + kind + ':'));
   let reactTimer = 0;
   /** Кот выскакивает в углу. caption — своя подпись (например, за серию ответов). */
@@ -551,11 +557,11 @@
   function header() {
     return `<header class="top">
       <div class="row" style="gap:12px"><h1 class="logo">${CFG.appName === 'Словарик' ? 'Слов<b>а</b>рик' : esc(CFG.appName)}</h1><span class="stars" title="Звёзды за успехи">⭐ <b id="starCount">${S.stars || 0}</b></span>
-        ${S.name ? `<button class="hi" data-act="editName" title="Изменить имя">👋 ${esc(S.name)}</button>` : ''}</div>
-      <div class="grades" role="group" aria-label="Класс">
-        <span>Класс</span>
-        ${GRADES.map((g) => `<button class="grade" data-act="grade" data-g="${g}" aria-pressed="${String(S.grade) === g}">${g}</button>`).join('')}
       </div>
+      ${S.setup ? `<div class="row" style="gap:8px">
+        <button class="hi" data-act="editName" title="Поменять класс">📘 ${S.grade} класс</button>
+        ${S.name ? `<button class="hi" data-act="editName" title="Поменять имя">👋 ${esc(S.name)}</button>` : ''}
+      </div>` : ''}
     </header>`;
   }
 
@@ -564,7 +570,7 @@
     tabs.innerHTML = TABS.map(([id, ic, name]) =>
       `<button class="tab" data-act="tab" data-tab="${id}" ${V.tab === id ? 'aria-current="page"' : ''}><i aria-hidden="true">${ic}</i>${name}</button>`).join('');
     let body = '';
-    if (S.name === undefined || V.editName) body = viewHello();
+    if (!S.setup || V.editName) body = viewHello();
     else if (V.draw && byId(V.draw)) body = viewDraw();
     else if (V.tab === 'words') body = viewWords();
     else if (V.tab === 'learn') body = viewLearn();
@@ -578,15 +584,26 @@
   }
 
   function viewHello() {
+    const gen = V.hGender !== undefined ? V.hGender : S.gender;
+    const gr = V.hGrade !== undefined ? V.hGrade : S.setup ? String(S.grade) : '';
+    const name = V.hName !== undefined ? V.hName : S.name || '';
     return `<section class="panel card hello">
       <div class="hellocat">${catSvg({ ...GINGER, eyes: 'happy', mouth: 'grin', extra: 'paws' })}</div>
-      <h2>Привет! Я Кот-Словарик</h2>
-      <p class="lead">Буду болеть за тебя на каждом слове. Как тебя зовут?</p>
-      <form id="nameForm" class="row" style="justify-content:center;width:100%">
-        <input type="text" id="nameInput" class="answer" maxlength="20" autocomplete="off" placeholder="Твоё имя" value="${esc(S.name || '')}" aria-label="Имя">
-        <button class="btn" type="submit">Начнём!</button>
+      <h2>${S.setup ? 'Настройки' : 'Привет! Я Кот-Словарик'}</h2>
+      <p class="lead">${S.setup ? 'Здесь можно поменять имя и класс.' : 'Буду болеть за тебя на каждом слове. Давай познакомимся!'}</p>
+      <form id="nameForm" class="setup">
+        <label class="label" for="nameInput">Как тебя зовут?</label>
+        <input type="text" id="nameInput" class="answer" maxlength="20" autocomplete="off" placeholder="Твоё имя" value="${esc(name)}">
+        <span class="label">Ты…</span>
+        <div class="row" style="justify-content:center">
+          <button type="button" class="pickbig" data-act="hGender" data-v="m" aria-pressed="${gen === 'm'}">👦 Мальчик</button>
+          <button type="button" class="pickbig" data-act="hGender" data-v="f" aria-pressed="${gen === 'f'}">👧 Девочка</button>
+        </div>
+        <span class="label">В каком ты классе?</span>
+        <div class="gradepick">${GRADES.map((x) => `<button type="button" class="grade" data-act="hGrade" data-v="${x}" aria-pressed="${gr === x}">${x}</button>`).join('')}</div>
+        <button class="btn" type="submit" style="align-self:center">${S.setup ? 'Сохранить' : 'Начнём!'}</button>
       </form>
-      ${S.name === undefined ? '<button class="btn small ghost" data-act="skipName">Пропустить</button>' : ''}
+      ${S.setup ? '<button class="btn small ghost" data-act="setupClose">Отмена</button>' : ''}
     </section>`;
   }
 
@@ -1395,7 +1412,7 @@
         <div class="big">${marked(w.parts)}</div>
         <p class="muted">Запоминай! Особенно красные буквы.</p>
         <div class="progress" style="width:100%;max-width:320px"><div class="shrink"></div></div>
-        <button class="btn" data-act="lookHide">Я запомнил(а)</button>`;
+        <button class="btn" data-act="lookHide">Я ${g('запомнил', 'запомнила')}</button>`;
     } else {
       const speakable = canSpeak();
       const masked = w.parts.map((p) => (p.t ? '<span class="gap">&nbsp;</span>' : esc(p.s))).join('');
@@ -1403,7 +1420,7 @@
         <div class="pic" aria-hidden="true">${pic(w)}</div>
         ${T.mode === 'write' ? (speakable
           ? `<button class="speak" data-act="say" data-text="${esc(w.id)}" aria-label="Послушать слово">🔊</button><p class="muted">Нажми, чтобы послушать ещё раз</p>`
-          : `<div class="gapword" style="font-size:32px">${masked}</div><p class="muted">Напиши слово целиком, вставив пропущенные буквы</p>`) : '<p class="muted">Какое слово ты видел(а)? Напиши его.</p>'}
+          : `<div class="gapword" style="font-size:32px">${masked}</div><p class="muted">Напиши слово целиком, вставив пропущенные буквы</p>`) : `<p class="muted">Какое слово ты ${g('видел', 'видела')}? Напиши его.</p>`}
         ${t.solved && !t.copy ? verdictGood(w, t.caseNote) : ''}
         ${t.copy ? verdictBad(w, t.answer) : ''}
         ${!t.solved || t.copy ? `
@@ -1433,7 +1450,7 @@
     }).join('');
     const yours = [...(answer || '')].map((ch, j) => (d.extraB.has(j) ? `<span class="miss">${esc(ch)}</span>` : esc(ch))).join('');
     return `<div class="verdict bad">✗ Ошибка. Правильно: <span style="font-size:26px;color:var(--ink)">${right}</span>
-      <span class="your">Ты ${simple ? 'выбрал(а)' : 'написал(а)'}: ${yours || '—'}</span>
+      <span class="your">Ты ${simple ? g('выбрал', 'выбрала') : g('написал', 'написала')}: ${yours || '—'}</span>
       ${w.hint ? `<span class="your" style="font-weight:600">💡 ${esc(w.hint)}</span>` : ''}
       ${simple ? '' : '<span class="your" style="font-weight:600">Перепиши слово правильно — так рука тоже запомнит.</span>'}</div>`;
   }
@@ -1449,7 +1466,7 @@
       <article class="panel card">
         <div class="result">${'★'.repeat(stars)}<span style="color:var(--line)">${'★'.repeat(3 - stars)}</span></div>
         <div class="resultcat">${catSvg(stars === 3 ? { ...BLACK, eyes: 'cool', mouth: 'grin', extra: 'crown' } : stars === 2 ? { ...GINGER, eyes: 'happy', mouth: 'w', extra: 'thumb' } : { ...WHITE, eyes: 'side', mouth: 'flat', extra: 'paws' })}</div>
-        <div class="meme">${esc(withName(stars === 3 ? pickOne(['{n}, ТЫ БОЛЬШОЙ МОЛОДЕЦ!', 'ВЕЛИКОЛЕПНО! КОТ ГОРДИТСЯ ТОБОЙ', 'БЕЗ ЕДИНОЙ ОШИБКИ — БЛЕСТЯЩЕ!']) : stars === 2 ? pickOne(['{n}, ХОРОШО! ЕЩЁ НЕМНОГО — И БУДЕТ ОТЛИЧНО', 'ХОРОШАЯ РАБОТА! ПРОДОЛЖАЕМ']) : pickOne(['НЕ БЕДА, {n}. ПОВТОРЕНИЕ — МАТЬ УЧЕНИЯ', 'КОТ ВЕРИТ В ТЕБЯ. ПОПРОБУЕМ ЕЩЁ РАЗ'])))}</div>
+        <div class="meme">${esc(withName(stars === 3 ? pickOne(['{n}, ТЫ {БОЛЬШОЙ МОЛОДЕЦ/БОЛЬШАЯ УМНИЦА}!', 'ТЫ {ОТЛИЧНО ПОСТАРАЛСЯ/ОТЛИЧНО ПОСТАРАЛАСЬ}!', 'ВЕЛИКОЛЕПНО! КОТ ГОРДИТСЯ ТОБОЙ', 'БЕЗ ЕДИНОЙ ОШИБКИ — БЛЕСТЯЩЕ!']) : stars === 2 ? pickOne(['{n}, ХОРОШО! ЕЩЁ НЕМНОГО — И БУДЕТ ОТЛИЧНО', 'ХОРОШАЯ РАБОТА! ПРОДОЛЖАЕМ']) : pickOne(['НЕ БЕДА, {n}. ПОВТОРЕНИЕ — МАТЬ УЧЕНИЯ', 'КОТ ВЕРИТ В ТЕБЯ. ПОПРОБУЕМ ЕЩЁ РАЗ'])))}</div>
         <h2>${stars === 3 ? 'Отлично!' : stars === 2 ? 'Хорошо!' : 'Надо ещё потренироваться'}</h2>
         <p class="lead">Без ошибок с первого раза: <b>${good} из ${total}</b></p>
         ${mist.length ? `<div style="display:flex;flex-direction:column;gap:8px;align-items:center"><span class="label">Повтори эти слова</span>
@@ -1507,7 +1524,6 @@
     const keepY = window.scrollY;
     switch (act) {
       case 'tab': V.draw = null; if (V.bolt) stopBolt(); V.tab = el.dataset.tab; if (V.tab !== 'train' && T && T.done) V.train = null; window.scrollTo(0, 0); break;
-      case 'grade': V.draw = null; stopBolt(); S.grade = el.dataset.g; V.learn = 0; V.train = null; V.story = {}; V.excl = {}; save(); break;
       case 'toggle': {
         const ids = selectedIds();
         const id = el.dataset.id;
@@ -1546,8 +1562,10 @@
       }
       case 'delWord': S.custom[S.grade].splice(+el.dataset.i, 1); save(); break;
       case 'say': speak(el.dataset.text); return;
-      case 'skipName': S.name = ''; save(); break;
-      case 'editName': V.editName = true; break;
+      case 'editName': V.editName = true; V.hGender = V.hGrade = V.hName = undefined; window.scrollTo(0, 0); break;
+      case 'setupClose': V.editName = false; break;
+      case 'hGender': V.hGender = el.dataset.v; break;
+      case 'hGrade': V.hGrade = el.dataset.v; break;
       case 'cats': S.cats = S.cats === false; save(); break;
       case 'catTest': react(!!el.dataset.ok); return;
       case 'delReact': delPic(el.dataset.id); break;
@@ -1660,10 +1678,16 @@
   document.addEventListener('submit', (e) => {
     if (e.target.id === 'nameForm') {
       e.preventDefault();
-      const first = S.name === undefined;
+      const gen = V.hGender !== undefined ? V.hGender : S.gender;
+      const gr = V.hGrade !== undefined ? V.hGrade : S.setup ? String(S.grade) : '';
+      if (!gen) { toast('Выбери: мальчик или девочка'); return; }
+      if (!gr) { toast('Выбери свой класс'); return; }
+      const first = !S.setup;
+      if (String(S.grade) !== gr) { stopBolt(); V.learn = 0; V.train = null; V.story = {}; V.excl = {}; V.draw = null; }
       S.name = document.getElementById('nameInput').value.trim().slice(0, 20);
-      save(); V.editName = false; render();
-      if (S.name) react(true, first ? 'ПРИВЕТ, {n}! ДАВАЙ УЧИТЬ СЛОВА' : 'ПРИЯТНО ПОЗНАКОМИТЬСЯ, {n}!');
+      S.gender = gen; S.grade = gr; S.setup = true;
+      save(); V.editName = false; V.hGender = V.hGrade = V.hName = undefined; V.tab = 'words'; render(); window.scrollTo(0, 0);
+      react(true, first ? (S.name ? 'ПРИВЕТ, {n}! ДАВАЙ УЧИТЬ СЛОВА' : 'ПРИВЕТ! ДАВАЙ УЧИТЬ СЛОВА') : 'ГОТОВО! ВПЕРЁД К ЗНАНИЯМ');
       return;
     }
     if (e.target.id !== 'writeForm') return;
@@ -1695,6 +1719,7 @@
 
   document.addEventListener('input', (e) => {
     const el = e.target;
+    if (el.id === 'nameInput') { V.hName = el.value; return; }
     if (el.id === 'mine') {
       const v = el.value;
       if (v.trim()) S.mine[el.dataset.id] = v; else delete S.mine[el.dataset.id];
