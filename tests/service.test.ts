@@ -50,7 +50,7 @@ describe('прохождение тура', () => {
     expect(JSON.stringify(active)).not.toMatch(/"explanation"|"answer"/);
     const done = await ctx.svc.finishStage(ctx.player, 1);
     expect(done.review).toBeDefined();
-    expect(Object.keys(done.review!)).toHaveLength(10);
+    expect(Object.keys(done.review!)).toHaveLength(10 + content.settings.draw.wasteMoney);
   });
 
   it('этап проходится один раз', async () => {
@@ -175,6 +175,17 @@ describe('новые задания', () => {
       expect(total).toBe(1000);
     }
     expect([...seen].sort()).toEqual(['hotspots', 'inbox']);
+  });
+
+  it('рыбья кость: спорную карточку засчитывают и на второй кости', async () => {
+    const { gradeAnswer } = await import('../src/core/items.ts');
+    const fc = content.fishbone.cases.find((c) => c.causes.some((x) => x.accept?.length))!;
+    const items = buildItems(5, content, { group: fc.id, items: [{ id: 'fb-fishbone', ref: 'fishbone' }] });
+    const key = items[0].key;
+    const perfect = perfectAnswer(key) as Record<string, string>;
+    const disputed = fc.causes.find((x) => x.accept?.length)!;
+    expect(gradeAnswer(key, { ...perfect, [disputed.id]: disputed.accept![0] })).toBe(1);
+    expect(gradeAnswer(key, { ...perfect, [disputed.id]: 'environment' === disputed.category ? 'people' : 'environment' })).toBeLessThan(1);
   });
 
   it('закон Литтла: срок = заявки ÷ скорость, цель = скорость × срок', () => {

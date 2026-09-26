@@ -11,8 +11,8 @@ export const STAGE_THEME: StageTheme[] = [
   { color: '#10b981', soft: '#d1fae5', icon: '🧹', term: 'Система 5С: склад или почта' },
   { color: '#0ea5e9', soft: '#e0f2fe', icon: '🌊', term: 'Поток создания ценности и закон Литтла' },
   { color: '#6366f1', soft: '#e0e7ff', icon: '🧭', term: '8 шагов решения проблем' },
-  { color: '#8b5cf6', soft: '#ede9fe', icon: '❓', term: 'Решение проблем и регулярный менеджмент' },
   { color: '#ec4899', soft: '#fce7f3', icon: '🐟', term: 'Диаграмма Исикавы («рыбья кость»)' },
+  { color: '#8b5cf6', soft: '#ede9fe', icon: '❓', term: 'Решение проблем и регулярный менеджмент' },
   { color: '#f59e0b', soft: '#fef3c7', icon: '💡', term: 'Предложение по улучшению' },
 ];
 

@@ -16,8 +16,12 @@ export function assignStage(stage: StageNo, content: Content, seed: string): Ass
   switch (kindOf(stage)) {
     case 'waste': {
       const sits = pick(content.waste.situations, draw.wasteSituations, rng);
+      const money = pick(content.waste.money, Math.min(draw.wasteMoney, content.waste.money.length), rng);
       return {
-        items: sits.map((s) => ({ id: `waste-${s.id}`, ref: s.id, order: shuffle(ids(content.waste.wasteTypes), rng) })),
+        items: [
+          ...sits.map((s) => ({ id: `waste-${s.id}`, ref: s.id, order: shuffle(ids(content.waste.wasteTypes), rng) })),
+          ...money.map((q) => ({ id: `waste-${q.id}`, ref: `money:${q.id}`, order: shuffle(ids(q.options), rng) })),
+        ],
       };
     }
 
@@ -44,14 +48,17 @@ export function assignStage(stage: StageNo, content: Content, seed: string): Ass
     case 'flow': {
       const [proc] = pick(content.flow.processes, draw.flowProcesses, rng);
       const [little] = pick(content.flow.little, 1, rng);
+      const [lq] = pick(content.flow.littleQuestions, 1, rng);
       return {
         group: proc.id,
         items: [
           { id: 'flow-order', ref: 'order', order: shuffleNotIdentity(ids(proc.cards), rng) },
           { id: 'flow-flags', ref: 'flags', order: shuffle(ids(proc.cards), rng) },
           { id: 'flow-number', ref: 'number' },
-          { id: 'flow-little', ref: `little:${little.id}` },
+          // Сначала тренажёр, где формула перед глазами, потом расчёт и вопрос
           { id: 'flow-target', ref: `target:${little.id}` },
+          { id: 'flow-little', ref: `little:${little.id}` },
+          { id: 'flow-lq', ref: `lq:${lq.id}`, order: shuffle(ids(lq.options), rng) },
         ],
       };
     }

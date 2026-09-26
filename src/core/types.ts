@@ -6,7 +6,7 @@ export const STAGES: StageNo[] = [1, 2, 3, 4, 5, 6, 7];
 
 /** Что за вершина стоит на каждом месте маршрута. Раздел content.json называется так же. */
 export type StageKind = 'waste' | 'fiveS' | 'flow' | 'eightSteps' | 'whys' | 'fishbone' | 'idea';
-export const STAGE_KINDS: StageKind[] = ['waste', 'fiveS', 'flow', 'eightSteps', 'whys', 'fishbone', 'idea'];
+export const STAGE_KINDS: StageKind[] = ['waste', 'fiveS', 'flow', 'eightSteps', 'fishbone', 'whys', 'idea'];
 export const kindOf = (stage: StageNo): StageKind => STAGE_KINDS[stage - 1];
 
 /** Вершина с идеей: её оценивает жюри. Остальные проверяются автоматически. */
@@ -44,16 +44,25 @@ export interface ContentSettings {
   fiveSOfficeShare: number;
   draw: {
     wasteSituations: number;
+    wasteMoney: number;
     flowProcesses: number;
     eightStepsSituations: number;
     eightStepsTools: number;
+    fishboneCases: number;
     whysCases: number;
     whysQuestions: number;
-    fishboneCases: number;
   };
   points: {
+    waste: { situations: number; money: number };
     fiveS: { order: number; find: number; match: number };
-    flow: { order: number; flags: number; number: number; littleCalc: number; littleTarget: number };
+    flow: {
+      order: number;
+      flags: number;
+      number: number;
+      littleTarget: number;
+      littleCalc: number;
+      littleQuestion: number;
+    };
     eightSteps: { order: number; phases: number; tools: number; situations: number; loop: number };
     whys: { whys: number; root: number; measures: number; questions: number };
     fishbone: { fishbone: number; focus: number; next: number };
@@ -220,6 +229,8 @@ export interface FishboneCause {
   text: string;
   /** id категории 6М или "none" — не причина */
   category: string;
+  /** Другие кости, которые тоже засчитываются, если отнесение спорное */
+  accept?: string[];
 }
 
 export interface FishboneCase {
@@ -255,7 +266,12 @@ export interface Content {
   settings: ContentSettings;
   /** Названия и вступления вершин, по порядку маршрута */
   stages: StageText[];
-  waste: { wasteTypes: (Option & { description: string })[]; situations: Situation[] };
+  waste: {
+    wasteTypes: (Option & { description: string })[];
+    situations: Situation[];
+    /** Вопросы «потери — это деньги» */
+    money: (ChoiceQuestion & { id: string })[];
+  };
   fiveS: {
     /** Шаги 5С. look — подсказка «что искать» */
     steps: (Option & { description: string; look?: string })[];
@@ -264,7 +280,7 @@ export interface Content {
     orderExplanation?: string;
     variants: FiveSVariant[];
   };
-  flow: { processes: Process[]; little: LittleTask[] };
+  flow: { processes: Process[]; little: LittleTask[]; littleQuestions: (ChoiceQuestion & { id: string })[] };
   eightSteps: EightStepsContent;
   whys: { cases: Case[]; questions: (ChoiceQuestion & { id: string })[] };
   fishbone: {
@@ -369,7 +385,7 @@ export type AnswerKey =
   | { kind: 'match'; pairs: Record<string, string> }
   | { kind: 'flags'; answers: string[] }
   | { kind: 'number'; answer: number; tolerance: number }
-  | { kind: 'fishbone'; placement: Record<string, string> }
+  | { kind: 'fishbone'; placement: Record<string, string>; alt?: Record<string, string[]> }
   | { kind: 'inbox'; placement: Record<string, string> };
 
 export interface InternalItem {
@@ -532,6 +548,8 @@ export interface ReviewEntry {
   explanation?: string;
   /** Для «горячих зон»: где были нарушения */
   zones?: Zone[];
+  /** Дополнительно засчитанные ответы (рыбья кость) */
+  alt?: Record<string, string[]>;
 }
 
 export interface StageView {

@@ -1924,3 +1924,10 @@ tr.finalist td:first-child {
     display: none;
   }
 }
+.inbox-5s {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
