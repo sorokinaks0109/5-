@@ -4,7 +4,7 @@
 
   /** Название с выделенной частью: «Мур» в «Мурфографии», «а» в «Словарике». */
   const logoHtml = (n) => (n === 'Мурфография' ? '<b>Мур</b>фография' : n === 'Словарик' ? 'Слов<b>а</b>рик' : String(n).replace(/[&<>"']/g, ''));
-  const CFG = Object.assign({ appName: 'Мурфография', author: '', blogUrl: '', blogTitle: '', feedbackUrl: '', metrikaId: '' }, window.SLOVARIK_CONFIG || {});
+  const CFG = Object.assign({ appName: 'Мурфография', author: '', blogUrl: '', blogTitle: '', blogSub: '', feedbackUrl: '', metrikaId: '' }, window.SLOVARIK_CONFIG || {});
 
   // ---------- Хранение ----------
   const KEY = 'slovarik:v1';
@@ -590,9 +590,11 @@
     return `<header class="top">
       <div class="row" style="gap:12px"><h1 class="logo">${logoHtml(CFG.appName)}</h1><span class="stars" title="Звёзды за успехи">⭐ <b id="starCount">${S.stars || 0}</b></span>
       </div>
-      ${S.role === 'parent' ? '<div class="row" style="gap:8px"><span class="hi">👨‍👩‍👧 Кабинет родителя</span></div>' : S.setup ? `<div class="row" style="gap:8px">
+      ${S.role === 'parent' && !V.editName ? `<div class="row" style="gap:8px"><span class="hi">👨‍👩‍👧 Кабинет родителя</span>
+        <button class="hi switch" data-act="beChild">🔄 Режим ученика</button></div>` : S.setup ? `<div class="row" style="gap:8px">
         <button class="hi" data-act="editName" title="Поменять класс">📘 ${S.grade} класс</button>
         ${S.name ? `<button class="hi" data-act="editName" title="Поменять имя">👋 ${esc(S.name)}</button>` : ''}
+        <button class="hi" data-act="toParent" title="Для родителей">👨‍👩‍👧</button>
       </div>` : ''}
     </header>`;
   }
@@ -603,8 +605,9 @@
       `<button class="tab" data-act="tab" data-tab="${id}" ${V.tab === id ? 'aria-current="page"' : ''}><i aria-hidden="true">${ic}</i>${name}</button>`).join('');
     let body = '';
     const parentHome = S.role === 'parent' && !V.editName;
-    tabs.hidden = parentHome || !!V.incoming;
-    if (V.incoming) body = viewIncoming();
+    tabs.hidden = parentHome || !!V.incoming || !!V.modePick;
+    if (V.modePick) body = viewModePick();
+    else if (V.incoming) body = viewIncoming();
     else if (parentHome) body = viewParentHome();
     else if (!S.setup || V.editName) body = viewHello();
     else if (V.draw && byId(V.draw)) body = viewDraw();
@@ -639,7 +642,7 @@
         <div class="gradepick">${GRADES.map((x) => `<button type="button" class="grade" data-act="hGrade" data-v="${x}" aria-pressed="${gr === x}">${x}</button>`).join('')}</div>
         <button class="btn" type="submit" style="align-self:center">${S.setup ? 'Сохранить' : 'Начнём!'}</button>
       </form>
-      ${S.setup ? '<button class="btn small ghost" data-act="setupClose">Отмена</button>' : ''}
+      ${S.setup ? '<button class="btn small ghost" data-act="setupClose">Отмена</button><button class="btn small ghost" data-act="toParent">👨‍👩‍👧 Режим родителя</button>' : ''}
       ${!S.setup ? `<div class="parententry">
         <b>Вы родитель?</b>
         <span class="muted">Поставьте приложение себе: будете давать ребёнку задания и получать отчёты.</span>
@@ -861,8 +864,8 @@
         </div>
       </details>
       ${CFG.blogUrl ? `<a class="panel blog" href="${esc(CFG.blogUrl)}" target="_blank" rel="noopener">
-        <span style="font-size:30px" aria-hidden="true">💌</span>
-        <span><b>${esc(CFG.blogTitle || 'Блог автора')}</b><br><span class="muted">Новые игры, словари и советы родителям</span></span></a>` : ''}
+        <span style="font-size:30px" aria-hidden="true">✉️</span>
+        <span><b>${esc(CFG.blogTitle || 'Написать автору')}</b>${CFG.blogSub ? `<br><span class="muted">${esc(CFG.blogSub)}</span>` : ''}</span></a>` : ''}
       ${CFG.author ? `<p class="muted" style="text-align:center">Сделано с любовью: ${esc(CFG.author)}</p>` : ''}`;
   }
 
@@ -948,6 +951,18 @@
         <button class="btn" data-act="inAcceptTask">Принять задание</button>
         <button class="btn ghost" data-act="inClose">Не сейчас</button>
       </div>
+    </section>`;
+  }
+
+  function viewModePick() {
+    return `<section class="panel card">
+      <div style="font-size:48px" aria-hidden="true">👨‍👩‍👧</div>
+      <h2>Для родителей</h2>
+      <div class="modepick">
+        <button class="mode" data-act="modeHere"><b>🔐 Посмотреть прогресс здесь</b><span class="muted">Ребёнок занимается на этом телефоне. Вход по примеру на умножение, потом можно вернуться к ребёнку.</span></button>
+        <button class="mode" data-act="modeParent"><b>📱 Это мой телефон — я родитель</b><span class="muted">Приложение откроется как кабинет родителя: задания ребёнку и его отчёты. Вернуться можно кнопкой «Режим ученика».</span></button>
+      </div>
+      <button class="btn small ghost" data-act="modeClose">Отмена</button>
     </section>`;
   }
 
@@ -1080,7 +1095,8 @@
         <textarea id="pReport" readonly style="font-family:var(--body);font-size:15px;min-height:190px">${esc(reportText())}</textarea>
         <div class="row"><button class="btn small" data-act="pShare">📤 Отправить отчёт</button></div>
         <p class="muted" style="margin:0">Откроется выбор: Telegram, WhatsApp, почта. Удобно, если у ребёнка свой телефон: отправьте отчёт себе.</p>
-      </section>`;
+      </section>
+      <div class="row" style="justify-content:center"><button class="btn" data-act="parentClose">← Вернуться к ребёнку</button></div>`;
   }
 
   // ---------- «Нашли ошибку?» ----------
@@ -1091,12 +1107,12 @@
       : `Сообщение для «${CFG.appName}» (${S.grade} класс): `;
     return `<section class="panel report" role="dialog" aria-label="Сообщить об ошибке">
       <div class="row between"><h2>Нашли ошибку?</h2><button class="btn small ghost" data-act="reportClose">Закрыть</button></div>
-      <p class="muted" style="margin:0">Спасибо, что помогаете! Допишите, что не так, скопируйте текст и отправьте автору${CFG.feedbackUrl ? ' через форму' : CFG.blogUrl ? ' в блог' : ''}.</p>
+      <p class="muted" style="margin:0">Спасибо, что помогаете! Допишите, что не так, скопируйте текст и отправьте автору${CFG.feedbackUrl ? ' через форму' : CFG.blogUrl ? ' в Telegram' : ''}.</p>
       <textarea id="reportText" spellcheck="true">${esc(text)}</textarea>
       <div class="row">
         <button class="btn small" data-act="reportCopy">📋 Скопировать текст</button>
         ${CFG.feedbackUrl ? `<a class="btn small ghost" href="${esc(CFG.feedbackUrl)}" target="_blank" rel="noopener">Открыть форму</a>` : ''}
-        ${!CFG.feedbackUrl && CFG.blogUrl ? `<a class="btn small ghost" href="${esc(CFG.blogUrl)}" target="_blank" rel="noopener">Написать в блог</a>` : ''}
+        ${!CFG.feedbackUrl && CFG.blogUrl ? `<a class="btn small ghost" href="${esc(CFG.blogUrl)}" target="_blank" rel="noopener">Написать в Telegram</a>` : ''}
       </div>
     </section>`;
   }
@@ -1845,8 +1861,12 @@
         break;
       }
       case 'pShare': shareReport(); return;
-      case 'beParent': S.role = 'parent'; save(); window.scrollTo(0, 0); break;
-      case 'beChild': S.role = 'child'; save(); V.tab = 'words'; window.scrollTo(0, 0); break;
+      case 'beParent': S.role = 'parent'; V.editName = false; save(); window.scrollTo(0, 0); break;
+      case 'toParent': V.modePick = true; window.scrollTo(0, 0); break;
+      case 'modeClose': V.modePick = false; break;
+      case 'modeHere': V.modePick = false; V.tab = 'me'; V.gate = { a: 6 + Math.floor(Math.random() * 4), b: 6 + Math.floor(Math.random() * 4) }; break;
+      case 'modeParent': V.modePick = false; S.role = 'parent'; save(); window.scrollTo(0, 0); break;
+      case 'beChild': S.role = 'child'; V.parent = false; V.gate = null; save(); V.tab = 'words'; window.scrollTo(0, 0); toast(S.setup ? 'Режим ученика' : 'Режим ученика: познакомимся!'); break;
       case 'sendReport': sendReport(); return;
       case 'ptGrade': V.pt.gr = el.dataset.v; V.pt.sel = new Set(); break;
       case 'ptWord': { const id = el.dataset.id; if (V.pt.sel.has(id)) V.pt.sel.delete(id); else V.pt.sel.add(id); break; }
