@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Мурфография</title>
 <meta name="description" content="Словарные слова 1–8 класса: запоминаем с ассоциациями, сочиняем смешные истории и пишем диктант">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://murfografia.ru/">
+<meta property="og:title" content="Мурфография — словарные слова с котами">
+<meta property="og:description" content="Словарные слова 1–8 класса: смешные истории, рисунки и тренировка. Бесплатно.">
+<meta property="og:image" content="https://murfografia.ru/icon-512.png">
+<link rel="canonical" href="https://murfografia.ru/">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -290,6 +296,12 @@ img.thumb { width: 28px; height: 28px; border-radius: 7px; object-fit: cover; bo
 /* Знакомство */
 .setup { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 420px; text-align: center; }
 .setup .answer { max-width: none; }
+.kbd { display: flex; flex-direction: column; gap: 6px; width: 100%; max-width: 520px; margin: 4px auto 0; user-select: none; }
+.kbdrow { display: flex; gap: 4px; justify-content: center; }
+.key { flex: 1 1 0; min-width: 0; max-width: 44px; height: 46px; padding: 0; border: 2px solid var(--line); border-bottom-width: 4px; border-radius: 10px; background: var(--paper-2); color: var(--ink); font: 800 20px/1 var(--body); touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.key:active { transform: translateY(2px); border-bottom-width: 2px; background: var(--pen-soft); }
+.key.wide { max-width: 64px; flex-grow: 1.5; }
+.key.space { max-width: none; flex-grow: 5; font-size: 15px; font-weight: 700; color: var(--ink-soft); }
 .pickbig { flex: 1 1 140px; min-height: 58px; border-radius: 16px; border: 3px solid var(--line); background: var(--paper-2); font-size: 19px; font-weight: 800; }
 .pickbig[aria-pressed="true"] { border-color: var(--pen); background: var(--pen-soft); color: var(--pen); }
 .gradepick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
