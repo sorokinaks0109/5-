@@ -231,6 +231,10 @@
         tip: 'ПРИ- значит: приближение (прибыть, прийти), присоединение (пришить, приклеить), близость (пришкольный) или неполное действие (приоткрыть, притворить дверь). Всё, что «пришло поближе», — это ПРИ.',
       };
     }
+    if (p.alts && p.alts.some((a) => a === ' ' || a === '-')) return {
+      key: 'слитно', mark: '✂', title: 'Слитно, раздельно или через дефис?', song: 'слитно и раздельно',
+      tip: 'Слитно — одно слово (вмиг, зато, чтобы). Раздельно — если между словами можно вставить другое слово или задать вопрос (на ходу, за границей). Через дефис — повторы и пары слов (давным-давно, из-за, точь-в-точь).',
+    };
     if (p.alts && p.alts.includes('')) return { key: 'тихие', mark: '★', title: 'Тихие буквы', song: 'тихие буквы', tip: 'Эта буква тихоня: её не слышно, но она есть. Произнеси слово по слогам так, как пишется.' };
     if (isDouble(s) || (p.alts && p.alts.some(isDouble))) return { key: 'двойные', mark: 'нн', title: 'Одна или две буквы?', song: 'двойные буквы', tip: 'Посчитай буквы: одна или две? Двойные стоят рядом, как близнецы, — не разлучай их. А одиночку не удваивай.' };
     const L = s.toUpperCase();
@@ -1028,7 +1032,7 @@
       const ans = f.answers[i];
       let cls = 'sgap';
       if (f.checked) cls += ans === p.s ? ' right' : ' wrong';
-      return `<button class="${cls}" data-act="fixTap" data-k="${esc(key)}" data-i="${i}" aria-label="Пропуск">${ans == null ? '?' : ans === '' ? '·' : esc(ans)}</button>`;
+      return `<button class="${cls}" data-act="fixTap" data-k="${esc(key)}" data-i="${i}" aria-label="Пропуск">${ans == null ? '?' : ans === '' ? '·' : ans === ' ' ? '␣' : esc(ans)}</button>`;
     }).join('');
   }
 
@@ -1360,11 +1364,11 @@
         <div class="pic" aria-hidden="true">${pic(w)}</div>
         <div class="gapword">${w.parts.map((p, i) => {
           if (!p.t) return `<span>${esc(p.s)}</span>`;
-          if (i in t.filled) return `<span class="gap filled">${esc(p.s) || '·'}</span>`;
+          if (i in t.filled) return `<span class="gap filled">${p.s === ' ' ? '&nbsp;' : esc(p.s) || '·'}</span>`;
           return `<span class="gap ${i === cur ? 'now' : ''}">&nbsp;</span>`;
         }).join('')}</div>
         ${t.solved ? verdictGood(w) : `<div class="opts">${t.orders[cur].map((a) =>
-          `<button class="opt ${a === '' ? 'wide' : ''} ${t.bad[cur + ':' + a] ? 'wrong' : ''}" data-act="fillPick" data-a="${esc(a)}">${a === '' ? 'ничего' : esc(a)}</button>`).join('')}</div>`}
+          `<button class="opt ${a.length !== 1 || a === ' ' || a === '-' ? 'wide' : ''} ${t.bad[cur + ':' + a] ? 'wrong' : ''}" data-act="fillPick" data-a="${esc(a)}">${altLabel(a, w.parts[cur].alts)}</button>`).join('')}</div>`}
         ${t.wrong && !t.solved && w.hint ? `<div class="hint"><span class="label">Подсказка</span>${esc(w.hint)}</div>` : ''}`;
     } else if (T.mode === 'choose') {
       inner = `
@@ -1447,6 +1451,14 @@
           <button class="btn ghost" data-act="stopTrain">Другой режим</button>
         </div>
       </article>`;
+  }
+
+  /** Подпись варианта: пробел и дефис показываем словами. */
+  function altLabel(a, alts) {
+    if (a === ' ') return 'раздельно';
+    if (a === '-') return 'через дефис';
+    if (a === '') return alts.some((x) => x === ' ' || x === '-') ? 'слитно' : 'ничего';
+    return esc(a);
   }
 
   /** После ответа следующее слово появляется само: быстро, если верно, и чуть позже, если была ошибка. */
