@@ -375,7 +375,7 @@
     }[o.mouth];
     const extra = {
       none: '',
-      thumb: `<g class="wave" style="transform-origin:98px 104px"><rect x="86" y="84" width="22" height="20" rx="9" fill="${fur}" stroke="${ink}" stroke-width="2.5"/><rect x="90" y="70" width="10" height="20" rx="5" fill="${fur}" stroke="${ink}" stroke-width="2.5"/><path d="M92 98 v4 M98 98 v4 M104 98 v4" stroke="${ink}" stroke-width="1.5" stroke-linecap="round"/></g>`,
+      hi: `<g class="wave" style="transform-origin:94px 104px"><path d="M92 104 q8 -12 10 -26" fill="none" stroke="${ink}" stroke-width="13" stroke-linecap="round"/><path d="M92 104 q8 -12 10 -26" fill="none" stroke="${fur}" stroke-width="8" stroke-linecap="round"/><ellipse cx="103" cy="72" rx="11" ry="12" fill="${fur}" stroke="${ink}" stroke-width="2.5"/><ellipse cx="103" cy="76" rx="4.5" ry="4" fill="#ff8fab"/><circle cx="97.5" cy="67.5" r="2.3" fill="#ff8fab"/><circle cx="103" cy="65" r="2.3" fill="#ff8fab"/><circle cx="108.5" cy="67.5" r="2.3" fill="#ff8fab"/></g>`,
       hat: `<path d="M60 0 l15 30 h-30z" fill="#8e5bd6" stroke="${ink}" stroke-width="2.5" stroke-linejoin="round"/><circle cx="60" cy="1" r="5" fill="#ffd23f" stroke="${ink}" stroke-width="2"/><circle cx="55" cy="20" r="2.5" fill="#ffd23f"/><circle cx="64" cy="13" r="2.5" fill="#6fe0ff"/>`,
       sweat: `<path d="M97 34 q-7 11 0 16 q7 -5 0 -16z" fill="#8fd3ff" stroke="${ink}" stroke-width="1.5"/>`,
       q: `<text x="96" y="30" font-size="30" font-weight="900" fill="#2451c7" font-family="Nunito, sans-serif" class="bob">?</text>`,
@@ -411,13 +411,13 @@
   const BLACK = { fur: '#3d3e48', muzzle: '#5b5d69', dark: true };
   const CREAM = { fur: '#f3dfc1', stripes: '#dcbb8c', muzzle: '#fffaf0' };
   const CATS_GOOD = [
-    ['', { ...GINGER, eyes: 'happy', mouth: 'w', extra: 'thumb' }],
+    ['', { ...GINGER, eyes: 'happy', mouth: 'w', extra: 'hi' }],
     ['', { ...WHITE, eyes: 'love', mouth: 'w', extra: 'hearts' }],
     ['', { ...GREY, eyes: 'star', mouth: 'grin', extra: 'sparkles' }],
     ['', { ...BLACK, eyes: 'cool', mouth: 'w' }],
     ['', { ...GINGER, eyes: 'laugh', mouth: 'grin', extra: 'hat' }],
     ['', { ...GREY, eyes: 'happy', mouth: 'w', extra: 'crown' }],
-    ['', { ...CREAM, eyes: 'wink', mouth: 'grin', extra: 'thumb' }],
+    ['', { ...CREAM, eyes: 'wink', mouth: 'grin', extra: 'hi' }],
     ['', { ...WHITE, eyes: 'sparkle', mouth: 'grin', extra: 'paws' }],
     ['', { ...BLACK, eyes: 'love', mouth: 'w', extra: 'hearts' }],
     ['', { ...CREAM, eyes: 'star', mouth: 'w', extra: 'crown' }],
@@ -1499,7 +1499,7 @@
     return `
       <article class="panel card">
         <div class="result">${'★'.repeat(stars)}<span style="color:var(--line)">${'★'.repeat(3 - stars)}</span></div>
-        <div class="resultcat">${catSvg(stars === 3 ? { ...BLACK, eyes: 'cool', mouth: 'grin', extra: 'crown' } : stars === 2 ? { ...GINGER, eyes: 'happy', mouth: 'w', extra: 'thumb' } : { ...WHITE, eyes: 'side', mouth: 'flat', extra: 'paws' })}</div>
+        <div class="resultcat">${catSvg(stars === 3 ? { ...BLACK, eyes: 'cool', mouth: 'grin', extra: 'crown' } : stars === 2 ? { ...GINGER, eyes: 'happy', mouth: 'w', extra: 'hi' } : { ...WHITE, eyes: 'side', mouth: 'flat', extra: 'paws' })}</div>
         <div class="meme">${esc(withName(stars === 3 ? pickOne(['{n}, ТЫ {БОЛЬШОЙ МОЛОДЕЦ/БОЛЬШАЯ УМНИЦА}!', 'ТЫ {ОТЛИЧНО ПОСТАРАЛСЯ/ОТЛИЧНО ПОСТАРАЛАСЬ}!', 'ВЕЛИКОЛЕПНО! КОТ ГОРДИТСЯ ТОБОЙ', 'БЕЗ ЕДИНОЙ ОШИБКИ — БЛЕСТЯЩЕ!']) : stars === 2 ? pickOne(['{n}, ХОРОШО! ЕЩЁ НЕМНОГО — И БУДЕТ ОТЛИЧНО', 'ХОРОШАЯ РАБОТА! ПРОДОЛЖАЕМ']) : pickOne(['НЕ БЕДА, {n}. ПОВТОРЕНИЕ — МАТЬ УЧЕНИЯ', 'КОТ ВЕРИТ В ТЕБЯ. ПОПРОБУЕМ ЕЩЁ РАЗ'])))}</div>
         <h2>${stars === 3 ? 'Отлично!' : stars === 2 ? 'Хорошо!' : 'Надо ещё потренироваться'}</h2>
         <p class="lead">Без ошибок с первого раза: <b>${good} из ${total}</b></p>
@@ -1790,7 +1790,7 @@
     const hide = (delay) => {
       if (done) return;
       done = true;
-      setTimeout(() => { el.classList.add('hide'); setTimeout(() => el.remove(), 450); }, delay);
+      setTimeout(() => { el.classList.add('hide'); setTimeout(() => { el.remove(); document.getElementById('boot')?.remove(); }, 450); }, delay);
     };
     el.addEventListener('click', (e) => {
       // Нажатие: котик подпрыгивает, разлетаются сердечки — и сразу в приложение.
