@@ -145,6 +145,7 @@ h2 { font: 400 30px/1.1 var(--hand); margin: 0; color: var(--ink); text-wrap: ba
 }
 .word .e { font-size: 22px; }
 .word[aria-pressed="true"] { border-color: var(--pen); background: var(--pen-soft); }
+.word[aria-pressed="true"]::after { content: "✓"; position: absolute; top: -8px; left: -6px; width: 22px; height: 22px; border-radius: 50%; background: var(--pen); color: #fff; font: 900 14px/22px var(--body); text-align: center; box-shadow: 0 2px 0 rgba(0,0,0,.15); }
 .word .dot { position: absolute; top: 6px; right: 7px; width: 9px; height: 9px; border-radius: 50%; background: var(--line); }
 .word .dot.learning { background: var(--pencil); }
 .word .dot.learned { background: var(--green); }

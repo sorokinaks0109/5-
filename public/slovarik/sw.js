@@ -3,7 +3,7 @@
    Когда на сайте меняется этот файл (новая VERSION), браузер фоном скачивает все файлы заново,
    целиком, и включает новую версию разом — старые и новые файлы никогда не смешиваются.
    ВАЖНО: при любом изменении приложения увеличивайте VERSION. */
-const VERSION = 'slovarik-v15';
+const VERSION = 'slovarik-v16';
 const FILES = ['./', 'index.html', 'app.js', 'words.js', 'config.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-180.png'];
 
 self.addEventListener('install', (e) => {
