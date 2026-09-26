@@ -30,7 +30,7 @@ export function HomeScreen() {
     if (s.status === 'available') {
       const min = pc.settings.stageMinutes[s.stage - 1];
       const ok = window.confirm(
-        `Вершина ${s.stage}: «${pc.stages[s.stage - 1].name}».\n\nЗапас кислорода — ${min} минут. Таймер запустится сразу и не остановится, даже если закрыть страницу. Пройти вершину можно только один раз.\n\nНачинаем?`,
+        `Вершина ${s.stage}: «${pc.stages[s.stage - 1].name}».\n\nКислорода хватит на ${min} минут. Таймер включится сразу и не остановится, даже если закрыть страницу. Подняться на вершину можно только один раз.\n\nИдём?`,
       );
       if (!ok) return;
       setBusy(s.stage);
@@ -67,7 +67,7 @@ export function HomeScreen() {
               <div className="row" style={{ alignItems: 'flex-start' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="small" style={{ color: '#e0e7ff' }}>
-                    {me.nick} · {me.department}
+                    {me.nick}
                   </div>
                   <div className="alt">
                     {meters(shownAltitude)} <small>из {meters(maxTotal)}</small>
@@ -80,7 +80,7 @@ export function HomeScreen() {
               </div>
               <div className="stats">
                 <div className="stat">
-                  <b>{p.place ?? '—'}</b>
+                  <b>{p.place ?? '?'}</b>
                   <span>место{p.participantsCount ? ` из ${p.participantsCount}` : ''}</span>
                 </div>
                 <div className="stat">
@@ -106,7 +106,7 @@ export function HomeScreen() {
               <div className="card">
                 <h2>Итоги опубликованы</h2>
                 <p>
-                  Ваша высота — <b>{meters(p.altitude)}</b>, место — <b>{p.place ?? '—'}</b>.
+                  Вы поднялись на <b>{meters(p.altitude)}</b> и заняли <b>{p.place ?? '?'}</b> место.
                 </p>
                 <div className="row">
                   <button className="btn" onClick={() => go('/rating')}>
@@ -172,11 +172,11 @@ export function HomeScreen() {
             <div className="card" style={{ marginTop: 16 }}>
               <h3>Правила экспедиции</h3>
               <ul className="small" style={{ paddingLeft: 20, margin: 0 }}>
-                <li>Высота — ваши баллы. За каждую вершину — до {meters(pc.settings.stageMaxAltitude)}.</li>
+                <li>Баллы здесь считаются в метрах высоты. Каждая вершина даёт до {meters(pc.settings.stageMaxAltitude)}.</li>
                 <li>Вершины открываются по очереди, каждую можно пройти один раз.</li>
-                <li>Время на вершину — запас кислорода. Таймер не останавливается, если закрыть страницу.</li>
+                <li>Время на вершину ограничено запасом кислорода. Таймер не останавливается, даже если закрыть страницу.</li>
                 <li>
-                  Снаряжение — {pc.settings.hintsTotal} подсказки на весь тур. Подсказка снижает высоту за задание на{' '}
+                  В снаряжении {pc.settings.hintsTotal} подсказки на весь тур. Подсказка снижает высоту за задание на{' '}
                   {Math.round(pc.settings.hintPenalty * 100)}%.
                 </li>
                 <li>Ошибки портят погоду, но не останавливают игру.</li>
@@ -203,7 +203,7 @@ function TourInfo() {
     );
   return (
     <div className="notice warn">
-      Тур закрыт{t.resultsPublished ? ', итоги опубликованы.' : '. Жюри оценивает идеи — итоги появятся здесь.'}
+      Тур закрыт{t.resultsPublished ? ', итоги опубликованы.' : '. Жюри оценивает идеи, итоги появятся здесь.'}
     </div>
   );
 }

@@ -28,7 +28,7 @@ export function assignStage(stage: StageNo, content: Content, seed: string): Ass
         items: [
           { id: 's2-order', ref: 'order', order: shuffleNotIdentity(stepIds, rng) },
           { id: 's2-hotspots', ref: 'hotspots' },
-          { id: 's2-match', ref: 'match', order: shuffle(ids(img.match), rng), order2: shuffle(stepIds, rng) },
+          { id: 's2-match', ref: 'match', order: shuffle(ids(img.zones), rng), order2: shuffle(stepIds, rng) },
         ],
       };
     }

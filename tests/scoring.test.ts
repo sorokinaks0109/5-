@@ -45,8 +45,8 @@ describe('подсчёт метров', () => {
 
   it('проверяет «горячие зоны» со штрафом за лишние метки', () => {
     const zones = [
-      { id: 'z1', x: 10, y: 10, w: 10, h: 10, label: '1' },
-      { id: 'z2', x: 50, y: 50, w: 10, h: 10, label: '2' },
+      { id: 'z1', x: 10, y: 10, w: 10, h: 10, label: '1', step: 'sort' },
+      { id: 'z2', x: 50, y: 50, w: 10, h: 10, label: '2', step: 'order' },
     ];
     const key = { kind: 'hotspots' as const, zones };
     expect(gradeAnswer(key, [{ x: 15, y: 15 }, { x: 55, y: 55 }])).toBe(1);

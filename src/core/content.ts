@@ -4,7 +4,6 @@ import { NOT_A_CAUSE, STAGES, type ChoiceQuestion, type Content, type PublicCont
 export function toPublicContent(c: Content): PublicContent {
   return {
     settings: c.settings,
-    departments: c.departments,
     stages: c.stages,
     wasteTypes: c.stage1.wasteTypes,
     steps: c.stage2.steps,
@@ -35,11 +34,10 @@ export function validateContent(c: Content): string[] {
 
   // Настройки
   if (s.stageMinutes?.length !== STAGES.length)
-    err(`settings.stageMinutes: нужно ${STAGES.length} чисел — минуты на каждую вершину`);
+    err(`settings.stageMinutes: нужно ${STAGES.length} чисел, по минутам на каждую вершину`);
   if (s.hintPenalty < 0 || s.hintPenalty > 1) err('settings.hintPenalty: число от 0 до 1 (0.3 = 30 %)');
   if (s.juryCount < 1) err('settings.juryCount: нужен хотя бы один судья');
   if (c.stages?.length !== STAGES.length) err(`stages: нужно описание для ${STAGES.length} вершин`);
-  if (!c.departments?.length) err('departments: список подразделений пуст');
 
   // Этап 1
   const waste = c.stage1.wasteTypes.map((w) => w.id);
@@ -57,15 +55,17 @@ export function validateContent(c: Content): string[] {
   uniq('stage2.images', c.stage2.images.map((x) => x.id));
   c.stage2.images.forEach((img) => {
     uniq(`stage2, картинка «${img.id}», zones`, img.zones.map((z) => z.id));
-    uniq(`stage2, картинка «${img.id}», match`, img.match.map((z) => z.id));
     if (!img.zones.length) err(`stage2, картинка «${img.id}»: нет зон с нарушениями`);
     img.zones.forEach((z) => {
       if (z.x < 0 || z.y < 0 || z.x + z.w > 100 || z.y + z.h > 100)
         err(`stage2, картинка «${img.id}», зона «${z.id}»: координаты должны быть в процентах от 0 до 100`);
     });
-    img.match.forEach((m) => {
-      if (!steps.includes(m.answer)) err(`stage2, картинка «${img.id}», «${m.id}»: шаг «${m.answer}» не найден в steps`);
+    img.zones.forEach((z) => {
+      if (!steps.includes(z.step)) err(`stage2, картинка «${img.id}», зона «${z.id}»: шаг «${z.step}» не найден в steps`);
     });
+    const covered = new Set(img.zones.map((z) => z.step));
+    if (img.zones.length !== steps.length || covered.size !== steps.length)
+      err(`stage2, картинка «${img.id}»: нужно ровно ${steps.length} нарушений, по одному на каждый шаг 5С`);
   });
   if (c.stage2.images.length < s.draw.stage2Images) err('stage2: картинок в банке меньше, чем выдаётся');
   const p2 = s.points.stage2;

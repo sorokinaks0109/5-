@@ -44,7 +44,7 @@ export function RatingMountain({ rows }: { rows: PublicRatingRow[] }) {
         const color = r.me ? '#ff6b2c' : r.finalist ? '#facc15' : '#f5f3ff';
         return (
           <g key={`${r.nick}-${i}`} className="flag-move" style={{ transform: `translate(${p.x}px, ${p.y}px) scale(${r.me ? 1 : 0.7})` }}>
-            <title>{`${r.place}. ${r.nick} — ${r.altitude} м`}</title>
+            <title>{`${r.place}. ${r.nick}, ${r.altitude} м`}</title>
             <Flag color={color} label={r.me || r.place <= 3 ? r.nick : undefined} />
           </g>
         );
@@ -75,7 +75,7 @@ export function LeaderboardScreen() {
           <div className="card">
             <h2>Рейтинг откроется после закрытия тура</h2>
             <p>
-              Сейчас ваша высота — <b>{meters(lb.me.altitude)}</b>, место — <b>{lb.me.place ?? '—'}</b> из{' '}
+              Сейчас вы на высоте <b>{meters(lb.me.altitude)}</b> и на <b>{lb.me.place ?? '?'}</b> месте из{' '}
               {lb.me.participantsCount}.
             </p>
           </div>
@@ -84,7 +84,7 @@ export function LeaderboardScreen() {
             <div className="card" style={{ padding: 8 }}>
               <RatingMountain rows={lb.rows} />
               <p className="small muted center" style={{ margin: '8px 0 0' }}>
-                Оранжевый флажок — вы, жёлтые — финалисты.
+                Ваш флажок оранжевый, флажки финалистов жёлтые.
               </p>
             </div>
             <div className="card">
@@ -94,7 +94,6 @@ export function LeaderboardScreen() {
                     <tr>
                       <th>Место</th>
                       <th>Ник</th>
-                      <th>Подразделение</th>
                       <th>Высота</th>
                     </tr>
                   </thead>
@@ -105,7 +104,6 @@ export function LeaderboardScreen() {
                         <td>
                           {r.nick} {r.finalist && <span className="tag orange">финал</span>}
                         </td>
-                        <td className="small">{r.department}</td>
                         <td>{meters(r.altitude)}</td>
                       </tr>
                     ))}

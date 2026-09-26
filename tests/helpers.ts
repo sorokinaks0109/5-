@@ -26,7 +26,7 @@ export async function openTourWithPlayer(nick = 'Альпинист') {
   const org = await ctx.svc.ensureOrganizer('ORGTEST1');
   await ctx.svc.orgTour(org, 'open');
   const [p] = await ctx.svc.orgGenerateCodes(org, 'participant', 1);
-  await ctx.svc.setProfile(p, nick, content.departments[0]);
+  await ctx.svc.setProfile(p, nick);
   const player = (await ctx.store.getAccount(p.id))!;
   return { ...ctx, org, player };
 }

@@ -17,6 +17,8 @@ function blockedReason(view: StageView, idx: number): string | undefined {
   const why = id.match(/^s4-why-(\d+)$/);
   if (why && Number(why[1]) > 1 && !view.answers[`s4-why-${Number(why[1]) - 1}`])
     return 'Сначала ответьте на предыдущий шаг «почему».';
+  if (id === 's2-match' && !view.answers['s2-hotspots'])
+    return 'Сначала найдите нарушения на картинке: здесь будут те же самые нарушения.';
   if (id === 's4-root' && view.items.some((i) => i.id.startsWith('s4-why-') && !view.answers[i.id]))
     return 'Сначала пройдите все шаги «5 почему».';
   return undefined;
@@ -163,7 +165,7 @@ export function StageScreen({ stage }: { stage: StageNo }) {
             <p style={{ marginTop: 6 }}>
               из {meters(pc.settings.stageMaxAltitude)} · ошибок: {view.errors} · погода: {view.weather.name.toLowerCase()}
             </p>
-            <p className="small">Ниже — разбор с правильными ответами. Он пригодится в работе.</p>
+            <p className="small">Ниже разбор с правильными ответами. Пригодится в работе!</p>
             <button className="btn" onClick={() => go('/')}>
               К маршруту
             </button>

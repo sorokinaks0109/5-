@@ -168,12 +168,12 @@ function TourTab() {
         <h2>Как провести тур</h2>
         <ol className="small" style={{ paddingLeft: 20 }}>
           <li>«Личные коды» → создайте коды участников и жюри, скачайте список.</li>
-          <li>Раздайте коды. Кому какой код выдан — храните у себя, в системе нет ФИО.</li>
-          <li>«Открыть тур» — тур откроется на {s.tourDays} дней.</li>
+          <li>Раздайте коды. Кому какой код выдан, записывайте у себя: в системе нет ФИО.</li>
+          <li>Нажмите «Открыть тур», и он будет открыт {s.tourDays} дней.</li>
           <li>Следите за «Прогрессом».</li>
           <li>После закрытия жюри оценивает идеи. Проверьте, что у всех работ по {s.juryCount} оценки.</li>
-          <li>«Опубликовать итоги» — участники увидят рейтинг и скачают сертификаты.</li>
-          <li>«Итоги и выгрузка» → скачайте Excel. Первые {s.finalistsCount} — финалисты.</li>
+          <li>Нажмите «Опубликовать итоги»: участники увидят рейтинг и смогут скачать сертификаты.</li>
+          <li>«Итоги и выгрузка» → скачайте Excel. Первые {s.finalistsCount} проходят в финал.</li>
         </ol>
         <h3>Настройки (из content.json)</h3>
         <ul className="small" style={{ paddingLeft: 20, margin: 0 }}>
@@ -190,8 +190,8 @@ function TourTab() {
 function codeSheet(accounts: Account[]): Sheet {
   return {
     name: 'Коды',
-    header: ['Роль', '№', 'Личный код', 'Ник', 'Подразделение', 'Кому выдан (заполните сами)'],
-    rows: accounts.map((a) => [ROLE[a.role], a.number, prettyCode(a.code), a.nick ?? '', a.department ?? '', '']),
+    header: ['Роль', '№', 'Личный код', 'Ник', 'Кому выдан (заполните сами)'],
+    rows: accounts.map((a) => [ROLE[a.role], a.number, prettyCode(a.code), a.nick ?? '', '']),
   };
 }
 
@@ -229,7 +229,7 @@ function CodesTab() {
       <div className="card">
         <h2>Создать коды</h2>
         <p className="small muted">
-          Код — единственный ключ входа. Мы не храним ФИО: список «кто есть кто» ведите у себя. В выгрузке есть пустая
+          Код служит единственным ключом входа. ФИО мы не храним, поэтому список «кто есть кто» ведите у себя. В выгрузке есть пустая
           колонка «Кому выдан».
         </p>
         <div className="row">
@@ -294,7 +294,6 @@ function CodesTab() {
                 <th>№</th>
                 <th>Код</th>
                 <th>Ник</th>
-                <th>Подразделение</th>
               </tr>
             </thead>
             <tbody>
@@ -303,8 +302,7 @@ function CodesTab() {
                   <td>{ROLE[a.role]}</td>
                   <td>{a.number}</td>
                   <td className="mono">{prettyCode(a.code)}</td>
-                  <td>{a.nick ?? <span className="muted">—</span>}</td>
-                  <td className="small">{a.department ?? ''}</td>
+                  <td>{a.nick ?? <span className="muted">пока нет</span>}</td>
                 </tr>
               ))}
             </tbody>
@@ -359,7 +357,6 @@ function ProgressTab() {
                 <th>№</th>
                 <th>Код</th>
                 <th>Ник</th>
-                <th>Подразделение</th>
                 <th>Вершины</th>
                 <th>Высота</th>
                 <th>Подсказки</th>
@@ -371,7 +368,6 @@ function ProgressTab() {
                   <td>{r.number}</td>
                   <td className="mono small">{prettyCode(r.code)}</td>
                   <td>{r.nick ?? <span className="muted">не входил</span>}</td>
-                  <td className="small">{r.department ?? ''}</td>
                   <td className="mono" title={r.stages.join(', ')}>
                     {r.stages.map((s) => STATUS_ICON[s]).join(' ')}
                   </td>
@@ -403,7 +399,6 @@ function ResultsTab() {
       'Место',
       'Финалист',
       'Ник',
-      'Подразделение',
       'Код',
       ...pc.stages.map((s, i) => `В${i + 1} ${s.name}, м`),
       'Итого, м',
@@ -415,7 +410,6 @@ function ResultsTab() {
       r.place,
       r.finalist ? 'да' : '',
       r.nick,
-      r.department,
       prettyCode(r.code),
       ...r.stageAltitudes,
       r.altitude,
@@ -438,7 +432,7 @@ function ResultsTab() {
     rows: data.jury.flatMap((j) =>
       j.scores.length
         ? j.scores.map((s) => [j.workNo, j.nick, s.juryNumber, ...criteria.map((c) => s.scores[c.id] ?? 0), s.total, s.comment, j.average ?? ''])
-        : [[j.workNo, j.nick, '—', ...criteria.map(() => ''), '', 'нет оценок', '']],
+        : [[j.workNo, j.nick, 'нет', ...criteria.map(() => ''), '', 'нет оценок', '']],
     ),
   };
   const ideasSheet: Sheet = {
@@ -494,7 +488,6 @@ function ResultsTab() {
                     <td>{r.place}</td>
                     <td>
                       {r.nick} {r.finalist && <span className="tag orange">финал</span>}
-                      <div className="small muted">{r.department}</div>
                     </td>
                     <td className="small mono">{r.stageAltitudes.join(' / ')}</td>
                     <td>
@@ -512,7 +505,6 @@ function ResultsTab() {
             rows={data.rows.map((r) => ({
               place: r.place,
               nick: r.nick,
-              department: r.department,
               altitude: r.altitude,
               finalist: r.finalist,
               me: false,

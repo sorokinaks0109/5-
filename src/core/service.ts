@@ -112,7 +112,6 @@ export class GameService {
       role: acc.role,
       number: acc.number,
       nick: acc.nick,
-      department: acc.department,
       tour: this.tourView(tour),
     };
     if (acc.role !== 'participant') return view;
@@ -132,17 +131,16 @@ export class GameService {
     return view;
   }
 
-  async setProfile(acc: Account, nick: string, department: string): Promise<MeView> {
+  async setProfile(acc: Account, nick: string): Promise<MeView> {
     this.require(acc, 'participant');
     const n = String(nick ?? '').trim().replace(/\s+/g, ' ');
-    if (n.length < 2 || n.length > 24) throw new GameError('Ник — от 2 до 24 символов.');
-    if (!this.content.departments.includes(department)) throw new GameError('Выберите подразделение из списка.');
+    if (n.length < 2 || n.length > 24) throw new GameError('Ник должен быть от 2 до 24 символов.');
     const tour = await this.store.getTour();
     if (tour.resultsPublished) throw new GameError('Итоги уже опубликованы, профиль менять нельзя.');
     const others = await this.store.listAccounts();
     if (others.some((a) => a.id !== acc.id && a.role === 'participant' && a.nick?.toLowerCase() === n.toLowerCase()))
       throw new GameError('Такой ник уже занят. Придумайте другой.');
-    const updated = { ...acc, nick: n, department };
+    const updated = { ...acc, nick: n };
     await this.store.updateAccount(updated);
     return this.me(updated);
   }
@@ -325,7 +323,7 @@ export class GameService {
     const it = buildItems(stage, this.content, run.assignment).find((i) => i.item.id === itemId);
     if (!it) throw new GameError('Задание не найдено.');
     if (!it.hint) throw new GameError('Для этого задания нет подсказки.');
-    if (run.answers[itemId]) throw new GameError('Ответ уже дан — подсказка не нужна.');
+    if (run.answers[itemId]) throw new GameError('Ответ уже дан, подсказка больше не нужна.');
     const runs = await this.store.listRuns(acc.id);
     const left = hintsLeft(this.content.settings.hintsTotal, runs.map((r) => r.hints));
     if (!run.hints.includes(itemId)) {
@@ -389,7 +387,6 @@ export class GameService {
       rows: rows.map((r) => ({
         place: r.place,
         nick: r.nick,
-        department: r.department,
         altitude: r.altitude,
         finalist: r.finalist,
         me: r.accountId === acc.id,
@@ -428,7 +425,6 @@ export class GameService {
           number: a.number,
           code: a.code,
           nick: a.nick ?? `Участник ${a.number}`,
-          department: a.department ?? '',
           stageAltitudes,
           altitude: stageAltitudes.reduce((s, x) => s + x, 0),
           secondsAuto,
@@ -464,7 +460,7 @@ export class GameService {
   async juryScore(acc: Account, workNo: number, scores: Record<string, number>, comment: string): Promise<JuryWork[]> {
     this.require(acc, 'jury');
     const tour = await this.store.getTour();
-    if (tour.resultsPublished) throw new GameError('Итоги опубликованы — оценки больше менять нельзя.');
+    if (tour.resultsPublished) throw new GameError('Итоги уже опубликованы, оценки менять нельзя.');
     const idea = (await this.store.listIdeas()).find((i) => i.workNo === Number(workNo) && i.submittedAt);
     if (!idea) throw new GameError('Работа не найдена.');
     const clean: Record<string, number> = {};
@@ -532,7 +528,7 @@ export class GameService {
     const have = all.filter((a) => a.role === role).length;
     const limit = role === 'participant' ? this.content.settings.maxParticipants : this.content.settings.juryCount;
     if (have + n > limit)
-      throw new GameError(`Лимит — ${limit} ${role === 'participant' ? 'участников' : 'судей'}. Уже создано: ${have}.`);
+      throw new GameError(`Можно не больше ${limit} ${role === 'participant' ? 'участников' : 'судей'}. Уже создано: ${have}.`);
     const codes = generateUniqueCodes(n, this.rng, all.map((a) => a.code));
     const start = nextNumber(all, role);
     return this.store.createAccounts(
@@ -559,7 +555,6 @@ export class GameService {
         code: a.code,
         role: a.role,
         nick: a.nick,
-        department: a.department,
         stages: sums.map((s) => s.status),
         altitude: sums.reduce((s, x) => s + x.altitude, 0),
         hintsUsed: my.reduce((s, r) => s + r.hints.length, 0),

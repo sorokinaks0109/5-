@@ -192,7 +192,7 @@ export function FishboneInput({
             </div>
             {pool.length === 0 ? (
               <p className="small muted" style={{ margin: 0 }}>
-                Все причины на местах. Проверьте диаграмму и нажмите «Ответить». Чтобы переложить карточку — нажмите на неё.
+                Все причины на местах! Проверьте диаграмму и нажмите «Ответить». Передумали? Коснитесь карточки, и она вернётся.
               </p>
             ) : (
               <>
@@ -216,7 +216,7 @@ export function FishboneInput({
         )}
 
         <div className="fb-problem-banner">
-          <span aria-hidden="true">🐟</span> <b>Голова рыбы — проблема:</b> {item.problem}
+          <span aria-hidden="true">🐟</span> <b>Голова рыбы, то есть проблема:</b> {item.problem}
         </div>
         <div className="fb-fish">
           {bone(0)}

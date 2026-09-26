@@ -71,13 +71,12 @@ export interface Zone {
   y: number;
   w: number;
   h: number;
+  /** Что за нарушение (участник видит после ответа и в задании на сопоставление) */
   label: string;
-}
-
-export interface MatchPair {
-  id: string;
-  text: string;
-  answer: string; // id шага 5С
+  /** Какой шаг 5С нарушен: sort, order, shine, standard, sustain */
+  step: string;
+  /** Короткое пояснение для разбора */
+  explain?: string;
 }
 
 export interface WarehouseImage {
@@ -87,8 +86,8 @@ export interface WarehouseImage {
   image: string;
   /** Отношение ширины к высоте картинки, например 1.6 */
   aspect: number;
+  /** Нарушения: по одному на каждый шаг 5С */
   zones: Zone[];
-  match: MatchPair[];
   hints?: { order?: string; hotspots?: string; match?: string };
   explanations?: { hotspots?: string; match?: string };
 }
@@ -182,11 +181,11 @@ export interface Criterion {
 
 export interface Content {
   settings: ContentSettings;
-  departments: string[];
   stages: StageText[];
   stage1: { wasteTypes: (Option & { description: string })[]; situations: Situation[] };
   stage2: {
-    steps: (Option & { description: string })[];
+    /** Шаги 5С. look — подсказка «что искать на картинке» */
+    steps: (Option & { description: string; look?: string })[];
     orderQuestion: string;
     orderHint?: string;
     orderExplanation?: string;
@@ -205,7 +204,6 @@ export interface Content {
 /** То, что можно отдать в браузер: без банка заданий и ответов */
 export interface PublicContent {
   settings: ContentSettings;
-  departments: string[];
   stages: Content['stages'];
   wasteTypes: Content['stage1']['wasteTypes'];
   steps: Content['stage2']['steps'];
@@ -312,6 +310,7 @@ export interface Account {
   role: Role;
   number: number;
   nick: string | null;
+  /** Не используется: подразделение убрано из игры, поле оставлено для совместимости с базой */
   department: string | null;
   createdAt: string;
 }
@@ -418,7 +417,6 @@ export interface MeView {
   role: Role;
   number: number;
   nick: string | null;
-  department: string | null;
   tour: TourView;
   participant?: {
     stages: StageSummary[];
@@ -475,7 +473,6 @@ export interface RatingRow {
   number: number;
   code: string;
   nick: string;
-  department: string;
   stageAltitudes: number[];
   altitude: number;
   secondsAuto: number;
@@ -487,7 +484,6 @@ export interface RatingRow {
 export interface PublicRatingRow {
   place: number;
   nick: string;
-  department: string;
   altitude: number;
   finalist: boolean;
   me: boolean;
@@ -512,7 +508,6 @@ export interface ProgressRow {
   code: string;
   role: Role;
   nick: string | null;
-  department: string | null;
   stages: StageStatus[];
   altitude: number;
   hintsUsed: number;

@@ -53,7 +53,7 @@ export function errorText(e: unknown): string {
 }
 
 export function formatDate(iso: string | null): string {
-  if (!iso) return '—';
+  if (!iso) return 'не задано';
   return new Date(iso).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
 }
 

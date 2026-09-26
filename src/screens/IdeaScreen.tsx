@@ -184,7 +184,7 @@ export function IdeaScreen() {
             <p className="small muted">{pc.stages[IDEA_STAGE - 1].intro}</p>
             <p className="small">
               Черновик сохраняется автоматически. Если время закончится, жюри получит последний сохранённый вариант. Не
-              указывайте в тексте своё имя — оценка анонимная.
+              указывайте в тексте своё имя: оценка анонимная.
             </p>
           </div>
         ) : (
@@ -193,7 +193,7 @@ export function IdeaScreen() {
             <p>
               {view.idea?.submittedAt
                 ? `Работа № ${view.idea.workNo} отправлена. Жюри оценит её анонимно по пяти критериям.`
-                : 'Время вышло, а черновик был пустым — идея не отправлена.'}
+                : 'Время вышло, а черновик был пустым, поэтому идея не отправлена.'}
             </p>
             <button className="btn" onClick={() => go('/')}>
               К маршруту
@@ -238,7 +238,7 @@ export function IdeaScreen() {
           <ul className="small" style={{ paddingLeft: 20, margin: 0 }}>
             {pc.idea.criteria.map((c) => (
               <li key={c.id}>
-                <b>{c.name}</b> (до {c.max} м) — {c.description}
+                <b>{c.name}</b> (до {c.max} м): {c.description}
               </li>
             ))}
           </ul>
