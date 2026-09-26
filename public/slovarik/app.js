@@ -1457,14 +1457,27 @@
   const ck = (x, y) => x + ',' + y;
   const fmtTime = (s) => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
   function xwWordFull(e) { return [...Array(e.len)].every((_, i) => V.xw.fill[ck(...cellOf(e, i))]); }
+  /** Первая пустая клетка слова начиная с from (по кругу); -1, если слово заполнено. */
+  function xwEmpty(e, from = 0) {
+    const X = V.xw;
+    for (let q = 0; q < e.len; q++) { const i = (from + q) % e.len; if (!X.fill[ck(...cellOf(e, i))]) return i; }
+    return -1;
+  }
+  /** Клетка принадлежит другому, уже полностью вписанному слову — её не стираем. */
+  function xwLocked(e, i) {
+    const X = V.xw, k = ck(...cellOf(e, i));
+    return X.ws.some((o) => o !== e && xwWordFull(o) && [...Array(o.len)].some((_, q) => ck(...cellOf(o, q)) === k));
+  }
   function xwType(k) {
     const X = V.xw;
     if (!X || X.done) return;
     const e = X.ws[X.sel];
     if (k === 'back') {
-      let key = ck(...cellOf(e, X.pos));
-      if (!X.fill[key] && X.pos > 0) { X.pos--; key = ck(...cellOf(e, X.pos)); }
-      delete X.fill[key]; delete X.bad[key];
+      // Стираем последнюю вписанную букву этого слова (буквы готовых соседних слов не трогаем).
+      for (let i = Math.min(X.pos, e.len - 1); i >= 0; i--) {
+        const key = ck(...cellOf(e, i));
+        if (X.fill[key] && !xwLocked(e, i)) { delete X.fill[key]; delete X.bad[key]; X.pos = i; break; }
+      }
     } else if (k === 'enter') { xwCheck(); return; }
     else if (/^[а-яё]$/.test(k)) {
       const key = ck(...cellOf(e, X.pos));
@@ -1482,12 +1495,14 @@
       }
       X.fill[key] = k; delete X.bad[key];
       if (X.ws.every(xwWordFull)) { render(); xwCheck(); return; }
-      if (X.pos < e.len - 1) X.pos++;
-      else if (xwWordFull(e)) {
-        // Слово заполнено — переходим к следующему незаполненному.
+      // Как в «Эрудите»: уже вписанные буквы (от пересечений) перепрыгиваем.
+      const nextEmpty = xwEmpty(e, X.pos + 1);
+      if (nextEmpty >= 0) X.pos = nextEmpty;
+      else {
+        // Слово заполнено — переходим к следующему незаполненному, сразу на его первую пустую клетку.
         const i = X.order.indexOf(X.sel);
         const nxt = X.order.slice(i + 1).concat(X.order.slice(0, i)).find((j) => !xwWordFull(X.ws[j]));
-        if (nxt !== undefined) { X.sel = nxt; X.pos = 0; }
+        if (nxt !== undefined) { X.sel = nxt; X.pos = Math.max(0, xwEmpty(X.ws[nxt])); }
       }
     } else return;
     render();
@@ -1502,6 +1517,7 @@
     pick = pick || hits[0];
     X.sel = pick[1];
     X.pos = [...Array(pick[0].len)].findIndex((_, q) => ck(...cellOf(pick[0], q)) === ck(x, y));
+    if (X.fill[ck(x, y)]) { const n = xwEmpty(pick[0], X.pos); if (n >= 0) X.pos = n; }
     render();
   }
   function xwCheck() {
@@ -1800,7 +1816,7 @@
     return `<div class="row between"><span class="label">🧠 Эрудит${C.duel ? ' · вызов' : ''} · подряд: <b style="font-size:18px;color:var(--pen)">${C.score}</b> · рекорд: ${cwBest()}</span>
         <button class="btn small ghost" data-act="stopCw">Стоп</button></div>
       <article class="panel card">
-        <div class="hint defbox" style="font-size:20px"><span class="label">По горизонтали · ${w.id.length} ${plural(w.id.length, 'буква', 'буквы', 'букв')}</span>${esc(defOf(w))}</div>
+        <div class="hint defbox" style="font-size:20px"><span class="label">Что это за слово? · ${w.id.length} ${plural(w.id.length, 'буква', 'буквы', 'букв')}</span>${esc(defOf(w))}</div>
         <div class="cells" id="cwCells" style="--n:${w.id.length}" aria-label="Клетки кроссворда: ${w.id.length} ${plural(w.id.length, 'буква', 'буквы', 'букв')}">${cells}</div>
         <form id="cwForm" class="row" style="justify-content:center;width:100%">
           <button class="btn" type="submit">Проверить</button>
@@ -2367,7 +2383,7 @@
         if (el.dataset.act === 'xwPick') X.sel = +el.dataset.i;
         else { const i = X.order.indexOf(X.sel); X.sel = X.order[(i + +el.dataset.d + X.order.length) % X.order.length]; }
         const e = X.ws[X.sel];
-        X.pos = 0; // слово всегда набирается с начала, буквы пересечений просто перезаписываются
+        X.pos = Math.max(0, xwEmpty(e)); // сразу на первую пустую клетку, вписанные буквы пропускаем
         render();
         if (el.dataset.act === 'xwPick') xwScroll();
         return;
