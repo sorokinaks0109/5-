@@ -897,9 +897,9 @@
     return `
       <h2>${S.name ? esc(S.name) + ', твой прогресс' : 'Прогресс'}</h2>
       <div class="stats">
-        <div class="stat"><b>🔥 ${streak}</b><span class="muted">${plural(streak, 'день', 'дня', 'дней')} подряд</span></div>
-        <div class="stat"><b>⭐ ${S.stars || 0}</b><span class="muted">звёзд</span></div>
-        <div class="stat"><b>${totalAns}</b><span class="muted">${plural(totalAns, 'ответ', 'ответа', 'ответов')} всего</span></div>
+        <div class="stat"><b>${streak}</b><span class="muted">🔥 ${plural(streak, 'день', 'дня', 'дней')} подряд</span></div>
+        <div class="stat"><b>${S.stars || 0}</b><span class="muted">⭐ ${plural(S.stars || 0, 'звезда', 'звезды', 'звёзд')}</span></div>
+        <div class="stat"><b>${totalAns}</b><span class="muted">✍️ ${plural(totalAns, 'ответ', 'ответа', 'ответов')} всего</span></div>
       </div>
       ${achHtml()}
       <section class="panel" style="display:flex;flex-direction:column;gap:10px">
@@ -1341,8 +1341,26 @@
     w.parts.forEach((p) => { if (p.t) for (let k = 0; k < p.s.length; k++) hard.add(pos + k); pos += p.s.length; });
     const free = [...w.id].map((c, k) => k).filter((k) => !hard.has(k));
     const n = w.id.length >= 7 ? 2 : 1;
-    C.cur = { w, open: new Set(shuffle(free).slice(0, n)) };
+    const open = new Set(shuffle(free).slice(0, n));
+    C.cur = { w, open, fill: [...w.id].map((c, k) => (open.has(k) ? c.toLowerCase() : '')) };
     render();
+  }
+  /** Ввод в клетки: буква встаёт в следующую пустую клетку, открытые клетки пропускаются. */
+  function cwType(k) {
+    const C = V.cw;
+    if (!C || C.done) return;
+    const { fill, open } = C.cur;
+    if (k === 'back') {
+      for (let i = fill.length - 1; i >= 0; i--) if (!open.has(i) && fill[i]) { fill[i] = ''; break; }
+    } else if (k === 'enter') {
+      document.getElementById('cwForm')?.requestSubmit(); return;
+    } else if (/^[а-яё]$/.test(k)) {
+      const i = fill.findIndex((c, j) => !open.has(j) && !c);
+      if (i < 0) return;
+      fill[i] = k;
+    } else return;
+    const next = fill.findIndex((c, j) => !open.has(j) && !c);
+    document.querySelectorAll('#cwCells .cell').forEach((el, j) => { el.textContent = fill[j]; el.classList.toggle('cur', j === next); });
   }
   function cwBest() { S.cwBest = S.cwBest || {}; return S.cwBest[S.grade] || 0; }
   function finishCw(ok, typed) {
@@ -1376,17 +1394,19 @@
       </article>`;
     }
     const { w, open } = C.cur;
-    const cells = [...w.id].map((c, k) => `<span class="cell${open.has(k) ? ' open' : ''}">${open.has(k) ? esc(c.toLowerCase()) : ''}</span>`).join('');
+    const fill = C.cur.fill;
+    const next = fill.findIndex((c, k) => !open.has(k) && !c);
+    const cells = fill.map((c, k) => `<span class="cell${open.has(k) ? ' open' : ''}${k === next ? ' cur' : ''}" data-k="${k}">${esc(c)}</span>`).join('');
     return `<div class="row between"><span class="label">🧠 Кроссворд · подряд: <b style="font-size:18px;color:var(--pen)">${C.score}</b> · рекорд: ${cwBest()}</span>
         <button class="btn small ghost" data-act="stopCw">Стоп</button></div>
       <article class="panel card">
         <div class="hint defbox" style="font-size:20px"><span class="label">По горизонтали · ${w.id.length} ${plural(w.id.length, 'буква', 'буквы', 'букв')}</span>${esc(defOf(w))}</div>
-        <div class="cells" aria-label="Клетки кроссворда">${cells}</div>
+        <div class="cells" id="cwCells" style="--n:${w.id.length}" aria-label="Клетки кроссворда: ${w.id.length} ${plural(w.id.length, 'буква', 'буквы', 'букв')}">${cells}</div>
         <form id="cwForm" class="row" style="justify-content:center;width:100%">
-          <input type="text" id="answer" class="answer" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" ${TOUCH ? 'readonly' : ''} placeholder="Слово целиком" aria-label="Ответ">
           <button class="btn" type="submit">Проверить</button>
         </form>
-        ${TOUCH ? keyboardHtml() : ''}
+        ${keyboardHtml()}
+        ${TOUCH ? '' : '<p class="muted" style="margin:0">Можно печатать и с клавиатуры компьютера.</p>'}
         <button class="btn small ghost" data-act="cwGiveUp">Сдаюсь</button>
       </article>`;
   }
@@ -1750,6 +1770,14 @@
     if (nextBtn && !input) nextBtn.focus({ preventScroll: true });
   }
 
+  // Кроссворд с клавиатуры компьютера.
+  document.addEventListener('keydown', (e) => {
+    if (!V.cw || V.cw.done || V.tab !== 'train' || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return;
+    const k = e.key === 'Backspace' ? 'back' : e.key === 'Enter' ? 'enter' : e.key.toLowerCase();
+    if (k === 'back' || k === 'enter' || /^[а-яё]$/.test(k)) { e.preventDefault(); cwType(k); }
+  });
+
   // ---------- События ----------
   document.addEventListener('click', (e) => {
     const j = e.target.closest('[data-act="jump"]');
@@ -1767,6 +1795,7 @@
     const keepY = window.scrollY;
     switch (act) {
       case 'key': {
+        if (V.cw && V.tab === 'train') { cwType(el.dataset.k); return; }
         const inp = document.getElementById('answer');
         if (!inp) return;
         const k = el.dataset.k;
@@ -1987,9 +2016,11 @@
     if (e.target.id === 'cwForm') {
       e.preventDefault();
       const C = V.cw;
-      const val = document.getElementById('answer').value;
-      if (!C || C.done || !val.trim()) return;
-      finishCw(norm(val) === norm(C.cur.w.id), val.trim());
+      if (!C || C.done) return;
+      const { fill, open } = C.cur;
+      if (fill.some((c, k) => !open.has(k) && !c)) { toast('Заполни все клеточки'); return; }
+      const val = fill.join('');
+      finishCw(norm(val) === norm(C.cur.w.id), val);
       return;
     }
     if (e.target.id !== 'writeForm') return;

@@ -298,8 +298,10 @@ img.thumb { width: 28px; height: 28px; border-radius: 7px; object-fit: cover; bo
 .setup { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 420px; text-align: center; }
 .setup .answer { max-width: none; }
 .answer[readonly] { cursor: default; caret-color: transparent; }
-.cells { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; margin: 6px 0; }
-.cell { width: 30px; height: 36px; border: 2px solid var(--ink-soft); border-radius: 6px; background: var(--paper-2); display: grid; place-items: center; font: 800 20px/1 var(--body); color: var(--ink); }
+.cells { display: flex; flex-wrap: nowrap; justify-content: center; margin: 6px 0; max-width: 100%; }
+.cell { width: min(34px, calc((100vw - 80px) / var(--n, 10))); height: auto; aspect-ratio: .88; font-size: min(22px, calc((100vw - 80px) / var(--n, 10) * .62)) !important; border: 2px solid var(--ink); border-radius: 4px; background: #fff; display: grid; place-items: center; font: 800 22px/1 var(--body); color: #1d2b4f; text-transform: lowercase; }
+.cell.cur { box-shadow: 0 0 0 3px var(--pen); }
+.cells { gap: 0 !important; } .cells .cell + .cell { margin-left: -2px; }
 .cell.open { background: var(--pencil-soft); border-color: var(--pencil); }
 .achs { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
 .ach { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; padding: 10px 6px; border: 2px dashed var(--line); border-radius: 14px; color: var(--ink-soft); }
