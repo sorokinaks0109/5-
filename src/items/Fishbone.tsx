@@ -110,6 +110,9 @@ export function FishboneInput({
     useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 8 } }),
   );
   const correct = review?.correct as Placement | undefined;
+  const alt = review?.alt ?? {};
+  // Верно, если карточка на основной кости или на кости, которая тоже засчитывается
+  const isOk = (id: string, cat: string | undefined) => !!correct && (correct[id] === cat || (alt[id] ?? []).includes(String(cat)));
   const byId = new Map(item.cards.map((c) => [c.id, c]));
   const pool = item.cards.filter((c) => !value[c.id]);
   const placedCount = item.cards.length - pool.length;
@@ -147,7 +150,7 @@ export function FishboneInput({
           card={c}
           small
           disabled={disabled}
-          mark={correct ? (correct[c.id] === cat ? 'ok' : 'bad') : undefined}
+          mark={correct ? (isOk(c.id, cat) ? 'ok' : 'bad') : undefined}
           onTap={() => place(c.id, 'pool')}
         />
       ));
@@ -265,16 +268,16 @@ export function FishboneInput({
         {correct && (
           <div className="review small">
             <b>
-              {item.cards.every((c) => value[c.id] === correct[c.id])
+              {item.cards.every((c) => isOk(c.id, value[c.id]))
                 ? 'Все причины разложены верно!'
                 : 'Где должны быть причины, которые легли не туда:'}
             </b>
             <ul style={{ margin: '4px 0 0', paddingLeft: 22 }}>
               {item.cards
-                .filter((c) => value[c.id] !== correct[c.id])
+                .filter((c) => !isOk(c.id, value[c.id]))
                 .map((c) => (
                   <li key={c.id}>
-                    {c.text} → <b>{catName(correct[c.id])}</b>
+                    {c.text} → <b>{[correct[c.id], ...(alt[c.id] ?? [])].map(catName).join(' или ')}</b>
                   </li>
                 ))}
             </ul>

@@ -81,8 +81,19 @@ export function buildItems(stage: StageNo, content: Content, a: Assignment): Int
 
   switch (kindOf(stage)) {
     case 'waste': {
-      const split = splitPoints(max, a.items.length);
-      return a.items.map((ai, i) => {
+      const sitItems = a.items.filter((x) => !x.ref.startsWith('money:'));
+      const moneyItems = a.items.filter((x) => x.ref.startsWith('money:'));
+      // Старые выдачи без вопросов про деньги: все метры на ситуации
+      const split = splitPoints(moneyItems.length ? pts.waste.situations : max, sitItems.length);
+      const moneySplit = splitPoints(pts.waste.money, moneyItems.length);
+      return a.items.map((ai) => {
+        if (ai.ref.startsWith('money:')) {
+          const q = content.waste.money.find((x) => x.id === ai.ref.slice(6));
+          if (!q) throw new Error(`Вопрос «${ai.ref}» не найден`);
+          const k = moneyItems.indexOf(ai);
+          return choiceItem(ai.id, `Потери и деньги: вопрос ${k + 1}`, q, moneySplit[k], ai.order);
+        }
+        const i = sitItems.indexOf(ai);
         const s = content.waste.situations.find((x) => x.id === ai.ref);
         if (!s) throw new Error(`Ситуация «${ai.ref}» не найдена`);
         return {
@@ -238,6 +249,11 @@ export function buildItems(stage: StageNo, content: Content, a: Assignment): Int
         }
         // Закон Литтла
         const [kind, lid] = ai.ref.split(':');
+        if (kind === 'lq') {
+          const q = content.flow.littleQuestions.find((x) => x.id === lid);
+          if (!q) throw new Error(`Вопрос «${lid}» не найден`);
+          return choiceItem(ai.id, 'Закон Литтла: вопрос', q, pts.flow.littleQuestion, ai.order);
+        }
         const l = content.flow.little.find((x) => x.id === lid);
         if (!l) throw new Error(`Задача Литтла «${lid}» не найдена`);
         if (kind === 'little') {
@@ -246,7 +262,7 @@ export function buildItems(stage: StageNo, content: Content, a: Assignment): Int
               id: ai.id,
               kind: 'number',
               title: 'Закон Литтла: сколько ждать?',
-              prompt: `${l.context} В работе ${l.wip} заявок, склад закрывает ${l.cr} заявок в день. Сколько дней в среднем проходит от поступления заявки до её выполнения?`,
+              prompt: `Вернёмся к исходным цифрам: в работе ${l.wip} заявок, выполняют ${l.cr} заявок в день. Сколько дней в среднем проходит от поступления заявки до её выполнения?`,
               maxPoints: pts.flow.littleCalc,
               hasHint: true,
               unit: 'дн.',
@@ -261,7 +277,7 @@ export function buildItems(stage: StageNo, content: Content, a: Assignment): Int
             id: ai.id,
             kind: 'number',
             title: 'Закон Литтла: тренажёр',
-            prompt: `Скорость прежняя: ${l.cr} заявок в день. Сколько заявок можно держать в работе одновременно, чтобы срок был не больше ${ru(l.target)} дн.? Покрутите бегунки и найдите ответ.`,
+            prompt: `${l.context} Сейчас в работе ${l.wip} заявок, а выполняют ${l.cr} заявок в день. Сколько заявок можно держать в работе одновременно, чтобы при той же скорости срок был не больше ${ru(l.target)} дн.? Покрутите бегунки и найдите ответ.`,
             maxPoints: pts.flow.littleTarget,
             hasHint: false,
             unit: 'заявок',
@@ -278,6 +294,10 @@ export function buildItems(stage: StageNo, content: Content, a: Assignment): Int
       const sitItems = a.items.filter((x) => x.ref.startsWith('sit:'));
       const sitSplit = splitPoints(pts.eightSteps.situations, sitItems.length);
       const stepName = (id: string) => e.steps.find((s) => s.id === id)?.text ?? id;
+      const stepExplain = (id: string) => {
+        const n = e.steps.findIndex((s) => s.id === id);
+        return n < 0 ? undefined : `Это шаг ${n + 1} «${e.steps[n].text}». Его вопрос: ${e.steps[n].question}`;
+      };
       return a.items.map((ai): InternalItem => {
         if (ai.ref === 'order') {
           return {
@@ -347,7 +367,7 @@ export function buildItems(stage: StageNo, content: Content, a: Assignment): Int
             },
             key: { kind: 'choice', answer: s.answer },
             hint: s.hint,
-            explanation: s.explanation,
+            explanation: s.explanation ?? stepExplain(s.answer),
           };
         }
         return choiceItem(ai.id, 'Решение не сработало', e.loop, pts.eightSteps.loop, ai.order);
@@ -411,7 +431,11 @@ export function buildItems(stage: StageNo, content: Content, a: Assignment): Int
               cards: opts(byOrder(fc.causes, ai.order)),
               allowNone: fc.causes.some((c) => c.category === NOT_A_CAUSE),
             },
-            key: { kind: 'fishbone', placement: Object.fromEntries(fc.causes.map((c) => [c.id, c.category])) },
+            key: {
+              kind: 'fishbone',
+              placement: Object.fromEntries(fc.causes.map((c) => [c.id, c.category])),
+              alt: Object.fromEntries(fc.causes.filter((c) => c.accept?.length).map((c) => [c.id, c.accept!])),
+            },
             hint: fc.hints?.fishbone,
             explanation: fc.explanations?.fishbone,
           };
@@ -483,8 +507,10 @@ export function gradeAnswer(key: AnswerKey, value: AnswerValue): number {
       if (!value || typeof value !== 'object' || Array.isArray(value)) throw bad();
       const v = value as Record<string, unknown>;
       const pairs = key.kind === 'match' ? key.pairs : key.placement;
+      const alt = key.kind === 'fishbone' ? key.alt ?? {} : {};
       const ids = Object.keys(pairs);
-      return ids.filter((id) => v[id] === pairs[id]).length / ids.length;
+      const ok = (id: string) => v[id] === pairs[id] || (alt[id] ?? []).includes(String(v[id]));
+      return ids.filter(ok).length / ids.length;
     }
 
     case 'number': {
@@ -512,6 +538,7 @@ export function reviewFor(it: InternalItem): ReviewEntry {
     case 'match':
       return { ...base, correct: k.pairs };
     case 'fishbone':
+      return { ...base, correct: k.placement, alt: k.alt };
     case 'inbox':
       return { ...base, correct: k.placement };
     case 'number':

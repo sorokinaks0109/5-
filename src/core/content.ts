@@ -48,6 +48,9 @@ export function validateContent(c: Content): string[] {
   c.waste.situations.forEach((x) => {
     if (!waste.includes(x.answer)) err(`waste, ситуация «${x.id}»: вид потерь «${x.answer}» не найден в wasteTypes`);
   });
+  uniq('waste.money', c.waste.money.map((x) => x.id));
+  c.waste.money.forEach((q) => choice(`waste, вопрос «${q.id}»`, q));
+  if (sum(s.points.waste) !== max) err(`settings.points.waste: сумма должна быть ${max}`);
   if (c.waste.situations.length < s.draw.wasteSituations)
     err(`waste: в банке ${c.waste.situations.length} ситуаций, а выдаётся ${s.draw.wasteSituations}`);
 
@@ -99,6 +102,9 @@ export function validateContent(c: Content): string[] {
   c.flow.little.forEach((l) => {
     if (!(l.wip > 0 && l.cr > 0 && l.target > 0)) err(`flow.little «${l.id}»: wip, cr и target должны быть больше 0`);
   });
+  uniq('flow.littleQuestions', c.flow.littleQuestions.map((x) => x.id));
+  if (!c.flow.littleQuestions.length) err('flow.littleQuestions: нужен хотя бы один вопрос');
+  c.flow.littleQuestions.forEach((q) => choice(`flow, вопрос «${q.id}»`, q));
   if (sum(s.points.flow) !== max) err(`settings.points.flow: сумма должна быть ${max}`);
 
   // Восемь шагов
@@ -151,6 +157,10 @@ export function validateContent(c: Content): string[] {
     fc.causes.forEach((x) => {
       if (x.category !== NOT_A_CAUSE && !cats.includes(x.category))
         err(`fishbone, кейс «${fc.id}», причина «${x.id}»: категория «${x.category}» не найдена в categories`);
+      (x.accept ?? []).forEach((a) => {
+        if (a !== NOT_A_CAUSE && !cats.includes(a))
+          err(`fishbone, кейс «${fc.id}», причина «${x.id}»: в accept категория «${a}» не найдена`);
+      });
     });
     if (fc.causes.length < 4) err(`fishbone, кейс «${fc.id}»: нужно хотя бы 4 причины`);
     choice(`fishbone, кейс «${fc.id}», главная причина`, fc.focus);

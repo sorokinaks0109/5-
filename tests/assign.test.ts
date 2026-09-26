@@ -24,11 +24,13 @@ describe('случайная выдача заданий', () => {
     expect(() => pick(arr, 9, createRng(1))).toThrow();
   });
 
-  it('этап 1: 10 разных ситуаций из 20', () => {
+  it('вершина 1: 10 разных ситуаций из 20 и 2 вопроса «потери и деньги»', () => {
     const a = assignStage(1, content, seed('p1', 1));
-    expect(a.items).toHaveLength(10);
-    expect(new Set(a.items.map((i) => i.ref)).size).toBe(10);
-    a.items.forEach((i) => expect(i.order!.slice().sort()).toEqual(content.waste.wasteTypes.map((w) => w.id).sort()));
+    const sits = a.items.filter((i) => !i.ref.startsWith('money:'));
+    expect(sits).toHaveLength(10);
+    expect(new Set(sits.map((i) => i.ref)).size).toBe(10);
+    expect(a.items.filter((i) => i.ref.startsWith('money:'))).toHaveLength(content.settings.draw.wasteMoney);
+    sits.forEach((i) => expect(i.order!.slice().sort()).toEqual(content.waste.wasteTypes.map((w) => w.id).sort()));
   });
 
   it('одинаковое зерно — одинаковая выдача, разные участники — разные наборы', () => {
@@ -70,19 +72,20 @@ describe('случайная выдача заданий', () => {
 
     const a3 = assignStage(3, content, seed('p1', 3));
     expect(content.flow.processes.map((i) => i.id)).toContain(a3.group);
-    expect(a3.items.map((i) => i.id)).toEqual(['flow-order', 'flow-flags', 'flow-number', 'flow-little', 'flow-target']);
+    expect(a3.items.map((i) => i.id)).toEqual(['flow-order', 'flow-flags', 'flow-number', 'flow-target', 'flow-little', 'flow-lq']);
 
     const a4 = assignStage(4, content, seed('p1', 4));
     expect(a4.items.filter((i) => i.ref.startsWith('sit:'))).toHaveLength(content.settings.draw.eightStepsSituations);
     expect(a4.items.find((i) => i.ref === 'tools')!.order).toHaveLength(content.settings.draw.eightStepsTools);
 
+    // Исикава раньше «5 почему»: сначала все причины, потом копаем главную до корня
     const a5 = assignStage(5, content, seed('p1', 5));
-    expect(a5.items.filter((i) => i.ref.startsWith('q:'))).toHaveLength(4);
-    expect(a5.items.filter((i) => i.ref.startsWith('why:'))).toHaveLength(5);
+    expect(content.fishbone.cases.map((i) => i.id)).toContain(a5.group);
+    expect(a5.items.map((i) => i.ref)).toEqual(['fishbone', 'focus', 'next']);
 
     const a6 = assignStage(6, content, seed('p1', 6));
-    expect(content.fishbone.cases.map((i) => i.id)).toContain(a6.group);
-    expect(a6.items.map((i) => i.ref)).toEqual(['fishbone', 'focus', 'next']);
+    expect(a6.items.filter((i) => i.ref.startsWith('q:'))).toHaveLength(4);
+    expect(a6.items.filter((i) => i.ref.startsWith('why:'))).toHaveLength(5);
   });
 
   it('сумма метров на автоматических вершинах ровно 1000', () => {

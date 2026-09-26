@@ -36,6 +36,12 @@ export function InboxInput({
   return (
     <div className="inbox">
       {!disabled && (
+        <p className="inbox-5s small">
+          🗑️ Корзина это <b>сортировка</b>: убираем лишнее. 📁 Папки это <b>соблюдение порядка</b>: у каждого письма своё
+          место.
+        </p>
+      )}
+      {!disabled && (
         <div className="inbox-folders" role="group" aria-label="Папки">
           {item.folders.map((f) => (
             <button
