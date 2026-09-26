@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icon-180.png">
-<meta name="theme-color" content="#f5832a">
+<meta name="theme-color" content="#ff8a1a">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Мурфография">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -245,13 +245,36 @@ img.thumb { width: 28px; height: 28px; border-radius: 7px; object-fit: cover; bo
 .alpha span { font: 700 13px/1 var(--body); color: var(--ink-soft); }
 
 /* Заставка */
-.splash { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 24px; background: radial-gradient(circle at 50% 35%, #ffb35c, #f5832a 60%, #e8691a); color: #fff; text-align: center; transition: opacity .45s ease; cursor: pointer; }
-.splash.hide { opacity: 0; pointer-events: none; }
-.splashcat { width: min(62vw, 260px); aspect-ratio: 1; }
-.splashcat .kitty { animation: hop .8s cubic-bezier(.3,1.6,.5,1); transform-origin: 50% 100%; }
-.splashname { font: 400 clamp(42px, 13vw, 76px)/1 var(--hand); text-shadow: 0 4px 0 rgba(120,45,0,.35); letter-spacing: .5px; }
-.splashname b { color: #fff4c2; font-weight: 400; }
-.splashsub { font: 800 16px/1.3 var(--body); opacity: .9; letter-spacing: .04em; }
+/* Заставка: видна сразу из HTML, прячется скриптом (или сама через 4 с, если скрипт не сработал) */
+.splash { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px; overflow: hidden; background: #ff8a1a; color: #fff; text-align: center; cursor: pointer; transition: opacity .45s ease, transform .45s ease; animation: splashout .5s ease 4s forwards; -webkit-tap-highlight-color: transparent; user-select: none; }
+.splash::before { content: ""; position: absolute; left: 50%; top: 42%; width: 240vmax; height: 240vmax; margin: -120vmax 0 0 -120vmax; background: repeating-conic-gradient(from 0deg, rgba(255,226,120,.28) 0 10deg, rgba(255,255,255,0) 10deg 20deg); animation: spin 26s linear infinite; }
+.splash::after { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 50% 42%, rgba(255,214,90,.75), rgba(255,138,26,0) 45%), radial-gradient(circle at 50% 120%, rgba(232,70,40,.55), rgba(232,70,40,0) 60%); }
+.splash > * { position: relative; z-index: 1; }
+.splash.hide { opacity: 0; transform: scale(1.06); pointer-events: none; }
+.splashcat { width: min(58vw, 250px); aspect-ratio: 1; filter: drop-shadow(0 10px 0 rgba(150,50,0,.25)); }
+.splashcat .kitty { animation: hop .9s cubic-bezier(.3,1.6,.5,1) both, floaty 2.4s ease-in-out .9s infinite; transform-origin: 50% 100%; }
+.splash.tap .splashcat .kitty { animation: hop .45s cubic-bezier(.3,1.6,.5,1); }
+.splashname { font: 400 clamp(42px, 13vw, 76px)/1 var(--hand); letter-spacing: .5px; white-space: nowrap; }
+.splashname i { display: inline-block; font-style: normal; text-shadow: 0 4px 0 rgba(150,50,0,.35); animation: letterpop .55s cubic-bezier(.3,1.7,.5,1) both; animation-delay: calc(.25s + var(--i) * 55ms); }
+.splashname i.m { color: #fff27a; }
+.splashsub { font: 800 17px/1.3 var(--body); letter-spacing: .04em; animation: fadeup .5s ease .95s both; }
+.splashfly { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.splashfly b { position: absolute; bottom: -60px; font: 400 44px/1 var(--hand); color: rgba(255,255,255,.55); animation: flyup 5s linear infinite; }
+.splashfly b:nth-child(1) { left: 8%; animation-delay: 0s; font-size: 52px; }
+.splashfly b:nth-child(2) { left: 26%; animation-delay: 1.4s; color: rgba(255,242,122,.8); }
+.splashfly b:nth-child(3) { left: 44%; animation-delay: .6s; font-size: 34px; }
+.splashfly b:nth-child(4) { left: 62%; animation-delay: 2.1s; font-size: 56px; }
+.splashfly b:nth-child(5) { left: 80%; animation-delay: .2s; color: rgba(255,242,122,.8); }
+.splashfly b:nth-child(6) { left: 90%; animation-delay: 1.8s; font-size: 30px; }
+.splashfly b:nth-child(7) { left: 16%; animation-delay: 2.9s; font-size: 30px; }
+.splashfly b:nth-child(8) { left: 70%; animation-delay: 3.4s; color: rgba(255,242,122,.8); }
+.splashpop { position: absolute; z-index: 2; font-size: 28px; pointer-events: none; animation: popfly .7s ease-out forwards; }
+@keyframes splashout { to { opacity: 0; visibility: hidden; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes letterpop { 0% { opacity: 0; transform: translateY(40px) scale(.3) rotate(-15deg); } 100% { opacity: 1; transform: none; } }
+@keyframes fadeup { from { opacity: 0; transform: translateY(12px); } to { opacity: .95; transform: none; } }
+@keyframes flyup { 0% { transform: translateY(0) rotate(-10deg); opacity: 0; } 15% { opacity: 1; } 100% { transform: translateY(-115vh) rotate(20deg); opacity: 0; } }
+@keyframes popfly { to { transform: translate(var(--dx), var(--dy)) scale(1.4); opacity: 0; } }
 
 /* Знакомство */
 .setup { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 420px; text-align: center; }
@@ -304,26 +327,6 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; }
 @keyframes hop { 0% { transform: translateY(12px) scale(1.08, .88); } 55% { transform: translateY(-8px) scale(.95, 1.06); } 100% { transform: none; } }
 @keyframes sadwobble { 0%, 100% { transform: none; } 25% { transform: rotate(-5deg); } 60% { transform: rotate(4deg); } }
 
-/* Цель, задание, кабинет родителя */
-.goalbar { display: flex; flex-direction: column; gap: 6px; background: var(--green-soft); border: 2px solid var(--green); border-radius: 16px; padding: 10px 14px; font-weight: 700; }
-.assign { display: flex; flex-direction: column; gap: 8px; background: var(--pen-soft); border: 2px solid var(--pen); border-radius: 16px; padding: 12px 14px; }
-.assign .note { font: 400 22px/1.3 var(--hand); }
-.week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
-.week .day { display: flex; flex-direction: column; align-items: center; gap: 2px; border: 2px solid var(--line); border-radius: 12px; padding: 6px 0; background: var(--paper-2); }
-.week .day b { font-size: 17px; font-variant-numeric: tabular-nums; }
-.week .day span { font-size: 11px; color: var(--ink-soft); }
-.week .day.some { border-color: var(--pencil); }
-.week .day.met { border-color: var(--green); background: var(--green-soft); color: var(--green); }
-.pwords { max-height: 260px; overflow-y: auto; padding: 2px; }
-.pwords .chip { font-size: 15px; }
-
-.parententry { display: flex; flex-direction: column; gap: 6px; align-items: center; border-top: 2px dashed var(--line); padding-top: 14px; margin-top: 4px; width: 100%; }
-.forparents { display: flex; flex-direction: column; gap: 10px; border-color: var(--pen); background: var(--pen-soft); }
-.hi.switch { border-color: var(--pen); color: var(--pen); }
-.modepick { display: grid; gap: 10px; width: 100%; }
-.kid { display: flex; flex-direction: column; gap: 10px; }
-.howto { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
-
 /* Коты-реакции */
 .react { position: fixed; right: 10px; top: calc(10px + env(safe-area-inset-top, 0px)); z-index: 15; width: 118px; background: #fff; border: 3px solid #1d2b4f; border-radius: 18px; overflow: hidden; box-shadow: 0 6px 18px rgba(0,0,0,.25); transform: translateY(-20px) scale(.7) rotate(6deg); opacity: 0; transition: transform .25s cubic-bezier(.3,1.6,.5,1), opacity .2s; pointer-events: none; }
 .react.show { transform: none; opacity: 1; }
@@ -336,7 +339,7 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; }
 .ownreact img { width: 64px; height: 64px; border-radius: 12px; object-fit: cover; border: 2px solid var(--line); display: block; }
 .ownreact button { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; border: 0; background: var(--red); color: #fff; font-size: 12px; line-height: 22px; padding: 0; }
 
-@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { *:not(.splash) { animation: none !important; transition: none !important; } }
 .word > span:nth-child(2) { min-width: 0; overflow-wrap: break-word; hyphens: auto; }
 @media (max-width: 420px) {
   .words { grid-template-columns: repeat(2, 1fr); }
@@ -348,7 +351,7 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; }
 </style>
 </head>
 <body>
-<div class="splash" id="splash" hidden><div class="splashcat"></div><div class="splashname"><b>Мур</b>фография</div><div class="splashsub">словарные слова с котами</div></div>
+<div class="splash" id="splash" role="button" aria-label="Мурфография — нажмите, чтобы начать"><div class="splashfly" aria-hidden="true"><b>А</b><b>О</b><b>Ё</b><b>Е</b><b>И</b><b>Я</b><b>Ь</b><b>Ю</b></div><div class="splashcat"><svg viewBox="0 0 120 120" width="100%" height="100%" aria-hidden="true" class="kitty"><ellipse cx="60" cy="112" rx="30" ry="12" fill="#fffaf3" stroke="#2b2320" stroke-width="3"/><g class="ears"><path d="M22 52 Q15 14 30 11 Q41 14 55 34z" fill="#fffaf3" stroke="#2b2320" stroke-width="3" stroke-linejoin="round"/><path d="M98 52 Q105 14 90 11 Q79 14 65 34z" fill="#fffaf3" stroke="#2b2320" stroke-width="3" stroke-linejoin="round"/><path d="M28 42 Q25 22 32 19 Q39 22 46 33z M92 42 Q95 22 88 19 Q81 22 74 33z" fill="#ffb3c4"/></g><ellipse cx="60" cy="66" rx="46" ry="38" fill="#fffaf3" stroke="#2b2320" stroke-width="3"/><ellipse cx="60" cy="81" rx="17" ry="12" fill="#ffffff"/><ellipse cx="30" cy="77" rx="8" ry="4.5" fill="#ff8fab" opacity=".55"/><ellipse cx="90" cy="77" rx="8" ry="4.5" fill="#ff8fab" opacity=".55"/><g class="blink" style="transform-origin:42px 62px"><ellipse cx="42" cy="62" rx="7" ry="9" fill="#2b2320"/><circle cx="44.5" cy="58.5" r="3" fill="#fff"/><circle cx="39.5" cy="65.5" r="1.4" fill="#fff"/></g><g class="blink" style="transform-origin:78px 62px"><ellipse cx="78" cy="62" rx="7" ry="9" fill="#2b2320"/><circle cx="80.5" cy="58.5" r="3" fill="#fff"/><circle cx="75.5" cy="65.5" r="1.4" fill="#fff"/></g><path d="M56.5 73 q3.5 -2 7 0 q-1 3.5 -3.5 4.5 q-2.5 -1 -3.5 -4.5z" fill="#ff7f9c" stroke="#2b2320" stroke-width="1.2"/><path d="M49 79 q11 17 22 0z" fill="#9c2a3a" stroke="#2b2320" stroke-width="2.5" stroke-linejoin="round"/><path d="M54 86 q6 5 12 0 q-6 -4 -12 0" fill="#ff8aa5"/><path d="M8 70 q12 0 22 4 M8 80 q12 -2 22 -1 M112 70 q-12 0 -22 4 M112 80 q-12 -2 -22 -1" stroke="#6b5d57" stroke-width="1.6" fill="none" stroke-linecap="round"/><g class="wave" style="transform-origin:98px 104px"><rect x="86" y="84" width="22" height="20" rx="9" fill="#fffaf3" stroke="#2b2320" stroke-width="2.5"/><rect x="90" y="70" width="10" height="20" rx="5" fill="#fffaf3" stroke="#2b2320" stroke-width="2.5"/><path d="M92 98 v4 M98 98 v4 M104 98 v4" stroke="#2b2320" stroke-width="1.5" stroke-linecap="round"/></g></svg></div><div class="splashname" aria-hidden="true"><i class="m" style="--i:0">М</i><i class="m" style="--i:1">у</i><i class="m" style="--i:2">р</i><i style="--i:3">ф</i><i style="--i:4">о</i><i style="--i:5">г</i><i style="--i:6">р</i><i style="--i:7">а</i><i style="--i:8">ф</i><i style="--i:9">и</i><i style="--i:10">я</i></div><div class="splashsub">словарные слова с котами</div></div>
 <div class="wrap" id="app"></div>
 <nav class="tabs" id="tabs" aria-label="Разделы"></nav>
 <div class="toast" id="toast" hidden></div>
