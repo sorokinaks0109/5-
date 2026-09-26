@@ -31,6 +31,7 @@
   const S = Object.assign({ grade: 1, selected: {}, stats: {}, mine: {}, stories: [], custom: {}, stars: 0, best: {}, cnt: {} }, load() || {});
   // Остатки старого кабинета родителя больше не нужны.
   ['role', 'assign', 'goal', 'kids', 'kid'].forEach((k) => { delete S[k]; });
+  if (S.starsEarned === undefined) S.starsEarned = S.stars || 0;
   function save() {
     try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* ничего */ }
   }
@@ -151,10 +152,14 @@
     ['storyfix', '🔧', 'Ремонт историй', 'Починить историю', (c) => c.storyFix >= 1],
     ['bolt10', '⚡', 'Молния', 'Набрать 10 очков в «Молнии»', (c) => c.bolt >= 10],
     ['bolt25', '🌩️', 'Гроза', 'Набрать 25 очков в «Молнии»', (c) => c.bolt >= 25],
-    ['cw5', '🧠', 'Эрудит', 'Отгадать 5 слов подряд в «Кроссворде»', (c) => c.cw >= 5],
-    ['cw20', '📚', 'Ходячий словарь', 'Отгадать 20 слов подряд в «Кроссворде»', (c) => c.cw >= 20],
-    ['stars100', '⭐', 'Сто звёзд', 'Собрать 100 звёзд', (c) => c.stars >= 100],
-    ['stars500', '🌠', 'Звездопад', 'Собрать 500 звёзд', (c) => c.stars >= 500],
+    ['grid1', '🔠', 'Кроссвордист', 'Решить кроссворд', (c) => c.grids >= 1],
+    ['grid10', '🗞️', 'Знаток кроссвордов', 'Решить 10 кроссвордов', (c) => c.grids >= 10],
+    ['cw5', '🧠', 'Эрудит', 'Отгадать 5 слов подряд в «Эрудите»', (c) => c.cw >= 5],
+    ['cw20', '📚', 'Ходячий словарь', 'Отгадать 20 слов подряд в «Эрудите»', (c) => c.cw >= 20],
+    ['duel', '⚔️', 'Победитель вызова', 'Победить друга по вызову', (c) => c.duelWins >= 1],
+    ['dress', '🎩', 'Модник', 'Купить коту первый наряд', (c) => c.bought >= 1],
+    ['stars100', '⭐', 'Сто звёзд', 'Заработать 100 звёзд', (c) => c.stars >= 100],
+    ['stars500', '🌠', 'Звездопад', 'Заработать 500 звёзд', (c) => c.stars >= 500],
   ];
   function achCtx() {
     const k = S.cnt || {};
@@ -165,7 +170,8 @@
       streak: streakDays(),
       combo: k.bestCombo || 0, perfect: k.perfect || 0, trains: k.trains || 0, fixes: k.fixes || 0,
       storyFix: k.storyFix || 0, stories: (S.stories || []).length,
-      bolt: Math.max(0, ...Object.values(S.best || {})), stars: S.stars || 0, cw: k.cwBestAll || 0,
+      bolt: Math.max(0, ...Object.values(S.best || {})), stars: S.starsEarned || S.stars || 0, cw: k.cwBestAll || 0,
+      grids: k.grids || 0, duelWins: k.duelWins || 0, bought: k.bought || 0,
     };
   }
   /** Проверяет новые достижения. При первом запуске новой версии открывает заработанные раньше молча. */
@@ -408,7 +414,7 @@
   // ---------- Звёзды и конфетти ----------
   function addStars(n) {
     if (n <= 0) return;
-    S.stars = (S.stars || 0) + n; save();
+    S.stars = (S.stars || 0) + n; S.starsEarned = (S.starsEarned || 0) + n; save();
     const el = document.getElementById('starCount');
     if (el) { el.textContent = S.stars; el.parentElement.classList.remove('pop'); void el.offsetWidth; el.parentElement.classList.add('pop'); }
   }
@@ -597,9 +603,9 @@
   // Поэтому на сенсорных экранах буквы вводятся с кнопок приложения, системная клавиатура не открывается.
   const TOUCH = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
   const KBD_ROWS = ['йцукенгшщзхъ', 'фывапролджэ', 'ячсмитьбюё'];
-  function keyboardHtml() {
+  function keyboardHtml(compact) {
     const row = (r) => `<div class="kbdrow">${[...r].map((c) => `<button type="button" class="key" data-act="key" data-k="${c}">${c}</button>`).join('')}</div>`;
-    return `<div class="kbd" aria-label="Клавиатура">${KBD_ROWS.map(row).join('')}
+    return `<div class="kbd${compact ? ' compact' : ''}" aria-label="Клавиатура">${KBD_ROWS.map(row).join('')}
       <div class="kbdrow"><button type="button" class="key wide" data-act="key" data-k="-">-</button><button type="button" class="key space" data-act="key" data-k=" ">пробел</button><button type="button" class="key wide" data-act="key" data-k="back" aria-label="Стереть">⌫</button></div></div>`;
   }
 
@@ -700,6 +706,7 @@
       ${S.setup ? `<div class="row" style="gap:8px">
         <button class="hi" data-act="editName" title="Настройки">${S.grade === 'all' ? '🧑 Все слова' : '📘 ' + S.grade + ' класс'}</button>
         ${S.name ? `<button class="hi" data-act="editName" title="Поменять имя">👋 ${esc(S.name)}</button>` : ''}
+        <button class="avatar" data-act="tab" data-tab="me" title="Мой кот и достижения" aria-label="Мой кот и достижения">${myCat()}</button>
       </div>` : ''}
     </header>`;
   }
@@ -711,6 +718,7 @@
       `<button class="tab" data-act="tab" data-tab="${id}" ${V.tab === id ? 'aria-current="page"' : ''}><i aria-hidden="true">${ic}</i>${name}</button>`).join('');
     let body = '';
     if (!S.setup || V.editName) body = viewHello();
+    else if (S.duelIn && !V.xw && !V.cw) body = viewDuelIntro();
     else if (V.draw && byId(V.draw)) body = viewDraw();
     else if (V.tab === 'words') body = viewWords();
     else if (V.tab === 'learn') body = viewLearn();
@@ -897,10 +905,11 @@
     return `
       <h2>${S.name ? esc(S.name) + ', твой прогресс' : 'Прогресс'}</h2>
       <div class="stats">
-        <div class="stat"><b>🔥 ${streak}</b><span class="muted">${plural(streak, 'день', 'дня', 'дней')} подряд</span></div>
-        <div class="stat"><b>⭐ ${S.stars || 0}</b><span class="muted">звёзд</span></div>
-        <div class="stat"><b>${totalAns}</b><span class="muted">${plural(totalAns, 'ответ', 'ответа', 'ответов')} всего</span></div>
+        <div class="stat"><b>${streak}</b><span class="muted">🔥 ${plural(streak, 'день', 'дня', 'дней')} подряд</span></div>
+        <div class="stat"><b>${S.stars || 0}</b><span class="muted">⭐ ${plural(S.stars || 0, 'звезда', 'звезды', 'звёзд')}</span></div>
+        <div class="stat"><b>${totalAns}</b><span class="muted">✍️ ${plural(totalAns, 'ответ', 'ответа', 'ответов')} всего</span></div>
       </div>
+      ${wardrobeHtml()}
       ${achHtml()}
       <section class="panel" style="display:flex;flex-direction:column;gap:10px">
         <span class="label">Занятия за 2 недели</span>
@@ -1318,21 +1327,372 @@
     write: { e: '✍️', name: 'Напиши сам', about: 'Послушай слово или посмотри на картинку и напиши его целиком.' },
     look: { e: '👀', name: 'Посмотри и напиши', about: 'Слово видно 5 секунд. Запомни его и напиши по памяти.' },
     bolt: { e: '⚡', name: 'Молния', about: '60 секунд: жми на правильное написание как можно быстрее. Побей свой рекорд!' },
-    cross: { e: '🧠', name: 'Кроссворд', about: 'Для самых умных: только толкование и клетки. Сколько слов подряд без единой ошибки?' },
+    grid: { e: '🔠', name: 'Кроссворд', about: 'Настоящий кроссворд из слов твоего класса. Реши как можно быстрее и брось вызов другу!' },
+    cross: { e: '🧠', name: 'Эрудит', about: 'Хардкор для самых умных: только толкование и клетки, до первой ошибки. Сколько слов подряд?' },
   };
+
+  // ---------- «Кроссворд»: настоящая сетка из 5–7 слов ----------
+  // Слова пересекаются только на НЕтрудных буквах — орфограмму кроссворд не подсказывает.
+  function hardPositions(w) {
+    const hard = new Set();
+    let pos = 0;
+    w.parts.forEach((p) => { if (p.t) for (let k = 0; k < p.s.length; k++) hard.add(pos + k); pos += p.s.length; });
+    return hard;
+  }
+  const xwOk = (w) => defOf(w) && !/[\s-]/.test(w.id) && w.id.length >= 3;
+  function makeGrid(list, opt = {}) {
+    const MAXW = opt.maxW || 10, MAXH = opt.maxH || 11, TARGET = opt.target || 6;
+    const L = (w) => w.id.toLowerCase();
+    const hardOf = new Map(list.map((w) => [w.id, hardPositions(w)]));
+    let best = null;
+    for (let attempt = 0; attempt < 40; attempt++) {
+      const pool = shuffle(list);
+      const cells = new Map();
+      const placed = [];
+      const key = (x, y) => x + ',' + y;
+      const at = (x, y) => cells.get(key(x, y));
+      const fits = (s, x, y, dir) => {
+        const dx = dir === 'h' ? 1 : 0, dy = 1 - dx;
+        if (at(x - dx, y - dy) || at(x + dx * s.length, y + dy * s.length)) return -1;
+        let cross = 0;
+        for (let i = 0; i < s.length; i++) {
+          const cx = x + dx * i, cy = y + dy * i, c = at(cx, cy);
+          if (c) { if (c !== s[i]) return -1; cross++; continue; }
+          if (at(cx + dy, cy + dx) || at(cx - dy, cy - dx)) return -1;
+        }
+        return cross;
+      };
+      const bbox = (extra = []) => {
+        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+        const add = (x, y) => { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); };
+        cells.forEach((v, k) => { const [x, y] = k.split(',').map(Number); add(x, y); });
+        extra.forEach(([x, y]) => add(x, y));
+        return { x0, y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
+      };
+      const put = (w, x, y, dir) => {
+        const s = L(w), dx = dir === 'h' ? 1 : 0, dy = 1 - dx;
+        for (let i = 0; i < s.length; i++) cells.set(key(x + dx * i, y + dy * i), s[i]);
+        placed.push({ w, x, y, dir });
+      };
+      const first = pool.find((w) => w.id.length >= 5 && w.id.length <= MAXW);
+      if (!first) return null;
+      put(first, 0, 0, 'h');
+      for (const w of pool) {
+        if (placed.length >= TARGET) break;
+        if (placed.some((p) => p.w.id === w.id) || w.id.length > Math.max(MAXW, MAXH)) continue;
+        const s = L(w), hw = hardOf.get(w.id);
+        const opts = [];
+        for (const p of placed) {
+          const ps = L(p.w), hp = hardOf.get(p.w.id), dir = p.dir === 'h' ? 'v' : 'h';
+          for (let i = 0; i < ps.length; i++) {
+            if (hp.has(i)) continue;
+            for (let j = 0; j < s.length; j++) {
+              if (s[j] !== ps[i] || hw.has(j)) continue;
+              const cx = p.x + (p.dir === 'h' ? i : 0), cy = p.y + (p.dir === 'h' ? 0 : i);
+              const x = dir === 'h' ? cx - j : cx, y = dir === 'h' ? cy : cy - j;
+              const c = fits(s, x, y, dir);
+              if (c < 1) continue;
+              const b = bbox([[x, y], [x + (dir === 'h' ? s.length - 1 : 0), y + (dir === 'h' ? 0 : s.length - 1)]]);
+              if (b.w > MAXW || b.h > MAXH) continue;
+              opts.push({ x, y, dir, score: c * 10 - (b.w * b.h) / 10 + Math.random() });
+            }
+          }
+        }
+        if (!opts.length) continue;
+        opts.sort((a, b) => b.score - a.score);
+        put(w, opts[0].x, opts[0].y, opts[0].dir);
+      }
+      if (!best || placed.length > best.length) {
+        const b = bbox();
+        best = placed.map((p) => [p.w.id, p.x - b.x0, p.y - b.y0, p.dir]);
+        if (placed.length >= TARGET) break;
+      }
+    }
+    return best;
+  }
+  /** Все слова всех классов по id — чтобы вызов друга работал, даже если у него другой класс. */
+  let ALLMAP = null;
+  function anyWord(id) {
+    if (!ALLMAP) ALLMAP = new Map(gradeWords('all').map((w) => [w.id, w]));
+    return byId(id) || ALLMAP.get(id);
+  }
+  function startXw(layout, duel) {
+    let lay = layout && layout.filter(([id]) => anyWord(id) && defOf(anyWord(id)));
+    if (!lay || lay.length < 2) {
+      const list = words().filter(xwOk);
+      if (list.length < 4) { toast('Слишком мало слов для кроссворда'); return; }
+      lay = makeGrid(list);
+    }
+    const ws = lay.map(([id, x, y, dir]) => ({ w: anyWord(id), x, y, dir, len: id.length }));
+    const W = Math.max(...ws.map((e) => e.x + (e.dir === 'h' ? e.len : 1)));
+    const H = Math.max(...ws.map((e) => e.y + (e.dir === 'v' ? e.len : 1)));
+    // Нумерация как в газете: по строкам сверху вниз, слева направо.
+    const starts = [...new Set(ws.map((e) => e.y * 100 + e.x))].sort((a, b) => a - b);
+    ws.forEach((e) => { e.num = starts.indexOf(e.y * 100 + e.x) + 1; });
+    const order = ws.map((e, i) => i).sort((a, b) => (ws[a].dir === ws[b].dir ? ws[a].num - ws[b].num : ws[a].dir === 'h' ? -1 : 1));
+    V.xw = { lay, ws, W, H, order, fill: {}, bad: {}, sel: order[0], pos: 0, checks: 0, done: false, recorded: false, t0: Date.now(), duel: duel || null };
+    goal('grid_start');
+    render();
+    xwScroll();
+  }
+  /** Прокрутить так, чтобы сетка, толкование и клавиатура были на одном экране. */
+  function xwScroll() {
+    const card = document.querySelector('.xwcard');
+    if (card) window.scrollTo({ top: card.getBoundingClientRect().top + window.scrollY - 6, behavior: 'smooth' });
+  }
+  const cellOf = (e, i) => [e.x + (e.dir === 'h' ? i : 0), e.y + (e.dir === 'v' ? i : 0)];
+  const ck = (x, y) => x + ',' + y;
+  const fmtTime = (s) => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  function xwWordFull(e) { return [...Array(e.len)].every((_, i) => V.xw.fill[ck(...cellOf(e, i))]); }
+  function xwType(k) {
+    const X = V.xw;
+    if (!X || X.done) return;
+    const e = X.ws[X.sel];
+    if (k === 'back') {
+      let key = ck(...cellOf(e, X.pos));
+      if (!X.fill[key] && X.pos > 0) { X.pos--; key = ck(...cellOf(e, X.pos)); }
+      delete X.fill[key]; delete X.bad[key];
+    } else if (k === 'enter') { xwCheck(); return; }
+    else if (/^[а-яё]$/.test(k)) {
+      const key = ck(...cellOf(e, X.pos));
+      X.fill[key] = k; delete X.bad[key];
+      if (X.ws.every(xwWordFull)) { render(); xwCheck(); return; }
+      if (X.pos < e.len - 1) X.pos++;
+      else if (xwWordFull(e)) {
+        // Слово заполнено — переходим к следующему незаполненному.
+        const i = X.order.indexOf(X.sel);
+        const nxt = X.order.slice(i + 1).concat(X.order.slice(0, i)).find((j) => !xwWordFull(X.ws[j]));
+        if (nxt !== undefined) { X.sel = nxt; X.pos = 0; }
+      }
+    } else return;
+    render();
+  }
+  function xwSelectCell(x, y) {
+    const X = V.xw;
+    const hits = X.ws.map((e, i) => [e, i]).filter(([e]) => [...Array(e.len)].some((_, q) => ck(...cellOf(e, q)) === ck(x, y)));
+    if (!hits.length) return;
+    // Повторное нажатие на ту же клетку пересечения меняет направление.
+    let pick = hits.find(([, i]) => i === X.sel);
+    if (pick && hits.length > 1 && ck(...cellOf(pick[0], X.pos)) === ck(x, y)) pick = hits.find(([, i]) => i !== X.sel);
+    pick = pick || hits[0];
+    X.sel = pick[1];
+    X.pos = [...Array(pick[0].len)].findIndex((_, q) => ck(...cellOf(pick[0], q)) === ck(x, y));
+    render();
+  }
+  function xwCheck() {
+    const X = V.xw;
+    if (!X || X.done) return;
+    if (X.ws.some((e) => !xwWordFull(e))) { toast('Заполни все клеточки'); return; }
+    X.checks++;
+    X.bad = {};
+    let wrong = 0;
+    X.ws.forEach((e) => {
+      const val = [...Array(e.len)].map((_, i) => X.fill[ck(...cellOf(e, i))]).join('');
+      const ok = norm(val) === norm(e.w.id);
+      if (!X.recorded) record(e.w.id, ok);
+      if (!ok) { wrong++; [...Array(e.len)].forEach((_, i) => { const k = ck(...cellOf(e, i)); if (norm(X.fill[k]) !== norm(e.w.id[i])) X.bad[k] = true; }); }
+    });
+    X.recorded = true;
+    if (wrong) { react(false); toast(`Ошибки в ${wrong} ${plural(wrong, 'слове', 'словах', 'словах')} — красные клетки. Исправь и проверь снова`); render(); return; }
+    X.done = true; X.sec = Math.round((Date.now() - X.t0) / 1000);
+    addStars(X.ws.length * 2); cnt('grids'); goal('grid_done', { sec: X.sec });
+    if (X.duel && (X.sec < X.duel.t || (X.sec === X.duel.t && X.checks <= X.duel.e))) cnt('duelWins');
+    save(); render(); confetti(); react(true);
+  }
+  function xwGiveUp() {
+    const X = V.xw;
+    X.ws.forEach((e) => [...Array(e.len)].forEach((_, i) => { X.fill[ck(...cellOf(e, i))] = e.w.id[i].toLowerCase(); }));
+    X.done = true; X.gaveUp = true; X.bad = {}; X.sec = Math.round((Date.now() - X.t0) / 1000);
+    render();
+  }
+  function viewXw() {
+    const X = V.xw;
+    const e = X.ws[X.sel];
+    const inSel = new Set(X.done ? [] : [...Array(e.len)].map((_, i) => ck(...cellOf(e, i))));
+    const cur = X.done ? '' : ck(...cellOf(e, X.pos));
+    const nums = {};
+    X.ws.forEach((q) => { nums[ck(q.x, q.y)] = q.num; });
+    const used = new Set();
+    X.ws.forEach((q) => [...Array(q.len)].forEach((_, i) => used.add(ck(...cellOf(q, i)))));
+    let grid = '';
+    for (let y = 0; y < X.H; y++) for (let x = 0; x < X.W; x++) {
+      const k = ck(x, y);
+      if (!used.has(k)) { grid += '<span class="xc empty"></span>'; continue; }
+      grid += `<button class="xc${inSel.has(k) ? ' sel' : ''}${k === cur ? ' cur' : ''}${X.bad[k] ? ' bad' : ''}${X.done && !X.gaveUp ? ' win' : ''}" data-act="xwCell" data-x="${x}" data-y="${y}">${nums[k] ? `<i>${nums[k]}</i>` : ''}${esc(X.fill[k] || '')}</button>`;
+    }
+    const clue = (q, i) => `<button class="xwli${i === X.sel && !X.done ? ' on' : ''}" data-act="xwPick" data-i="${i}"><b>${q.num}</b> ${esc(defOf(q.w))} <small>(${q.len})</small></button>`;
+    const across = X.order.filter((i) => X.ws[i].dir === 'h'), down = X.order.filter((i) => X.ws[i].dir === 'v');
+    const top = `<div class="row between"><span class="label">🔠 Кроссворд${X.duel ? ` · вызов от ${esc(X.duel.n || 'друга')}` : ''}</span>
+      <button class="btn small ghost" data-act="stopXw">Стоп</button></div>`;
+    const board = `<div class="xw" style="--w:${X.W};--h:${X.H}">${grid}</div>`;
+    if (X.done) {
+      const d = X.duel;
+      let duelHtml = '';
+      if (d && !X.gaveUp) {
+        const win = X.sec < d.t || (X.sec === d.t && X.checks <= d.e);
+        duelHtml = `<p class="lead">Ты: <b>${fmtTime(X.sec)}</b>${X.checks > 1 ? `, проверок: ${X.checks}` : ''} · ${esc(d.n || 'Друг')}: <b>${fmtTime(d.t)}</b>${d.e > 1 ? `, проверок: ${d.e}` : ''}</p>
+          <h2>${win ? '⚔️ Ты ' + g('победил', 'победила') + '!' : `${esc(d.n || 'Друг')} пока быстрее. Реванш?`}</h2>`;
+      }
+      return `${top}<article class="panel card">
+        ${board}
+        ${X.gaveUp ? '<h2>Вот ответы</h2><p class="lead">Ничего страшного — попробуй новый кроссворд.</p>'
+          : `<div class="result">🔠 ${fmtTime(X.sec)}</div>${duelHtml || `<h2>Кроссворд ${g('решён', 'решён')}!</h2><p class="lead">Время: <b>${fmtTime(X.sec)}</b>${X.checks > 1 ? `, проверок: ${X.checks}` : ', с первой проверки'}. +${X.ws.length * 2} ⭐</p>`}`}
+        <div class="row" style="justify-content:center">
+          ${X.gaveUp ? '' : `<button class="btn" data-act="duelSend" data-m="xw">⚔️ ${d ? 'Ответить вызовом' : 'Бросить вызов другу'}</button>`}
+          <button class="btn ${X.gaveUp ? '' : 'ghost'}" data-act="start" data-mode="grid">Новый кроссворд</button>
+        </div>
+      </article>`;
+    }
+    return `${top}
+      <article class="panel card xwcard">
+        ${board}
+        <div class="xwclue"><button class="btn small ghost" data-act="xwStep" data-d="-1" aria-label="Предыдущее слово">◀</button>
+          <div><span class="label">${e.num} ${e.dir === 'h' ? 'по горизонтали' : 'по вертикали'} · ${e.len} ${plural(e.len, 'буква', 'буквы', 'букв')}</span>${esc(defOf(e.w))}</div>
+          <button class="btn small ghost" data-act="xwStep" data-d="1" aria-label="Следующее слово">▶</button></div>
+        ${keyboardHtml(true)}
+        <div class="row" style="justify-content:center"><button class="btn" data-act="xwCheck">Проверить</button><button class="btn small ghost" data-act="xwGiveUp">Показать ответы</button></div>
+      </article>
+      <section class="panel xwlist">
+        ${across.length ? `<span class="label">По горизонтали</span>${across.map((i) => clue(X.ws[i], i)).join('')}` : ''}
+        ${down.length ? `<span class="label">По вертикали</span>${down.map((i) => clue(X.ws[i], i)).join('')}` : ''}
+      </section>`;
+  }
+
+  // ---------- Вызов другу: ссылка с теми же словами, без сервера ----------
+  const b64e = (o) => btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const b64d = (s) => JSON.parse(decodeURIComponent(escape(atob(s.replace(/-/g, '+').replace(/_/g, '/')))));
+  async function duelSend(m) {
+    let d, text;
+    const who = S.name || 'Друг';
+    if (m === 'xw') {
+      const X = V.xw;
+      d = { v: 1, m: 'xw', n: S.name || '', f: S.gender === 'f' ? 1 : 0, t: X.sec, e: X.checks, L: X.lay };
+      text = `⚔️ ${who} ${g('решил', 'решила')} кроссворд в приложении «${CFG.appName}» за ${fmtTime(X.sec)}. Сможешь быстрее?`;
+    } else {
+      const C = V.cw;
+      d = { v: 1, m: 'cw', n: S.name || '', f: S.gender === 'f' ? 1 : 0, s: C.score, q: C.seq.slice(0, Math.max(C.score + 15, 30)) };
+      text = `⚔️ ${who} ${g('отгадал', 'отгадала')} ${C.score} ${plural(C.score, 'слово', 'слова', 'слов')} подряд в «Эрудите» (приложение «${CFG.appName}»). Побьёшь?`;
+    }
+    const url = location.href.split('#')[0] + '#duel=' + b64e(d);
+    goal('duel_send', { m });
+    try { if (navigator.share) { await navigator.share({ title: CFG.appName, text, url }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+    try { await navigator.clipboard.writeText(text + ' ' + url); toast('Ссылка на вызов скопирована — отправь её другу'); } catch (e) { toast(url); }
+  }
+  // Вызов по ссылке: запоминаем и показываем после знакомства.
+  (function readDuel() {
+    const m = location.hash.match(/^#duel=([\w-]+)/);
+    if (!m) return;
+    history.replaceState(null, '', location.pathname + location.search);
+    try { const d = b64d(m[1]); if (d && (d.m === 'xw' || d.m === 'cw')) { S.duelIn = d; save(); goal('duel_open', { m: d.m }); } } catch (e) { /* ссылка повреждена */ }
+  })();
+  function viewDuelIntro() {
+    const d = S.duelIn;
+    const name = esc(d.n || 'Друг');
+    const did = d.f ? 'решила' : 'решил', got = d.f ? 'отгадала' : 'отгадал';
+    return `<article class="panel card">
+      <div class="result">⚔️</div>
+      <h2>${name} ${d.f ? 'бросила' : 'бросил'} тебе вызов!</h2>
+      <p class="lead">${d.m === 'xw'
+        ? `${name} ${did} кроссворд за <b>${fmtTime(d.t)}</b>. Тот же кроссворд ждёт тебя — сможешь быстрее?`
+        : `${name} ${got} в «Эрудите» <b>${d.s}</b> ${plural(d.s, 'слово', 'слова', 'слов')} подряд. Тебе достанутся те же слова — побьёшь?`}</p>
+      <div class="row" style="justify-content:center">
+        <button class="btn" data-act="duelAccept">Принять вызов</button>
+        <button class="btn ghost" data-act="duelLater">Потом</button>
+      </div>
+    </article>`;
+  }
+
+  // ---------- Гардероб кота: вещи за звёзды ----------
+  // Звёзды тратятся на вещи; для достижений считаются все заработанные звёзды (S.starsEarned).
+  const FURS = [
+    ['white', 'Белый', 0, WHITE], ['ginger', 'Рыжий', 30, GINGER], ['grey', 'Серый', 30, GREY],
+    ['cream', 'Кремовый', 30, CREAM], ['black', 'Чёрный', 60, BLACK],
+  ];
+  const INK = '#2b2320';
+  const WEAR = [
+    ['bow', 'head', '🎀', 'Бантик', 40, `<path d="M84 30 l-11 -9 v18 z M84 30 l11 -9 v18 z" fill="#ff5fa2" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/><circle cx="84" cy="30" r="4.5" fill="#ff9ccb" stroke="${INK}" stroke-width="2"/>`],
+    ['flower', 'head', '🌼', 'Ромашка', 30, `<g transform="translate(34 30)">${[0, 72, 144, 216, 288].map((a) => `<ellipse cx="0" cy="-7" rx="4.5" ry="7" fill="#fff" stroke="${INK}" stroke-width="1.5" transform="rotate(${a})"/>`).join('')}<circle r="4.5" fill="#ffd23f" stroke="${INK}" stroke-width="1.5"/></g>`],
+    ['party', 'head', '🥳', 'Колпак', 50, `<path d="M60 0 l15 30 h-30z" fill="#8e5bd6" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/><circle cx="60" cy="1" r="5" fill="#ffd23f" stroke="${INK}" stroke-width="2"/><circle cx="55" cy="20" r="2.5" fill="#ffd23f"/><circle cx="64" cy="13" r="2.5" fill="#6fe0ff"/>`],
+    ['cap', 'head', '🎓', 'Шапочка отличника', 80, `<path d="M32 22 L60 11 L88 22 L60 33 Z" fill="#1d2b4f" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/><path d="M46 27 v8 q14 6 28 0 v-8" fill="#1d2b4f"/><path d="M88 22 v14" stroke="#f3c233" stroke-width="2.5"/><circle cx="88" cy="38" r="3.5" fill="#f3c233"/>`],
+    ['phones', 'head', '🎧', 'Наушники', 120, `<path d="M16 62 Q14 16 60 16 Q106 16 104 62" fill="none" stroke="#3b3b4f" stroke-width="7" stroke-linecap="round"/><rect x="5" y="52" width="17" height="26" rx="8" fill="#e5484d" stroke="${INK}" stroke-width="2.5"/><rect x="98" y="52" width="17" height="26" rx="8" fill="#e5484d" stroke="${INK}" stroke-width="2.5"/>`],
+    ['crown', 'head', '👑', 'Корона', 300, `<path d="M38 30 l7 -20 9 12 6 -16 6 16 9 -12 7 20z" fill="#ffd23f" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/><circle cx="60" cy="22" r="3" fill="#ff4f7b"/>`],
+    ['glasses', 'face', '👓', 'Очки отличника', 80, `<g fill="rgba(255,255,255,.25)" stroke="${INK}" stroke-width="3"><circle cx="42" cy="62" r="12"/><circle cx="78" cy="62" r="12"/></g><path d="M54 60 q6 -4 12 0 M30 60 l-10 -3 M90 60 l10 -3" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/>`],
+    ['shades', 'face', '🕶️', 'Тёмные очки', 150, `<path d="M28 55 h28 v7 q-2 10 -14 10 q-12 0 -14 -10z M64 55 h28 v7 q-2 10 -14 10 q-12 0 -14 -10z M56 58 h8" fill="#1b1b22" stroke="#1b1b22" stroke-width="3" stroke-linejoin="round"/><path d="M34 60 l7 -3 M70 60 l7 -3" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity=".8"/>`],
+    ['bowtie', 'neck', '🎩', 'Бабочка', 50, `<path d="M60 102 l-14 -8 v16 z M60 102 l14 -8 v16 z" fill="#2fc2d6" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/><circle cx="60" cy="102" r="4.5" fill="#20a3b8" stroke="${INK}" stroke-width="2"/>`],
+    ['scarf', 'neck', '🧣', 'Шарф', 70, `<path d="M24 95 q36 16 72 0 l3 9 q-39 18 -78 0z" fill="#e5484d" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/><path d="M78 104 l5 15 l10 -3 l-5 -14z" fill="#e5484d" stroke="${INK}" stroke-width="2.5" stroke-linejoin="round"/><path d="M34 100 l4 4 M50 104 l4 3 M66 104 l4 -1" stroke="#fff" stroke-width="2" opacity=".7"/>`],
+    ['medal', 'neck', '🏅', 'Медаль', 200, `<path d="M50 96 l10 14 l10 -14" fill="none" stroke="#2451c7" stroke-width="5" stroke-linejoin="round"/><circle cx="60" cy="112" r="7.5" fill="#ffd23f" stroke="#b8860b" stroke-width="2.5"/><path d="M60 108 l1.3 2.7 3 .4 -2.2 2 .6 3 -2.7 -1.5 -2.7 1.5 .6 -3 -2.2 -2 3 -.4z" fill="#fff6c2"/>`],
+  ];
+  function myCatState() {
+    S.cat = S.cat || { fur: 'white', wear: {}, owned: [] };
+    return S.cat;
+  }
+  /** Кот ребёнка в выбранном окрасе и одежде. */
+  function myCat(eyes = 'happy', mouth = 'w') {
+    const c = myCatState();
+    const fur = (FURS.find((f) => f[0] === c.fur) || FURS[0])[3];
+    const over = ['neck', 'face', 'head'].map((slot) => { const it = WEAR.find((x) => x[0] === c.wear[slot]); return it ? it[5] : ''; }).join('');
+    return catSvg({ ...fur, eyes, mouth, extra: 'none' }).replace(/<\/svg>\s*$/, over + '</svg>');
+  }
+  function wardrobeHtml() {
+    const c = myCatState();
+    const has = (id) => c.owned.includes(id);
+    const item = (id, e, name, price, on) => `<button class="wi${on ? ' on' : ''}" data-act="wear" data-id="${id}">
+      <span class="we">${e}</span><b>${name}</b><small>${on ? '✓ надето' : has(id) || !price ? 'надеть' : `⭐ ${price}`}</small></button>`;
+    return `<section class="panel" style="display:flex;flex-direction:column;gap:10px">
+      <span class="label">Мой кот · гардероб за звёзды</span>
+      <div class="row" style="gap:14px;align-items:center;flex-wrap:nowrap">
+        <div class="mycat">${myCat('happy', 'grin')}</div>
+        <p class="muted" style="margin:0">Заработанные звёзды можно потратить на наряды для кота. У тебя <b>⭐ ${S.stars || 0}</b>. Нажми на купленную вещь ещё раз, чтобы снять.</p>
+      </div>
+      <span class="label">Окрас</span>
+      <div class="wgrid">${FURS.map(([id, name, price]) => item('fur:' + id, '🐱', name, price, c.fur === id)).join('')}</div>
+      <span class="label">Наряды</span>
+      <div class="wgrid">${WEAR.map(([id, slot, e, name, price]) => item(id, e, name, price, c.wear[slot] === id)).join('')}</div>
+    </section>`;
+  }
+  function wear(id) {
+    const c = myCatState();
+    const isFur = id.startsWith('fur:');
+    const fur = isFur && FURS.find((f) => f[0] === id.slice(4));
+    const it = !isFur && WEAR.find((x) => x[0] === id);
+    if (!fur && !it) return;
+    const price = fur ? fur[2] : it[4];
+    const name = fur ? fur[1] + ' окрас' : it[3];
+    if (price && !c.owned.includes(id)) {
+      if ((S.stars || 0) < price) { toast(`Не хватает звёзд: нужно ⭐ ${price}, у тебя ⭐ ${S.stars || 0}. Потренируйся ещё!`); return; }
+      S.stars -= price; c.owned.push(id); cnt('bought');
+      toast(`${fur ? '🐱' : it[2]} «${name}» — куплено! −${price} ⭐`); goal('cat_buy', { id });
+      confetti();
+    }
+    if (fur) c.fur = fur[0];
+    else c.wear[it[1]] = c.wear[it[1]] === id ? null : id;
+    save();
+  }
+
+
 
   // ---------- «Кроссворд»: толкование + клетки, до первой ошибки ----------
   // Слова всего класса, у которых есть толкование (без фраз из нескольких слов и слов через дефис).
   // Открыты 1–2 буквы — никогда не трудные (они и есть испытание).
-  function startCw() {
-    const pool = shuffle(words().filter((w) => defOf(w) && !/[\s-]/.test(w.id) && w.id.length >= 3));
-    if (!pool.length) { toast('Нет слов для кроссворда'); return; }
+  function startCw(duel) {
+    const pool = shuffle(words().filter(xwOk));
+    if (!pool.length) { toast('Нет слов для игры'); return; }
     goal('cross_start');
-    V.cw = { pool, i: 0, score: 0, cur: null, done: false, fail: null, record: false };
+    const queue = duel ? (duel.q || []).filter(([id]) => anyWord(id) && defOf(anyWord(id))) : [];
+    V.cw = { pool, i: 0, score: 0, cur: null, done: false, fail: null, record: false, duel: duel || null, queue, seq: [] };
     nextCw();
   }
   function nextCw() {
     const C = V.cw;
+    if (C.queue.length) {
+      // Вызов: те же слова и те же открытые буквы, что были у друга.
+      const [id, opens] = C.queue.shift();
+      const w = anyWord(id), open = new Set(opens);
+      C.cur = { w, open, fill: [...w.id].map((c, k) => (open.has(k) ? c.toLowerCase() : '')) };
+      C.seq.push([id, opens]);
+      render();
+      return;
+    }
     if (C.i >= C.pool.length) { C.pool = shuffle(C.pool); C.i = 0; }
     const w = C.pool[C.i++];
     // Позиции букв: трудные (из разметки) не открываем.
@@ -1341,8 +1701,27 @@
     w.parts.forEach((p) => { if (p.t) for (let k = 0; k < p.s.length; k++) hard.add(pos + k); pos += p.s.length; });
     const free = [...w.id].map((c, k) => k).filter((k) => !hard.has(k));
     const n = w.id.length >= 7 ? 2 : 1;
-    C.cur = { w, open: new Set(shuffle(free).slice(0, n)) };
+    const open = new Set(shuffle(free).slice(0, n));
+    C.cur = { w, open, fill: [...w.id].map((c, k) => (open.has(k) ? c.toLowerCase() : '')) };
+    C.seq.push([w.id, [...open]]);
     render();
+  }
+  /** Ввод в клетки: буква встаёт в следующую пустую клетку, открытые клетки пропускаются. */
+  function cwType(k) {
+    const C = V.cw;
+    if (!C || C.done) return;
+    const { fill, open } = C.cur;
+    if (k === 'back') {
+      for (let i = fill.length - 1; i >= 0; i--) if (!open.has(i) && fill[i]) { fill[i] = ''; break; }
+    } else if (k === 'enter') {
+      document.getElementById('cwForm')?.requestSubmit(); return;
+    } else if (/^[а-яё]$/.test(k)) {
+      const i = fill.findIndex((c, j) => !open.has(j) && !c);
+      if (i < 0) return;
+      fill[i] = k;
+    } else return;
+    const next = fill.findIndex((c, j) => !open.has(j) && !c);
+    document.querySelectorAll('#cwCells .cell').forEach((el, j) => { el.textContent = fill[j]; el.classList.toggle('cur', j === next); });
   }
   function cwBest() { S.cwBest = S.cwBest || {}; return S.cwBest[S.grade] || 0; }
   function finishCw(ok, typed) {
@@ -1353,6 +1732,7 @@
     S.cwBest = S.cwBest || {};
     if (C.score > (S.cwBest[S.grade] || 0)) { S.cwBest[S.grade] = C.score; C.record = C.score > 0; }
     S.cnt.cwBestAll = Math.max(S.cnt.cwBestAll || 0, C.score);
+    if (C.duel && C.score > (C.duel.s || 0)) cnt('duelWins');
     save(); goal('cross_done', { score: C.score });
     render();
     if (C.record) confetti();
@@ -1369,24 +1749,28 @@
         <div class="gapword" style="font-size:34px">${marked(w.parts)}</div>
         <p class="muted" style="margin:0">${esc(defOf(w))}</p>
         <p class="lead">Слов подряд: <b>${C.score}</b>. Рекорд ${gradeName(true)}: <b>${cwBest()}</b>.</p>
+        ${C.duel ? `<h2>${C.score > (C.duel.s || 0) ? '⚔️ Ты ' + g('победил', 'победила') + '!' : C.score === (C.duel.s || 0) ? '⚔️ Ничья!' : `${esc(C.duel.n || 'Друг')} пока впереди: ${C.duel.s}. Реванш?`}</h2>` : ''}
         <div class="row" style="justify-content:center">
-          <button class="btn" data-act="start" data-mode="cross">Ещё раз</button>
+          ${C.score ? `<button class="btn" data-act="duelSend" data-m="cw">⚔️ ${C.duel ? 'Ответить вызовом' : 'Бросить вызов другу'}</button>` : ''}
+          <button class="btn ${C.score ? 'ghost' : ''}" data-act="start" data-mode="cross">Ещё раз</button>
           <button class="btn ghost" data-act="stopCw">Другой режим</button>
         </div>
       </article>`;
     }
     const { w, open } = C.cur;
-    const cells = [...w.id].map((c, k) => `<span class="cell${open.has(k) ? ' open' : ''}">${open.has(k) ? esc(c.toLowerCase()) : ''}</span>`).join('');
-    return `<div class="row between"><span class="label">🧠 Кроссворд · подряд: <b style="font-size:18px;color:var(--pen)">${C.score}</b> · рекорд: ${cwBest()}</span>
+    const fill = C.cur.fill;
+    const next = fill.findIndex((c, k) => !open.has(k) && !c);
+    const cells = fill.map((c, k) => `<span class="cell${open.has(k) ? ' open' : ''}${k === next ? ' cur' : ''}" data-k="${k}">${esc(c)}</span>`).join('');
+    return `<div class="row between"><span class="label">🧠 Эрудит${C.duel ? ' · вызов' : ''} · подряд: <b style="font-size:18px;color:var(--pen)">${C.score}</b> · рекорд: ${cwBest()}</span>
         <button class="btn small ghost" data-act="stopCw">Стоп</button></div>
       <article class="panel card">
         <div class="hint defbox" style="font-size:20px"><span class="label">По горизонтали · ${w.id.length} ${plural(w.id.length, 'буква', 'буквы', 'букв')}</span>${esc(defOf(w))}</div>
-        <div class="cells" aria-label="Клетки кроссворда">${cells}</div>
+        <div class="cells" id="cwCells" style="--n:${w.id.length}" aria-label="Клетки кроссворда: ${w.id.length} ${plural(w.id.length, 'буква', 'буквы', 'букв')}">${cells}</div>
         <form id="cwForm" class="row" style="justify-content:center;width:100%">
-          <input type="text" id="answer" class="answer" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" ${TOUCH ? 'readonly' : ''} placeholder="Слово целиком" aria-label="Ответ">
           <button class="btn" type="submit">Проверить</button>
         </form>
-        ${TOUCH ? keyboardHtml() : ''}
+        ${keyboardHtml()}
+        ${TOUCH ? '' : '<p class="muted" style="margin:0">Можно печатать и с клавиатуры компьютера.</p>'}
         <button class="btn small ghost" data-act="cwGiveUp">Сдаюсь</button>
       </article>`;
   }
@@ -1578,6 +1962,7 @@
   }
 
   function viewTrain() {
+    if (V.xw) return viewXw();
     if (V.cw) return viewCw();
     if (V.bolt) return viewBolt();
     const T = V.train;
@@ -1750,6 +2135,15 @@
     if (nextBtn && !input) nextBtn.focus({ preventScroll: true });
   }
 
+  // Кроссворд с клавиатуры компьютера.
+  document.addEventListener('keydown', (e) => {
+    const game = V.xw && !V.xw.done ? xwType : V.cw && !V.cw.done ? cwType : null;
+    if (!game || V.tab !== 'train' || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return;
+    const k = e.key === 'Backspace' ? 'back' : e.key === 'Enter' ? 'enter' : e.key.toLowerCase();
+    if (k === 'back' || k === 'enter' || /^[а-яё]$/.test(k)) { e.preventDefault(); game(k); }
+  });
+
   // ---------- События ----------
   document.addEventListener('click', (e) => {
     const j = e.target.closest('[data-act="jump"]');
@@ -1767,6 +2161,8 @@
     const keepY = window.scrollY;
     switch (act) {
       case 'key': {
+        if (V.xw && V.tab === 'train') { xwType(el.dataset.k); return; }
+        if (V.cw && V.tab === 'train') { cwType(el.dataset.k); return; }
         const inp = document.getElementById('answer');
         if (!inp) return;
         const k = el.dataset.k;
@@ -1920,10 +2316,36 @@
       case 'delStory': S.stories = S.stories.filter((s) => String(s.t) !== el.dataset.t); save(); break;
       case 'set': V.trainSet = el.dataset.k; break;
       case 'start':
-        if (el.dataset.mode === 'cross') { V.train = null; stopBolt(); startCw(); return; }
-        V.cw = null;
+        if (el.dataset.mode === 'cross') { V.train = null; V.xw = null; stopBolt(); startCw(); return; }
+        if (el.dataset.mode === 'grid') { V.train = null; V.cw = null; stopBolt(); startXw(); return; }
+        V.cw = null; V.xw = null;
         if (el.dataset.mode === 'bolt') { V.train = null; startBolt(); } else startTrain(el.dataset.mode); return;
       case 'stopCw': V.cw = null; break;
+      case 'stopXw': V.xw = null; break;
+      case 'xwCell': xwSelectCell(+el.dataset.x, +el.dataset.y); return;
+      case 'xwPick': case 'xwStep': {
+        const X = V.xw;
+        if (!X || X.done) return;
+        if (el.dataset.act === 'xwPick') X.sel = +el.dataset.i;
+        else { const i = X.order.indexOf(X.sel); X.sel = X.order[(i + +el.dataset.d + X.order.length) % X.order.length]; }
+        const e = X.ws[X.sel];
+        X.pos = 0; // слово всегда набирается с начала, буквы пересечений просто перезаписываются
+        render();
+        if (el.dataset.act === 'xwPick') xwScroll();
+        return;
+      }
+      case 'xwCheck': xwCheck(); return;
+      case 'xwGiveUp': xwGiveUp(); return;
+      case 'duelSend': duelSend(el.dataset.m); return;
+      case 'duelAccept': {
+        const d = S.duelIn; delete S.duelIn; save();
+        V.tab = 'train'; V.train = null; V.cw = null; V.xw = null; stopBolt();
+        if (d.m === 'xw') startXw(d.L, d); else startCw(d);
+        window.scrollTo(0, 0);
+        return;
+      }
+      case 'duelLater': delete S.duelIn; save(); break;
+      case 'wear': wear(el.dataset.id); break;
       case 'cwGiveUp': if (V.cw && !V.cw.done) finishCw(false, ''); return;
       case 'stopBolt': stopBolt(); break;
       case 'boltPick': {
@@ -1987,9 +2409,11 @@
     if (e.target.id === 'cwForm') {
       e.preventDefault();
       const C = V.cw;
-      const val = document.getElementById('answer').value;
-      if (!C || C.done || !val.trim()) return;
-      finishCw(norm(val) === norm(C.cur.w.id), val.trim());
+      if (!C || C.done) return;
+      const { fill, open } = C.cur;
+      if (fill.some((c, k) => !open.has(k) && !c)) { toast('Заполни все клеточки'); return; }
+      const val = fill.join('');
+      finishCw(norm(val) === norm(C.cur.w.id), val);
       return;
     }
     if (e.target.id !== 'writeForm') return;
