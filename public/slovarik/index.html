@@ -298,8 +298,8 @@ img.thumb { width: 28px; height: 28px; border-radius: 7px; object-fit: cover; bo
 .setup .answer { max-width: none; }
 .answer[readonly] { cursor: default; caret-color: transparent; }
 .kbd { display: flex; flex-direction: column; gap: 6px; width: 100%; max-width: 520px; margin: 4px auto 0; user-select: none; }
-.kbdrow { display: flex; gap: 4px; justify-content: center; }
-.key { flex: 1 1 0; min-width: 0; max-width: 44px; height: 46px; padding: 0; border: 2px solid var(--line); border-bottom-width: 4px; border-radius: 10px; background: var(--paper-2); color: var(--ink); font: 800 20px/1 var(--body); touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.kbdrow { display: flex; flex-wrap: nowrap; gap: 3px; justify-content: center; }
+.key { flex: 1 1 0; min-width: 0; max-width: 46px; height: 52px; padding: 0; border: 2px solid var(--line); border-bottom-width: 4px; border-radius: 10px; background: var(--paper-2); color: var(--ink); font: 800 23px/1 var(--body); touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 .key:active { transform: translateY(2px); border-bottom-width: 2px; background: var(--pen-soft); }
 .key.wide { max-width: 64px; flex-grow: 1.5; }
 .key.space { max-width: none; flex-grow: 5; font-size: 15px; font-weight: 700; color: var(--ink-soft); }

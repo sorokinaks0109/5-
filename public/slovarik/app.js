@@ -549,6 +549,14 @@
   const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
   window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvt = e; if (V.tab === 'me') render(); });
   if ('serviceWorker' in navigator && location.protocol === 'https:' && /github\.io$|\.ru$|\.рф$|\.com$/.test(location.hostname)) {
+    // Новая версия скачивается фоном. Если она пришла в первые секунды после запуска (пока идёт заставка) —
+    // сразу перезагружаемся на неё, иначе она откроется при следующем запуске.
+    const hadController = !!navigator.serviceWorker.controller, bootAt = Date.now();
+    let reloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController || reloading || Date.now() - bootAt > 8000) return;
+      reloading = true; location.reload();
+    });
     window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => { /* без офлайна */ }); });
   }
   async function shareApp() {
