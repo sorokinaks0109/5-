@@ -430,6 +430,7 @@ textarea {
   display: block;
   width: 100%;
   height: auto;
+  max-height: 88vh;
 }
 .flag-move {
   transition: transform 1.4s cubic-bezier(0.34, 1.2, 0.64, 1);
@@ -1118,17 +1119,71 @@ tr.finalist td:first-child {
 }
 
 /* Горы */
-.peak {
+.camp {
   cursor: pointer;
+  outline: none;
 }
-.peak-current circle {
-  animation: pulsePeak 1.8s ease-in-out infinite;
+.camp-dot {
+  transition: transform 0.2s ease;
+}
+.camp:hover .camp-dot,
+.camp:focus-visible .camp-dot,
+.camp-selected .camp-dot {
+  transform: scale(1.12);
+}
+.camp-ring {
+  animation: campRing 1.8s ease-out infinite;
   transform-box: fill-box;
   transform-origin: center;
 }
-@keyframes pulsePeak {
+@keyframes campRing {
+  0% {
+    transform: scale(0.85);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.45);
+    opacity: 0;
+  }
+}
+.star {
+  animation: twinkle 3s ease-in-out infinite;
+}
+@keyframes twinkle {
   50% {
-    transform: scale(1.25);
+    opacity: 0.25;
+  }
+}
+.camp-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 12px 14px;
+  background: #fff;
+  border: 2px solid;
+  border-radius: 16px;
+  animation: pop 0.3s ease;
+  flex-wrap: wrap;
+}
+.camp-card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  font-size: 1.6rem;
+  flex: none;
+}
+.camp-card-name {
+  font-size: 1.15rem;
+  font-weight: 900;
+  line-height: 1.2;
+  margin: 2px 0;
+}
+@media (max-width: 480px) {
+  .camp-card .btn {
+    width: 100%;
   }
 }
 .cloud {
