@@ -1,7 +1,7 @@
-/* Работа без интернета: файлы словарика хранятся в кэше телефона.
-   При каждом открытии приложение берёт файлы из кэша сразу, а в фоне скачивает свежие —
-   поэтому обновления появляются со второго запуска. Меняйте VERSION при крупных изменениях. */
-const VERSION = 'slovarik-v9';
+/* Работа без интернета. Сначала пробуем взять свежий файл из сети (не дольше 3 секунд),
+   а если сети нет или она медленная — берём из кэша телефона. Поэтому обновления
+   видны сразу при следующем открытии. Меняйте VERSION при крупных изменениях. */
+const VERSION = 'slovarik-v10';
 const FILES = ['./', 'index.html', 'app.js', 'words.js', 'config.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-180.png'];
 
 self.addEventListener('install', (e) => {
@@ -17,7 +17,9 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
   e.respondWith(caches.open(VERSION).then(async (cache) => {
     const cached = await cache.match(req, { ignoreSearch: true });
-    const fresh = fetch(req).then((res) => { if (res.ok) cache.put(req, res.clone()); return res; }).catch(() => cached);
-    return cached || fresh;
+    const fresh = fetch(req, { cache: 'no-cache' }).then((res) => { if (res.ok) cache.put(req, res.clone()); return res; });
+    if (!cached) return fresh;
+    const slow = new Promise((ok) => setTimeout(() => ok(cached), 3000));
+    return Promise.race([fresh.catch(() => cached), slow]);
   }));
 });
