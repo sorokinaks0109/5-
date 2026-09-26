@@ -76,7 +76,7 @@ function screenFor(me: MeView, route: string) {
   if (me.role === 'organizer') return <OrganizerScreen />;
   if (me.role === 'jury') return <JuryScreen />;
   if (!me.nick || route === '/profile') return <ProfileScreen />;
-  const m = route.match(/^\/stage\/([1-6])$/);
+  const m = route.match(/^\/stage\/([1-7])$/);
   if (m) {
     const stage = Number(m[1]) as StageNo;
     return stage === IDEA_STAGE ? <IdeaScreen key="idea" /> : <StageScreen key={stage} stage={stage} />;
