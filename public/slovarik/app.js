@@ -712,6 +712,7 @@
       })()}
       <div class="row">
         <button class="btn" data-act="pick10">Взять 10 новых</button>
+        <button class="btn ghost" data-act="selAll" ${sel.size === ws.length ? 'disabled' : ''}>Выбрать все</button>
         <button class="btn ghost" data-act="clearSel" ${sel.size ? '' : 'disabled'}>Снять выбор</button>
         <button class="btn ghost" data-act="tab" data-tab="learn" ${sel.size ? '' : 'disabled'}>Учить выбранные →</button>
       </div>
@@ -1623,14 +1624,25 @@
         const id = el.dataset.id;
         const i = ids.indexOf(id);
         if (i >= 0) ids.splice(i, 1); else { ids.push(id); goal('words_pick'); }
-        S.selected[S.grade] = ids; save();
+        S.selected[S.grade] = ids;
+        if (i < 0 && !S.hintSel) {
+          // Первый выбор слова: объясняем, что нажатие — это выбор для тренировки.
+          S.hintSel = true;
+          react(true, 'СЛОВО ВЫБРАНО ✓ ОНО ПОЙДЁТ В ТРЕНИРОВКУ. ВЫБЕРИ ЕЩЁ!');
+          toast('✓ Слово выбрано для «Учу» и «Тренировки». Нажми ещё раз, чтобы убрать');
+        }
+        save();
         if (i < 0 && ids.length === 11) toast('Больше 10 слов за раз — трудновато. Но можно!');
         break;
       }
       case 'pick10': {
+        // Новая порция: сначала слова, которые ещё ни разу не тренировали, в случайном порядке
+        // (не только на «А»); если их не хватает — недоученные. Выбранные сейчас не повторяем.
         const cur = new Set(selectedIds());
-        const fresh = words().filter((w) => status(w.id) !== 'learned' && !cur.has(w.id));
-        const take = fresh.slice(0, 10);
+        const rest = words().filter((w) => !cur.has(w.id));
+        const take = shuffle(rest.filter((w) => status(w.id) === 'new'))
+          .concat(shuffle(rest.filter((w) => status(w.id) !== 'new' && status(w.id) !== 'learned')))
+          .slice(0, 10);
         if (!take.length) { toast(S.grade === 'all' ? 'Все слова уже выучены!' : 'Все слова этого класса уже выучены!'); return; }
         S.selected[S.grade] = take.map((w) => w.id); save(); V.learn = 0; goal('words_pick');
         toast(`Выбрано ${take.length} ${plural(take.length, 'слово', 'слова', 'слов')}`);
@@ -1645,6 +1657,10 @@
       case 'reportCopy': copyText(document.getElementById('reportText').value); return;
       case 'reviewDue': V.trainSet = 'due'; V.tab = 'train'; V.train = null; window.scrollTo(0, 0); break;
       case 'clearSel': S.selected[S.grade] = []; save(); break;
+      case 'selAll':
+        S.selected[S.grade] = words().map((w) => w.id); save(); goal('words_pick');
+        toast(`Выбраны все слова: ${words().length}. В тренировке каждый раз будет 15 случайных из них`);
+        break;
       case 'addWord': {
         const inp = document.getElementById('newWord');
         const val = (inp.value || '').trim();
