@@ -654,8 +654,8 @@
           ${custom.length ? `<div class="chips">${custom.map((c, i) => `<span class="chip">${marked(parseLine(c).parts)} <button class="btn small ghost" style="min-height:0;padding:0 6px;border:0" data-act="delWord" data-i="${i}" aria-label="Удалить">✕</button></span>`).join('')}</div>` : ''}
         </div>
       </details>
-      <p class="muted">${+S.grade === 1
-        ? 'Слова из орфографического словаря учебника «Русский язык. 1 класс» Канакиной, Горецкого (УМК «Школа России»).'
+      <p class="muted">${+S.grade <= 2
+        ? `Слова из орфографического словаря учебника «Русский язык. ${S.grade} класс» Канакиной, Горецкого (УМК «Школа России»).`
         : +S.grade <= 4
         ? 'Списки взяты из словариков учебника «Русский язык» (УМК «Школа России»).'
         : +S.grade >= 6
@@ -1016,7 +1016,7 @@
     V.lastStory = t;
     const first = t.startsWith('{List}');
     const items = pick.map((w, i) => {
-      const text = w.phrase || w.marked + (w.note ? ' ' + w.note : '');
+      const text = w.phrase || w.marked;
       return first && i === 0 ? capMarked(text) : text;
     });
     return { text: t.replace('{List}', joinList(items)).replace('{list}', joinList(items)).replace('{song}', group.song), kind, fix: null };
