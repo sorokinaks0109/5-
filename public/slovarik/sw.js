@@ -1,25 +1,29 @@
-/* Работа без интернета. Сначала пробуем взять свежий файл из сети (не дольше 3 секунд),
-   а если сети нет или она медленная — берём из кэша телефона. Поэтому обновления
-   видны сразу при следующем открытии. Меняйте VERSION при крупных изменениях. */
-const VERSION = 'slovarik-v14';
+/* Работа без интернета и мгновенный запуск.
+   Все файлы словарика хранятся в кэше одной версией (VERSION) и отдаются сразу, без ожидания сети.
+   Когда на сайте меняется этот файл (новая VERSION), браузер фоном скачивает все файлы заново,
+   целиком, и включает новую версию разом — старые и новые файлы никогда не смешиваются.
+   ВАЖНО: при любом изменении приложения увеличивайте VERSION. */
+const VERSION = 'slovarik-v15';
 const FILES = ['./', 'index.html', 'app.js', 'words.js', 'config.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-180.png'];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(FILES)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(VERSION)
+    .then((c) => c.addAll(FILES.map((f) => new Request(f, { cache: 'reload' }))))
+    .then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (e) => {
-  e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== VERSION).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
+  // Удаляем только старые кэши словарика: на том же адресе могут жить другие приложения.
+  e.waitUntil(caches.keys()
+    .then((keys) => Promise.all(keys.filter((k) => k.startsWith('slovarik') && k !== VERSION).map((k) => caches.delete(k))))
+    .then(() => self.clients.claim()));
 });
 
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
   e.respondWith(caches.open(VERSION).then(async (cache) => {
-    const cached = await cache.match(req, { ignoreSearch: true });
-    const fresh = fetch(req, { cache: 'no-cache' }).then((res) => { if (res.ok) cache.put(req, res.clone()); return res; });
-    if (!cached) return fresh;
-    const slow = new Promise((ok) => setTimeout(() => ok(cached), 3000));
-    return Promise.race([fresh.catch(() => cached), slow]);
+    const hit = (await cache.match(req, { ignoreSearch: true })) || (req.mode === 'navigate' ? await cache.match('index.html') : null);
+    return hit || fetch(req);
   }));
 });
