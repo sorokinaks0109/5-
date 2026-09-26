@@ -303,6 +303,35 @@ img.thumb { width: 28px; height: 28px; border-radius: 7px; object-fit: cover; bo
 .cell.cur { box-shadow: 0 0 0 3px var(--pen); }
 .cells { gap: 0 !important; } .cells .cell + .cell { margin-left: -2px; }
 .cell.open { background: var(--pencil-soft); border-color: var(--pencil); }
+/* Кроссворд-сетка: клетки подстраиваются под ширину экрана */
+.xw { --cs: min(36px, calc((100vw - 64px) / var(--w)), calc((100svh - 440px) / var(--h))); display: grid; grid-template-columns: repeat(var(--w), var(--cs)); grid-auto-rows: var(--cs); justify-content: center; margin: 4px auto 8px; }
+.xc { position: relative; width: var(--cs); height: var(--cs); margin: 0; padding: 0; border: 0; box-shadow: 0 0 0 1.5px #1d2b4f; background: #fff; color: #1d2b4f; font: 800 calc(var(--cs) * .56)/1 var(--body); display: grid; place-items: center; text-transform: lowercase; touch-action: manipulation; -webkit-tap-highlight-color: transparent; z-index: 0; }
+.xc.empty { box-shadow: none; background: transparent; }
+.xc i { position: absolute; top: 1px; left: 2px; font: 700 calc(var(--cs) * .27)/1 var(--body); font-style: normal; color: #5a6785; }
+.xc.sel { background: #dbe6ff; }
+.xc.cur { background: #ffe38a; box-shadow: 0 0 0 3px var(--pen); z-index: 1; }
+.xc.bad { color: #d7322b; background: #fde9e7; }
+.xc.win { background: #e3f5ea; color: #22844d; }
+.xwclue { display: flex; align-items: center; gap: 6px; width: 100%; background: var(--pencil-soft); border: 2px solid var(--pencil); border-radius: 14px; padding: 6px; font-size: 16px; line-height: 1.25; min-height: 64px; }
+.xwcard { gap: 8px !important; padding-top: 10px !important; }
+.kbd.compact { gap: 5px; margin-top: 0; }
+.kbd.compact .key { height: 42px; font-size: 21px; }
+.xwclue > div { flex: 1; min-width: 0; }
+.xwclue .label { display: block; margin-bottom: 2px; }
+.xwclue .btn { flex: none; min-width: 40px; padding: 0 8px; }
+.xwlist { display: flex; flex-direction: column; gap: 6px; }
+.xwli { text-align: left; border: 2px solid var(--line); background: var(--paper-2); color: var(--ink); border-radius: 12px; padding: 8px 10px; font: 600 16px/1.35 var(--body); }
+.xwli b { color: var(--pen); margin-right: 4px; }
+.xwli.on { border-color: var(--pen); background: var(--pen-soft); }
+/* Кот ребёнка: аватар в шапке и гардероб */
+.avatar { width: 44px; height: 44px; padding: 2px; border-radius: 50%; border: 2px solid var(--pencil); background: var(--pencil-soft); flex: none; }
+.mycat { width: 120px; flex: none; }
+.wgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+.wi { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; border: 2px solid var(--line); border-radius: 14px; background: var(--paper-2); color: var(--ink); font: 700 13px/1.2 var(--body); }
+.wi .we { font-size: 28px; line-height: 1.1; }
+.wi small { font-size: 12px; color: var(--ink-soft); font-weight: 800; }
+.wi.on { border-color: var(--green); background: var(--green-soft); }
+.wi.on small { color: var(--green); }
 .achs { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
 .ach { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; padding: 10px 6px; border: 2px dashed var(--line); border-radius: 14px; color: var(--ink-soft); }
 .ach .ae { font-size: 30px; line-height: 1.1; filter: grayscale(1); opacity: .6; }
