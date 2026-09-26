@@ -1,7 +1,7 @@
 /* Работа без интернета: файлы словарика хранятся в кэше телефона.
    При каждом открытии приложение берёт файлы из кэша сразу, а в фоне скачивает свежие —
    поэтому обновления появляются со второго запуска. Меняйте VERSION при крупных изменениях. */
-const VERSION = 'slovarik-v1';
+const VERSION = 'slovarik-v2';
 const FILES = ['./', 'index.html', 'app.js', 'words.js', 'config.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-180.png'];
 
 self.addEventListener('install', (e) => {

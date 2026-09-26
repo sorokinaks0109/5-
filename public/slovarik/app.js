@@ -1742,4 +1742,16 @@
   });
 
   render();
+
+  // ---------- Заставка при открытии: оранжевый экран, кот и название ----------
+  (function splash() {
+    const el = document.getElementById('splash');
+    if (!el) return;
+    el.querySelector('.splashcat').innerHTML = catSvg({ ...WHITE, eyes: 'sparkle', mouth: 'grin', extra: 'paws' });
+    el.querySelector('.splashname').innerHTML = CFG.appName === 'Словарик' ? 'Слов<b>а</b>рик' : esc(CFG.appName);
+    el.hidden = false;
+    const hide = () => { el.classList.add('hide'); setTimeout(() => { el.hidden = true; }, 450); };
+    el.addEventListener('click', hide);
+    setTimeout(hide, 1600);
+  })();
 })();
