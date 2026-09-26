@@ -2,7 +2,9 @@
 (function () {
   'use strict';
 
-  const CFG = Object.assign({ appName: 'Словарик', author: '', blogUrl: '', blogTitle: '', feedbackUrl: '', metrikaId: '' }, window.SLOVARIK_CONFIG || {});
+  /** Название с выделенной частью: «Мур» в «Мурфографии», «а» в «Словарике». */
+  const logoHtml = (n) => (n === 'Мурфография' ? '<b>Мур</b>фография' : n === 'Словарик' ? 'Слов<b>а</b>рик' : String(n).replace(/[&<>"']/g, ''));
+  const CFG = Object.assign({ appName: 'Мурфография', author: '', blogUrl: '', blogTitle: '', feedbackUrl: '', metrikaId: '' }, window.SLOVARIK_CONFIG || {});
 
   // ---------- Хранение ----------
   const KEY = 'slovarik:v1';
@@ -556,7 +558,7 @@
 
   function header() {
     return `<header class="top">
-      <div class="row" style="gap:12px"><h1 class="logo">${CFG.appName === 'Словарик' ? 'Слов<b>а</b>рик' : esc(CFG.appName)}</h1><span class="stars" title="Звёзды за успехи">⭐ <b id="starCount">${S.stars || 0}</b></span>
+      <div class="row" style="gap:12px"><h1 class="logo">${logoHtml(CFG.appName)}</h1><span class="stars" title="Звёзды за успехи">⭐ <b id="starCount">${S.stars || 0}</b></span>
       </div>
       ${S.setup ? `<div class="row" style="gap:8px">
         <button class="hi" data-act="editName" title="Поменять класс">📘 ${S.grade} класс</button>
@@ -1748,7 +1750,7 @@
     const el = document.getElementById('splash');
     if (!el) return;
     el.querySelector('.splashcat').innerHTML = catSvg({ ...WHITE, eyes: 'sparkle', mouth: 'grin', extra: 'paws' });
-    el.querySelector('.splashname').innerHTML = CFG.appName === 'Словарик' ? 'Слов<b>а</b>рик' : esc(CFG.appName);
+    el.querySelector('.splashname').innerHTML = logoHtml(CFG.appName);
     el.hidden = false;
     const hide = () => { el.classList.add('hide'); setTimeout(() => { el.hidden = true; }, 450); };
     el.addEventListener('click', hide);
