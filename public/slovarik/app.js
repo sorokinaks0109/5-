@@ -613,11 +613,21 @@
   // Поэтому на сенсорных экранах буквы вводятся с кнопок приложения, системная клавиатура не открывается.
   const TOUCH = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
   const KBD_ROWS = ['йцукенгшщзхъ', 'фывапролджэ', 'ячсмитьбюё'];
+  // В письме нужна заглавная буква (Россия, Москва): кнопка ⇧ делает заглавной следующую букву.
+  // В кроссворде и «Эрудите» заглавные подставляются в клетки сами, там ⇧ не нужна.
   function keyboardHtml(compact) {
+    V.shift = false;
     const row = (r) => `<div class="kbdrow">${[...r].map((c) => `<button type="button" class="key" data-act="key" data-k="${c}">${c}</button>`).join('')}</div>`;
-    return `<div class="kbd${compact ? ' compact' : ''}" aria-label="Клавиатура">${KBD_ROWS.map(row).join('')}
-      <div class="kbdrow"><button type="button" class="key wide" data-act="key" data-k="-">-</button><button type="button" class="key space" data-act="key" data-k=" ">пробел</button><button type="button" class="key wide" data-act="key" data-k="back" aria-label="Стереть">⌫</button></div></div>`;
+    return `<div class="kbd${compact ? ' compact' : ''}" id="kbd" aria-label="Клавиатура">${KBD_ROWS.map(row).join('')}
+      <div class="kbdrow">${compact || V.cw ? '' : '<button type="button" class="key wide shift" data-act="key" data-k="shift" aria-label="Следующая буква — заглавная" aria-pressed="false">⇧</button>'}<button type="button" class="key wide" data-act="key" data-k="-">-</button><button type="button" class="key space" data-act="key" data-k=" ">пробел</button><button type="button" class="key wide" data-act="key" data-k="back" aria-label="Стереть">⌫</button></div></div>`;
   }
+  /** Заглавные буквы на месте: где в слове заглавная, в ответе тоже должна быть заглавная. */
+  function capsOk(val, id) {
+    const f = (x) => String(x).trim().replace(/[\s\u00a0]+/g, ' ').replace(/ё/g, 'е').replace(/Ё/g, 'Е');
+    const a = f(val), b = f(id);
+    return a.length === b.length && [...b].every((c, i) => c === c.toLowerCase() || a[i] === c);
+  }
+  const isCap = (c) => /[А-ЯЁ]/.test(c || '');
 
   // ---------- Яндекс Метрика (только если в config.js указан номер счётчика) ----------
   // Цели: setup_kid / setup_adult (знакомство), words_pick (выбрали слова), tab_learn / tab_stories / tab_train / tab_me,
@@ -1563,13 +1573,13 @@
     const cur = X.done ? '' : ck(...cellOf(e, X.pos));
     const nums = {};
     X.ws.forEach((q) => { nums[ck(q.x, q.y)] = q.num; });
-    const used = new Set();
-    X.ws.forEach((q) => [...Array(q.len)].forEach((_, i) => used.add(ck(...cellOf(q, i)))));
+    const used = new Set(), caps = new Set();
+    X.ws.forEach((q) => [...Array(q.len)].forEach((_, i) => { used.add(ck(...cellOf(q, i))); if (isCap(q.w.id[i])) caps.add(ck(...cellOf(q, i))); }));
     let grid = '';
     for (let y = 0; y < X.H; y++) for (let x = 0; x < X.W; x++) {
       const k = ck(x, y);
       if (!used.has(k)) { grid += '<span class="xc empty"></span>'; continue; }
-      grid += `<button class="xc${inSel.has(k) ? ' sel' : ''}${k === cur ? ' cur' : ''}${X.bad[k] ? ' bad' : ''}${X.done && !X.gaveUp ? ' win' : ''}" data-act="xwCell" data-x="${x}" data-y="${y}">${nums[k] ? `<i>${nums[k]}</i>` : ''}${esc(X.fill[k] || '')}</button>`;
+      grid += `<button class="xc${inSel.has(k) ? ' sel' : ''}${k === cur ? ' cur' : ''}${X.bad[k] ? ' bad' : ''}${X.done && !X.gaveUp ? ' win' : ''}" data-act="xwCell" data-x="${x}" data-y="${y}">${nums[k] ? `<i>${nums[k]}</i>` : ''}${esc(caps.has(k) ? (X.fill[k] || '').toUpperCase() : X.fill[k] || '')}</button>`;
     }
     const clue = (q, i) => `<button class="xwli${i === X.sel && !X.done ? ' on' : ''}" data-act="xwPick" data-i="${i}"><b>${q.num}</b> ${esc(defOf(q.w))} <small>(${q.len})</small></button>`;
     const across = X.order.filter((i) => X.ws[i].dir === 'h'), down = X.order.filter((i) => X.ws[i].dir === 'v');
@@ -1773,7 +1783,8 @@
       fill[i] = k;
     } else return;
     const next = fill.findIndex((c, j) => !open.has(j) && !c);
-    document.querySelectorAll('#cwCells .cell').forEach((el, j) => { el.textContent = fill[j]; el.classList.toggle('cur', j === next); });
+    const id = C.cur.w.id;
+    document.querySelectorAll('#cwCells .cell').forEach((el, j) => { el.textContent = isCap(id[j]) ? fill[j].toUpperCase() : fill[j]; el.classList.toggle('cur', j === next); });
   }
   function cwBest() { S.cwBest = S.cwBest || {}; return S.cwBest[S.grade] || 0; }
   function finishCw(ok, typed) {
@@ -1812,7 +1823,7 @@
     const { w, open } = C.cur;
     const fill = C.cur.fill;
     const next = fill.findIndex((c, k) => !open.has(k) && !c);
-    const cells = fill.map((c, k) => `<span class="cell${open.has(k) ? ' open' : ''}${k === next ? ' cur' : ''}" data-k="${k}">${esc(c)}</span>`).join('');
+    const cells = fill.map((c, k) => `<span class="cell${open.has(k) ? ' open' : ''}${k === next ? ' cur' : ''}" data-k="${k}">${esc(isCap(w.id[k]) ? c.toUpperCase() : c)}</span>`).join('');
     return `<div class="row between"><span class="label">🧠 Эрудит${C.duel ? ' · вызов' : ''} · подряд: <b style="font-size:18px;color:var(--pen)">${C.score}</b> · рекорд: ${cwBest()}</span>
         <button class="btn small ghost" data-act="stopCw">Стоп</button></div>
       <article class="panel card">
@@ -2100,7 +2111,7 @@
           : `<div class="gapword" style="font-size:32px">${masked}</div><p class="muted">Напиши слово целиком, вставив пропущенные буквы</p>`) : `<p class="muted">Какое слово ты ${g('видел', 'видела')}? Напиши его.</p>`}
         ${T.mode === 'write' && defOf(w) && !t.solved ? (t.showDef ? defBox(w) : '<button class="btn small ghost" data-act="showDef">❓ Что это за слово?</button>') : ''}
         ${t.solved && !t.copy ? verdictGood(w, t.caseNote) : ''}
-        ${t.copy ? verdictBad(w, t.answer) : ''}
+        ${t.copy ? verdictBad(w, t.answer, false, t.caseMiss) : ''}
         ${!t.solved || t.copy ? `
         <form id="writeForm" class="row" style="justify-content:center;width:100%">
           <input type="text" id="answer" class="answer" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" ${TOUCH ? 'readonly' : ''} placeholder="${t.copy ? 'Перепиши правильно' : 'Пиши здесь'}" aria-label="Ответ">
@@ -2121,7 +2132,7 @@
     const praise = ['Верно!', 'Молодец!', 'Точно!', 'Супер!', 'Так держать!'][Math.floor(Math.random() * 5)];
     return `<div class="verdict good">✓ ${praise} <span class="your">${marked(w.parts)}${note ? ` — ${esc(note)}` : ''}</span></div>`;
   }
-  function verdictBad(w, answer, simple) {
+  function verdictBad(w, answer, simple, caseMiss) {
     const correct = w.id;
     const d = diff(correct, answer || '');
     const cs = chars(w);
@@ -2132,7 +2143,8 @@
     const yours = [...(answer || '')].map((ch, j) => (d.extraB.has(j) ? `<span class="miss">${esc(ch)}</span>` : esc(ch))).join('');
     return `<div class="verdict bad">✗ Ошибка. Правильно: <span style="font-size:26px;color:var(--ink)">${right}</span>
       <span class="your">Ты ${simple ? g('выбрал', 'выбрала') : g('написал', 'написала')}: ${yours || '—'}</span>
-      ${w.hint ? `<span class="your" style="font-weight:600">💡 ${esc(w.hint)}</span>` : ''}
+      ${caseMiss ? '<span class="your" style="font-weight:800;color:var(--red)">🔠 Пишется с большой буквы! Нажми ⇧ перед буквой.</span>' : ''}
+      ${w.hint && !caseMiss ? `<span class="your" style="font-weight:600">💡 ${esc(w.hint)}</span>` : ''}
       ${simple ? '' : '<span class="your" style="font-weight:600">Перепиши слово правильно — так рука тоже запомнит.</span>'}</div>`;
   }
 
@@ -2219,7 +2231,19 @@
         const inp = document.getElementById('answer');
         if (!inp) return;
         const k = el.dataset.k;
-        inp.value = k === 'back' ? inp.value.slice(0, -1) : inp.value + k;
+        const kb = document.getElementById('kbd');
+        if (k === 'shift') {
+          V.shift = !V.shift;
+          kb && kb.classList.toggle('caps', V.shift);
+          el.setAttribute('aria-pressed', V.shift);
+          return;
+        }
+        if (k === 'back') inp.value = inp.value.slice(0, -1);
+        else inp.value += V.shift && k.length === 1 ? k.toUpperCase() : k;
+        if (V.shift && k !== 'back') {
+          V.shift = false;
+          if (kb) { kb.classList.remove('caps'); kb.querySelector('.shift')?.setAttribute('aria-pressed', 'false'); }
+        }
         return;
       }
       case 'topUp': {
@@ -2476,15 +2500,17 @@
     if (!t) return;
     const val = document.getElementById('answer').value;
     if (!val.trim()) return;
-    const ok = norm(val) === norm(t.id);
+    const same = norm(val) === norm(t.id);
+    const ok = same && capsOk(val, t.id);
     if (t.copy) {
-      if (ok) { t.copy = false; render(); } else toast('Сверь с образцом и попробуй ещё раз');
+      if (ok) { t.copy = false; render(); }
+      else toast(same ? 'Не забудь заглавную букву — кнопка ⇧' : 'Сверь с образцом и попробуй ещё раз');
       return;
     }
-    if (ok) {
-      if (val.trim().charAt(0) !== t.id.charAt(0) && t.id.charAt(0) !== t.id.charAt(0).toLowerCase()) t.caseNote = 'пишется с большой буквы!';
-      finishTask(true);
-    } else {
+    if (ok) finishTask(true);
+    else {
+      // Буквы верные, но нет заглавной — это тоже ошибка: «Россия» пишется с большой буквы.
+      t.caseMiss = same;
       t.answer = val.trim();
       t.copy = true;
       finishTask(false);
