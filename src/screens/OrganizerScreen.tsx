@@ -4,12 +4,13 @@ import { api } from '../api/index.ts';
 import { Emblem } from '../components/Emblem.tsx';
 import { pc } from '../content.ts';
 import { prettyCode } from '../core/codes.ts';
-import { AUTO_STAGES, STAGES, type Account, type ProgressRow, type ResultsView, type StageStatus } from '../core/types.ts';
+import { AUTO_STAGES, STAGES, type Account, type ItemStat, type ProgressRow, type ResultsView, type StageStatus } from '../core/types.ts';
 import { formatDate, meters, useApp } from '../hooks.ts';
 import { downloadCsv, downloadXlsx, stamp, type Sheet } from '../lib/export.ts';
+import { STAGE_THEME } from '../theme.ts';
 import { RatingMountain } from './LeaderboardScreen.tsx';
 
-type Tab = 'tour' | 'codes' | 'progress' | 'results';
+type Tab = 'tour' | 'codes' | 'progress' | 'items' | 'results';
 
 const ROLE: Record<string, string> = { participant: 'Участник', jury: 'Жюри', organizer: 'Организатор' };
 const STATUS_ICON: Record<StageStatus, string> = { locked: '·', available: '○', active: '◐', finished: '●' };
@@ -32,6 +33,7 @@ export function OrganizerScreen() {
               ['tour', 'Тур'],
               ['codes', 'Личные коды'],
               ['progress', 'Прогресс'],
+              ['items', 'Задания'],
               ['results', 'Итоги и выгрузка'],
             ] as [Tab, string][]
           ).map(([k, t]) => (
@@ -43,6 +45,7 @@ export function OrganizerScreen() {
         {tab === 'tour' && <TourTab />}
         {tab === 'codes' && <CodesTab />}
         {tab === 'progress' && <ProgressTab />}
+        {tab === 'items' && <ItemsTab />}
         {tab === 'results' && <ResultsTab />}
       </main>
     </>
@@ -406,6 +409,159 @@ function ProgressTab() {
           </table>
         </div>
       </div>
+    </>
+  );
+}
+
+/** Оценка задания: трудное, слишком лёгкое или нормальное */
+function verdict(s: ItemStat): { cls: string; text: string } {
+  if (s.answered < 3) return { cls: 'few', text: 'Мало ответов' };
+  if (s.avg < 0.4) return { cls: 'hard', text: 'Проверьте формулировку' };
+  if (s.avg < 0.6) return { cls: 'mid', text: 'Трудное' };
+  if (s.answered >= 5 && s.avg >= 0.95) return { cls: 'easy', text: 'Слишком лёгкое?' };
+  return { cls: 'ok', text: 'Нормально' };
+}
+
+const pct = (x: number) => `${Math.round(x * 100)} %`;
+
+function ItemsTab() {
+  const { error } = useApp();
+  const [stats, setStats] = useState<ItemStat[] | null>(null);
+  const [stage, setStage] = useState(0);
+  const [hardFirst, setHardFirst] = useState(false);
+  const load = useCallback(() => api.orgItemStats().then(setStats).catch(error), [error]);
+  useEffect(() => {
+    load();
+  }, [load]);
+  if (!stats) return <p className="muted">Загрузка…</p>;
+
+  const enough = (s: ItemStat) => (s.answered >= 3 ? 1 : 0);
+  const shown = stats
+    .filter((s) => !stage || s.stage === stage)
+    .sort((a, b) => (hardFirst ? enough(b) - enough(a) || a.avg - b.avg : 0));
+  const flagged = stats.filter((s) => s.answered >= 3 && s.avg < 0.4).length;
+  const sheet: Sheet = {
+    name: 'Задания',
+    header: [
+      'Вершина',
+      'Задание',
+      'Кейс или вариант',
+      'Текст',
+      'Выпало',
+      'Ответили',
+      'Верно полностью',
+      'Средний результат, %',
+      'Подсказок',
+      'Не ответили',
+      'Частый неверный ответ',
+      'Сколько раз',
+      'Оценка',
+    ],
+    rows: shown.map((s) => [
+      `${s.stage}. ${pc.stages[s.stage - 1].name}`,
+      s.title,
+      s.group ?? '',
+      s.prompt,
+      s.shown,
+      s.answered,
+      s.correct,
+      Math.round(s.avg * 100),
+      s.hints,
+      s.skipped,
+      s.topWrong?.text ?? '',
+      s.topWrong?.count ?? '',
+      verdict(s).text,
+    ]),
+  };
+
+  return (
+    <>
+      <div className="card">
+        <div className="row">
+          <h2 style={{ margin: 0 }}>Как проходят задания</h2>
+          <span className="spacer" />
+          <button className="btn btn-ghost btn-small" onClick={load}>
+            Обновить
+          </button>
+          <button className="btn btn-small" disabled={!shown.length} onClick={() => downloadXlsx([sheet], `zadaniya-${stamp()}.xlsx`).catch(error)}>
+            Excel
+          </button>
+        </div>
+        <p className="small">
+          Здесь видно, где участники ошибаются. Если больше половины ответов неверные, скорее всего дело в вопросе:
+          двусмысленная формулировка, спорный ключ или слишком похожие варианты. Если все отвечают верно, задание можно
+          усложнить. Выводы делайте, когда ответов хотя бы 3–5.
+        </p>
+        {flagged > 0 && (
+          <p className="items-alert">
+            🔴 Проверить формулировку стоит у заданий: <b>{flagged}</b>
+          </p>
+        )}
+        <div className="row small" style={{ gap: 6 }}>
+          <button className={`chip-btn ${stage === 0 ? 'on' : ''}`} onClick={() => setStage(0)}>
+            Все
+          </button>
+          {AUTO_STAGES.map((st) => (
+            <button key={st} className={`chip-btn ${stage === st ? 'on' : ''}`} onClick={() => setStage(st)}>
+              {STAGE_THEME[st - 1].icon} {st}
+            </button>
+          ))}
+          <span className="spacer" />
+          <label className="row" style={{ gap: 6 }}>
+            <input type="checkbox" checked={hardFirst} onChange={(e) => setHardFirst(e.target.checked)} />
+            Сначала трудные
+          </label>
+        </div>
+      </div>
+
+      {!shown.length && (
+        <div className="card">
+          <p className="muted" style={{ margin: 0 }}>
+            Пока никто не отвечал на задания{stage ? ' этой вершины' : ''}.
+          </p>
+        </div>
+      )}
+
+      {shown.map((s) => {
+        const v = verdict(s);
+        const theme = STAGE_THEME[s.stage - 1];
+        return (
+          <div key={s.key} className="card stat-item" style={{ borderLeftColor: theme.color }}>
+            <div className="small" style={{ color: theme.color, fontWeight: 800 }}>
+              {theme.icon} {s.stage}. {pc.stages[s.stage - 1].name}
+              {s.group && <span className="muted"> · {s.group}</span>}
+            </div>
+            <div className="row" style={{ gap: 8, marginTop: 2 }}>
+              <b>{s.title}</b>
+              <span className={`verdict ${v.cls}`}>{v.text}</span>
+            </div>
+            {s.prompt.length > 140 ? (
+              <details className="small">
+                <summary>{s.prompt.slice(0, 120).trim()}…</summary>
+                <p style={{ margin: '6px 0 0', whiteSpace: 'pre-line' }}>{s.prompt}</p>
+              </details>
+            ) : (
+              <p className="small" style={{ margin: '4px 0 0' }}>
+                {s.prompt}
+              </p>
+            )}
+            <div className="stat-bar">
+              <span className={v.cls} style={{ width: `${Math.round(s.avg * 100)}%` }} />
+              <b>{s.answered ? pct(s.avg) : 'нет ответов'}</b>
+            </div>
+            <div className="small muted">
+              Выпало {s.shown} · ответили {s.answered} · полностью верно {s.correct}
+              {s.hints > 0 && ` · брали подсказку ${s.hints}`}
+              {s.skipped > 0 && ` · не успели ответить ${s.skipped}`}
+            </div>
+            {s.topWrong && (
+              <div className="small" style={{ marginTop: 4 }}>
+                Чаще всего ошибочно выбирали: <b>«{s.topWrong.text}»</b> ({s.topWrong.count})
+              </div>
+            )}
+          </div>
+        );
+      })}
     </>
   );
 }

@@ -2,7 +2,7 @@
 import { buildItems, perfectAnswer } from './items.ts';
 import { createRng, shuffle, type Rng } from './random.ts';
 import { GameService } from './service.ts';
-import { IDEA_STAGE, type Account, type AnswerKey, type AnswerValue, type Content, type StageNo, type Store } from './types.ts';
+import { IDEA_STAGE, type Account, type AnswerKey, type AnswerValue, type Content, type PublicItem, type StageNo, type Store } from './types.ts';
 
 export const DEMO_CODES = {
   organizer: 'ORG-2027',
@@ -52,10 +52,13 @@ const IDEAS: Record<string, string>[] = [
   },
 ];
 
-function wrongAnswer(key: AnswerKey, rng: Rng): AnswerValue {
+function wrongAnswer(key: AnswerKey, rng: Rng, item: PublicItem): AnswerValue {
   switch (key.kind) {
-    case 'choice':
-      return `${key.answer}-нет`;
+    case 'choice': {
+      // Настоящий неверный вариант, чтобы в статистике организатора было видно, что выбирают
+      const other = item.kind === 'choice' ? item.options.filter((o) => o.id !== key.answer) : [];
+      return other.length ? other[Math.floor(rng() * other.length)].id : `${key.answer}-нет`;
+    }
     case 'multi':
     case 'flags':
       return key.answers.slice(0, Math.max(1, key.answers.length - 1));
@@ -121,7 +124,7 @@ export async function seedDemo(store: Store, content: Content): Promise<void> {
       const run = (await store.getRun(bot.id, st))!;
       for (const it of buildItems(st, content, run.assignment)) {
         t += (20 + Math.floor(rng() * 60)) * 1000;
-        const value = rng() < skill ? perfectAnswer(it.key) : wrongAnswer(it.key, rng);
+        const value = rng() < skill ? perfectAnswer(it.key) : wrongAnswer(it.key, rng, it.item);
         await svc.answer(bot, st, it.item.id, value);
       }
       t += 3_600_000;

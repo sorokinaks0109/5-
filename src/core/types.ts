@@ -626,6 +626,29 @@ export interface ProgressRow {
   hintsUsed: number;
 }
 
+/** Статистика по одному заданию для организатора: где участники ошибаются */
+export interface ItemStat {
+  stage: StageNo;
+  key: string;
+  kind: ItemKind;
+  title: string;
+  /** Кейс, процесс или вариант 5С, если задание от него зависит */
+  group?: string;
+  prompt: string;
+  /** Сколько раз задание выпало участникам */
+  shown: number;
+  answered: number;
+  /** Ответили полностью верно */
+  correct: number;
+  /** Средняя доля правильности среди ответивших, от 0 до 1 */
+  avg: number;
+  hints: number;
+  /** Этап закончился, а ответа нет */
+  skipped: number;
+  /** Для вопросов с одним ответом: какой неверный вариант выбирали чаще всего */
+  topWrong?: { text: string; count: number };
+}
+
 export interface JuryDetail {
   workNo: number;
   nick: string;
