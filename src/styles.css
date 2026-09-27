@@ -1986,3 +1986,91 @@ tr.finalist td:first-child {
   background: #f0fdf4;
   border: 1px solid #bbf7d0;
 }
+
+/* Статистика по заданиям у организатора */
+.chip-btn {
+  border: 1.5px solid var(--line, #d4d4f0);
+  background: #fff;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.chip-btn.on {
+  background: #1e1b4b;
+  border-color: #1e1b4b;
+  color: #fff;
+}
+.items-alert {
+  background: #ffe4e6;
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+.stat-item {
+  border-left: 5px solid;
+}
+.verdict {
+  flex: none;
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.verdict.hard {
+  background: #ffe4e6;
+  color: #be123c;
+}
+.verdict.mid {
+  background: #fef3c7;
+  color: #92400e;
+}
+.verdict.ok {
+  background: #d1fae5;
+  color: #047857;
+}
+.verdict.easy {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+.verdict.few {
+  background: #f1f5f9;
+  color: #64748b;
+}
+.stat-bar {
+  position: relative;
+  height: 22px;
+  margin: 8px 0 6px;
+  border-radius: 999px;
+  background: #eef2ff;
+  overflow: hidden;
+}
+.stat-bar span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  background: #10b981;
+  transition: width 0.8s ease;
+}
+.stat-bar span.hard {
+  background: #f43f5e;
+}
+.stat-bar span.mid {
+  background: #f59e0b;
+}
+.stat-bar span.easy {
+  background: #0ea5e9;
+}
+.stat-bar span.few {
+  background: #94a3b8;
+}
+.stat-bar b {
+  position: relative;
+  display: block;
+  text-align: center;
+  line-height: 22px;
+  font-size: 0.8rem;
+  color: #1e1b4b;
+  text-shadow: 0 0 3px #fff;
+}

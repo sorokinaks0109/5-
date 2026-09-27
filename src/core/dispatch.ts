@@ -21,6 +21,7 @@ export type Action =
   | 'orgGenerateCodes'
   | 'orgCodes'
   | 'orgProgress'
+  | 'orgItemStats'
   | 'orgResults';
 
 // deno-lint-ignore no-explicit-any
@@ -62,6 +63,8 @@ export async function dispatch(svc: GameService, actorId: string | null, action:
       return svc.orgCodes(acc);
     case 'orgProgress':
       return svc.orgProgress(acc);
+    case 'orgItemStats':
+      return svc.orgItemStats(acc);
     case 'orgResults':
       return svc.orgResults(acc);
     default:

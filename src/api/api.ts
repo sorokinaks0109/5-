@@ -4,6 +4,7 @@ import type {
   Account,
   AnswerResult,
   AnswerValue,
+  ItemStat,
   JuryWork,
   LeaderboardView,
   MeView,
@@ -51,6 +52,7 @@ export function createClient(t: Transport) {
     orgCodes: () => c<Account[]>('orgCodes'),
     orgProgress: () => c<ProgressRow[]>('orgProgress'),
     orgResults: () => c<ResultsView>('orgResults'),
+    orgItemStats: () => c<ItemStat[]>('orgItemStats'),
   };
 }
 

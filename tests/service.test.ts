@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildItems, perfectAnswer } from '../src/core/items.ts';
+import { statKey } from '../src/core/service.ts';
 import { AUTO_STAGES, IDEA_STAGE, type StageNo } from '../src/core/types.ts';
 import { content, openTourWithPlayer } from './helpers.ts';
 
@@ -200,6 +201,32 @@ describe('новые задания', () => {
     expect(items[0].key).toMatchObject({ kind: 'number', answer: Math.round((l.wip / l.cr) * 10) / 10 });
     expect(items[1].key).toMatchObject({ kind: 'number', answer: l.cr * l.target });
     expect(items[1].item.kind === 'number' && items[1].item.calc).toBeTruthy();
+  });
+
+  it('организатор видит статистику по заданиям: где ошибаются и что выбирают', async () => {
+    const ctx = await openTourWithPlayer();
+    const v = await ctx.svc.startStage(ctx.player, 1);
+    const run = (await ctx.store.getRun(ctx.player.id, 1))!;
+    const [first] = buildItems(1, content, run.assignment);
+    const wrong = content.waste.wasteTypes.find((w) => w.id !== (first.key as { answer: string }).answer)!;
+    await ctx.svc.answer(ctx.player, 1, v.items[0].id, wrong.id);
+    await ctx.svc.finishStage(ctx.player, 1);
+
+    const stats = await ctx.svc.orgItemStats(ctx.org);
+    const st = stats.find((x) => x.key === statKey(1, run.assignment.items[0].ref))!;
+    expect(st).toMatchObject({ stage: 1, shown: 1, answered: 1, correct: 0, avg: 0 });
+    expect(st.topWrong).toEqual({ text: wrong.text, count: 1 });
+    expect(st.group).toBeUndefined();
+    // Остальные задания этапа не успели
+    expect(stats.filter((x) => x.stage === 1 && x.skipped === 1)).toHaveLength(run.assignment.items.length - 1);
+    await expect(ctx.svc.orgItemStats(ctx.player)).rejects.toThrow(/прав/);
+  });
+
+  it('ключ статистики: банк вопросов общий, задания кейса отдельно по кейсу', () => {
+    expect(statKey(2, 'order', 'mail-sklad')).toBe('2:order');
+    expect(statKey(2, 'picture', 'sklad-1')).toBe('2:sklad-1:picture');
+    expect(statKey(6, 'q:rm-01', 'case-1')).toBe('6:q:rm-01');
+    expect(statKey(6, 'why:0', 'case-1')).toBe('6:case-1:why:0');
   });
 
   it('организатор очищает результаты перед настоящим туром', async () => {

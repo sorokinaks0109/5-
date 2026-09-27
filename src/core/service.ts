@@ -12,6 +12,7 @@ import { computeDeadline, isExpired, stageSeconds } from './timer.ts';
 import {
   AUTO_STAGES,
   IDEA_STAGE,
+  kindOf,
   STAGES,
   type Account,
   type AnswerResult,
@@ -19,6 +20,7 @@ import {
   type Content,
   type Idea,
   type IdeaScore,
+  type ItemStat,
   type JuryDetail,
   type JuryWork,
   type LeaderboardView,
@@ -577,6 +579,70 @@ export class GameService {
     return rows;
   }
 
+  /** Статистика по заданиям: сколько ответили, сколько верно, какой неверный вариант популярнее */
+  async orgItemStats(acc: Account): Promise<ItemStat[]> {
+    this.require(acc, 'organizer');
+    const runs = await this.store.listRuns();
+    const now = this.now();
+    const map = new Map<string, ItemStat & { wrong: Map<string, number>; sum: number }>();
+    for (const run of runs) {
+      if (run.stage === IDEA_STAGE) continue;
+      let items;
+      try {
+        items = buildItems(run.stage, this.content, run.assignment);
+      } catch {
+        continue; // задание удалили из content.json
+      }
+      const over = !!run.finishedAt || isExpired(run.deadline, now, this.content.settings.graceSeconds);
+      const group = run.assignment.group;
+      items.forEach((it, i) => {
+        const ref = run.assignment.items[i]?.ref ?? it.item.id;
+        const key = statKey(run.stage, ref, group);
+        let st = map.get(key);
+        if (!st) {
+          const scoped = key !== statKey(run.stage, ref);
+          st = {
+            stage: run.stage,
+            key,
+            kind: it.item.kind,
+            title: statTitle(it.item.title),
+            group: scoped ? (stageIntro(run.stage, this.content, run.assignment)?.title ?? group) : undefined,
+            prompt: it.item.prompt,
+            shown: 0,
+            answered: 0,
+            correct: 0,
+            avg: 0,
+            hints: 0,
+            skipped: 0,
+            wrong: new Map(),
+            sum: 0,
+          };
+          map.set(key, st);
+        }
+        st.shown++;
+        if (run.hints.includes(it.item.id)) st.hints++;
+        const a = run.answers[it.item.id];
+        if (!a) {
+          if (over) st.skipped++;
+          return;
+        }
+        st.answered++;
+        st.sum += a.fraction;
+        if (a.fraction >= 1) st.correct++;
+        else if (it.item.kind === 'choice' && typeof a.value === 'string') {
+          const text = it.item.options.find((o) => o.id === a.value)?.text ?? a.value;
+          st.wrong.set(text, (st.wrong.get(text) ?? 0) + 1);
+        }
+      });
+    }
+    return [...map.values()]
+      .map(({ wrong, sum, ...st }) => {
+        const top = [...wrong.entries()].sort((x, y) => y[1] - x[1])[0];
+        return { ...st, avg: st.answered ? sum / st.answered : 0, ...(top ? { topWrong: { text: top[0], count: top[1] } } : {}) };
+      })
+      .sort((x, y) => x.stage - y.stage || x.key.localeCompare(y.key, 'ru', { numeric: true }));
+  }
+
   async orgResults(acc: Account): Promise<ResultsView> {
     this.require(acc, 'organizer');
     const rows = await this.rating(true);
@@ -608,6 +674,19 @@ export class GameService {
       });
     return { rows, jury };
   }
+}
+
+/** Ключ задания для статистики. Вопросы из общего банка считаются вместе,
+ *  а задания, которые зависят от кейса или варианта 5С, отдельно по каждому варианту. */
+export function statKey(stage: StageNo, ref: string, group?: string): string {
+  const fromBank = /^(money|target|little|lq|sit|q):/.test(ref) || ref === 'next' || (kindOf(stage) === 'fiveS' && ref === 'order');
+  return group && !fromBank ? `${stage}:${group}:${ref}` : `${stage}:${ref}`;
+}
+
+/** «Ситуация 3» или «вопрос 2 из 4» у каждого участника свой номер, поэтому его убираем.
+ *  Шаги «почему» идут в кейсе по порядку, их номер оставляем. */
+function statTitle(title: string): string {
+  return /^Почему\?/.test(title) ? title : title.replace(/\s*\d+( из \d+)?$/, '').replace(/: вопрос$/, '');
 }
 
 function nextNumber(all: Account[], role: Role): number {
