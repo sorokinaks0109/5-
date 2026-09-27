@@ -299,13 +299,13 @@ img.thumb { width: 28px; height: 28px; border-radius: 7px; object-fit: cover; bo
 .setup .answer { max-width: none; }
 .answer[readonly] { cursor: default; caret-color: transparent; }
 .cells { display: flex; flex-wrap: nowrap; justify-content: center; margin: 6px 0; max-width: 100%; }
-.cell { width: min(34px, calc((100vw - 80px) / var(--n, 10))); height: auto; aspect-ratio: .88; font-size: min(22px, calc((100vw - 80px) / var(--n, 10) * .62)) !important; border: 2px solid var(--ink); border-radius: 4px; background: #fff; display: grid; place-items: center; font: 800 22px/1 var(--body); color: #1d2b4f; text-transform: lowercase; }
+.cell { width: min(34px, calc((100vw - 80px) / var(--n, 10))); height: auto; aspect-ratio: .88; font-size: min(22px, calc((100vw - 80px) / var(--n, 10) * .62)) !important; border: 2px solid var(--ink); border-radius: 4px; background: #fff; display: grid; place-items: center; font: 800 22px/1 var(--body); color: #1d2b4f; }
 .cell.cur { box-shadow: 0 0 0 3px var(--pen); }
 .cells { gap: 0 !important; } .cells .cell + .cell { margin-left: -2px; }
 .cell.open { background: var(--pencil-soft); border-color: var(--pencil); }
 /* Кроссворд-сетка: клетки подстраиваются под ширину экрана */
 .xw { --cs: min(36px, calc((100vw - 64px) / var(--w)), calc((100svh - 440px) / var(--h))); display: grid; grid-template-columns: repeat(var(--w), var(--cs)); grid-auto-rows: var(--cs); justify-content: center; margin: 4px auto 8px; }
-.xc { position: relative; width: var(--cs); height: var(--cs); margin: 0; padding: 0; border: 0; box-shadow: 0 0 0 1.5px #1d2b4f; background: #fff; color: #1d2b4f; font: 800 calc(var(--cs) * .56)/1 var(--body); display: grid; place-items: center; text-transform: lowercase; touch-action: manipulation; -webkit-tap-highlight-color: transparent; z-index: 0; }
+.xc { position: relative; width: var(--cs); height: var(--cs); margin: 0; padding: 0; border: 0; box-shadow: 0 0 0 1.5px #1d2b4f; background: #fff; color: #1d2b4f; font: 800 calc(var(--cs) * .56)/1 var(--body); display: grid; place-items: center; touch-action: manipulation; -webkit-tap-highlight-color: transparent; z-index: 0; }
 .xc.empty { box-shadow: none; background: transparent; }
 .xc i { position: absolute; top: 1px; left: 2px; font: 700 calc(var(--cs) * .27)/1 var(--body); font-style: normal; color: #5a6785; }
 .xc.sel { background: #dbe6ff; }
@@ -346,6 +346,8 @@ img.thumb { width: 28px; height: 28px; border-radius: 7px; object-fit: cover; bo
 .key { flex: 1 1 0; min-width: 0; max-width: 46px; height: 52px; padding: 0; border: 2px solid var(--line); border-bottom-width: 4px; border-radius: 10px; background: var(--paper-2); color: var(--ink); font: 800 23px/1 var(--body); touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 .key:active { transform: translateY(2px); border-bottom-width: 2px; background: var(--pen-soft); }
 .key.wide { max-width: 64px; flex-grow: 1.5; }
+.kbd.caps .key:not(.wide):not(.space) { text-transform: uppercase; }
+.key.shift[aria-pressed="true"] { background: var(--pen); color: #fff; border-color: var(--pen); }
 .key.space { max-width: none; flex-grow: 5; font-size: 15px; font-weight: 700; color: var(--ink-soft); }
 .pickbig { flex: 1 1 140px; min-height: 58px; border-radius: 16px; border: 3px solid var(--line); background: var(--paper-2); font-size: 19px; font-weight: 800; }
 .pickbig[aria-pressed="true"] { border-color: var(--pen); background: var(--pen-soft); color: var(--pen); }
