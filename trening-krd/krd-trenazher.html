@@ -83,16 +83,20 @@
   .progress { height: 10px; background: #dde5f3; border-radius: 10px; overflow: hidden; margin: 16px 0 22px; }
   .progress i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #4c9bff, var(--blue)); border-radius: 10px; transition: width .4s; }
 
-  .case { background: var(--card); border-left: 6px solid var(--violet); border-radius: 12px; padding: 14px 18px; font-size: 18px; margin-bottom: 16px; box-shadow: var(--shadow); }
-  .case .row { display: grid; grid-template-columns: 170px 1fr; gap: 10px; }
-  .case .row + .row { margin-top: 6px; }
-  .case .lbl { color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .08em; padding-top: 4px; font-weight: 700; }
-  .case .tag { display: inline-block; font-size: 14px; color: var(--violet); margin-bottom: 6px; letter-spacing: .06em; text-transform: uppercase; font-weight: 800; }
-
+  .case { --cc: var(--violet); background: var(--card); border: 2px solid var(--cc); border-left-width: 10px; border-radius: 18px;
+    padding: 16px 22px 18px; margin-bottom: 16px; box-shadow: var(--shadow); animation: pop .3s; }
+  .case .chead { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .case .cnum { background: var(--cc); color: #fff; font-weight: 900; font-size: 18px; border-radius: 10px; padding: 4px 14px; }
+  .case .ctag { font-weight: 800; font-size: 22px; color: var(--cc); }
+  .case .cof { margin-left: auto; color: var(--muted); font-size: 16px; }
+  .case .row { display: grid; grid-template-columns: 190px 1fr; gap: 12px; font-size: 22px; font-weight: 600; line-height: 1.4; }
+  .case .row + .row { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line2); }
+  .case .lbl { color: var(--cc); font-size: 14px; text-transform: uppercase; letter-spacing: .08em; padding-top: 6px; font-weight: 800; }
+  .mlabel { font-size: 14px; text-transform: uppercase; letter-spacing: .08em; font-weight: 800; color: var(--muted); margin: 4px 0 6px 4px; }
   .card { background: var(--card); border: 3px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
-    padding: 28px 26px; font-size: 26px; font-weight: 700; text-align: center; min-height: 130px; display: grid; place-items: center;
+    padding: 16px 22px; font-size: 20px; font-weight: 600; text-align: left; min-height: 0; display: block;
     animation: pop .3s ease-out; }
-  .card.small { font-size: 22px; }
+  .card.small { font-size: 19px; }
   @keyframes pop { from { transform: scale(.94) translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
   .card.ok { border-color: var(--green); background: var(--green-soft); }
   .card.bad { border-color: var(--red); background: var(--red-soft); animation: shake .4s; }
@@ -121,6 +125,13 @@
   .opt.wrong { border-color: var(--red); background: var(--red-soft); animation: shake .4s; }
   .opt:disabled { cursor: default; }
   .opt .why { display: block; margin-top: 6px; font-size: 16px; color: var(--muted); }
+  .opt.pick { display: flex; gap: 14px; align-items: flex-start; }
+  .opt .let { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; background: var(--blue-soft); color: var(--blue); }
+  .opt.right .let { background: var(--green); color: #fff; }
+  .opt.wrong .let { background: var(--red); color: #fff; }
+  .opt.dim { opacity: .75; }
+  .opt .lab { display: table; margin-top: 8px; font-size: 14px; font-weight: 800; padding: 2px 10px; border-radius: 999px; background: var(--red-soft); color: var(--red); }
+  .opt .lab.good { background: var(--green-soft); color: var(--green); }
 
   .fb { margin-top: 18px; border-radius: 16px; padding: 16px 20px; font-size: 19px; border-left: 6px solid; animation: pop .25s; box-shadow: var(--shadow); }
   .fb.ok { background: var(--green-soft); border-color: var(--green); }
@@ -244,8 +255,10 @@
     .choice { flex-direction: row; justify-content: flex-start; text-align: left; gap: 12px; }
     .choice .d { text-align: left; }
     .choice .k { display: none; }
-    .card { font-size: 21px; padding: 22px 16px; }
+    .card { font-size: 18px; padding: 14px 16px; }
     .case .row, .link { grid-template-columns: 1fr; gap: 2px; }
+    .case .row { font-size: 19px; }
+    .case .cof { margin-left: 0; }
     .codex dl { grid-template-columns: 1fr; }
     .final .score { font-size: 60px; }
   }
@@ -262,26 +275,31 @@
 
 var CASES = {
   sklad1054: {
+    color: "#1a6fe0",
     tag: "Склад №1054",
     nc: "В секторе А-5 катушки с кабелем хранятся вплотную к батарее отопления.",
     cause: "Нет техники для перемещения катушек, быстро подать заявку на неё нельзя."
   },
   ploshadka1076: {
+    color: "#139a52",
     tag: "Площадка №1076",
     nc: "На открытой площадке в секторе В-17 отходы не разделяются по видам.",
     cause: "Не заключён договор на вывоз отходов: у ответственного нет доступа к системе закупки услуг."
   },
   zhurnal: {
+    color: "#6d3fd6",
     tag: "Журнал склада",
     nc: "Замеры температуры и влажности за неделю не внесены в журнал.",
     cause: "Журнал лежит в кабинете начальника склада, у кладовщиков ночной смены к нему нет доступа."
   },
   vygruzka: {
+    color: "#c26b00",
     tag: "Повреждение МТР",
     nc: "При выгрузке уронили паллету — повреждён корпус электродвигателя.",
     cause: "Паллета длиннее вил погрузчика, удлинителей вил на складе нет."
   },
   evakuaciya: {
+    color: "#d9304f",
     tag: "Эвакуационный выход",
     nc: "Путь к эвакуационному выходу заставлен пустыми поддонами.",
     cause: "После приёмки поддоны некуда убрать — место для них не выделено."
@@ -334,52 +352,62 @@ var SORT_BINS = [
   { k: "miss", ic: "💨", t: "Мимо",      d: "не устраняет ни то, ни другое" }
 ];
 
-/* Игра 2: детектор ошибок */
-var DETECT_BINS = [
-  { k: "ok", ic: "✅", t: "Годное КРД",  d: "конкретно и бьёт в причину" },
-  { k: "e1", ic: "🌫️", t: "№1 «Поди туда…»", d: "общие слова, нечего проверить" },
-  { k: "e2", ic: "🪆", t: "№2 «Матрёшка»", d: "мероприятие про мероприятия" },
-  { k: "e3", ic: "🔁", t: "№3 «Мероприятие²»", d: "это и так ваша работа" },
-  { k: "e4", ic: "🎯", t: "№4 Мимо причины", d: "не связано с причиной" }
-];
-
-var DETECT = [
-  { t: "Усилить контроль за хранением МТР", a: "e1",
-    e: "Непонятно, кто, что и как часто будет делать. Через месяц нечего показать проверяющему.",
-    fix: "Ввести еженедельный обход зон хранения по чек-листу из 8 пунктов, результаты вносить в 1С. Срок — до 15.11, отв. — начальник склада." },
-  { t: "Разработать мероприятия для отсутствия недостач", a: "e2",
-    e: "Мероприятие, которое обещает придумать мероприятия. Решение отложено на потом.",
-    fix: "Назвать сами действия сразу, например: ввести двойную пересчётку при приёмке МТР дороже 100 тыс. руб. Срок, ответственный." },
-  { t: "Соблюдать правила производственной безопасности", a: "e3",
-    e: "Это требование, а не действие. Его и так нужно выполнять каждый день.",
-    fix: "Найти, что именно мешает соблюдать правило, и убрать это. Например: установить ограждение зоны работы крана-штабелёра. Срок, ответственный." },
-  { c: { nc: "Нарушены условия хранения крупногабаритного оборудования.", cause: "На складе не хватает площадей для хранения." },
-    t: "Актуализировать топологию склада", a: "e4",
-    e: "Новая схема не добавит ни одного квадратного метра. Причина — нехватка площадей — останется.",
-    fix: "Оборудовать навесом площадку 200 м² в секторе В под крупногабаритное оборудование. Срок — до 01.03, отв. — начальник склада." },
-  { t: "Обеспечить коммуникации между МОЛ и инженером входного контроля", a: "e1",
-    e: "«Обеспечить коммуникации» — это как? Звонить? Письмом? Когда?",
-    fix: "Ввести уведомление в 1С инженеру входного контроля при поступлении МТР с отметкой «ВК» в течение 2 часов после приёмки. Срок, ответственный." },
-  { t: "Составить план мероприятий по снижению травматизма", a: "e2",
-    e: "План в плане. Сами действия так и не появились.",
-    fix: "Сразу записать конкретные меры: например, заменить покрытие пандуса №2 на противоскользящее. Срок, ответственный." },
-  { t: "Оформлять записи в журнале брака", a: "e3",
-    e: "Это обычная обязанность. Если записи не оформлялись — надо понять почему и устранить это.",
-    fix: "Сделать журнал брака электронной формой в 1С с обязательным полем при оформлении акта. Срок, ответственный." },
-  { c: CASES.vygruzka, t: "Провести внеплановый инструктаж водителю погрузчика", a: "e4",
-    e: "Водитель не виноват, что вилы короче паллеты. Инструктаж не добавит удлинителей.",
-    fix: "Закупить 2 комплекта удлинителей вил и прописать в техкарте выгрузки их обязательное применение для паллет длиннее 1,2 м. Срок — до 20.11, отв. — начальник участка ПРР." },
-  { c: CASES.zhurnal, t: "До 30.10 перевести журнал температуры и влажности в электронную форму в 1С с доступом для всех смен. Отв. — начальник склада", a: "ok",
-    e: "Конкретное действие, срок, ответственный. Бьёт прямо в причину — нет доступа к журналу. Через месяц можно показать доказательство." },
-  { t: "Провести работу с мастерами ПРР", a: "e1",
-    e: "Какую работу? О чём? Как поймём, что она проведена?",
-    fix: "Провести для мастеров ПРР практическое занятие по строповке нестандартных грузов с приёмом зачёта на площадке. Срок, ответственный." },
-  { c: { nc: "На площадке отходы не разделяются по видам.", cause: "На площадке стоит один общий контейнер — раздельных нет." },
-    t: "Ознакомить работников с требованиями ОСТО 16.01.06", a: "e4",
-    e: "Работники могут знать требования наизусть — но разделять всё равно некуда.",
-    fix: "Установить на площадке 3 промаркированных контейнера по видам отходов. Срок — до 10.11, отв. — начальник склада." },
-  { c: CASES.evakuaciya, t: "До 25.10 выделить и разметить в секторе Б зону на 40 поддонов и внести её в топологию склада. Отв. — начальник склада", a: "ok",
-    e: "Есть действие, место, срок и ответственный. Поддонам есть куда деться — причина устранена." }
+/* Игра «Выбери лучшее КРД». В каждом случае одно годное КРД (ok: true), у остальных — подпись, чем плохи. */
+var PICK = [
+  { tag: "Хранение МТР", color: "#1a6fe0",
+    nc: "На складе №1054 МТР хранятся с нарушением схемы складирования.",
+    cause: "После перепланировки стеллажи сектора Б переставили, а схему складирования не обновили.",
+    opts: [
+      { t: "Усилить контроль за хранением МТР", lab: "Общие слова · ошибка №1", why: "Кто, как, как часто? Через месяц нечего показать проверяющему." },
+      { t: "Разработать мероприятия по соблюдению схемы складирования", lab: "Матрёшка · ошибка №2", why: "Мероприятие, которое обещает придумать мероприятия." },
+      { t: "Соблюдать схему складирования МТР", lab: "Это и так обязанность · ошибка №3", why: "Требование переписали вместо действия. Схема всё равно старая." },
+      { t: "До 15.11 обновить схему складирования под новое расположение стеллажей сектора Б и вывесить её у входа в сектор. Отв. — начальник склада", ok: true, lab: "Годное КРД", why: "Убирает причину — устаревшую схему. Конкретно, есть срок и ответственный." }
+    ] },
+  { tag: "Входной контроль", color: "#0f8f8f",
+    nc: "МТР выданы на объект без входного контроля.",
+    cause: "Инженер входного контроля не узнаёт о поступлении МТР: МОЛ сообщает ему устно, когда вспомнит.",
+    opts: [
+      { t: "Обеспечить коммуникации между МОЛ и инженером входного контроля", lab: "Общие слова · ошибка №1", why: "«Обеспечить коммуникации» — это как? Звонить? Писать? Когда?" },
+      { t: "До 01.12 настроить в 1С уведомление инженеру ВК при оприходовании МТР с отметкой «Требует ВК»; без отметки о прохождении ВК выдача блокируется. Отв. — руководитель группы учёта", ok: true, lab: "Годное КРД", why: "Инженер узнаёт о поступлении автоматически, а без ВК МТР не выдать. Причина устранена." },
+      { t: "Провести инструктаж МОЛ о порядке выдачи МТР", lab: "Мимо причины · ошибка №4", why: "МОЛ порядок знает. Проблема в том, что сообщение идёт устно и зависит от памяти." },
+      { t: "Вернуть МТР с объекта и провести входной контроль", lab: "Коррекция, а не КРД", why: "Исправляет этот случай. Со следующей поставкой всё повторится." }
+    ] },
+  { tag: "Травма на пандусе", color: "#d9304f",
+    nc: "Работник поскользнулся на пандусе №2 при разгрузке.",
+    cause: "Покрытие пандуса гладкое и зимой обледеневает, противоскользящего покрытия нет.",
+    opts: [
+      { t: "Составить план мероприятий по снижению травматизма", lab: "Матрёшка · ошибка №2", why: "План в плане. Сами действия так и не названы." },
+      { t: "Соблюдать требования охраны труда при движении по пандусам", lab: "Это и так обязанность · ошибка №3", why: "Работник и так соблюдал — пандус скользкий." },
+      { t: "Посыпать пандус песком", lab: "Коррекция, а не КРД", why: "Нужно сделать сегодня, но завтра пандус снова обледенеет." },
+      { t: "До 20.11 заменить покрытие пандуса №2 на противоскользящее и установить поручни. Отв. — главный инженер", ok: true, lab: "Годное КРД", why: "Бьёт прямо в причину — гладкое покрытие. Результат легко проверить." }
+    ] },
+  { tag: "Хранение КГО", color: "#c26b00",
+    nc: "Крупногабаритное оборудование хранится под открытым небом без укрытия.",
+    cause: "На складе не хватает крытых площадей для крупногабаритного оборудования.",
+    opts: [
+      { t: "Актуализировать топологию склада", lab: "Мимо причины · ошибка №4", why: "Новая схема не добавит ни одного квадратного метра." },
+      { t: "До 01.03 оборудовать навесом площадку 200 м² в секторе В под крупногабаритное оборудование. Отв. — начальник склада", ok: true, lab: "Годное КРД", why: "Добавляет крытую площадь — причина устранена." },
+      { t: "Внимательнее относиться к размещению крупногабаритного оборудования", lab: "Общие слова · ошибка №1", why: "Внимательность не добавит места под крышей." },
+      { t: "Накрыть оборудование брезентом", lab: "Коррекция, а не КРД", why: "Спасает оборудование сейчас, но места под крышей не прибавилось." }
+    ] },
+  { tag: "Отходы", color: "#139a52",
+    nc: "На площадке №1076 отходы не разделяются по видам.",
+    cause: "На площадке стоит один общий контейнер — раздельных нет.",
+    opts: [
+      { t: "Ознакомить работников с требованиями ОСТО 16.01.06", lab: "Мимо причины · ошибка №4", why: "Требования можно знать наизусть, но разделять всё равно некуда." },
+      { t: "Осуществлять раздельное накопление отходов", lab: "Это и так обязанность · ошибка №3", why: "Это требование. Без контейнеров его не выполнить." },
+      { t: "До 10.11 установить на площадке 3 промаркированных контейнера по видам отходов. Отв. — начальник склада", ok: true, lab: "Годное КРД", why: "Появилось куда разделять — причина устранена." },
+      { t: "Провести анализ по данному нарушению", lab: "Матрёшка · ошибка №2", why: "Анализ делают до плана. В плане должно стоять действие." }
+    ] },
+  { tag: "Журнал брака", color: "#6d3fd6",
+    nc: "Бракованные МТР не записаны в журнал брака.",
+    cause: "Журнал бумажный и лежит в офисе, а брак выявляют на приёмке в другом корпусе.",
+    opts: [
+      { t: "Оформлять записи в журнале брака", lab: "Это и так обязанность · ошибка №3", why: "Записи и так нужно вести. Вопрос — что мешает." },
+      { t: "Провести работу с кладовщиками приёмки", lab: "Общие слова · ошибка №1", why: "Какую работу? Как поймём, что она проведена?" },
+      { t: "Внести пропущенные записи в журнал брака", lab: "Коррекция, а не КРД", why: "Исправляет пропуски, но журнал так и остаётся в другом корпусе." },
+      { t: "До 30.11 перевести журнал брака в 1С: запись создаётся сразу при оформлении акта о браке на приёмке. Отв. — начальник группы приёмки", ok: true, lab: "Годное КРД", why: "Журнал доступен там, где выявляют брак. Причина устранена." }
+    ] }
 ];
 
 /* Игра 3: 5 почему */
@@ -576,9 +604,11 @@ function rankOf(p) { for (var i = 0; i < RANKS.length; i++) if (p >= RANKS[i].mi
 function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
 function h(html) { app.innerHTML = html; window.scrollTo(0, 0); }
 
-function caseBox(c) {
+function caseBox(c, num, of) {
   if (!c) return "";
-  return '<div class="case">' + (c.tag ? '<span class="tag">' + esc(c.tag) + '</span>' : '') +
+  return '<div class="case" style="--cc:' + (c.color || "#6d3fd6") + '"><div class="chead">' +
+    (num ? '<span class="cnum">' + esc(num) + '</span>' : '') + (c.tag ? '<span class="ctag">' + esc(c.tag) + '</span>' : '') +
+    (of ? '<span class="cof">' + esc(of) + '</span>' : '') + '</div>' +
     '<div class="row"><span class="lbl">Несоответствие</span><span>' + esc(c.nc) + '</span></div>' +
     '<div class="row"><span class="lbl">Причина</span><span>' + esc(c.cause) + '</span></div></div>';
 }
@@ -635,7 +665,7 @@ function home() {
     { id: "sort", n: 1, emo: "🔧🎯", c: "#1a6fe0", t: "Коррекция или КРД?", d: "Разложите мероприятия по трём корзинам: исправляет нарушение, устраняет причину или бьёт мимо.", time: "5 минут · 16 карточек" },
     { id: "fish", n: 2, emo: "🐟", c: "#e08a00", t: "Рыбья кость", d: "Перетащите причины на кости диаграммы Исикавы, найдите главную и выберите КРД.", time: "7 минут · 15 причин" },
     { id: "why", n: 3, emo: "🌳", c: "#139a52", t: "Дойди до корня", d: "Пройдите «5 почему» на реальном случае, проверьте цепочку через «поэтому» и выберите КРД.", time: "5–7 минут · 2 кейса" },
-    { id: "detect", n: 4, emo: "🔍", c: "#6d3fd6", t: "Детектор ошибок", d: "Найдите, чем больна формулировка: «Поди туда…», «Матрёшка», «Мероприятие²», мимо причины — или она годная.", time: "5 минут · 12 карточек" }
+    { id: "pick", n: 4, emo: "✍️", c: "#6d3fd6", t: "Выбери лучшее КРД", d: "По каждому случаю — четыре мероприятия. Найдите то, которое устранит причину и которое можно проверить через месяц.", time: "5 минут · 6 случаев" }
   ];
   var html = '<section class="hero"><div class="kicker">Управление КРД · Путь джедая</div>' +
     '<h1>Тренажёр корректирующих действий</h1>' +
@@ -659,7 +689,7 @@ function home() {
 function start(id) {
   streak = 0;
   if (id === "sort") runCards("sort");
-  else if (id === "detect") runCards("detect");
+  else if (id === "pick") runPick();
   else if (id === "fish") runFish();
   else chooseWhy();
 }
@@ -853,13 +883,82 @@ function runFish() {
   draw();
 }
 
-/* ---------- Игры 1 и 2: карточки ---------- */
+/* ---------- Игра «Выбери лучшее КРД» ---------- */
+function runPick() {
+  streak = 0;
+  var i = 0, score = 0, answered = false, mistakes = [], LET = ["А", "Б", "В", "Г"];
+  startTimer();
+
+  function draw() {
+    answered = false;
+    var p = PICK[i], opts = shuffle(p.opts);
+    var html = header("Выбери лучшее КРД", i, PICK.length, score, "Случай") +
+      caseBox({ tag: p.tag, nc: p.nc, cause: p.cause, color: p.color }, "Случай " + (i + 1), "из " + PICK.length) +
+      '<div class="q">Какое мероприятие — годное КРД?</div><div class="list">';
+    opts.forEach(function (o, k) {
+      html += '<button class="opt pick" data-i="' + p.opts.indexOf(o) + '"><span class="let">' + LET[k] + '</span><span class="ot">' + esc(o.t) + '</span></button>';
+    });
+    html += '</div><div id="fb"></div>';
+    h(html);
+    var btns = app.querySelectorAll(".opt");
+    Array.prototype.forEach.call(btns, function (b) { b.onclick = function () { answer(+b.getAttribute("data-i"), b); }; });
+    keyHandler = function (ev) {
+      var n = parseInt(ev.key, 10);
+      if (!answered && n >= 1 && n <= btns.length) answer(+btns[n - 1].getAttribute("data-i"), btns[n - 1]);
+      else if (answered && (ev.key === "Enter" || ev.key === " ")) { ev.preventDefault(); next(); }
+    };
+  }
+
+  function answer(idx, btn) {
+    if (answered) return;
+    answered = true;
+    var p = PICK[i], o = p.opts[idx], ok = !!o.ok;
+    if (ok) score++; else mistakes.push({ t: p.tag + ": " + o.t });
+    hit(ok, btn);
+    Array.prototype.forEach.call(app.querySelectorAll(".opt"), function (b) {
+      var oo = p.opts[+b.getAttribute("data-i")];
+      b.disabled = true;
+      b.classList.add(oo.ok ? "right" : (b === btn ? "wrong" : "dim"));
+      b.querySelector(".ot").insertAdjacentHTML("beforeend",
+        '<span class="lab' + (oo.ok ? " good" : "") + '">' + esc(oo.lab) + '</span><span class="why">' + esc(oo.why) + '</span>');
+    });
+    var good = p.opts.filter(function (x) { return x.ok; })[0];
+    document.getElementById("fb").innerHTML =
+      '<div class="fb ' + (ok ? "ok" : "bad") + '"><b class="h">' + (ok ? "Верно! Это годное КРД" : "Не то. Годное КРД — выделено зелёным") + '</b>' +
+      (ok ? "" : "Вы выбрали: " + esc(o.lab.toLowerCase()) + ". ") + esc(good.why) + '</div>' +
+      '<div class="next"><button class="btn" id="nx">' + (i + 1 < PICK.length ? "Следующий случай →" : "Итоги") + '</button></div>';
+    document.getElementById("nx").onclick = next;
+  }
+
+  function next() {
+    i++;
+    if (i < PICK.length) draw(); else finish();
+  }
+
+  function finish() {
+    var ms = stopTimer(); keyHandler = null;
+    var n = PICK.length, r = rankOf(score / n);
+    results.pick = score + "/" + n + " · " + r.t;
+    saveResults();
+    renderFinal("Выбери лучшее КРД", score, n, ms, r, [
+      "Годное КРД: конкретное действие + срок + ответственный + бьёт в причину.",
+      "Проверка: что я покажу проверяющему через месяц? Если нечего — это общие слова.",
+      "«Разработать мероприятия», «провести анализ» — не действия, а обещание придумать действия.",
+      "«Соблюдать», «осуществлять», «оформлять» — это и так работа. Ищите, что мешает её делать.",
+      "Прочитайте вслух: «Сделали это — причина исчезла». Не складывается — мимо причины."
+    ], mistakes, runPick);
+  }
+
+  draw();
+}
+
+/* ---------- Игра «Коррекция или КРД?» ---------- */
 function runCards(mode) {
   streak = 0;
-  var cfg = mode === "sort"
-    ? { title: "Коррекция или КРД?", items: SORT, bins: SORT_BINS, cls: "c3" }
-    : { title: "Детектор ошибок", items: DETECT, bins: DETECT_BINS, cls: "c5" };
-  if (mode === "sort") {
+  var cfg = { title: "Коррекция или КРД?", items: SORT, bins: SORT_BINS, cls: "c3" };
+  var caseOrder = [];
+  SORT.forEach(function (it) { if (caseOrder.indexOf(it.c) < 0) caseOrder.push(it.c); });
+  {
     // кейсы идут по порядку, а карточки внутри кейса перемешиваются — чтобы ответ нельзя было угадать по позиции
     var byCase = [], seen = {};
     SORT.forEach(function (it) { if (!seen[it.c]) { seen[it.c] = []; byCase.push(seen[it.c]); } seen[it.c].push(it); });
@@ -871,10 +970,14 @@ function runCards(mode) {
   function draw() {
     answered = false;
     var it = cfg.items[i];
-    var c = it.c ? (typeof it.c === "string" ? CASES[it.c] : it.c) : null;
-    var html = header(cfg.title, i, cfg.items.length, score) + caseBox(c) +
+    var c = CASES[it.c];
+    var inCase = cfg.items.filter(function (x) { return x.c === it.c; }), k = inCase.indexOf(it);
+    var html = header(cfg.title, i, cfg.items.length, score, "Карточка") +
+      caseBox(c, "Кейс " + (caseOrder.indexOf(it.c) + 1), "мероприятие " + (k + 1) + " из " + inCase.length) +
+      '<div class="mlabel">📝 Мероприятие из плана:</div>' +
       '<div class="card' + (it.t.length > 90 ? ' small' : '') + '" id="card">' + esc(it.t) + '</div>' +
-      '<div class="choices ' + cfg.cls + '">';
+      '<div class="q" style="font-size:20px;margin-top:16px">Что это?</div>' +
+      '<div class="choices ' + cfg.cls + '" style="margin-top:8px">';
     cfg.bins.forEach(function (b, k) {
       html += '<button class="choice" data-k="' + b.k + '"><span class="ic">' + b.ic + '</span><span class="t">' + b.t +
         '</span><span class="d">' + b.d + '</span><span class="k">клавиша ' + (k + 1) + '</span></button>';
@@ -924,14 +1027,9 @@ function runCards(mode) {
     var n = cfg.items.length, p = score / n, r = rankOf(p);
     results[mode] = score + "/" + n + " · " + r.t;
     saveResults();
-    var lessons = mode === "sort"
-      ? ["Коррекция отвечает на вопрос «что исправить сейчас?», КРД — «что изменить, чтобы не повторилось?».",
+    var lessons = ["Коррекция отвечает на вопрос «что исправить сейчас?», КРД — «что изменить, чтобы не повторилось?».",
          "Проверить «на других складах» — это всё ещё коррекция, просто шире.",
-         "«Усилить», «провести анализ», «внимательнее» — не мероприятия. Их нечем подтвердить."]
-      : ["Спросите себя: что я покажу как доказательство, когда наступит срок?",
-         "Мероприятие должно сразу быть действием, а не обещанием придумать действие.",
-         "Обязанность из должностной инструкции — не КРД. Ищите, что мешает её выполнять.",
-         "Прочитайте вслух: «Сделали Х → причина исчезла». Не складывается — ошибка №4."];
+         "«Усилить», «провести анализ», «внимательнее» — не мероприятия. Их нечем подтвердить."];
     renderFinal(cfg.title, score, n, ms, r, lessons, mistakes, function () { runCards(mode); });
   }
 
