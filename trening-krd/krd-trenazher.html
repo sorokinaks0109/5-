@@ -1,0 +1,700 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Путь джедая КРД</title>
+<style>
+  :root {
+    --bg: #0b1020;
+    --bg2: #121a33;
+    --card: #182244;
+    --card2: #1f2b55;
+    --line: #2c3a6b;
+    --text: #eef2ff;
+    --muted: #9aa6cf;
+    --blue: #4cc3ff;
+    --green: #3ee08f;
+    --red: #ff5a6a;
+    --amber: #ffc24b;
+    --violet: #b98cff;
+    --radius: 16px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: radial-gradient(1200px 600px at 80% -10%, #1b2a5c 0%, transparent 60%),
+                radial-gradient(900px 500px at -10% 110%, #1a1740 0%, transparent 60%),
+                var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI", Roboto, Arial, sans-serif;
+    font-size: 17px;
+    line-height: 1.45;
+    min-height: 100vh;
+  }
+  .stars { position: fixed; inset: 0; pointer-events: none; opacity: .5;
+    background-image:
+      radial-gradient(1px 1px at 10% 20%, #fff 50%, transparent 51%),
+      radial-gradient(1px 1px at 30% 80%, #fff 50%, transparent 51%),
+      radial-gradient(1px 1px at 55% 35%, #fff 50%, transparent 51%),
+      radial-gradient(1px 1px at 75% 60%, #fff 50%, transparent 51%),
+      radial-gradient(1px 1px at 90% 15%, #fff 50%, transparent 51%),
+      radial-gradient(1.5px 1.5px at 20% 50%, #cfe8ff 50%, transparent 51%),
+      radial-gradient(1.5px 1.5px at 65% 90%, #cfe8ff 50%, transparent 51%),
+      radial-gradient(1px 1px at 85% 85%, #fff 50%, transparent 51%);
+  }
+  .wrap { position: relative; max-width: 920px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1, h2, h3 { margin: 0; line-height: 1.2; }
+  .saber { height: 4px; border-radius: 4px; margin: 14px 0 22px;
+    background: linear-gradient(90deg, #8aa0c8 0 9%, var(--blue) 9% 100%);
+    box-shadow: 0 0 12px var(--blue), 0 0 2px #fff inset; }
+  .kicker { color: var(--blue); letter-spacing: .14em; text-transform: uppercase; font-size: 13px; font-weight: 700; }
+  .muted { color: var(--muted); }
+  button { font: inherit; cursor: pointer; }
+
+  /* Главный экран */
+  .hero h1 { font-size: 34px; margin-top: 6px; }
+  .hero p { margin: 8px 0 0; color: var(--muted); max-width: 680px; }
+  .tiles { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); margin-top: 8px; }
+  .tile { text-align: left; background: linear-gradient(180deg, var(--card2), var(--card)); color: var(--text);
+    border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; display: flex; flex-direction: column; gap: 10px;
+    transition: transform .15s, border-color .15s, box-shadow .15s; }
+  .tile:hover, .tile:focus-visible { transform: translateY(-3px); border-color: var(--blue); box-shadow: 0 8px 30px rgba(76,195,255,.18); outline: none; }
+  .tile .num { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 800;
+    background: rgba(76,195,255,.14); color: var(--blue); border: 1px solid rgba(76,195,255,.4); }
+  .tile h3 { font-size: 21px; }
+  .tile p { margin: 0; color: var(--muted); font-size: 15px; }
+  .tile .meta { display: flex; justify-content: space-between; align-items: center; margin-top: auto; font-size: 14px; color: var(--muted); }
+  .badge { font-size: 13px; padding: 3px 10px; border-radius: 999px; background: rgba(62,224,143,.15); color: var(--green); border: 1px solid rgba(62,224,143,.4); }
+  .codex { margin-top: 28px; background: rgba(255,255,255,.03); border: 1px dashed var(--line); border-radius: var(--radius); padding: 16px 20px; }
+  .codex h3 { font-size: 16px; color: var(--amber); margin-bottom: 8px; }
+  .codex dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; font-size: 15px; }
+  .codex dt { font-weight: 700; }
+  .codex dd { margin: 0; color: var(--muted); }
+
+  /* Игровой экран */
+  .top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .back { background: none; border: 1px solid var(--line); color: var(--muted); border-radius: 999px; padding: 6px 14px; font-size: 14px; }
+  .back:hover { color: var(--text); border-color: var(--muted); }
+  .top h2 { font-size: 22px; flex: 1; min-width: 200px; }
+  .stat { font-size: 14px; color: var(--muted); display: flex; gap: 14px; }
+  .stat b { color: var(--text); }
+  .progress { height: 6px; background: var(--bg2); border-radius: 6px; overflow: hidden; margin: 14px 0 20px; }
+  .progress i { display: block; height: 100%; width: 0; background: var(--blue); box-shadow: 0 0 10px var(--blue); transition: width .3s; }
+
+  .case { background: var(--bg2); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; font-size: 15px; margin-bottom: 14px; }
+  .case .row { display: grid; grid-template-columns: 130px 1fr; gap: 8px; }
+  .case .row + .row { margin-top: 6px; }
+  .case .lbl { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; padding-top: 3px; }
+  .case .tag { display: inline-block; font-size: 12px; color: var(--violet); margin-bottom: 6px; letter-spacing: .06em; text-transform: uppercase; font-weight: 700; }
+
+  .card { background: linear-gradient(180deg, var(--card2), var(--card)); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 26px 24px; font-size: 22px; font-weight: 600; text-align: center; min-height: 120px; display: grid; place-items: center;
+    animation: pop .25s ease-out; }
+  .card.small { font-size: 19px; }
+  @keyframes pop { from { transform: scale(.97); opacity: 0; } to { transform: none; opacity: 1; } }
+  .card.ok { border-color: var(--green); box-shadow: 0 0 0 1px var(--green), 0 0 26px rgba(62,224,143,.25); }
+  .card.bad { border-color: var(--red); box-shadow: 0 0 0 1px var(--red), 0 0 26px rgba(255,90,106,.25); animation: shake .35s; }
+  @keyframes shake { 25% { transform: translateX(-6px); } 50% { transform: translateX(6px); } 75% { transform: translateX(-3px); } }
+
+  .choices { display: grid; gap: 10px; margin-top: 16px; }
+  .choices.c3 { grid-template-columns: repeat(3, 1fr); }
+  .choices.c5 { grid-template-columns: repeat(5, 1fr); }
+  .choice { background: var(--bg2); color: var(--text); border: 1px solid var(--line); border-radius: 12px; padding: 14px 10px;
+    display: flex; flex-direction: column; align-items: center; gap: 4px; transition: border-color .12s, background .12s; }
+  .choice:hover:not(:disabled) { border-color: var(--blue); background: #16214a; }
+  .choice .ic { font-size: 24px; line-height: 1; }
+  .choice .t { font-weight: 700; font-size: 16px; }
+  .choice .d { font-size: 12.5px; color: var(--muted); text-align: center; }
+  .choice .k { font-size: 11px; color: var(--muted); opacity: .7; }
+  .choice.right { border-color: var(--green); background: rgba(62,224,143,.12); }
+  .choice.wrong { border-color: var(--red); background: rgba(255,90,106,.12); }
+  .choice:disabled { cursor: default; }
+  .choice:disabled:not(.right):not(.wrong) { opacity: .45; }
+
+  .list { display: grid; gap: 10px; margin-top: 14px; }
+  .opt { text-align: left; background: var(--bg2); color: var(--text); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .opt:hover:not(:disabled) { border-color: var(--blue); background: #16214a; }
+  .opt.right { border-color: var(--green); background: rgba(62,224,143,.12); }
+  .opt.wrong { border-color: var(--red); background: rgba(255,90,106,.10); }
+  .opt:disabled { cursor: default; }
+  .opt .why { display: block; margin-top: 6px; font-size: 14px; color: var(--muted); }
+
+  .fb { margin-top: 16px; border-radius: 12px; padding: 14px 16px; font-size: 16px; border: 1px solid; animation: pop .2s; }
+  .fb.ok { background: rgba(62,224,143,.08); border-color: rgba(62,224,143,.45); }
+  .fb.bad { background: rgba(255,90,106,.08); border-color: rgba(255,90,106,.45); }
+  .fb b.h { display: block; margin-bottom: 4px; }
+  .fb.ok b.h { color: var(--green); }
+  .fb.bad b.h { color: var(--red); }
+  .fb .fix { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); }
+  .fb .fix span { color: var(--amber); font-weight: 700; }
+  .next { margin-top: 14px; display: flex; justify-content: flex-end; }
+  .btn { background: var(--blue); color: #04121f; border: 0; border-radius: 999px; padding: 11px 24px; font-weight: 800; box-shadow: 0 0 16px rgba(76,195,255,.35); }
+  .btn:hover { filter: brightness(1.1); }
+  .btn.ghost { background: none; color: var(--text); border: 1px solid var(--line); box-shadow: none; font-weight: 600; }
+
+  /* 5 почему */
+  .chain { display: grid; gap: 8px; margin-bottom: 14px; }
+  .link { display: grid; grid-template-columns: 110px 1fr; gap: 10px; align-items: start; background: var(--bg2); border: 1px solid var(--line);
+    border-radius: 12px; padding: 10px 14px; font-size: 15px; animation: pop .25s; }
+  .link .n { color: var(--blue); font-weight: 800; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; padding-top: 2px; }
+  .link.problem { border-color: var(--amber); }
+  .link.problem .n { color: var(--amber); }
+  .link.root { border-color: var(--green); box-shadow: 0 0 18px rgba(62,224,143,.2); }
+  .link.root .n { color: var(--green); }
+  .q { font-size: 20px; font-weight: 700; margin: 6px 0 2px; }
+  .therefore { background: var(--bg2); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; }
+  .therefore ol { margin: 8px 0 0; padding-left: 22px; }
+  .therefore li { margin: 6px 0; }
+  .therefore li em { color: var(--green); font-style: normal; font-weight: 700; }
+
+  /* Финал */
+  .final { text-align: center; padding: 20px 0; }
+  .final .score { font-size: 64px; font-weight: 900; color: var(--blue); text-shadow: 0 0 24px rgba(76,195,255,.5); }
+  .final .rank { font-size: 26px; font-weight: 800; margin-top: 4px; }
+  .final .lesson { margin: 22px auto 0; max-width: 620px; text-align: left; background: rgba(255,194,75,.07);
+    border: 1px solid rgba(255,194,75,.4); border-radius: var(--radius); padding: 16px 20px; }
+  .final .lesson h3 { color: var(--amber); font-size: 16px; margin-bottom: 8px; }
+  .final .lesson ul { margin: 0; padding-left: 20px; }
+  .final .lesson li { margin: 4px 0; }
+  .final .acts { display: flex; gap: 10px; justify-content: center; margin-top: 22px; flex-wrap: wrap; }
+  .mist { margin: 18px auto 0; max-width: 620px; text-align: left; font-size: 15px; }
+  .mist summary { cursor: pointer; color: var(--muted); }
+  .mist li { margin: 6px 0; }
+
+  .legend { display: grid; gap: 6px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); margin-top: 10px; font-size: 13px; color: var(--muted); }
+
+  @media (max-width: 720px) {
+    body { font-size: 16px; }
+    .hero h1 { font-size: 26px; }
+    .choices.c5 { grid-template-columns: repeat(2, 1fr); }
+    .choices.c5 .choice:first-child { grid-column: 1 / -1; }
+    .choices.c3 { grid-template-columns: 1fr; }
+    .choice { flex-direction: row; justify-content: flex-start; text-align: left; gap: 10px; }
+    .choice .d { text-align: left; }
+    .choice .k { display: none; }
+    .card { font-size: 19px; padding: 20px 16px; }
+    .case .row, .link { grid-template-columns: 1fr; gap: 2px; }
+    .codex dl { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="stars"></div>
+<main class="wrap" id="app"></main>
+
+<script>
+/* ============================================================
+   ДАННЫЕ. Кейсы можно менять прямо здесь — формат простой.
+   ============================================================ */
+
+var CASES = {
+  sklad1054: {
+    tag: "Склад №1054",
+    nc: "В секторе А-5 катушки с кабелем хранятся вплотную к батарее отопления.",
+    cause: "Нет техники для перемещения катушек, быстро подать заявку на неё нельзя."
+  },
+  ploshadka1076: {
+    tag: "Площадка №1076",
+    nc: "На открытой площадке в секторе В-17 отходы не разделяются по видам.",
+    cause: "Не заключён договор на вывоз отходов: у ответственного нет доступа к системе закупки услуг."
+  },
+  zhurnal: {
+    tag: "Журнал склада",
+    nc: "Замеры температуры и влажности за неделю не внесены в журнал.",
+    cause: "Журнал лежит в кабинете начальника склада, у кладовщиков ночной смены к нему нет доступа."
+  },
+  vygruzka: {
+    tag: "Повреждение МТР",
+    nc: "При выгрузке уронили паллету — повреждён корпус электродвигателя.",
+    cause: "Паллета длиннее вил погрузчика, удлинителей вил на складе нет."
+  },
+  evakuaciya: {
+    tag: "Эвакуационный выход",
+    nc: "Путь к эвакуационному выходу заставлен пустыми поддонами.",
+    cause: "После приёмки поддоны некуда убрать — место для них не выделено."
+  }
+};
+
+/* Игра 1: коррекция / КРД / мимо */
+var SORT = [
+  { c: "sklad1054", t: "Отодвинуть катушки от батареи на безопасное расстояние", a: "kor",
+    e: "Убирает само нарушение здесь и сейчас. Причина — нет техники и быстрой заявки — осталась, завтра новые катушки встанут туда же." },
+  { c: "sklad1054", t: "Внедрить онлайн-заявку на перемещение МТР вместе с отделом транспортной логистики", a: "krd",
+    e: "Бьёт прямо в причину: технику можно заказать быстро, и катушки не будут «застревать» у батареи." },
+  { c: "sklad1054", t: "Усилить контроль за размещением катушек", a: "miss",
+    e: "Кто, как, как часто? Что покажем как доказательство? К тому же причина — нехватка техники, а не контроль." },
+  { c: "sklad1054", t: "Проверить остальные склады на такое же нарушение и исправить, где найдём", a: "kor",
+    e: "Полезно, но это исправление таких же нарушений в других местах. Причину не устраняет — значит, это коррекция, только шире." },
+
+  { c: "ploshadka1076", t: "Разложить отходы на площадке по видам в отдельные контейнеры", a: "kor",
+    e: "Исправляет нарушение на площадке. Договора на вывоз как не было, так и нет." },
+  { c: "ploshadka1076", t: "Выдать ответственному доступ к системе закупки услуг и назначить замещающего на время отпуска", a: "krd",
+    e: "Убирает причину, из-за которой договор не заключили, и страхует на будущее." },
+  { c: "ploshadka1076", t: "Провести анализ по данному нарушению", a: "miss",
+    e: "Анализ делают ДО того, как писать мероприятия. В плане это «матрёшка»: действие так и не названо." },
+  { c: "ploshadka1076", t: "Внимательнее отнестись к проверкам требований", a: "miss",
+    e: "Благое пожелание, а не действие. Проверить выполнение невозможно." },
+
+  { c: "zhurnal", t: "Перенести данные за пропущенную неделю из памяти термогигрометра в журнал", a: "kor",
+    e: "Восстанавливает записи — нарушение исправлено. Но через неделю журнал снова будет недоступен ночной смене." },
+  { c: "zhurnal", t: "Перевести журнал в электронную форму в 1С с доступом для всех смен", a: "krd",
+    e: "Убирает причину: доступ к журналу есть у всех, кто делает замеры." },
+  { c: "zhurnal", t: "Проводить мониторинг температуры и влажности на складе", a: "miss",
+    e: "Это и так обязанность склада. Ошибка «Мероприятие²»: переписали требование вместо действия." },
+
+  { c: "vygruzka", t: "Оформить акт и отправить двигатель на дефектовку", a: "kor",
+    e: "Разбираемся с последствиями этого случая. Со следующей длинной паллетой всё повторится." },
+  { c: "vygruzka", t: "Закупить удлинители вил и прописать в техкарте выгрузки, когда их применять", a: "krd",
+    e: "Устраняет причину: теперь есть чем брать длинные паллеты, и понятно, когда это делать." },
+  { c: "vygruzka", t: "Провести внеплановый инструктаж водителю погрузчика", a: "miss",
+    e: "Водитель сделал что мог — удлинителей не было. Инструктаж не связан с причиной (ошибка №4)." },
+
+  { c: "evakuaciya", t: "Убрать поддоны от эвакуационного выхода", a: "kor",
+    e: "Нужно сделать немедленно — но поддоны снова будет некуда деть." },
+  { c: "evakuaciya", t: "Выделить и разметить зону для пустых поддонов, внести её в топологию склада", a: "krd",
+    e: "У поддонов появилось своё место — причина устранена." }
+];
+
+var SORT_BINS = [
+  { k: "kor",  ic: "🔧", t: "Коррекция", d: "устраняет само нарушение" },
+  { k: "krd",  ic: "🎯", t: "КРД",       d: "устраняет причину" },
+  { k: "miss", ic: "💨", t: "Мимо",      d: "не устраняет ни то, ни другое" }
+];
+
+/* Игра 2: детектор ошибок */
+var DETECT_BINS = [
+  { k: "ok", ic: "✅", t: "Годное КРД",  d: "конкретно и бьёт в причину" },
+  { k: "e1", ic: "🌫️", t: "№1 «Поди туда…»", d: "общие слова, нечего проверить" },
+  { k: "e2", ic: "🪆", t: "№2 «Матрёшка»", d: "мероприятие про мероприятия" },
+  { k: "e3", ic: "🔁", t: "№3 «Мероприятие²»", d: "это и так ваша работа" },
+  { k: "e4", ic: "🎯", t: "№4 Мимо причины", d: "не связано с причиной" }
+];
+
+var DETECT = [
+  { t: "Усилить контроль за хранением МТР", a: "e1",
+    e: "Непонятно, кто, что и как часто будет делать. Через месяц нечего показать проверяющему.",
+    fix: "Ввести еженедельный обход зон хранения по чек-листу из 8 пунктов, результаты вносить в 1С. Срок — до 15.11, отв. — начальник склада." },
+  { t: "Разработать мероприятия для отсутствия недостач", a: "e2",
+    e: "Мероприятие, которое обещает придумать мероприятия. Решение отложено на потом.",
+    fix: "Назвать сами действия сразу, например: ввести двойную пересчётку при приёмке МТР дороже 100 тыс. руб. Срок, ответственный." },
+  { t: "Соблюдать правила производственной безопасности", a: "e3",
+    e: "Это требование, а не действие. Его и так нужно выполнять каждый день.",
+    fix: "Найти, что именно мешает соблюдать правило, и убрать это. Например: установить ограждение зоны работы крана-штабелёра. Срок, ответственный." },
+  { c: { nc: "Нарушены условия хранения крупногабаритного оборудования.", cause: "На складе не хватает площадей для хранения." },
+    t: "Актуализировать топологию склада", a: "e4",
+    e: "Новая схема не добавит ни одного квадратного метра. Причина — нехватка площадей — останется.",
+    fix: "Оборудовать навесом площадку 200 м² в секторе В под крупногабаритное оборудование. Срок — до 01.03, отв. — начальник склада." },
+  { t: "Обеспечить коммуникации между МОЛ и инженером входного контроля", a: "e1",
+    e: "«Обеспечить коммуникации» — это как? Звонить? Письмом? Когда?",
+    fix: "Ввести уведомление в 1С инженеру входного контроля при поступлении МТР с отметкой «ВК» в течение 2 часов после приёмки. Срок, ответственный." },
+  { t: "Составить план мероприятий по снижению травматизма", a: "e2",
+    e: "План в плане. Сами действия так и не появились.",
+    fix: "Сразу записать конкретные меры: например, заменить покрытие пандуса №2 на противоскользящее. Срок, ответственный." },
+  { t: "Оформлять записи в журнале брака", a: "e3",
+    e: "Это обычная обязанность. Если записи не оформлялись — надо понять почему и устранить это.",
+    fix: "Сделать журнал брака электронной формой в 1С с обязательным полем при оформлении акта. Срок, ответственный." },
+  { c: CASES.vygruzka, t: "Провести внеплановый инструктаж водителю погрузчика", a: "e4",
+    e: "Водитель не виноват, что вилы короче паллеты. Инструктаж не добавит удлинителей.",
+    fix: "Закупить 2 комплекта удлинителей вил и прописать в техкарте выгрузки их обязательное применение для паллет длиннее 1,2 м. Срок — до 20.11, отв. — начальник участка ПРР." },
+  { c: CASES.zhurnal, t: "До 30.10 перевести журнал температуры и влажности в электронную форму в 1С с доступом для всех смен. Отв. — начальник склада", a: "ok",
+    e: "Конкретное действие, срок, ответственный. Бьёт прямо в причину — нет доступа к журналу. Через месяц можно показать доказательство." },
+  { t: "Провести работу с мастерами ПРР", a: "e1",
+    e: "Какую работу? О чём? Как поймём, что она проведена?",
+    fix: "Провести для мастеров ПРР практическое занятие по строповке нестандартных грузов с приёмом зачёта на площадке. Срок, ответственный." },
+  { c: { nc: "На площадке отходы не разделяются по видам.", cause: "На площадке стоит один общий контейнер — раздельных нет." },
+    t: "Ознакомить работников с требованиями ОСТО 16.01.06", a: "e4",
+    e: "Работники могут знать требования наизусть — но разделять всё равно некуда.",
+    fix: "Установить на площадке 3 промаркированных контейнера по видам отходов. Срок — до 10.11, отв. — начальник склада." },
+  { c: CASES.evakuaciya, t: "До 25.10 выделить и разметить в секторе Б зону на 40 поддонов и внести её в топологию склада. Отв. — начальник склада", a: "ok",
+    e: "Есть действие, место, срок и ответственный. Поддонам есть куда деться — причина устранена." }
+];
+
+/* Игра 3: 5 почему */
+var WHY = [
+  {
+    id: "kabel",
+    title: "Оплавленный кабель",
+    problem: "При отгрузке на объект обнаружена оплавленная изоляция кабеля на 2 катушках (склад №1054, сектор А-5).",
+    steps: [
+      { q: "Почему изоляция оплавилась?",
+        opts: [
+          { t: "Катушки три недели стояли вплотную к батарее отопления", ok: true, why: "Подтверждается данными: оплавление с той стороны, что была к батарее." },
+          { t: "Кладовщик невнимательный", why: "Главный вопрос — «почему?», а не «кто?». Поиск виноватого останавливает анализ." },
+          { t: "Поставщик прислал некачественный кабель", why: "Камень в чужой огород без данных: при приёмке замечаний не было." }
+        ] },
+      { q: "Почему катушки стояли у батареи?",
+        opts: [
+          { t: "Так было всегда", why: "Это не причина, а привычка. Ответ должен опираться на факты." },
+          { t: "При приёмке их поставили во временное место у входа и так и не переместили в зону хранения", ok: true, why: "Факт, который можно проверить по журналу приёмки." },
+          { t: "Никто не следит за порядком", why: "Общие слова. Кто «никто»? Что именно не так?" }
+        ] },
+      { q: "Почему катушки не переместили в зону хранения?",
+        opts: [
+          { t: "Логистика опять подвела", why: "Камень в чужой огород. Разберитесь, что именно не сработало." },
+          { t: "Кладовщику было лень", why: "Вопрос «кто», а не «почему». К тому же ответ ничем не подтверждён." },
+          { t: "Для перемещения нужен погрузчик, а он работал на другом участке", ok: true, why: "Факт: катушки по 800 кг, вручную их не сдвинуть." }
+        ] },
+      { q: "Почему не получилось вызвать погрузчик?",
+        opts: [
+          { t: "Заявку на технику можно подать только на бумаге, её согласуют раз в день", ok: true, why: "Так и есть: заявка ждала бы сутки, а место под новую поставку было нужно сразу." },
+          { t: "Погрузчиков вообще мало, купить ещё", why: "Искусственный ответ — придумали решение заранее. Техника есть, проблема в том, как её получить." },
+          { t: "Начальник транспортного участка не отвечает на звонки", why: "Опять «кто». Даже если так — это следствие порядка работы, а не причина." }
+        ] },
+      { q: "Почему заявку на технику нельзя подать быстро?",
+        opts: [
+          { t: "Потому что в компании бюрократия", why: "Слишком общо. С «бюрократией» ничего нельзя сделать завтра." },
+          { t: "Сотрудники не хотят пользоваться электронными системами", why: "Не подтверждено данными — и это снова про людей, а не про процесс." },
+          { t: "Порядок срочного заказа техники для перемещения МТР нигде не прописан — есть только плановые заявки", ok: true, why: "Вот корень: процесса для срочных перемещений просто нет." }
+        ] }
+    ],
+    root: "Порядок срочного заказа техники для перемещения МТР не прописан",
+    therefore: [
+      "Порядок срочного заказа техники не прописан,",
+      "<em>поэтому</em> заявку можно подать только на бумаге, раз в день,",
+      "<em>поэтому</em> погрузчик не вызвали вовремя,",
+      "<em>поэтому</em> катушки остались во временном месте у батареи,",
+      "<em>поэтому</em> изоляция кабеля оплавилась."
+    ],
+    krd: [
+      { t: "Переместить катушки от батареи и проверить весь кабель в секторе А-5", why: "Это коррекция. Нужна, но причину не устраняет." },
+      { t: "Усилить контроль за размещением МТР у отопительных приборов", why: "Ошибка №1: общие слова, нечего проверить через месяц." },
+      { t: "До 15.12 внедрить онлайн-заявку на срочное перемещение МТР со временем реакции до 2 часов и прописать порядок в регламенте склада. Отв. — начальник склада совместно с начальником транспортного участка", ok: true, why: "Бьёт в корневую причину, конкретно, есть срок и ответственный." },
+      { t: "Объявить замечание кладовщику", why: "Наказание не устраняет причину. Со следующим кладовщиком всё повторится." }
+    ]
+  },
+  {
+    id: "dvigatel",
+    title: "Упавший электродвигатель",
+    problem: "При выгрузке уронили паллету с электродвигателем — повреждён корпус (приёмка крупногабаритных МТР).",
+    steps: [
+      { q: "Почему паллета упала?",
+        opts: [
+          { t: "Водитель погрузчика неаккуратный", why: "Главный вопрос — «почему?», а не «кто?»." },
+          { t: "Паллета соскользнула с вил при подъёме", ok: true, why: "Видно на записи с камеры." },
+          { t: "Поставщик плохо упаковал груз", why: "Камень в чужой огород: упаковка была целой до подъёма." }
+        ] },
+      { q: "Почему паллета соскользнула с вил?",
+        opts: [
+          { t: "Не повезло", why: "Это не причина. У всего есть объяснение." },
+          { t: "Водитель торопился — надо его наказать", why: "Опять «кто», и сразу с решением. Данных, что торопился, нет." },
+          { t: "Паллета длиной 1,6 м, а вилы 1,2 м — груз держался на краю вил", ok: true, why: "Факт, который легко измерить." }
+        ] },
+      { q: "Почему поднимали вилами короче паллеты?",
+        opts: [
+          { t: "На складе нет удлинителей вил", ok: true, why: "Проверили — действительно нет ни одного комплекта." },
+          { t: "Водитель не знал правил", why: "Не подтверждено: водитель с опытом 10 лет, других вариантов у него не было." },
+          { t: "Так быстрее", why: "Предположение без данных." }
+        ] },
+      { q: "Почему на складе нет удлинителей вил?",
+        opts: [
+          { t: "Бюджет урезали", why: "Проверили — заявки на удлинители никто и не подавал." },
+          { t: "Перед поставкой нестандартных МТР никто не проверяет, есть ли подходящая оснастка", ok: true, why: "Так и есть: о длине паллеты узнали только при выгрузке." },
+          { t: "Снабженцы не подумали", why: "«Кто», а не «почему», — и камень в чужой огород." }
+        ] },
+      { q: "Почему перед поставкой не проверяют оснастку?",
+        opts: [
+          { t: "В порядке подготовки к приёмке нестандартных МТР нет шага «проверить технику и оснастку под габарит груза»", ok: true, why: "Вот корень: такого шага в процессе нет." },
+          { t: "Людям всё равно", why: "Про людей и без данных. С этим ничего не сделать завтра." },
+          { t: "Нестандартные поставки бывают редко", why: "Это обстоятельство, а не причина. Раз бывают — к ним надо готовиться." }
+        ] }
+    ],
+    root: "В подготовке к приёмке нестандартных МТР нет проверки техники и оснастки",
+    therefore: [
+      "В подготовке к приёмке нет шага «проверить оснастку»,",
+      "<em>поэтому</em> о длине паллеты узнали только при выгрузке и удлинителей не оказалось,",
+      "<em>поэтому</em> поднимали вилами короче паллеты,",
+      "<em>поэтому</em> паллета соскользнула,",
+      "<em>поэтому</em> электродвигатель упал и повреждён."
+    ],
+    krd: [
+      { t: "Провести внеплановый инструктаж водителю погрузчика", why: "Ошибка №4: не связано с причиной. Водитель тут ни при чём." },
+      { t: "Составить акт и отправить двигатель на дефектовку", why: "Это коррекция — разбираемся с последствиями." },
+      { t: "Разработать мероприятия по недопущению повреждения МТР", why: "Ошибка №2: «матрёшка» — мероприятие про мероприятия." },
+      { t: "До 01.12 добавить в регламент приёмки шаг «за 3 дня до поставки нестандартных МТР проверить технику и оснастку по габаритам груза» с чек-листом; закупить 2 комплекта удлинителей вил. Отв. — начальник участка ПРР", ok: true, why: "Устраняет корневую причину и её последствие. Конкретно, есть срок и ответственный." }
+    ]
+  }
+];
+
+var RANKS = [
+  { min: 0.9, t: "Магистр джедай", i: "🟢" },
+  { min: 0.7, t: "Рыцарь-джедай", i: "🔵" },
+  { min: 0.5, t: "Падаван", i: "🟣" },
+  { min: 0,   t: "Юнлинг", i: "⚪" }
+];
+
+/* ============================================================
+   ЛОГИКА
+   ============================================================ */
+
+var app = document.getElementById("app");
+var results = {};
+try { results = JSON.parse(localStorage.getItem("krd-results") || "{}") || {}; } catch (e) { results = {}; }
+function saveResults() { try { localStorage.setItem("krd-results", JSON.stringify(results)); } catch (e) {} }
+
+var keyHandler = null;
+document.addEventListener("keydown", function (ev) { if (keyHandler) keyHandler(ev); });
+
+var timerId = null, t0 = 0;
+function startTimer() {
+  stopTimer(); t0 = Date.now();
+  timerId = setInterval(function () { var el = document.getElementById("tm"); if (el) el.textContent = fmt(Date.now() - t0); }, 500);
+}
+function stopTimer() { if (timerId) clearInterval(timerId); timerId = null; return Date.now() - t0; }
+function fmt(ms) { var s = Math.round(ms / 1000); return Math.floor(s / 60) + ":" + ("0" + (s % 60)).slice(-2); }
+function rankOf(p) { for (var i = 0; i < RANKS.length; i++) if (p >= RANKS[i].min) return RANKS[i]; return RANKS[RANKS.length - 1]; }
+function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+function h(html) { app.innerHTML = html; window.scrollTo(0, 0); }
+
+function caseBox(c) {
+  if (!c) return "";
+  return '<div class="case">' + (c.tag ? '<span class="tag">' + esc(c.tag) + '</span>' : '') +
+    '<div class="row"><span class="lbl">Несоответствие</span><span>' + esc(c.nc) + '</span></div>' +
+    '<div class="row"><span class="lbl">Причина</span><span>' + esc(c.cause) + '</span></div></div>';
+}
+
+function header(title, i, n, score) {
+  return '<div class="top"><button class="back" onclick="home()">← Все упражнения</button>' +
+    '<h2>' + title + '</h2><div class="stat"><span>Вопрос <b>' + (i + 1) + '/' + n + '</b></span>' +
+    '<span>Верно <b>' + score + '</b></span><span>⏱ <b id="tm">' + fmt(Date.now() - t0) + '</b></span></div></div>' +
+    '<div class="progress"><i style="width:' + Math.round(i / n * 100) + '%"></i></div>';
+}
+
+/* ---------- Главный экран ---------- */
+function home() {
+  stopTimer(); keyHandler = null;
+  var games = [
+    { id: "sort", n: 1, t: "Коррекция или КРД?", d: "Разложите мероприятия по трём корзинам: исправляет нарушение, устраняет причину или бьёт мимо.", time: "5 минут · 16 карточек" },
+    { id: "detect", n: 2, t: "Детектор ошибок", d: "Найдите, чем больна формулировка: «Поди туда…», «Матрёшка», «Мероприятие²», мимо причины — или она годная.", time: "5 минут · 12 карточек" },
+    { id: "why", n: 3, t: "Дойди до корня", d: "Пройдите «5 почему» на реальном случае, проверьте цепочку через «поэтому» и выберите КРД.", time: "5–7 минут · 2 кейса" }
+  ];
+  var html = '<section class="hero"><div class="kicker">Управление КРД · Путь джедая</div>' +
+    '<h1>Тренажёр корректирующих действий</h1>' +
+    '<p>Три коротких упражнения. Выбирайте ответ — сразу увидите, прав ли, и почему. Проходите по порядку или сразу то, которое назовёт тренер.</p>' +
+    '<div class="saber"></div></section><div class="tiles">';
+  games.forEach(function (g) {
+    var r = results[g.id];
+    html += '<button class="tile" onclick="start(\'' + g.id + '\')"><span class="num">' + g.n + '</span>' +
+      '<h3>' + g.t + '</h3><p>' + g.d + '</p><div class="meta"><span>' + g.time + '</span>' +
+      (r ? '<span class="badge">' + r + '</span>' : '') + '</div></button>';
+  });
+  html += '</div><div class="codex"><h3>Кодекс джедаев</h3><dl>' +
+    '<dt>Несоответствие</dt><dd>нарушение требования</dd>' +
+    '<dt>Коррекция</dt><dd>действие, которое устраняет само несоответствие</dd>' +
+    '<dt>КРД</dt><dd>действие, которое устраняет причину несоответствия, чтобы оно не повторилось</dd>' +
+    '<dt>Проверка</dt><dd>корневая причина → «поэтому» → … → проблема. Цепочка должна читаться без натяжек</dd>' +
+    '</dl></div>';
+  h(html);
+}
+
+function start(id) {
+  if (id === "sort") runCards("sort");
+  else if (id === "detect") runCards("detect");
+  else chooseWhy();
+}
+
+/* ---------- Игры 1 и 2: карточки ---------- */
+function runCards(mode) {
+  var cfg = mode === "sort"
+    ? { title: "Коррекция или КРД?", items: SORT, bins: SORT_BINS, cls: "c3" }
+    : { title: "Детектор ошибок", items: DETECT, bins: DETECT_BINS, cls: "c5" };
+  if (mode === "sort") {
+    // кейсы идут по порядку, а карточки внутри кейса перемешиваются — чтобы ответ нельзя было угадать по позиции
+    var byCase = [], seen = {};
+    SORT.forEach(function (it) { if (!seen[it.c]) { seen[it.c] = []; byCase.push(seen[it.c]); } seen[it.c].push(it); });
+    cfg.items = [].concat.apply([], byCase.map(shuffle));
+  }
+  var i = 0, score = 0, answered = false, mistakes = [];
+  startTimer();
+
+  function draw() {
+    answered = false;
+    var it = cfg.items[i];
+    var c = it.c ? (typeof it.c === "string" ? CASES[it.c] : it.c) : null;
+    var html = header(cfg.title, i, cfg.items.length, score) + caseBox(c) +
+      '<div class="card' + (it.t.length > 90 ? ' small' : '') + '" id="card">' + esc(it.t) + '</div>' +
+      '<div class="choices ' + cfg.cls + '">';
+    cfg.bins.forEach(function (b, k) {
+      html += '<button class="choice" data-k="' + b.k + '"><span class="ic">' + b.ic + '</span><span class="t">' + b.t +
+        '</span><span class="d">' + b.d + '</span><span class="k">клавиша ' + (k + 1) + '</span></button>';
+    });
+    html += '</div><div id="fb"></div>';
+    h(html);
+    Array.prototype.forEach.call(app.querySelectorAll(".choice"), function (btn) {
+      btn.onclick = function () { answer(btn.getAttribute("data-k")); };
+    });
+    keyHandler = function (ev) {
+      var n = parseInt(ev.key, 10);
+      if (!answered && n >= 1 && n <= cfg.bins.length) answer(cfg.bins[n - 1].k);
+      else if (answered && (ev.key === "Enter" || ev.key === " ")) { ev.preventDefault(); next(); }
+    };
+  }
+
+  function answer(k) {
+    if (answered) return;
+    answered = true;
+    var it = cfg.items[i], ok = k === it.a;
+    if (ok) score++; else mistakes.push(it);
+    Array.prototype.forEach.call(app.querySelectorAll(".choice"), function (btn) {
+      var bk = btn.getAttribute("data-k");
+      btn.disabled = true;
+      if (bk === it.a) btn.classList.add("right");
+      else if (bk === k) btn.classList.add("wrong");
+    });
+    document.getElementById("card").classList.add(ok ? "ok" : "bad");
+    var rightBin = cfg.bins.filter(function (b) { return b.k === it.a; })[0];
+    document.getElementById("fb").innerHTML =
+      '<div class="fb ' + (ok ? "ok" : "bad") + '"><b class="h">' + (ok ? "Верно!" : "Не совсем. Правильно: " + rightBin.t) + '</b>' +
+      esc(it.e) + (it.fix ? '<div class="fix"><span>Как надо: </span>' + esc(it.fix) + '</div>' : '') + '</div>' +
+      '<div class="next"><button class="btn" id="nx">' + (i + 1 < cfg.items.length ? "Дальше →" : "Итоги") + '</button></div>';
+    document.getElementById("nx").onclick = next;
+    document.getElementById("nx").focus();
+  }
+
+  function next() {
+    i++;
+    if (i < cfg.items.length) draw();
+    else finish();
+  }
+
+  function finish() {
+    var ms = stopTimer(); keyHandler = null;
+    var n = cfg.items.length, p = score / n, r = rankOf(p);
+    results[mode] = score + "/" + n + " · " + r.t;
+    saveResults();
+    var lessons = mode === "sort"
+      ? ["Коррекция отвечает на вопрос «что исправить сейчас?», КРД — «что изменить, чтобы не повторилось?».",
+         "Проверить «на других складах» — это всё ещё коррекция, просто шире.",
+         "«Усилить», «провести анализ», «внимательнее» — не мероприятия. Их нечем подтвердить."]
+      : ["Спросите себя: что я покажу как доказательство, когда наступит срок?",
+         "Мероприятие должно сразу быть действием, а не обещанием придумать действие.",
+         "Обязанность из должностной инструкции — не КРД. Ищите, что мешает её выполнять.",
+         "Прочитайте вслух: «Сделали Х → причина исчезла». Не складывается — ошибка №4."];
+    renderFinal(cfg.title, score, n, ms, r, lessons, mistakes, function () { runCards(mode); });
+  }
+
+  draw();
+}
+
+function renderFinal(title, score, n, ms, r, lessons, mistakes, again) {
+  var html = '<div class="top"><button class="back" onclick="home()">← Все упражнения</button><h2>' + title + ' — итоги</h2></div>' +
+    '<div class="saber"></div><div class="final"><div class="score">' + score + '/' + n + '</div>' +
+    '<div class="rank">' + r.i + ' ' + r.t + '</div><div class="muted">время ' + fmt(ms) + '</div>' +
+    '<div class="lesson"><h3>Главное</h3><ul>' + lessons.map(function (l) { return "<li>" + esc(l) + "</li>"; }).join("") + '</ul></div>';
+  if (mistakes && mistakes.length) {
+    html += '<details class="mist"><summary>Где ошиблись (' + mistakes.length + ')</summary><ul>' +
+      mistakes.map(function (m) { return "<li>" + esc(m.t) + "</li>"; }).join("") + '</ul></details>';
+  }
+  html += '<div class="acts"><button class="btn ghost" id="again">Пройти ещё раз</button><button class="btn" onclick="home()">К упражнениям</button></div></div>';
+  h(html);
+  document.getElementById("again").onclick = again;
+}
+
+/* ---------- Игра 3: 5 почему ---------- */
+function chooseWhy() {
+  stopTimer(); keyHandler = null;
+  var html = '<div class="top"><button class="back" onclick="home()">← Все упражнения</button><h2>Дойди до корня</h2></div>' +
+    '<div class="saber"></div><p class="muted">Правила «5 почему»: отвечайте фактами, спрашивайте «почему?», а не «кто?», не кидайте камни в чужой огород и не придумывайте ответ заранее.</p>' +
+    '<div class="tiles">';
+  WHY.forEach(function (w, k) {
+    var r = results["why-" + w.id];
+    html += '<button class="tile" onclick="runWhy(' + k + ')"><span class="num">' + (k + 1) + '</span><h3>' + esc(w.title) + '</h3>' +
+      '<p>' + esc(w.problem) + '</p><div class="meta"><span>5 шагов + выбор КРД</span>' + (r ? '<span class="badge">' + r + '</span>' : '') + '</div></button>';
+  });
+  html += '</div>';
+  h(html);
+}
+
+function shuffle(a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+
+function runWhy(idx) {
+  var w = WHY[idx], step = 0, score = 0, firstTry = true, chain = [];
+  var total = w.steps.length + 1;
+  startTimer();
+
+  function chainHtml() {
+    var s = '<div class="chain"><div class="link problem"><span class="n">Проблема</span><span>' + esc(w.problem) + '</span></div>';
+    chain.forEach(function (c, k) {
+      s += '<div class="link' + (k === w.steps.length - 1 ? " root" : "") + '"><span class="n">' +
+        (k === w.steps.length - 1 ? "Корень" : "Почему " + (k + 1)) + '</span><span>' + esc(c) + '</span></div>';
+    });
+    return s + '</div>';
+  }
+
+  function drawStep() {
+    firstTry = true;
+    var st = w.steps[step];
+    var opts = shuffle(st.opts);
+    var html = header(esc(w.title), step, total, score) + chainHtml() +
+      '<div class="q">' + (step + 1) + '. ' + esc(st.q) + '</div><div class="list">';
+    opts.forEach(function (o, k) { html += '<button class="opt" data-i="' + st.opts.indexOf(o) + '">' + esc(o.t) + '</button>'; });
+    html += '</div><div id="fb"></div>';
+    h(html);
+    bindOpts(st.opts, function () {
+      chain.push(st.opts.filter(function (o) { return o.ok; })[0].t);
+      step++;
+      if (step < w.steps.length) drawStep(); else drawTherefore();
+    });
+  }
+
+  function bindOpts(list, onDone) {
+    Array.prototype.forEach.call(app.querySelectorAll(".opt"), function (btn) {
+      btn.onclick = function () {
+        var o = list[+btn.getAttribute("data-i")];
+        btn.disabled = true;
+        btn.innerHTML = esc(o.t) + '<span class="why">' + esc(o.why) + '</span>';
+        if (o.ok) {
+          btn.classList.add("right");
+          if (firstTry) score++;
+          Array.prototype.forEach.call(app.querySelectorAll(".opt"), function (b) { b.disabled = true; });
+          document.getElementById("fb").innerHTML = '<div class="next"><button class="btn" id="nx">Дальше →</button></div>';
+          document.getElementById("nx").onclick = onDone;
+          document.getElementById("nx").focus();
+        } else {
+          btn.classList.add("wrong");
+          firstTry = false;
+        }
+      };
+    });
+  }
+
+  function drawTherefore() {
+    var html = header(esc(w.title), step, total, score) +
+      '<div class="q">Проверка: читаем цепочку снизу вверх через «поэтому»</div>' +
+      '<p class="muted">Корневая причина должна быть связана с проблемой. Если каждое «поэтому» звучит логично — корень найден верно.</p>' +
+      '<div class="therefore"><ol>' + w.therefore.map(function (t) { return "<li>" + t + "</li>"; }).join("") + '</ol></div>' +
+      '<div class="next"><button class="btn" id="nx">Сходится! Выбрать КРД →</button></div>';
+    h(html);
+    document.getElementById("nx").onclick = drawKrd;
+  }
+
+  function drawKrd() {
+    firstTry = true;
+    var opts = shuffle(w.krd);
+    var html = header(esc(w.title), w.steps.length, total, score) +
+      '<div class="link root" style="margin-bottom:14px"><span class="n">Корень</span><span>' + esc(w.root) + '</span></div>' +
+      '<div class="q">Какое мероприятие — настоящее КРД?</div><div class="list">';
+    opts.forEach(function (o) { html += '<button class="opt" data-i="' + w.krd.indexOf(o) + '">' + esc(o.t) + '</button>'; });
+    html += '</div><div id="fb"></div>';
+    h(html);
+    bindOpts(w.krd, function () {
+      var ms = stopTimer(), r = rankOf(score / total);
+      results["why-" + w.id] = score + "/" + total + " · " + r.t;
+      results.why = results["why-" + w.id];
+      saveResults();
+      renderFinal(w.title, score, total, ms, r, [
+        "Спрашивайте «почему?», а не «кто?». Виноватый человек — почти никогда не корень.",
+        "Каждый ответ — факт, который можно проверить, а не догадка.",
+        "Проверяйте цепочку через «поэтому»: от корня к проблеме без натяжек.",
+        "КРД бьёт в корень. Перемещение, акт, ремонт — это коррекция."
+      ], null, function () { runWhy(idx); });
+    });
+  }
+
+  drawStep();
+}
+
+home();
+</script>
+</body>
+</html>
