@@ -2074,3 +2074,15 @@ tr.finalist td:first-child {
   color: #1e1b4b;
   text-shadow: 0 0 3px #fff;
 }
+
+/* Справка «Что это за игра?» на странице входа */
+.about {
+  text-align: left;
+}
+.about summary {
+  cursor: pointer;
+  font-weight: 800;
+}
+.about p {
+  margin: 8px 0 0;
+}

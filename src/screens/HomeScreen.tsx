@@ -181,7 +181,7 @@ export function HomeScreen() {
                 </li>
                 <li>Ошибки портят погоду, но не останавливают игру.</li>
                 <li>При равной высоте выше тот, кто быстрее прошёл вершины 1–{AUTO_STAGES.length}.</li>
-                <li>В финал выходят {pc.settings.finalistsCount} лучших.</li>
+                {pc.settings.finalistsCount > 0 && <li>В финал выходят {pc.settings.finalistsCount} лучших.</li>}
                 <li>
                   <b>Совет:</b> не пытайтесь пройти всё за один присест. Одна-две вершины в день, и голова остаётся свежей.
                 </li>

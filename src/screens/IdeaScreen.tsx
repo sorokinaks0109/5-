@@ -147,7 +147,7 @@ export function IdeaScreen() {
         /* ничего */
       }
       await refresh();
-      info('Идея отправлена жюри. Вы на юбилейной вершине!');
+      info('Идея отправлена жюри. Вы на главной вершине!');
       window.scrollTo(0, 0);
     } catch (e) {
       error(e);
