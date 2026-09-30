@@ -25,6 +25,8 @@ export interface ContentSettings {
   gameName: string;
   tourName: string;
   tagline: string;
+  /** Справка «Что это за игра?» на странице входа, по абзацу на строку */
+  about?: string[];
   /** Надписи по кругу на значке */
   badgeTop: string;
   badgeBottom: string;

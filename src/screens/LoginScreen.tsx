@@ -69,6 +69,17 @@ export function LoginScreen({ onLogin }: { onLogin: (code: string) => Promise<vo
           </p>
         </div>
 
+        {!!pc.settings.about?.length && (
+          <details className="card about">
+            <summary>Что это за игра?</summary>
+            {pc.settings.about.map((t, i) => (
+              <p key={i} className="small">
+                {t}
+              </p>
+            ))}
+          </details>
+        )}
+
         {api.mode === 'demo' && (
           <div className="card">
             <div className="row">

@@ -84,7 +84,7 @@ export function LeaderboardScreen() {
             <div className="card" style={{ padding: 8 }}>
               <RatingMountain rows={lb.rows} />
               <p className="small muted center" style={{ margin: '8px 0 0' }}>
-                Ваш флажок оранжевый, флажки финалистов жёлтые.
+                Ваш флажок оранжевый{pc.settings.finalistsCount > 0 ? ', флажки финалистов жёлтые' : ''}.
               </p>
             </div>
             <div className="card">

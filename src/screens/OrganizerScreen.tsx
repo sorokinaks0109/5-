@@ -203,14 +203,16 @@ function TourTab() {
           <li>Следите за «Прогрессом».</li>
           <li>После закрытия жюри оценивает идеи. Проверьте, что у всех работ по {s.juryCount} оценки.</li>
           <li>Нажмите «Опубликовать итоги»: участники увидят рейтинг и смогут скачать сертификаты.</li>
-          <li>«Итоги и выгрузка» → скачайте Excel. Первые {s.finalistsCount} проходят в финал.</li>
+          <li>
+            «Итоги и выгрузка» → скачайте Excel.{s.finalistsCount > 0 && ` Первые ${s.finalistsCount} проходят в финал.`}
+          </li>
         </ol>
         <h3>Настройки (из content.json)</h3>
         <ul className="small" style={{ paddingLeft: 20, margin: 0 }}>
           <li>Участников: до {s.maxParticipants}; жюри: {s.juryCount}</li>
           <li>Время на вершины: {s.stageMinutes.join(' / ')} мин</li>
           <li>Подсказок: {s.hintsTotal}, штраф {Math.round(s.hintPenalty * 100)}%</li>
-          <li>Финалистов: {s.finalistsCount}</li>
+          {s.finalistsCount > 0 && <li>Финалистов: {s.finalistsCount}</li>}
         </ul>
       </div>
     </div>
