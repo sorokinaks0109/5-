@@ -29,6 +29,10 @@ for (const p of reg.people) {
     memo: Object.fromEntries(Object.entries(m.memo).map(([k, v]) => [k, Core.txt(revive(v))])),
     upc: Object.fromEntries(Object.entries(m.upc).map(([k, v]) => [k, Core.txt(revive(v))])),
   };
+  // Старые статусы со словом «выполнено» сразу получают отметку в колонке «Выполнено?»
+  for (const k of ['memo', 'upc']) {
+    for (const [id, t] of Object.entries(parsed[k])) if (Core.isDone(t)) parsed[k + 'Flag'][id] = 'выполнено';
+  }
   const res = Core.refreshPersonal(ExcelJS, wb, p, reg, parsed);
   await wb.xlsx.writeFile(file);
   console.log(`${p.fio}: поручений ${res.total}, мероприятий УПЦ ${Core.itemsForPerson(reg, p).upc.length}`);

@@ -84,7 +84,8 @@ const edited = await page.evaluate(async () => {
   const ws = wb.getWorksheet('Отчёт');
   let row = 0;
   ws.eachRow((r, i) => { if (Core.txt(r.getCell(2).value).startsWith('Подготовить служебную записку за подписью Карпикова')) row = i; });
-  ws.getCell(row, 3).value = 'Служебная записка подписана, выполнено';
+  ws.getCell(row, 3).value = 'Служебная записка подписана';
+  ws.getCell(row, 6).value = 'выполнено';
   const w = await fh.createWritable(); await w.write(await wb.xlsx.writeBuffer()); await w.close();
 
   const rh = await root.getFileHandle('Реестр.xlsx');
@@ -120,13 +121,22 @@ const after = await page.evaluate(async () => {
   const reg = await read(root, 'Реестр.xlsx');
   const rm = Core.parseRegistry(reg).memo.find((x) => x.id === '10');
   const mw = await read(pd, 'Мещеряков.xlsx');
-  const idHidden = mw.getWorksheet('Отчёт').getColumn(14).hidden === true;
+  const ows = mw.getWorksheet('Отчёт');
+  const idHidden = ows.getColumn(14).hidden === true;
+  let rr = 0; ows.eachRow((r, i) => { if (!rr && Core.txt(r.getCell(14).value)) rr = i; });
+  const lk = (c) => (ows.getCell(rr, c).protection && ows.getCell(rr, c).protection.locked === false ? 'false' : 'locked');
+  const unlocked = 'C:' + lk(3) + ' F:' + lk(6) + ' B:' + lk(2);
+  const dv = ows.getCell(rr, 6).dataValidation && ows.getCell(rr, 6).dataValidation.type;
+  const prot = ows.sheetProtection;
   const arch = await root.getDirectoryHandle('Архив');
   let archCount = 0; for await (const d of arch.values()) for await (const f of d.values()) archCount++;
-  return { m, g, sheets: h.worksheets.map((w) => w.name), archCount, mark10: rm.mark, idHidden };
+  return { m, g, sheets: h.worksheets.map((w) => w.name), archCount, mark10: rm.mark, idHidden, unlocked, dv, prot };
 });
 const newKey = Core.itemKey('', 'Тестовое новое поручение без номера');
-check(after.m.memo['11'] === 'Служебная записка подписана, выполнено', 'неотмеченное выполненное осталось со статусом');
+check(after.m.memo['11'] === 'Служебная записка подписана' && after.m.memoFlag['11'] === 'выполнено', 'неотмеченное выполненное осталось с пояснением и отметкой из списка');
+check(after.prot && after.prot.sheet && !after.prot.insertRows && !after.prot.deleteRows, 'лист защищён: вставка и удаление строк запрещены');
+check(after.unlocked === 'C:false F:false B:locked', 'открыты только пояснение и «Выполнено?»: ' + after.unlocked);
+check(after.dv === 'list', 'в «Выполнено?» выпадающий список');
 check(newKey in after.m.memo && !('10' in after.m.memo), 'новое поручение без номера добавлено, отмеченное выполненное убрано');
 check(newKey in after.g.memo, 'соисполнитель получил поручение');
 check(after.mark10.startsWith('убрано из отчёта'), 'в реестре отметка: ' + after.mark10);
