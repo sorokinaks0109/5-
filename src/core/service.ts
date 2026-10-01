@@ -521,10 +521,14 @@ export class GameService {
     return this.tourView(tour);
   }
 
-  /** Очистить результаты перед настоящим туром: прохождения, идеи, оценки. Тур возвращается в «не открыт». */
+  /** Очистить результаты перед настоящим туром: прохождения, идеи, оценки и ники участников. Коды остаются, тур возвращается в «не открыт». */
   async orgReset(acc: Account): Promise<TourView> {
     this.require(acc, 'organizer');
     await this.store.resetResults();
+    // Ники тоже стираем: коды снова «чистые», каждый придумает свой ник при первом входе
+    for (const a of await this.store.listAccounts()) {
+      if (a.role === 'participant' && a.nick) await this.store.updateAccount({ ...a, nick: null });
+    }
     const tour = await this.store.getTour();
     tour.state = 'draft';
     tour.opensAt = null;
