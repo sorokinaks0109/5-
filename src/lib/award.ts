@@ -1,7 +1,7 @@
 // Сертификат для награждения: имя и «за что» вводит организатор. Рисуется на canvas прямо в браузере,
 // ничего никуда не отправляется и не сохраняется.
 import { pc } from '../content.ts';
-import { badge } from './certificate.ts';
+import { badge, type BadgeColors } from './certificate.ts';
 
 export type Medal = 'gold' | 'silver' | 'bronze' | 'star' | 'none';
 
@@ -22,7 +22,10 @@ const BH = (BW * 210) / 297;
 /** 300 точек на дюйм для печати на А4 */
 export const PRINT_WIDTH = 2480;
 
-const CONFETTI = ['#facc15', '#f97316', '#ec4899', '#22d3ee', '#34d399', '#a78bfa', '#ffffff'];
+const CONFETTI = ['#fde047', '#38bdf8', '#ffffff', '#22d3ee', '#60a5fa', '#bae6fd', '#facc15'];
+
+/** Эмблема на синем: золотое кольцо и тёмно-синяя середина */
+const BADGE: BadgeColors = { ring: ['#fef08a', '#facc15', '#f59e0b'], core: '#0a2a66', text: '#0a2a66' };
 
 function rng(seed: number) {
   let s = seed;
@@ -74,7 +77,7 @@ function medalShape(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: nu
     bronze: ['#ffedd5', '#c2410c', '#431407'],
   }[medal];
   ctx.save();
-  ctx.shadowColor = 'rgba(30,27,75,0.55)';
+  ctx.shadowColor = 'rgba(6,26,69,0.55)';
   ctx.shadowBlur = 22;
   ctx.shadowOffsetY = 8;
   // зубчатый край
@@ -142,17 +145,17 @@ export function drawAward(canvas: HTMLCanvasElement, o: AwardOptions, width = PR
 
   // небо
   const sky = ctx.createLinearGradient(0, 0, 0, BH);
-  sky.addColorStop(0, '#1e1b4b');
-  sky.addColorStop(0.42, '#5b21b6');
-  sky.addColorStop(0.78, '#db2777');
-  sky.addColorStop(1, '#fb923c');
+  sky.addColorStop(0, '#061a45');
+  sky.addColorStop(0.42, '#0b3d94');
+  sky.addColorStop(0.78, '#1479d4');
+  sky.addColorStop(1, '#5cc8f7');
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, BW, BH);
 
   // северное сияние
   const aur = ctx.createLinearGradient(0, 0, BW, 0);
   aur.addColorStop(0, 'rgba(34,211,238,0)');
-  aur.addColorStop(0.5, 'rgba(52,211,153,0.4)');
+  aur.addColorStop(0.5, 'rgba(45,212,191,0.4)');
   aur.addColorStop(1, 'rgba(34,211,238,0)');
   ctx.fillStyle = aur;
   ctx.beginPath();
@@ -163,7 +166,7 @@ export function drawAward(canvas: HTMLCanvasElement, o: AwardOptions, width = PR
   ctx.bezierCurveTo(1300, 450, 900, 570, 600, 510);
   ctx.bezierCurveTo(300, 450, 150, 510, 0, 550);
   ctx.fill();
-  ctx.fillStyle = 'rgba(244,114,182,0.25)';
+  ctx.fillStyle = 'rgba(125,211,252,0.28)';
   ctx.beginPath();
   ctx.moveTo(0, 250);
   ctx.bezierCurveTo(300, 170, 700, 300, 1000, 200);
@@ -183,11 +186,11 @@ export function drawAward(canvas: HTMLCanvasElement, o: AwardOptions, width = PR
   }
 
   // горы: дальние, средние со снежными шапками, передние
-  poly(ctx, [[0, BH], [0, 880], [220, 750], [430, 850], [700, 770], [1000, 870], [1300, 720], [BW, 860], [BW, BH]], 'rgba(167,139,250,0.55)');
-  poly(ctx, [[0, BH], [0, 950], [260, 850], [520, 950], [800, 920], [1080, 950], [1340, 845], [BW, 950], [BW, BH]], '#4338ca');
+  poly(ctx, [[0, BH], [0, 880], [220, 750], [430, 850], [700, 770], [1000, 870], [1300, 720], [BW, 860], [BW, BH]], 'rgba(147,197,253,0.55)');
+  poly(ctx, [[0, BH], [0, 950], [260, 850], [520, 950], [800, 920], [1080, 950], [1340, 845], [BW, 950], [BW, BH]], '#1d4ed8');
   poly(ctx, [[260, 850], [232, 884], [252, 876], [262, 892], [276, 874], [292, 882]], '#ffffff');
   poly(ctx, [[1340, 845], [1310, 882], [1330, 874], [1342, 892], [1356, 872], [1374, 882]], '#ffffff');
-  poly(ctx, [[0, BH], [0, 1020], [400, 990], [800, 1010], [1200, 985], [BW, 1020], [BW, BH]], '#1e1b4b');
+  poly(ctx, [[0, BH], [0, 1020], [400, 990], [800, 1010], [1200, 985], [BW, 1020], [BW, BH]], '#061a45');
 
   // флажок на правой вершине, ниже текста
   ctx.strokeStyle = '#ffffff';
@@ -197,13 +200,13 @@ export function drawAward(canvas: HTMLCanvasElement, o: AwardOptions, width = PR
   ctx.moveTo(1340, 846);
   ctx.lineTo(1340, 800);
   ctx.stroke();
-  poly(ctx, [[1342, 800], [1384, 813], [1342, 826]], '#f97316');
+  poly(ctx, [[1342, 800], [1384, 813], [1342, 826]], '#facc15');
 
   // рамка
   const gold = ctx.createLinearGradient(0, 0, BW, BH);
-  gold.addColorStop(0, '#facc15');
-  gold.addColorStop(0.5, '#f97316');
-  gold.addColorStop(1, '#ec4899');
+  gold.addColorStop(0, '#fde68a');
+  gold.addColorStop(0.5, '#ffffff');
+  gold.addColorStop(1, '#7dd3fc');
   ctx.strokeStyle = gold;
   ctx.lineWidth = 7;
   ctx.beginPath();
@@ -240,19 +243,19 @@ export function drawAward(canvas: HTMLCanvasElement, o: AwardOptions, width = PR
   }
 
   // шапка
-  badge(ctx, BW / 2, 140, 85);
-  ctx.fillStyle = '#e0e7ff';
+  badge(ctx, BW / 2, 140, 85, BADGE);
+  ctx.fillStyle = '#dbeafe';
   ctx.font = '800 30px Arial, sans-serif';
   spaced(ctx, '6px');
   ctx.fillText(pc.settings.gameName.toUpperCase(), BW / 2, 278);
-  ctx.fillStyle = '#c7d2fe';
+  ctx.fillStyle = '#bfdbfe';
   ctx.font = '600 27px Arial, sans-serif';
   spaced(ctx, '1px');
   ctx.fillText(pc.settings.tourName, BW / 2, 316);
 
   // СЕРТИФИКАТ
   ctx.save();
-  ctx.shadowColor = 'rgba(30,27,75,0.6)';
+  ctx.shadowColor = 'rgba(6,26,69,0.6)';
   ctx.shadowBlur = 16;
   ctx.shadowOffsetY = 7;
   const tg = ctx.createLinearGradient(0, 340, 0, 440);
@@ -266,14 +269,14 @@ export function drawAward(canvas: HTMLCanvasElement, o: AwardOptions, width = PR
   spaced(ctx, '0px');
   const stripe = ctx.createLinearGradient(BW / 2 - 270, 0, BW / 2 + 270, 0);
   stripe.addColorStop(0, '#facc15');
-  stripe.addColorStop(0.5, '#f97316');
-  stripe.addColorStop(1, '#ec4899');
+  stripe.addColorStop(0.5, '#ffffff');
+  stripe.addColorStop(1, '#38bdf8');
   ctx.fillStyle = stripe;
   ctx.beginPath();
   ctx.roundRect(BW / 2 - 270, 464, 540, 9, 5);
   ctx.fill();
 
-  ctx.fillStyle = '#fbcfe8';
+  ctx.fillStyle = '#bae6fd';
   ctx.font = '700 38px Arial, sans-serif';
   spaced(ctx, '8px');
   ctx.fillText('НАГРАЖДАЕТСЯ', BW / 2 + 4, 548);
@@ -282,7 +285,7 @@ export function drawAward(canvas: HTMLCanvasElement, o: AwardOptions, width = PR
   // имя
   const name = o.name.trim();
   ctx.save();
-  ctx.shadowColor = 'rgba(30,27,75,0.7)';
+  ctx.shadowColor = 'rgba(6,26,69,0.7)';
   ctx.shadowBlur = 14;
   ctx.shadowOffsetY = 6;
   ctx.fillStyle = name ? '#fde047' : 'rgba(253,224,71,0.45)';
@@ -328,7 +331,7 @@ export function drawAward(canvas: HTMLCanvasElement, o: AwardOptions, width = PR
     ctx.lineTo(560, 1030);
     ctx.stroke();
     ctx.font = '600 24px Arial, sans-serif';
-    ctx.fillStyle = '#e0e7ff';
+    ctx.fillStyle = '#dbeafe';
     ctx.fillText(o.signer.trim() || 'подпись', 365, 1062);
   }
   ctx.beginPath();
@@ -339,7 +342,7 @@ export function drawAward(canvas: HTMLCanvasElement, o: AwardOptions, width = PR
   ctx.font = '700 34px Arial, sans-serif';
   ctx.fillText(o.date.trim(), 1235, 1020);
   ctx.font = '600 24px Arial, sans-serif';
-  ctx.fillStyle = '#e0e7ff';
+  ctx.fillStyle = '#dbeafe';
   ctx.fillText('дата', 1235, 1062);
 }
 
