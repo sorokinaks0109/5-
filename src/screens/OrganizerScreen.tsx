@@ -8,9 +8,10 @@ import { AUTO_STAGES, STAGES, type Account, type ItemStat, type ProgressRow, typ
 import { formatDate, meters, useApp } from '../hooks.ts';
 import { downloadCsv, downloadXlsx, stamp, type Sheet } from '../lib/export.ts';
 import { STAGE_THEME } from '../theme.ts';
+import { AwardsTab } from './AwardsTab.tsx';
 import { RatingMountain } from './LeaderboardScreen.tsx';
 
-type Tab = 'tour' | 'codes' | 'progress' | 'items' | 'results';
+type Tab = 'tour' | 'codes' | 'progress' | 'items' | 'results' | 'awards';
 
 const ROLE: Record<string, string> = { participant: 'Участник', jury: 'Жюри', organizer: 'Организатор' };
 const STATUS_ICON: Record<StageStatus, string> = { locked: '·', available: '○', active: '◐', finished: '●' };
@@ -35,6 +36,7 @@ export function OrganizerScreen() {
               ['progress', 'Прогресс'],
               ['items', 'Задания'],
               ['results', 'Итоги и выгрузка'],
+              ['awards', 'Сертификаты'],
             ] as [Tab, string][]
           ).map(([k, t]) => (
             <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>
@@ -47,6 +49,7 @@ export function OrganizerScreen() {
         {tab === 'progress' && <ProgressTab />}
         {tab === 'items' && <ItemsTab />}
         {tab === 'results' && <ResultsTab />}
+        {tab === 'awards' && <AwardsTab />}
       </main>
     </>
   );

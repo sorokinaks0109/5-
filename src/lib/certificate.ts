@@ -5,17 +5,25 @@ import { downloadBlob } from './export.ts';
 const W = 1600;
 const H = 1130;
 
-function badge(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
+export interface BadgeColors {
+  ring: [string, string, string];
+  core: string;
+  text: string;
+}
+
+const GAME_BADGE: BadgeColors = { ring: ['#facc15', '#f97316', '#ec4899'], core: '#1e1b4b', text: '#1e1b4b' };
+
+export function badge(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, colors: BadgeColors = GAME_BADGE) {
   ctx.save();
   const ring = ctx.createLinearGradient(cx - r, cy - r, cx + r, cy + r);
-  ring.addColorStop(0, '#facc15');
-  ring.addColorStop(0.5, '#f97316');
-  ring.addColorStop(1, '#ec4899');
+  ring.addColorStop(0, colors.ring[0]);
+  ring.addColorStop(0.5, colors.ring[1]);
+  ring.addColorStop(1, colors.ring[2]);
   ctx.fillStyle = ring;
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = '#1e1b4b';
+  ctx.fillStyle = colors.core;
   ctx.beginPath();
   ctx.arc(cx, cy, r * 0.58, 0, Math.PI * 2);
   ctx.fill();
@@ -46,7 +54,7 @@ function badge(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number)
   // Надпись по кругу
   const text = `${pc.settings.badgeTop} · ${pc.settings.badgeBottom} · `;
   ctx.font = `800 ${r * 0.17}px Arial, sans-serif`;
-  ctx.fillStyle = '#1e1b4b';
+  ctx.fillStyle = colors.text;
   const step = (Math.PI * 2) / text.length;
   for (let i = 0; i < text.length; i++) {
     const a = -Math.PI / 2 + i * step;
