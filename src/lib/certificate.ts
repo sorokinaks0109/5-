@@ -5,7 +5,7 @@ import { downloadBlob } from './export.ts';
 const W = 1600;
 const H = 1130;
 
-function badge(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
+export function badge(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
   ctx.save();
   const ring = ctx.createLinearGradient(cx - r, cy - r, cx + r, cy + r);
   ring.addColorStop(0, '#facc15');

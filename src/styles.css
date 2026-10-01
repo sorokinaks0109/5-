@@ -2086,3 +2086,32 @@ tr.finalist td:first-child {
 .about p {
   margin: 8px 0 0;
 }
+
+/* Сертификат для награждения */
+.award-preview {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  padding: 8px 0;
+  background: var(--card, #fff);
+  text-align: center;
+}
+.award-preview canvas {
+  display: inline-block;
+  max-width: 100%;
+  max-height: 34vh;
+  width: auto;
+  height: auto;
+  border-radius: 12px;
+  box-shadow: 0 6px 22px rgba(30, 27, 75, 0.3);
+}
+@media (min-width: 900px) {
+  .award-preview canvas {
+    max-height: 60vh;
+  }
+}
+.award-form {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+}
