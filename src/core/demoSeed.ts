@@ -5,7 +5,7 @@ import { GameService } from './service.ts';
 import { IDEA_STAGE, type Account, type AnswerKey, type AnswerValue, type Content, type PublicItem, type StageNo, type Store } from './types.ts';
 
 export const DEMO_CODES = {
-  organizer: 'ORG-2027',
+  organizer: 'ORG-0001',
   jury: ['JURY-0001', 'JURY-0002', 'JURY-0003'],
   participants: ['DEMO-0001', 'DEMO-0002', 'DEMO-0003', 'DEMO-0004', 'DEMO-0005'],
 };

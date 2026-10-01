@@ -157,7 +157,7 @@ describe('демо-режим', () => {
     await seedDemo(store, content);
     const accounts = await store.listAccounts();
     expect(accounts.filter((a) => a.role === 'jury')).toHaveLength(3);
-    expect(accounts.find((a) => a.code === 'ORG2027')?.role).toBe('organizer');
+    expect(accounts.find((a) => a.code === 'ORG0001')?.role).toBe('organizer');
     expect((await store.listRuns()).length).toBeGreaterThan(10);
   });
 });
