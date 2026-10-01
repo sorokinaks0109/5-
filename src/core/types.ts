@@ -497,7 +497,7 @@ export interface Store {
   saveIdea(idea: Idea): Promise<void>;
   listIdeaScores(): Promise<IdeaScore[]>;
   saveIdeaScore(score: IdeaScore): Promise<void>;
-  /** Стирает прохождения, идеи и оценки. Коды и ники остаются. */
+  /** Стирает прохождения, идеи и оценки. Коды остаются. Ники стирает сервис отдельно. */
   resetResults(): Promise<void>;
 }
 

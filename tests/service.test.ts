@@ -234,9 +234,10 @@ describe('новые задания', () => {
     await solveStage(ctx, 1);
     await ctx.svc.orgReset(ctx.org);
     expect(await ctx.store.listRuns()).toHaveLength(0);
-    const me = await ctx.svc.me(ctx.player);
+    // Как на сервере: учётную запись читаем из хранилища заново
+    const me = await ctx.svc.me((await ctx.store.getAccount(ctx.player.id))!);
     expect(me.tour.state).toBe('draft');
-    expect(me.nick).toBe('Альпинист');
+    expect(me.nick).toBeNull();
     await expect(ctx.svc.orgReset(ctx.player)).rejects.toThrow(/прав/);
   });
 });
