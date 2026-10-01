@@ -7,12 +7,12 @@
   const CTL_ORDER = ['overdue', 'check', 'work', 'nodate', 'done', 'closed'];
   const CTL_NAMES = {
     overdue: 'Просрочено, нет статуса', check: 'Срок прошёл — проверить', work: 'В работе',
-    nodate: 'Без даты', done: 'Выполнено', closed: 'Закрыто',
+    nodate: 'Без даты', done: 'Выполнено — убрать после совещания', closed: 'Убрано из отчёта',
   };
 
   const state = {
     dir: null, readOnly: false, demo: false, reg: null, files: {}, model: null,
-    tab: 'who', person: 0, memoFilter: 'all', memoPerson: '', upcPerson: '', preview: null, log: [],
+    tab: 'who', person: 0, memoFilter: 'all', memoPerson: '', upcPerson: '', preview: null, toClose: null, log: [],
     error: '',
   };
 
@@ -272,7 +272,7 @@
 
   function memoItem(m) {
     const st = m.status ? '<div class="status">' + esc(m.status) + '</div>' : '<div class="status none">статус не заполнен</div>';
-    return '<div class="item c-' + m.ctl.code + '"><div class="id">' + esc(m.id) + '</div>' +
+    return '<div class="item c-' + m.ctl.code + '">' +
       '<div class="what">' + esc(m.text) + '</div>' + st +
       '<div class="meta">' + badge(m.ctl) + '<span>Срок: ' + esc(fmt(m.due) || '—') + '</span>' +
       (m.date ? '<span>Поручено: ' + esc(fmt(m.date)) + '</span>' : '') +
@@ -309,11 +309,11 @@
     if (!list.length) return '<div class="muted small">Мероприятий, где руководитель докладчик, нет</div>';
     const groups = {};
     list.forEach((u) => (groups[u.kpi || 'Без показателя'] = groups[u.kpi || 'Без показателя'] || []).push(u));
-    let h = '<div class="scroll"><table class="grid"><thead><tr><th style="width:70px">ID</th><th>Мероприятие</th><th>Статус</th><th style="width:120px">Срок</th></tr></thead><tbody>';
+    let h = '<div class="scroll"><table class="grid"><thead><tr><th>Мероприятие</th><th>Статус</th><th style="width:120px">Срок</th></tr></thead><tbody>';
     for (const [k, items] of Object.entries(groups)) {
-      h += '<tr class="sub"><td colspan="4">' + esc(k) + '</td></tr>';
+      h += '<tr class="sub"><td colspan="3">' + esc(k) + '</td></tr>';
       for (const u of items) {
-        h += '<tr><td>' + esc(u.id) + '</td><td>' + esc(u.text) + '</td>' +
+        h += '<tr><td>' + esc(u.text) + '</td>' +
           (u.status ? '<td>' + esc(u.status) + '</td>' : '<td class="none">статус не заполнен</td>') +
           '<td>' + esc(fmt(u.due)) + '</td></tr>';
       }
@@ -389,19 +389,19 @@
     const resps = [...new Set(m.memo.map((x) => x.resp).filter(Boolean))];
     let h = '<div class="panel"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Свод поручений по Мемо</h2>' +
       '<span class="row no-print"><button data-act="print">Печать</button></span></div>' +
-      '<div class="muted small">Статус — из личного файла ответственного. Закрытые (с отметкой секретаря) скрыты, их можно открыть фильтром.</div></div>' +
+      '<div class="muted small">Статус — из личного файла ответственного. Выполненные видны, пока помощник не уберёт их после совещания (вкладка «Рассылка и свод»). Убранные скрыты, их можно открыть фильтром.</div></div>' +
       '<div class="filters">' + chip('all', 'Все открытые', all.filter((x) => x.ctl.code !== 'closed').length) +
       CTL_ORDER.map((k) => chip(k, CTL_NAMES[k], cnt[k] || 0)).join('') +
       '<select id="memoPerson"><option value="">Все ответственные</option>' +
       resps.map((r) => '<option value="' + esc(Core.normName(r)) + '"' + (state.memoPerson === Core.normName(r) ? ' selected' : '') + '>' + esc(r) + '</option>').join('') + '</select></div>';
-    h += '<div class="scroll"><table class="grid"><thead><tr><th>ID</th><th>Дата</th><th>Поручение</th><th>Ответственный</th><th>Срок</th><th>Статус</th><th>Отметка секретаря</th><th>Контроль</th></tr></thead><tbody>';
+    h += '<div class="scroll"><table class="grid"><thead><tr><th>Дата</th><th>Поручение</th><th>Ответственный</th><th>Срок</th><th>Статус</th><th>Отметка секретаря</th><th>Контроль</th></tr></thead><tbody>';
     for (const x of list) {
-      h += '<tr><td>' + esc(x.id) + '</td><td>' + esc(fmt(x.date)) + '</td><td>' + esc(x.text) + (x.co ? '<div class="muted small">Соисп.: ' + esc(x.co) + '</div>' : '') +
+      h += '<tr><td>' + esc(fmt(x.date)) + '</td><td>' + esc(x.text) + (x.co ? '<div class="muted small">Соисп.: ' + esc(x.co) + '</div>' : '') +
         '</td><td>' + esc(x.resp) + (x.inList ? '' : '<div class="muted small">нет в списке руководителей</div>') + '</td><td>' + esc(fmt(x.due)) + '</td>' +
         (x.status ? '<td>' + esc(x.status) + '</td>' : '<td class="none">' + (x.inList ? 'нет статуса' : '') + '</td>') +
         '<td>' + esc(x.mark) + '</td><td>' + badge(x.ctl) + '</td></tr>';
     }
-    if (!list.length) h += '<tr><td colspan="8" class="muted">Ничего не найдено</td></tr>';
+    if (!list.length) h += '<tr><td colspan="7" class="muted">Ничего не найдено</td></tr>';
     return h + '</tbody></table></div>';
   }
 
@@ -417,11 +417,11 @@
       '<div class="muted small">Мероприятий: ' + list.length + ', без статуса: ' + empty + '. Если докладчика нет, статус берётся из реестра (лист «План УПЦ»).</div></div>';
     const groups = {};
     list.forEach((u) => (groups[u.kpi || '—'] = groups[u.kpi || '—'] || []).push(u));
-    h += '<div class="scroll"><table class="grid"><thead><tr><th>ID</th><th>Мероприятие</th><th>Ответственный исполнитель</th><th>Срок</th><th>Докладчик</th><th>Статус</th></tr></thead><tbody>';
+    h += '<div class="scroll"><table class="grid"><thead><tr><th>Мероприятие</th><th>Ответственный исполнитель</th><th>Срок</th><th>Докладчик</th><th>Статус</th></tr></thead><tbody>';
     for (const [k, items] of Object.entries(groups)) {
-      h += '<tr class="sub"><td colspan="6">' + esc(k) + '</td></tr>';
+      h += '<tr class="sub"><td colspan="5">' + esc(k) + '</td></tr>';
       for (const u of items) {
-        h += '<tr><td>' + esc(u.id) + '</td><td>' + esc(u.text) + '</td><td>' + esc(u.resp) + '</td><td>' + esc(fmt(u.due)) + '</td><td>' + esc(u.speaker || '—') + '</td>' +
+        h += '<tr><td>' + esc(u.text) + '</td><td>' + esc(u.resp) + '</td><td>' + esc(fmt(u.due)) + '</td><td>' + esc(u.speaker || '—') + '</td>' +
           (u.status ? '<td>' + esc(u.status) + '</td>' : '<td class="none">нет статуса</td>') + '</tr>';
       }
     }
@@ -430,21 +430,35 @@
 
   function sendHtml() {
     const ro = state.readOnly || state.demo;
-    let h = '<div class="panel"><h2>1. Разослать поручения в личные файлы</h2>' +
-      '<p class="muted small">Делайте после каждого совещания, когда внесли новые поручения в Реестр. Сборщик допишет каждому новые поручения и мероприятия УПЦ, ' +
-      'уберёт закрытые (с отметкой секретаря), а всё, что человек уже написал, оставит. Перед записью копия каждого файла кладётся в папку «Архив».</p>' +
+    let h = '<div class="panel"><h2>1. После совещания: убрать выполненное и разослать новые поручения</h2>' +
+      '<p class="muted small">Внесите новые поручения в Реестр, сохраните и закройте его. Нажмите «Проверить»: Сборщик покажет выполненные поручения — отметьте, какие убрать из отчётов. ' +
+      '«Разослать» поставит им отметку в Реестре, уберёт их из личных файлов и допишет новые поручения. Всё, что руководители написали, остаётся. ' +
+      'Перед записью копии файлов кладутся в папку «Архив».</p>' +
       (state.readOnly ? '<div class="msg warn">Папка открыта только для чтения — рассылка недоступна. Откройте Сборщик в Chromium.</div>' : '') +
       (state.demo ? '<div class="msg warn">Демо-режим: изменения пишутся в память и пропадут после закрытия страницы.</div>' : '') +
       '<div class="row"><button data-act="check"' + (state.readOnly ? ' disabled' : '') + '>Проверить, что изменится</button>' +
       (state.preview ? '<button class="primary" data-act="send">Разослать</button>' : '') + '</div>';
     if (state.preview) {
-      h += '<div class="scroll" style="margin-top:12px"><table class="grid"><thead><tr><th>Руководитель</th><th>Файл</th><th>Добавится</th><th>Уйдёт (закрыто)</th><th>Будет поручений</th><th>Внимание</th></tr></thead><tbody>';
+      h += '<div class="scroll" style="margin-top:12px"><table class="grid"><thead><tr><th>Руководитель</th><th>Файл</th><th>Добавится</th><th>Уйдёт (выполнено)</th><th>Будет поручений</th><th>Внимание</th></tr></thead><tbody>';
       for (const r of state.preview) {
-        h += '<tr><td>' + esc(r.fio) + '</td><td>' + esc(r.file) + (r.isNew ? ' <span class="badge b-work">новый</span>' : '') + '</td><td>' + esc(r.added.join(', ') || '—') +
-          '</td><td>' + esc(r.removed.join(', ') || '—') + '</td><td class="num">' + r.total + '</td><td>' +
+        h += '<tr><td>' + esc(r.fio) + '</td><td>' + esc(r.file) + (r.isNew ? ' <span class="badge b-work">новый</span>' : '') + '</td><td class="num">' + (r.added.length || '—') +
+          '</td><td class="num">' + (r.removed.length || '—') + '</td><td class="num">' + r.total + '</td><td>' +
           (r.error ? '<span class="badge b-overdue">пропущен</span> ' + esc(r.error) : esc(r.warn || '')) + '</td></tr>';
       }
       h += '</tbody></table></div>';
+    }
+    if (state.toClose) {
+      h += '<h3 style="margin:16px 0 6px">Выполненные — убрать из отчётов?</h3>';
+      if (!state.toClose.length) h += '<div class="muted small">Выполненных поручений нет.</div>';
+      else {
+        h += '<div class="row small" style="margin-bottom:6px"><button data-act="closeAll">Отметить все</button><button data-act="closeNone">Снять все</button>' +
+          '<span class="muted">Без галочки поручение останется в отчёте ещё на неделю.</span></div>' +
+          '<div class="scroll"><table class="grid"><thead><tr><th style="width:40px"></th><th>Ответственный</th><th>Поручение</th><th>Статус</th></tr></thead><tbody>';
+        for (const m of state.toClose) {
+          h += '<tr><td><input type="checkbox" class="closeBox" data-id="' + esc(m.id) + '"' + (m.checked ? ' checked' : '') + '></td><td>' + esc(m.resp) + '</td><td>' + esc(m.text) + '</td><td>' + esc(m.status) + '</td></tr>';
+        }
+        h += '</tbody></table></div>';
+      }
     }
     h += '</div><div class="panel"><h2>2. Сохранить свод в Excel</h2><p class="muted small">Один файл для директора и архива: кто обновил, все поручения со статусами и контролем срока, план УПЦ и по листу на каждого руководителя. ' +
       (ro ? 'Файл скачается через браузер.' : 'Файл появится в папке «Своды».') + '</p>' +
@@ -458,20 +472,20 @@
       '<p>В общей папке «Отчёт первой линейки» лежат: <b>Реестр.xlsx</b> (его ведёт помощник), папка <b>Руководители</b> с личным файлом каждого руководителя и этот <b>Сборщик.html</b>. ' +
       'Каждый заполняет только свой файл, поэтому «файл занят» больше не бывает. Сборщик работает в браузере без интернета и ничего не отправляет наружу.</p>' +
       '<h3>Помощник: каждую неделю</h3><ol>' +
-      '<li>После совещания внесите новые поручения в Реестр (лист «Мемо»), закройте выполненные: в «Отметке секретаря» напишите «выполнено 30.09». Сохраните и закройте Реестр.</li>' +
-      '<li>Откройте Сборщик → «Рассылка и свод» → «Проверить» → «Разослать». У всех в файлах появятся новые поручения.</li>' +
+      '<li>После совещания внесите новые поручения в Реестр (лист «Мемо»). Сохраните и закройте Реестр.</li>' +
+      '<li>Откройте Сборщик → «Рассылка и свод» → «Проверить». Отметьте выполненные поручения, которые показали на совещании, → «Разослать». Отмеченные уйдут из отчётов, новые появятся у всех в файлах.</li>' +
       '<li>Накануне совещания откройте «Кто обновил»: красные карточки — кому напомнить.</li>' +
       '<li>На совещании: «Доклады» → «На весь экран», стрелками ← → листайте докладчиков. Esc — выход.</li>' +
       '<li>Для директора: «Печать всех» или «Сохранить свод» (Excel).</li></ol>' +
       '<h3>Руководитель: до срока сдачи</h3><ol>' +
       '<li>Откройте свой файл в папке «Руководители».</li>' +
-      '<li>Блок 1 «Поручения по Мемо» и блок 4 «Мероприятия УПЦ»: пишите только в жёлтую колонку «Статус». Сделали — начните статус со слова «выполнено».</li>' +
+      '<li>Блок 1 «Поручения по Мемо» и блок 4 «Мероприятия УПЦ»: пишите только в жёлтую колонку «Статус». Сделали — начните статус со слова «выполнено». Строку не удаляйте: помощник покажет её на совещании и уберёт сам.</li>' +
       '<li>Блоки 2 «РОС» и 3 «Текущие проекты» — ваши: правьте, добавляйте строки. Подзаголовок — текст только в колонке A.</li>' +
-      '<li>Не переименовывайте заголовки блоков и не меняйте ID. Большие таблицы держите на отдельном листе (например, «Приложения») — Сборщик их покажет и не тронет.</li>' +
+      '<li>Не переименовывайте заголовки блоков. Большие таблицы держите на отдельном листе (например, «Приложения») — Сборщик их покажет и не тронет.</li>' +
       '<li>Сохраните и закройте файл.</li></ol>' +
       '<h3>Правила контроля срока</h3><ul>' +
       '<li><span class="badge b-done">выполнено</span> — в статусе есть «выполнено», «проведено», «исполнено», «завершено», «снято» или «закрыто» (и нет «не» перед ним).</li>' +
-      '<li><span class="badge b-closed">закрыто</span> — то же слово в «Отметке секретаря». Закрытое уходит из личного файла при следующей рассылке.</li>' +
+      '<li>Выполненное остаётся в отчёте до совещания. После него помощник отмечает его при рассылке — и оно уходит из личного файла. В Реестре появляется отметка «убрано из отчёта».</li>' +
       '<li><span class="badge b-check">срок прошёл — проверить</span> — срок истёк, статус есть, но не «выполнено».</li>' +
       '<li><span class="badge b-overdue">просрочено, нет статуса</span> — срок истёк, статуса нет.</li>' +
       '<li><span class="badge b-nodate">без даты</span> — срок текстом («постоянно», «уточнить»).</li></ul>' +
@@ -520,17 +534,40 @@
 
   async function doCheck() {
     try {
-      state.preview = await prepare(await freshRegistry());
+      await loadAll();
+      const reg = await freshRegistry();
+      state.preview = await prepare(reg);
+      const prev = state.toClose ? new Map(state.toClose.map((m) => [m.id, m.checked])) : new Map();
+      state.toClose = state.model.memo.filter((m) => m.ctl.code === 'done')
+        .map((m) => ({ id: m.id, resp: m.resp, text: m.text, status: m.status, checked: prev.has(m.id) ? prev.get(m.id) : true }));
     } catch (e) {
-      state.preview = null; log('Ошибка: ' + e.message);
+      state.preview = null; state.toClose = null; log('Ошибка: ' + e.message);
     }
     render();
+  }
+
+  async function closeDone(st) {
+    const ids = (state.toClose || []).filter((m) => m.checked).map((m) => m.id);
+    if (!ids.length) return true;
+    try {
+      const r = await readXlsx(state.dir, [REGISTRY]);
+      const reg = Core.parseRegistry(r.wb);
+      const n = Core.closeInRegistry(r.wb, reg, ids, 'убрано из отчёта ' + Core.fmtDate(Core.todayUTC()) + ' (выполнено)');
+      await writeBytes(state.dir, ['Архив', st, REGISTRY], new Uint8Array(r.buf));
+      await writeBytes(state.dir, [REGISTRY], new Uint8Array(await r.wb.xlsx.writeBuffer()));
+      log('Реестр: убрано выполненных — ' + n);
+      return true;
+    } catch (e) {
+      log('Реестр НЕ записан — ' + e.message + '. Закройте Реестр в Р7 и повторите. Рассылка не выполнялась.');
+      return false;
+    }
   }
 
   async function doSend() {
     if (!confirm('Записать изменения в личные файлы? Копии старых файлов лягут в папку «Архив».')) return;
     const st = stamp();
     let ok = 0, fail = 0;
+    if (!(await closeDone(st))) { render(); return; }
     let rows;
     try { rows = await prepare(await freshRegistry()); } catch (e) { log('Ошибка: ' + e.message); render(); return; }
     for (const r of rows) {
@@ -548,7 +585,7 @@
     }
     log('Готово: записано ' + ok + ', с ошибками ' + fail + (ok ? '. Копии — в «Архив/' + st + '»' : ''));
     if (ok) { lsSet('since', isoLocal(new Date())); }
-    state.preview = null;
+    state.preview = null; state.toClose = null;
     await loadAll();
   }
 
@@ -592,16 +629,16 @@
     const shift = (n) => new Date(t.getTime() + n * 864e5);
     const wb = new ExcelJS.Workbook();
     const sheet = (name, head, rows) => { const ws = wb.addWorksheet(name); ws.addRow([name]); ws.addRow([]); ws.addRow(head); rows.forEach((r) => ws.addRow(r)); };
-    sheet('Мемо', ['ID', 'Дата совещания', 'Поручение', 'Ответственный', 'Соисполнители', 'Срок', 'Отметка секретаря'], [
-      ['М-001', shift(-14), 'Подготовить график отпусков на 4 квартал', 'Иванов И.И.', '', shift(-5), ''],
-      ['М-002', shift(-14), 'Провести инвентаризацию склада №2', 'Петрова А.С.', 'Иванов И.И.', shift(-3), ''],
-      ['М-003', shift(-7), 'Согласовать договор аренды площадки', 'Сидоров К.Л.', '', shift(10), ''],
-      ['М-004', shift(-7), 'Организовать обучение по охране труда', 'Иванов И.И.', '', shift(20), ''],
-      ['М-005', shift(-7), 'Подготовить справку по дебиторской задолженности', 'Петрова А.С.', '', 'еженедельно', ''],
-      ['М-006', shift(-21), 'Обновить должностные инструкции', 'Сидоров К.Л.', 'Петрова А.С.', shift(-10), 'выполнено ' + Core.fmtDate(shift(-8))],
-      ['М-007', shift(-7), 'Вынести вопрос о технике на совещание с ГД', 'Сидоров К.Л.', '', shift(-1), ''],
+    sheet('Мемо', ['№', 'Дата совещания', 'Поручение', 'Ответственный', 'Соисполнители', 'Срок', 'Отметка секретаря'], [
+      ['1', shift(-14), 'Подготовить график отпусков на 4 квартал', 'Иванов И.И.', '', shift(-5), ''],
+      ['2', shift(-14), 'Провести инвентаризацию склада №2', 'Петрова А.С.', 'Иванов И.И.', shift(-3), ''],
+      ['3', shift(-7), 'Согласовать договор аренды площадки', 'Сидоров К.Л.', '', shift(10), ''],
+      ['4', shift(-7), 'Организовать обучение по охране труда', 'Иванов И.И.', '', shift(20), ''],
+      ['5', shift(-7), 'Подготовить справку по дебиторской задолженности', 'Петрова А.С.', '', 'еженедельно', ''],
+      ['6', shift(-21), 'Обновить должностные инструкции', 'Сидоров К.Л.', 'Петрова А.С.', shift(-10), 'выполнено ' + Core.fmtDate(shift(-8))],
+      ['7', shift(-7), 'Вынести вопрос о технике на совещание с ГД', 'Сидоров К.Л.', '', shift(-1), ''],
     ]);
-    sheet('План УПЦ', ['Блок', 'Показатель', '№', 'ID', 'Мероприятие', 'Ответственный исполнитель', 'Срок', 'Примечания', 'Докладчик', 'Статус (только если нет докладчика)'], [
+    sheet('План УПЦ', ['Блок', 'Показатель', '№', 'Код (служебный)', 'Мероприятие', 'Ответственный исполнитель', 'Срок', 'Примечания', 'Докладчик', 'Статус (только если нет докладчика)'], [
       ['Блок ФОП', 'Выручка', 1, 'У-001', 'Мониторинг выполнения плановой выручки', 'Иванов И.И., Петрова А.С.', 'ежемесячно', '', 'Иванов И.И.', ''],
       ['Блок ФОП', 'Выручка', 2, 'У-002', 'Своевременное заключение доп. соглашений', 'Сидоров К.Л.', 'постоянно', '', 'Сидоров К.Л.', ''],
       ['Блок ФОП', 'Работа с ДЗ', 1, 'У-003', 'Мониторинг просроченной дебиторской задолженности', 'Петрова А.С.', 'постоянно', '', 'Петрова А.С.', ''],
@@ -616,12 +653,12 @@
     root.items.set(REGISTRY, new MemFile(REGISTRY, new Uint8Array(await wb.xlsx.writeBuffer())));
     const reg = Core.parseRegistry(wb);
     const own = {
-      'Иванов.xlsx': { memo: { 'М-001': 'Проект графика на согласовании у ГД', 'М-004': 'Выполнено, обучение проведено ' + Core.fmtDate(shift(-2)) }, upc: { 'У-001': 'Факт 8 мес. 9 857 млн руб. при плане 7 987' },
+      'Иванов.xlsx': { memo: { '1': 'Проект графика на согласовании у ГД', '4': 'Выполнено, обучение проведено ' + Core.fmtDate(shift(-2)) }, upc: { 'У-001': 'Факт 8 мес. 9 857 млн руб. при плане 7 987' },
         ros: [[1, 'Выручка по ДО', 'В работе. Закрыто 8 мес. на 8 356 млн руб.', 'Иванов И.И.', d('2026-12-31'), 70], [2, 'Выручка по внешним клиентам', 'Выполнено', 'Иванов И.И.', d('2026-09-30'), 100]],
         proj: [['Инвестиционные проекты'], [1, 'Склад в п. Витим', 'Закупка ПИР до 15.10', 'Иванов И.И.', d('2026-10-15'), 40]], age: 1 },
-      'Петрова.xlsx': { memo: { 'М-005': 'ДЗ на 30.09 — 100,5 млн руб., просрочка 12 млн' }, upc: {},
+      'Петрова.xlsx': { memo: { '5': 'ДЗ на 30.09 — 100,5 млн руб., просрочка 12 млн' }, upc: {},
         ros: [[1, 'ПДЗ', 'Снижение на 8% к прошлому месяцу', 'Петрова А.С.', d('2026-12-31'), 50]], proj: [], age: 2 },
-      'Сидоров.xlsx': { memo: { 'М-007': 'Ждём даты совещания' }, upc: { 'У-002': 'Подписано 3 ДС из 5' }, ros: [], proj: [[1, 'Ремонт офиса', 'Ожидаем согласование', 'Сидоров К.Л.', d('2026-11-15'), 10]], age: 12 },
+      'Сидоров.xlsx': { memo: { '7': 'Ждём даты совещания' }, upc: { 'У-002': 'Подписано 3 ДС из 5' }, ros: [], proj: [[1, 'Ремонт офиса', 'Ожидаем согласование', 'Сидоров К.Л.', d('2026-11-15'), 10]], age: 12 },
     };
     const pd = new MemDir(PERSONAL_DIR);
     root.items.set(PERSONAL_DIR, pd);
@@ -653,10 +690,12 @@
     else if (a === 'print') window.print();
     else if (a === 'printAll') printAll();
     else if (a === 'check') doCheck();
+    else if (a === 'closeAll' || a === 'closeNone') { state.toClose.forEach((m) => (m.checked = a === 'closeAll')); render(); }
     else if (a === 'send') doSend();
     else if (a === 'summary') doSummary();
   });
   document.addEventListener('change', (e) => {
+    if (e.target.classList.contains('closeBox')) { const m = state.toClose.find((x) => x.id === e.target.dataset.id); if (m) m.checked = e.target.checked; }
     if (e.target.id === 'since') { lsSet('since', e.target.value); render(); }
     if (e.target.id === 'asof') { rebuildModel(); render(); }
     if (e.target.id === 'memoPerson') { state.memoPerson = e.target.value; render(); }

@@ -11,14 +11,18 @@
     upc: { no: 4, title: '4. МЕРОПРИЯТИЯ УПЦ (Я ДОКЛАДЧИК)', re: /^4\.\s*МЕРОПРИЯТИЯ/ },
   };
   const FREE_HEADER = ['№', 'Задача', 'Статус', 'Ответственные', 'Срок', '% выполнения'];
-  const MEMO_HEADER = ['ID', 'Поручение', 'Статус (заполнить)', 'Ответственные', 'Срок', 'Моя роль'];
-  const UPC_HEADER = ['ID', 'Мероприятие', 'Статус (заполнить)', 'Ответственный исполнитель', 'Срок', 'Показатель'];
+  const MEMO_HEADER = ['№', 'Поручение', 'Статус (заполнить)', 'Ответственные', 'Срок', 'Моя роль'];
+  const UPC_HEADER = ['№', 'Мероприятие', 'Статус (заполнить)', 'Ответственный исполнитель', 'Срок', 'Показатель'];
   const MAX_COLS = 12;
+  // Служебный ключ строки (связь с реестром) лежит в скрытой колонке N — руководитель его не видит.
+  const KEY_COL = 14;
   const COL_WIDTHS = [9, 58, 58, 28, 13, 14, 14, 14, 14, 14, 14, 14];
   const FREE_BLANK_ROWS = 3;
 
-  const DONE_RE = /(выполнен|проведен|исполнен|завершен|снят|закрыт)/i;
-  const NOT_DONE_RE = /не\s+(выполнен|проведен|исполнен|завершен|снят|закрыт)/i;
+  // Только готовые формы: «выполнено», «проведена», «снято»; «завершение», «выполняется» не считаются.
+  const DONE_WORD = '(выполнен|проведен|исполнен|завершен|снят|закрыт)(о|а|ы)?(?![а-яё])';
+  const DONE_RE = new RegExp('(^|[^а-яё])' + DONE_WORD, 'i');
+  const NOT_DONE_RE = new RegExp('(^|[^а-яё])не\\s+' + DONE_WORD, 'i');
 
   // ---------- значения ячеек ----------
   function cellVal(v) {
@@ -63,6 +67,15 @@
   }
   function splitNames(s) {
     return txt(s).split(/[,;\n]+/).map((x) => x.trim()).filter(Boolean);
+  }
+  // Ключ поручения: номер из реестра, а если его нет — отпечаток текста.
+  function itemKey(num, text) {
+    num = txt(num);
+    if (num) return num;
+    const t = txt(text).toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9]+/g, '');
+    let h = 5381;
+    for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) >>> 0;
+    return 'т' + h.toString(36);
   }
   function isDone(text) {
     text = txt(text);
@@ -134,20 +147,20 @@
     const wsM = wb.getWorksheet('Мемо');
     if (!wsM) errors.push('В реестре нет листа «Мемо».');
     else {
-      const h = findHeader(wsM, ['ID', 'Поручение', 'Ответственный', 'Срок']);
-      if (!h) errors.push('На листе «Мемо» не найдена шапка (ID, Поручение, Ответственный, Срок).');
+      const h = findHeader(wsM, ['Поручение', 'Ответственный', 'Срок']);
+      if (!h) errors.push('На листе «Мемо» не найдена шапка (Поручение, Ответственный, Срок).');
       else {
         const c = {
-          id: h.col('ID'), date: h.col('Дата'), text: h.col('Поручение'), resp: h.col('Ответственный'),
+          id: Math.max(h.col('№'), h.col('ID')), date: h.col('Дата'), text: h.col('Поручение'), resp: h.col('Ответственный'),
           co: h.col('Соисполн'), due: h.col('Срок'), mark: h.col('Отметка'),
         };
         for (let r = h.row + 1; r <= wsM.rowCount; r++) {
           const row = wsM.getRow(r);
           const g = (k) => (c[k] > 0 ? cellVal(row.getCell(c[k]).value) : null);
-          const id = txt(g('id'));
-          if (!id) continue;
+          const text = txt(g('text'));
+          if (!text) continue;
           out.memo.push({
-            id, date: g('date'), text: txt(g('text')), resp: txt(g('resp')), co: txt(g('co')),
+            id: itemKey(g('id'), text), num: txt(g('id')), row: r, markCol: c.mark, date: g('date'), text, resp: txt(g('resp')), co: txt(g('co')),
             due: g('due'), mark: txt(g('mark')),
           });
         }
@@ -156,21 +169,21 @@
 
     const wsU = wb.getWorksheet('План УПЦ');
     if (wsU) {
-      const h = findHeader(wsU, ['ID', 'Мероприятие', 'Докладчик']);
-      if (!h) errors.push('На листе «План УПЦ» не найдена шапка (ID, Мероприятие, Докладчик).');
+      const h = findHeader(wsU, ['Мероприятие', 'Докладчик']);
+      if (!h) errors.push('На листе «План УПЦ» не найдена шапка (Мероприятие, Докладчик).');
       else {
         const c = {
-          id: h.col('ID'), kpi: h.col('Показатель'), block: h.col('Блок'), text: h.col('Мероприятие'),
+          id: Math.max(h.col('Код'), h.col('ID')), kpi: h.col('Показатель'), block: h.col('Блок'), text: h.col('Мероприятие'),
           resp: h.col('Ответственный'), due: h.col('Срок'), note: h.col('Примечан'),
           speaker: h.col('Докладчик'), status: h.col('Статус'),
         };
         for (let r = h.row + 1; r <= wsU.rowCount; r++) {
           const row = wsU.getRow(r);
           const g = (k) => (c[k] > 0 ? cellVal(row.getCell(c[k]).value) : null);
-          const id = txt(g('id'));
-          if (!id) continue;
+          const text = txt(g('text'));
+          if (!text) continue;
           out.upc.push({
-            id, block: txt(g('block')), kpi: txt(g('kpi')), text: txt(g('text')), resp: txt(g('resp')),
+            id: itemKey(g('id'), text), block: txt(g('block')), kpi: txt(g('kpi')), text, resp: txt(g('resp')),
             due: g('due'), note: txt(g('note')), speaker: txt(g('speaker')), manualStatus: txt(g('status')),
           });
         }
@@ -258,12 +271,14 @@
       const from = starts[k] + 2; // заголовок блока + шапка таблицы
       const to = i + 1 < order.length ? starts[order[i + 1]] - 1 : ws.rowCount;
       for (let r = from; r <= to; r++) {
+        if (k === 'memo' || k === 'upc') {
+          const id = txt(ws.getCell(r, KEY_COL).value);
+          if (id) res[k][id] = txt(ws.getCell(r, 3).value);
+          continue;
+        }
         const vals = rowValues(ws, r);
         if (!vals.length) continue;
-        if (k === 'memo' || k === 'upc') {
-          const id = txt(vals[0]);
-          if (id) res[k][id] = txt(vals[2]);
-        } else {
+        {
           res[k].push(vals);
         }
       }
@@ -311,6 +326,7 @@
     else ws.orderNo = Math.min(0, ...wb.worksheets.map((w) => w.orderNo)) - 1;
 
     COL_WIDTHS.forEach((w, i) => (ws.getColumn(i + 1).width = w));
+    ws.getColumn(KEY_COL).hidden = true;
     let r = 1;
     const put = (vals, style) => {
       const row = ws.getRow(r);
@@ -329,7 +345,7 @@
     put([person.fio.toUpperCase() + ' — отчёт к совещанию первой линейки'], (c) => (c.font = { bold: true, size: 14 }));
     ws.mergeCells(1, 1, 1, 6);
     put(['Заполняйте жёлтые ячейки «Статус» в блоках 1 и 4. Блоки 2 и 3 — ваши, правьте и добавляйте строки как удобно. ' +
-      'Названия блоков (колонка A) и ID не меняйте. Чтобы поручение считалось выполненным, напишите в статусе «выполнено».'],
+      'Названия блоков (колонка A) не меняйте. Сделали поручение — начните статус со слова «выполнено»: помощник покажет его на совещании и потом уберёт из отчёта.'],
     (c) => (c.font = { italic: true, size: 9, color: { argb: 'FF595959' } }));
     ws.mergeCells(2, 1, 2, 6);
     ws.getRow(2).height = 28;
@@ -348,10 +364,14 @@
       c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.head } };
       c.border = BORDER;
     });
-    const bodyRow = (vals, yellowCol) => put(vals.length ? vals : [''], (c, i) => {
-      c.border = BORDER;
-      if (i === yellowCol) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.yellow } };
-    });
+    const bodyRow = (vals, yellowCol, key) => {
+      const row = put(vals.length ? vals : [''], (c, i) => {
+        c.border = BORDER;
+        if (i === yellowCol) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.yellow } };
+      });
+      if (key) row.getCell(KEY_COL).value = key;
+      return row;
+    };
     const ensureCols = (vals, n) => {
       const out = vals.slice();
       while (out.length < n) out.push('');
@@ -362,10 +382,10 @@
     title('memo');
     header(MEMO_HEADER);
     if (!data.memo.length) put(['Открытых поручений нет'], (c) => (c.font = { italic: true, color: { argb: 'FF808080' } }));
-    for (const m of data.memo) {
+    data.memo.forEach((m, i) => {
       const people = m.resp + (m.co ? '\nСоисп.: ' + m.co : '');
-      bodyRow([m.id, m.text, data.memoStatus[m.id] || '', people, m.due === null ? '' : m.due, m.role], 2);
-    }
+      bodyRow([i + 1, m.text, data.memoStatus[m.id] || '', people, m.due === null ? '' : m.due, m.role], 2, m.id);
+    });
     r++;
 
     // 2–3. РОС и текущие проекты — свободные блоки
@@ -390,9 +410,9 @@
     title('upc');
     header(UPC_HEADER);
     if (!data.upc.length) put(['Мероприятий, где вы докладчик, нет'], (c) => (c.font = { italic: true, color: { argb: 'FF808080' } }));
-    for (const u of data.upc) {
-      bodyRow([u.id, u.text, data.upcStatus[u.id] || '', u.resp, u.due === null ? '' : u.due, u.kpi], 2);
-    }
+    data.upc.forEach((u, i) => {
+      bodyRow([i + 1, u.text, data.upcStatus[u.id] || '', u.resp, u.due === null ? '' : u.due, u.kpi], 2, u.id);
+    });
     return ws;
   }
 
@@ -498,17 +518,17 @@
       })));
 
     const wsM = wb.addWorksheet('Мемо');
-    table(wsM, ['ID', 'Дата совещания', 'Поручение', 'Ответственный', 'Соисполнители', 'Срок', 'Статус', 'Отметка секретаря', 'Контроль срока'],
-      [8, 13, 60, 18, 22, 12, 60, 18, 20],
+    table(wsM, ['Дата совещания', 'Поручение', 'Ответственный', 'Соисполнители', 'Срок', 'Статус', 'Отметка секретаря', 'Контроль срока'],
+      [13, 60, 18, 22, 12, 60, 18, 20],
       model.memo.map((m) => ({
-        vals: [m.id, m.date, m.text, m.resp, m.co, m.due, m.status, m.mark, m.ctl.label],
+        vals: [m.date, m.text, m.resp, m.co, m.due, m.status, m.mark, m.ctl.label],
         fill: CTL_FILL[m.ctl.code],
-      })), 9);
+      })), 8);
 
     const wsU = wb.addWorksheet('План УПЦ');
-    table(wsU, ['ID', 'Показатель', 'Мероприятие', 'Ответственный исполнитель', 'Срок', 'Докладчик', 'Статус'],
-      [8, 26, 60, 26, 14, 18, 60],
-      model.upc.map((u) => ({ vals: [u.id, u.kpi, u.text, u.resp, u.due, u.speaker || '—', u.status] })));
+    table(wsU, ['Показатель', 'Мероприятие', 'Ответственный исполнитель', 'Срок', 'Докладчик', 'Статус'],
+      [26, 60, 26, 14, 18, 60],
+      model.upc.map((u) => ({ vals: [u.kpi, u.text, u.resp, u.due, u.speaker || '—', u.status] })));
 
     for (const p of model.people) {
       const ws = wb.addWorksheet(p.fio.replace(/[\\/?*[\]:]/g, '').slice(0, 31));
@@ -516,16 +536,16 @@
       const rows = [];
       const sec = (t) => rows.push({ vals: [t], fill: 'FFDCE6F1' });
       sec('Поручения по Мемо');
-      p.memo.filter((m) => m.ctl.code !== 'closed').forEach((m) => rows.push({
-        vals: [m.id, m.text, m.status, m.role, m.due, m.ctl.label], fill: CTL_FILL[m.ctl.code],
+      p.memo.filter((m) => m.ctl.code !== 'closed').forEach((m, i) => rows.push({
+        vals: [i + 1, m.text, m.status, m.role, m.due, m.ctl.label], fill: CTL_FILL[m.ctl.code],
       }));
       sec('РОС');
       p.ros.forEach((v) => rows.push({ vals: v }));
       sec('Текущие проекты');
       p.proj.forEach((v) => rows.push({ vals: v }));
       sec('Мероприятия УПЦ');
-      p.upc.forEach((u) => rows.push({ vals: [u.id, u.text, u.status, u.resp, u.due, u.kpi] }));
-      table(ws, ['№ / ID', 'Задача', 'Статус', 'Ответственные / роль', 'Срок', 'Контроль / прочее'],
+      p.upc.forEach((u, i) => rows.push({ vals: [i + 1, u.text, u.status, u.resp, u.due, u.kpi] }));
+      table(ws, ['№', 'Задача', 'Статус', 'Ответственные / роль', 'Срок', 'Контроль / прочее'],
         [9, 55, 60, 24, 12, 18], rows.map((x) => ({ vals: x.vals, fill: x.fill })), 6);
     }
     return wb;
@@ -535,9 +555,23 @@
     return p(d.getDate()) + '.' + p(d.getMonth() + 1) + '.' + d.getFullYear() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
   }
 
+  // Помощник подтвердил выполненные — пишем отметку в реестр, при рассылке они уйдут из личных файлов.
+  function closeInRegistry(wb, reg, ids, label) {
+    const ws = wb.getWorksheet('Мемо');
+    let n = 0;
+    for (const m of reg.memo) {
+      if (!ids.includes(m.id) || m.markCol <= 0) continue;
+      const cell = ws.getCell(m.row, m.markCol);
+      const old = txt(cell.value);
+      cell.value = old ? old + '; ' + label : label;
+      n++;
+    }
+    return n;
+  }
+
   const Core = {
     REPORT_SHEET, SECTION, cellVal, txt, isEmpty, fmtDate, fmtDateTime, asDate, normName, splitNames, isDone,
-    control, todayUTC, parseRegistry, itemsForPerson, parsePersonal, buildReportSheet, refreshPersonal,
+    control, todayUTC, itemKey, closeInRegistry, parseRegistry, itemsForPerson, parsePersonal, buildReportSheet, refreshPersonal,
     emptyParsed, collect, buildSummary,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = Core;

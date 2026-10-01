@@ -129,7 +129,7 @@ main { padding: 20px; max-width: 1500px; margin: 0 auto; }
 .sec-title .muted { text-transform: none; letter-spacing: 0; font-weight: 400; font-size: 13px; }
 
 .items { display: flex; flex-direction: column; gap: 8px; }
-.item { background: var(--panel); border: 1px solid var(--line); border-left: 6px solid var(--info); border-radius: var(--radius); padding: 10px 14px; display: grid; grid-template-columns: 70px 1fr 1fr 170px; gap: 6px 16px; }
+.item { background: var(--panel); border: 1px solid var(--line); border-left: 6px solid var(--info); border-radius: var(--radius); padding: 10px 14px; display: grid; grid-template-columns: 1fr 1fr 190px; gap: 6px 16px; }
 .item.c-done, .item.c-closed { border-left-color: var(--ok); }
 .item.c-check { border-left-color: #d9a400; }
 .item.c-overdue { border-left-color: var(--bad); }
