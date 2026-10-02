@@ -52,6 +52,21 @@ const open = async (file) => {
   return page;
 };
 
+// ---------- 0. С чистого листа: кнопки на стартовом экране работают ----------
+for (const f of ['Помощник.html', 'Директор.html', 'Страницы руководителей/Отчёт — Мещеряков.html']) {
+  const pg = await open(f);
+  await pg.click('text=Посмотреть на демо-данных');
+  await pg.waitForTimeout(700);
+  check(!(await pg.locator('main').innerText()).includes('Посмотреть на демо-данных'), f + ': кнопка «демо» с чистого листа открывает данные');
+  await pg.close();
+}
+const pg0 = await open('Помощник.html');
+await pg0.evaluate(() => { window.showDirectoryPicker = async () => { throw new DOMException('нет', 'AbortError'); }; window.__picked = 0; const o = Store.pickFolder; Store.pickFolder = async (m) => { window.__picked++; return o(m); }; });
+await pg0.click('text=Выбрать папку…');
+await pg0.waitForTimeout(200);
+check(await pg0.evaluate(() => window.__picked) === 1, 'кнопка «Выбрать папку» вызывает выбор папки');
+await pg0.close();
+
 // ---------- 1. Руководитель ----------
 let page = await open('Страницы руководителей/Отчёт — Мещеряков.html');
 await MOUNT(page, files);

@@ -294,7 +294,7 @@
       if (await saveReg()) render(); return;
     }
     const a = b.dataset.act;
-    const n = people().length;
+    const n = S.reg ? people().length : 0;
     if (a === 'pick') conn.pick();
     else if (a === 'grant') conn.grant();
     else if (a === 'demo') { S.demo = true; S.dir = await Base.demoFolder(); await load(); }
@@ -347,7 +347,7 @@
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && e.target.id === 'pass') $('[data-act=unlock]').click();
     if (S.tab !== 'meeting' || /INPUT|SELECT|TEXTAREA/.test(e.target.tagName) || !S.reg) return;
-    const n = people().length;
+    const n = S.reg ? people().length : 0;
     if (e.key === 'ArrowRight' || e.key === 'PageDown') { S.person = (S.person + 1) % n; render(); window.scrollTo(0, 0); }
     if (e.key === 'ArrowLeft' || e.key === 'PageUp') { S.person = (S.person - 1 + n) % n; render(); window.scrollTo(0, 0); }
   });

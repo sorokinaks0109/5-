@@ -59,7 +59,7 @@
     if (b.classList.contains('card') && b.dataset.person) { S.person = people().findIndex((p) => p.id === b.dataset.person); S.tab = 'meeting'; render(); return; }
     if (b.dataset.personIdx) { S.person = +b.dataset.personIdx; render(); return; }
     if (b.dataset.mf !== undefined) { S.memoFilter = b.dataset.mf; render(); return; }
-    const a = b.dataset.act; const n = people().length;
+    const a = b.dataset.act; const n = S.reg ? people().length : 0;
     if (a === 'pick') conn.pick();
     else if (a === 'grant') conn.grant();
     else if (a === 'demo') { S.demo = true; S.dir = await Base.demoFolder(); await load(); }
@@ -72,7 +72,7 @@
   document.addEventListener('change', (e) => { if (e.target.id === 'memoPerson') { S.memoPerson = e.target.value; render(); } });
   document.addEventListener('keydown', (e) => {
     if (S.tab !== 'meeting' || !S.reg || /INPUT|SELECT/.test(e.target.tagName)) return;
-    const n = people().length;
+    const n = S.reg ? people().length : 0;
     if (e.key === 'ArrowRight') { S.person = (S.person + 1) % n; render(); }
     if (e.key === 'ArrowLeft') { S.person = (S.person - 1 + n) % n; render(); }
   });

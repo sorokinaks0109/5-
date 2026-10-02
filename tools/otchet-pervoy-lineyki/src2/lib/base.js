@@ -102,3 +102,11 @@
 
   root.Base = { loadAll, connector, demoFolder, sha };
 })(typeof window !== 'undefined' ? window : globalThis);
+
+// Любая неожиданная ошибка — сообщением внизу экрана, чтобы кнопка не «молчала».
+(function () {
+  if (typeof window === 'undefined') return;
+  const show = (m) => { try { window.View.toast('Ошибка: ' + m + '. Сообщите помощнику или разработчику.', 'bad'); } catch (e) { /* */ } };
+  window.addEventListener('error', (e) => show(e.message));
+  window.addEventListener('unhandledrejection', (e) => show((e.reason && e.reason.message) || String(e.reason)));
+})();
