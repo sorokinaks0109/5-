@@ -18,6 +18,14 @@
     let unlocked = false; try { unlocked = sessionStorage.getItem('otchet.unlocked') === S.reg.settings.passHash; } catch (e) { /* нет хранилища */ }
     S.locked = !!S.reg.settings.passHash && !unlocked;
     render();
+    snapshotSoon();
+  }
+  // После загрузки и каждого изменения обновляем «Для директора.html» (в фоне, не чаще раза в 2 секунды).
+  let snapTimer = null;
+  function snapshotSoon() {
+    if (S.demo || conn.readOnly) return;
+    clearTimeout(snapTimer);
+    snapTimer = setTimeout(async () => { S.snapOk = await Base.writeSnapshot(S.dir, S.reg, S.data); }, 2000);
   }
   async function reloadData() { if (S.dir) { await load(); View.toast('Данные обновлены', 'ok'); } }
 
@@ -33,6 +41,7 @@
       await Store.writeJSON(S.dir, [Store.DATA, Store.REG], S.reg);
       const after = await Store.readBytes(S.dir, [Store.DATA, Store.REG]);
       S.regModified = after.modified.getTime();
+      snapshotSoon();
       if (msg) View.toast(msg, 'ok');
       return true;
     } catch (e) { View.toast('Реестр не записан: ' + e.message, 'bad'); return false; }
@@ -253,7 +262,8 @@
       '<p>Всё лежит в общей папке «Отчёт первой линейки». Excel и Р7 не нужны: каждый работает в своей странице в браузере, данные хранятся в папке «Данные».</p>' +
       '<ul><li><b>Помощник.html</b> — эта страница: поручения, показатели УПЦ, совещание, свод, письма.</li>' +
       '<li><b>Страницы руководителей/Отчёт — Фамилия.html</b> — каждый руководитель заполняет свой отчёт. Ярлык можно положить на рабочий стол.</li>' +
-      '<li><b>Директор.html</b> — только просмотр: доклады, поручения, показатели. Ничего не меняет.</li>' +
+      '<li><b>Для директора.html</b> — снимок всех данных для директора. Открывается двойным щелчком в любом браузере, ничего не спрашивает. Обновляется сам, когда вы открываете эту страницу или руководитель сохраняет отчёт.</li>' +
+      '<li><b>Директор.html</b> — то же, но читает папку напрямую (нужен доступ браузера к папке).</li>' +
       '<li><b>Данные</b> — реестр и отчёты в виде файлов. Руками их не открывать.</li></ul>' +
       '<h3>Неделя помощника</h3><ol>' +
       '<li><b>На совещании</b>: вкладка «Совещание» → «На весь экран», стрелки ← → листают докладчиков.</li>' +

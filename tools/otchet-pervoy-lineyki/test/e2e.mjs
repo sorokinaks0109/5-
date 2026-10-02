@@ -230,6 +230,49 @@ await MOUNT(page, files);
 check((await page.locator('.kpi').count()) >= 4, 'у Лазара есть свой отчёт с показателями');
 await page.close();
 
+// ---------- 3б. «Для директора.html» — снимок, открывается без выбора папки ----------
+{
+  const pg = await open('Помощник.html');
+  await pg.evaluate(() => sessionStorage.setItem('otchet.unlocked', 'x'));
+  await MOUNT(pg, files);
+  await pg.waitForTimeout(4000);
+  const snap = await pg.evaluate(async () => { try { const f = await (await window.__root.getFileHandle('Для директора.html')).getFile(); return await f.text(); } catch (e) { return ''; } });
+  check(snap.length > 50000, 'помощник сам сохранил «Для директора.html» (' + Math.round(snap.length / 1024) + ' КБ)');
+  await pg.close();
+  const snapPath = path.join(root, 'Для директора.html');
+  fs.writeFileSync(snapPath, snap);
+  const sp = await ctx.newPage();
+  sp.on('pageerror', (e) => errors.push('снимок: ' + e.message));
+  await sp.addInitScript(() => { delete window.showDirectoryPicker; indexedDB.open = () => ({}); });
+  await sp.goto('file://' + snapPath);
+  await sp.waitForTimeout(500);
+  check(await sp.locator('.tiles').first().isVisible(), 'снимок открывается сразу: без выбора папки и без доступа браузера к папкам');
+  check((await sp.locator('#folder').innerText()).startsWith('Данные на'), 'в снимке видно, на какое время данные');
+  await sp.click('[data-tab=meeting]');
+  await sp.click('.people-bar >> text=Хисматуллин Р.М.');
+  await sp.waitForTimeout(300);
+  check((await sp.locator('.att table.xl').count()) === 3, 'в снимке есть таблицы Хисматуллина');
+  await sp.click('[data-tab=upc]');
+  check((await sp.locator('.kpi').count()) >= 20, 'в снимке есть показатели УПЦ');
+  await shot(sp, '8-snapshot');
+  await sp.close();
+  fs.rmSync(snapPath);
+}
+// ---------- 3в. Папка «зависла» — видно, на каком шаге, и можно отменить ----------
+{
+  const pg = await open('Директор.html');
+  await pg.evaluate(() => {
+    const hang = { kind: 'directory', name: 'Отчёт первой линейки', async getDirectoryHandle() { return hang; }, async getFileHandle() { return { getFile: () => new Promise(() => {}) }; } };
+    window.showDirectoryPicker = async () => hang;
+  });
+  await pg.click('text=Выбрать папку…');
+  await pg.waitForTimeout(1500);
+  const busy = await pg.locator('main').innerText();
+  check(/Проверяю папку/.test(busy) && /сек/.test(busy), 'при зависании видно шаг и секунды: ' + busy.replace(/\s+/g, ' ').slice(0, 80));
+  await pg.click('[data-act=cancelOpen]');
+  check((await pg.locator('main').innerText()).includes('Открытие отменено'), 'зависшее открытие можно отменить');
+  await pg.close();
+}
 // ---------- 4. Директор ----------
 page = await open('Директор.html');
 await MOUNT(page, files);

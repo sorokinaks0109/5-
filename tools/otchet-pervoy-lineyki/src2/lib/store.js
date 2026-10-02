@@ -55,10 +55,17 @@
     for (const p of path) d = await d.getDirectoryHandle(p, create ? { create: true } : undefined);
     return d;
   }
+  // Чтение файла не дольше 20 секунд: сетевой диск иногда «зависает» без ошибки.
+  function limit(p, ms, what) {
+    return Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('за ' + Math.round(ms / 1000) + ' секунд не удалось прочитать ' + what)), ms))]);
+  }
   async function readBytes(root, path) {
-    const d = await dirAt(root, path.slice(0, -1));
-    const f = await (await d.getFileHandle(path[path.length - 1])).getFile();
-    return { bytes: new Uint8Array(await f.arrayBuffer()), modified: new Date(f.lastModified) };
+    const what = '«' + path.join('/') + '»';
+    return limit((async () => {
+      const d = await dirAt(root, path.slice(0, -1));
+      const f = await (await d.getFileHandle(path[path.length - 1])).getFile();
+      return { bytes: new Uint8Array(await f.arrayBuffer()), modified: new Date(f.lastModified) };
+    })(), 20000, what);
   }
   async function writeBytes(root, path, bytes) {
     const d = await dirAt(root, path.slice(0, -1), true);
@@ -155,15 +162,24 @@
     };
   }
   // Запасной путь: обычное окно «выбрать папку» (работает в любом браузере, но только на чтение).
-  async function fromFileList(list) {
+  async function fromFileList(list, onStep) {
     const root = new MemDir('папка');
-    for (const f of list) {
+    root.onStep = onStep;
+    // Берём только данные: страницы (.html) и архив не нужны — так быстрее по сети.
+    const need = Array.from(list).filter((f) => {
+      const p = '/' + (f.webkitRelativePath || f.name);
+      return p.includes('/' + DATA + '/') && !p.includes('/' + ARCH + '/') && !/\.html?$/i.test(p);
+    });
+    let n = 0;
+    for (const f of need) {
+      n++;
+      if (root.onStep) root.onStep('Читаю файлы: ' + n + ' из ' + need.length);
       const parts = (f.webkitRelativePath || f.name).split('/');
       if (parts[0] === DATA) parts.unshift('Отчёт первой линейки');
       root.name = parts[0];
       let d = root;
       for (const x of parts.slice(1, -1)) d = await d.getDirectoryHandle(x, { create: true });
-      d.items.set(parts[parts.length - 1], new MemFile(parts[parts.length - 1], new Uint8Array(await f.arrayBuffer()), f.lastModified));
+      d.items.set(parts[parts.length - 1], new MemFile(parts[parts.length - 1], new Uint8Array(await limit(f.arrayBuffer(), 20000, '«' + f.webkitRelativePath + '»')), f.lastModified));
     }
     const lock = (d) => { d.readOnly = true; d.items.forEach((x) => (x.kind === 'directory' ? lock(x) : (x.readOnly = true))); };
     lock(root);

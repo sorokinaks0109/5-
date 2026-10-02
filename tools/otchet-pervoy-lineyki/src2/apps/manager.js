@@ -188,6 +188,7 @@
       await Store.dailyBackup(S.dir, [Store.DATA, Store.PEOPLE, p.slug + '.json'], p.slug, 10);
       await Store.writeJSON(S.dir, [Store.DATA, Store.PEOPLE, p.slug + '.json'], out);
       S.data[S.me] = { data: out };
+      Base.writeSnapshot(S.dir, S.reg, S.data).catch(() => {}); // обновить «Для директора.html», если есть права
       S.draft = JSON.parse(JSON.stringify(out));
       S.prevDate = out.reportDate;
       S.dirty = false;

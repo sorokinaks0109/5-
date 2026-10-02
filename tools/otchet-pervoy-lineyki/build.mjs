@@ -18,6 +18,7 @@ function page(app, title, header) {
     .replace('/*TITLE*/', () => title).replace('/*HEADER*/', () => header)
     .replace('/*CSS*/', () => read('styles.css'))
     .replace('/*EXCELJS*/', () => exceljs).replace('/*LIBS*/', () => libs)
+    .replace('/*SNAPAPP*/', () => safe(read('apps/director.js')))
     .replace('/*APP*/', () => safe(read('apps/' + app)));
 }
 

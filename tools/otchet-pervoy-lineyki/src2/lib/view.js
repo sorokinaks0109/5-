@@ -117,6 +117,12 @@
   async function hydrateAttachments(container, dir, reg) {
     for (const el of $$('.att', container)) {
       const body = $('.att-body', el);
+      if (root.SNAPSHOT) {
+        const h = root.SNAPSHOT.att && root.SNAPSHOT.att[el.dataset.pid] && root.SNAPSHOT.att[el.dataset.pid][el.dataset.file];
+        body.innerHTML = h || 'Вложение не попало в снимок';
+        body.classList.remove('muted', 'small');
+        continue;
+      }
       try {
         const p = M().personById(reg, el.dataset.pid);
         const { bytes } = await Store.readBytes(dir, [Store.DATA, Store.ATT, p.slug, el.dataset.file]);

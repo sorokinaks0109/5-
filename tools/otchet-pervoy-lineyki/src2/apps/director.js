@@ -13,7 +13,7 @@
 
   function render() {
     $('#tabs').innerHTML = S.reg ? TABS.map(([k, t]) => '<button data-tab="' + k + '" class="' + (S.tab === k ? 'active' : '') + '">' + t + '</button>').join('') : '';
-    $('#folder').textContent = S.dir ? (S.demo ? 'Демо-данные (вымышленные)' : 'Данные на ' + new Date().toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' })) : '';
+    $('#folder').textContent = S.dir ? (S.demo ? 'Демо-данные (вымышленные)' : 'Данные на ' + Model.fmtDateTime(S.snap ? window.SNAPSHOT.at : Date.now())) : '';
     const main = $('#main');
     if (!S.dir || !S.reg) { main.innerHTML = conn.screen('Отчёт первой линейки', 'Выберите общую папку «Отчёт первой линейки». Страница только читает данные и ничего не меняет.', true); return; }
     main.innerHTML = ({ sum: sumTab, meeting: meetingTab, memo: memoTab, upc: upcTab })[S.tab]();
@@ -30,7 +30,8 @@
       return '<tr><td>' + esc(Model.shortKpi(k.name)) + (k.top3 ? ' <span class="badge s-work">ТОП-3</span>' : '') + '</td><td class="num">' + esc(cut(k.goal)) + '</td><td class="num">' + esc(cut(k.fact)) + '</td><td class="num">' + esc(cut(k.forecast)) + '</td><td>' + esc(k.grade) + '</td><td>' + esc(rep ? rep.fio : '—') +
         '</td><td>' + (c.total ? c.done + ' из ' + c.total + (c.fail ? ' · <span class="late">не вып. ' + c.fail + '</span>' : '') : '—') + '</td></tr>';
     }).join('');
-    return '<div class="row between no-print"><h2>Поручения на контроле</h2><span class="row"><button data-act="reload">Обновить</button><button data-act="print">Печать</button><button data-act="xlsx">Скачать свод в Excel</button></span></div>' +
+    return '<div class="row between no-print"><h2>Поручения на контроле</h2><span class="row"><button data-act="reload">Обновить</button><button data-act="print">Печать</button>' + (S.snap ? '' : '<button data-act="xlsx">Скачать свод в Excel</button>') + '</span></div>' +
+      (S.snap ? '<div class="muted small no-print">Это снимок данных на ' + esc(Model.fmtDateTime(window.SNAPSHOT.at)) + '. Он обновляется сам, когда помощник или руководители открывают и сохраняют свои страницы. «Обновить» — перечитать файл.</div>' : '') +
       View.countTiles(Model.countFlags(open)) + (late ? '<div class="msg bad">Срок прошёл: ' + late + '</div>' : '') +
       '<h3 class="sec">По руководителям</h3>' + View.whoCards(S.reg, S.data, today()) +
       '<h3 class="sec">Показатели УПЦ <span class="muted">карта от ' + esc(Model.fmtISO(S.reg.settings.cardDate) || '—') + '</span></h3>' +
@@ -63,7 +64,7 @@
     if (a === 'pick') conn.pick();
     else if (a === 'grant') conn.grant();
     else if (a === 'demo') { S.demo = true; S.dir = await Base.demoFolder(); await load(); }
-    else if (a === 'reload') load();
+    else if (a === 'reload') { if (S.snap) location.reload(); else load(); }
     else if (a === 'print') window.print();
     else if (a === 'prev') { S.person = (S.person - 1 + n) % n; render(); }
     else if (a === 'next') { S.person = (S.person + 1) % n; render(); }
@@ -78,6 +79,12 @@
   });
 
   window.Otchet = { S, load, render, Base };
-  render();
-  conn.init().then((ok) => { if (!ok) render(); });
+  if (window.SNAPSHOT) {
+    // Снимок «Для директора.html»: данные уже внутри файла, папку открывать не нужно.
+    S.snap = true; S.dir = { name: 'снимок' }; S.reg = window.SNAPSHOT.reg; S.data = window.SNAPSHOT.data;
+    render();
+  } else {
+    render();
+    conn.init().then((ok) => { if (!ok) render(); });
+  }
 })();

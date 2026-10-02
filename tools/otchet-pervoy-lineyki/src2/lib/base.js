@@ -3,12 +3,17 @@
 (function (root) {
   'use strict';
 
+  // Шаг загрузки показываем на экране «Открываю папку…», чтобы было видно, где застряло.
+  function step(msg) { const el = typeof document !== 'undefined' && document.getElementById('busyStep'); if (el) el.textContent = msg; }
   async function loadAll(dir) {
+    step('Читаю реестр…');
     const { data: reg, modified } = await Store.readJSON(dir, [Store.DATA, Store.REG]);
     reg.settings = reg.settings || {};
     reg.people = reg.people || []; reg.memo = reg.memo || []; reg.kpis = reg.kpis || []; reg.events = reg.events || [];
     const data = {};
+    let i = 0;
     for (const p of reg.people) {
+      step('Читаю отчёт: ' + p.fio + ' (' + (++i) + ' из ' + reg.people.length + ')');
       try {
         const r = await Store.readJSON(dir, [Store.DATA, Store.PEOPLE, p.slug + '.json']);
         data[p.id] = { data: r.data, modified: r.modified };
@@ -43,22 +48,36 @@
     };
     c.browse = async (files) => {
       if (!files || !files.length) return;
-      c.busy = true; c.error = ''; opts.render();
-      try { const dir = await Store.fromFileList(files); c.readOnly = true; await c.use(dir); } catch (e) { fail(e); }
+      const tok = start();
+      try { const dir = await Store.fromFileList(files, step); if (tok !== c.tok) return; c.readOnly = true; await c.use(dir, tok); } catch (e) { if (tok === c.tok) fail(e); }
     };
-    c.use = async (dir) => {
-      c.busy = true; c.error = ''; opts.render();
+    // Каждое открытие получает свой номер: если нажали «Отмена», результат старого просто игнорируется.
+    function start() { c.tok = (c.tok || 0) + 1; c.busy = true; c.error = ''; c.t0 = Date.now(); opts.render(); tick(c.tok); return c.tok; }
+    function tick(tok) {
+      const el = document.getElementById('busySec');
+      if (!c.busy || tok !== c.tok) return;
+      if (el) el.textContent = Math.round((Date.now() - c.t0) / 1000) + ' сек';
+      setTimeout(() => tick(tok), 1000);
+    }
+    c.cancel = () => { c.tok++; c.busy = false; c.error = 'Открытие отменено. Попробуйте ещё раз или «Открыть другим способом».'; opts.render(); };
+    c.use = async (dir, tok) => {
+      if (!tok) tok = start();
       try {
-        if (!(await Store.checkFolder(dir))) {
+        step('Проверяю папку «' + dir.name + '»…');
+        const ok = await Store.checkFolder(dir);
+        if (tok !== c.tok) return;
+        if (!ok) {
           fail(new Error('В папке «' + dir.name + '» нет «Данные/реестр.json». Выберите папку «Отчёт первой линейки» — ту, в которой лежит папка «Данные».'));
           return;
         }
         await opts.onDir(dir);
+        if (tok !== c.tok) return;
         c.busy = false;
-      } catch (e) { fail(new Error('Папку открыть не получилось: ' + e.message)); }
+        opts.render();
+      } catch (e) { if (tok === c.tok) fail(new Error('Папку открыть не получилось: ' + e.message)); }
     };
     c.screen = (title, text, demo) => (c.busy
-      ? '<div class="panel empty-state"><h2>Открываю папку…</h2><p>Читаю реестр и отчёты.</p></div>'
+      ? '<div class="panel empty-state"><h2>Открываю папку… <span id="busySec" class="muted small"></span></h2><p id="busyStep">Жду ответа от браузера…</p><button data-act="cancelOpen">Отмена</button></div>'
       : View.folderScreen({ title, text, error: c.error, saved: c.saved && c.saved.name, demo, fallback: opts.mode === 'read' ? 'Не открывается? Открыть другим способом' : 'Не открывается? Открыть только для просмотра' }));
     active = c;
     return c;
@@ -67,6 +86,7 @@
   // Запасная кнопка и скрытое поле выбора папки — общие для всех страниц.
   if (typeof document !== 'undefined') {
     document.addEventListener('click', (e) => {
+      if (e.target.closest('[data-act="cancelOpen"]') && active) { active.cancel(); return; }
       const b = e.target.closest('[data-act="browse"]');
       if (!b) return;
       let inp = document.getElementById('dirFallback');
@@ -129,7 +149,37 @@
     }
   }
 
-  root.Base = { loadAll, connector, demoFolder, sha };
+  // «Для директора.html»: снимок всех данных в одном файле. Открывается двойным щелчком в любом браузере,
+  // ничего не спрашивает. Обновляется, когда помощник или руководитель открывает и сохраняет свою страницу.
+  async function writeSnapshot(dir, reg, data) {
+    const libs = document.getElementById('libs');
+    const app = document.getElementById('snap-app');
+    const css = document.getElementById('css');
+    if (!libs || !app || !css || !dir) return false;
+    const att = {};
+    for (const p of reg.people) {
+      for (const a of ((data[p.id] && data[p.id].data && data[p.id].data.attachments) || [])) {
+        try {
+          const { bytes } = await Store.readBytes(dir, [Store.DATA, Store.ATT, p.slug, a.file]);
+          (att[p.id] = att[p.id] || {})[a.file] = await View.xlsxToHtml(bytes);
+        } catch (e) { /* вложение не прочиталось — в снимке будет без него */ }
+      }
+    }
+    const plain = {};
+    for (const [k, v] of Object.entries(data)) plain[k] = { data: v.data };
+    const snap = JSON.stringify({ at: Date.now(), reg, data: plain, att }).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
+    const html = '<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">' +
+      '<title>Для директора — отчёт первой линейки</title><style>' + css.textContent + '</style></head><body>' +
+      '<header class="top"><h1>Отчёт первой линейки</h1><span class="sub" id="who"></span><span class="sub" id="folder"></span></header>' +
+      '<nav class="tabs" id="tabs"></nav><main id="main"></main>' +
+      '<script>window.SNAPSHOT=' + snap + ';<\/script><script>' + libs.textContent + '<\/script><script>' + app.textContent + '<\/script></body></html>';
+    const bytes = new TextEncoder().encode(html);
+    try { await Store.writeBytes(dir, ['Для директора.html'], bytes); return true; } catch (e) {
+      try { await Store.writeBytes(dir, [Store.DATA, 'Для директора.html'], bytes); return true; } catch (e2) { return false; }
+    }
+  }
+
+  root.Base = { loadAll, connector, demoFolder, sha, step, writeSnapshot };
 })(typeof window !== 'undefined' ? window : globalThis);
 
 // Любая неожиданная ошибка — сообщением внизу экрана, чтобы кнопка не «молчала».
