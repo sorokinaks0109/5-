@@ -286,7 +286,9 @@
       '<h2>' + esc(opts.title) + '</h2><p>' + opts.text + '</p><div class="row center">' +
       (opts.saved ? '<button class="primary" data-act="grant">Продолжить с папкой «' + esc(opts.saved) + '»</button>' : '') +
       '<button class="' + (opts.saved ? '' : 'primary') + '" data-act="pick">Выбрать папку…</button>' +
-      (opts.demo ? '<button data-act="demo">Посмотреть на демо-данных</button>' : '') + '</div></div>';
+      (opts.demo ? '<button data-act="demo">Посмотреть на демо-данных</button>' : '') + '</div>' +
+      (opts.fallback ? '<p class="small" style="margin-top:18px"><button class="linkish" data-act="browse">' + esc(opts.fallback) + '</button></p>' +
+        '<p class="muted small">Обычное окно выбора папки. Браузер спросит «Загрузить файлы?» — это только чтение с вашего диска, никуда ничего не отправляется.</p>' : '') + '</div>';
   }
 
   root.View = {

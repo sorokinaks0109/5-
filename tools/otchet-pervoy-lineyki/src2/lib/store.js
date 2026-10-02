@@ -14,6 +14,7 @@
     constructor(name, bytes, lastModified) { this.kind = 'file'; this.name = name; this.bytes = bytes || new Uint8Array(0); this.lastModified = lastModified || Date.now(); }
     async getFile() { return new File([this.bytes], this.name, { lastModified: this.lastModified }); }
     async createWritable() {
+      if (this.readOnly) throw new DOMException('Папка открыта только для просмотра — сохранить нельзя', 'NotAllowedError');
       const self = this; const parts = [];
       return {
         async write(b) { parts.push(typeof b === 'string' ? new TextEncoder().encode(b) : b instanceof ArrayBuffer ? new Uint8Array(b) : b); },
@@ -26,7 +27,8 @@
     async getDirectoryHandle(name, opt) {
       let d = this.items.get(name);
       if (!d) {
-        if (!(opt && opt.create) || this.readOnly) throw new DOMException('Нет папки ' + name, 'NotFoundError');
+        if (this.readOnly && opt && opt.create) throw new DOMException('Папка открыта только для просмотра — сохранить нельзя', 'NotAllowedError');
+        if (!(opt && opt.create)) throw new DOMException('Нет папки ' + name, 'NotFoundError');
         d = new MemDir(name); this.items.set(name, d);
       }
       return d;
@@ -34,7 +36,8 @@
     async getFileHandle(name, opt) {
       let f = this.items.get(name);
       if (!f) {
-        if (!(opt && opt.create) || this.readOnly) throw new DOMException('Нет файла ' + name, 'NotFoundError');
+        if (this.readOnly && opt && opt.create) throw new DOMException('Папка открыта только для просмотра — сохранить нельзя', 'NotAllowedError');
+        if (!(opt && opt.create)) throw new DOMException('Нет файла ' + name, 'NotFoundError');
         f = new MemFile(name); this.items.set(name, f);
       }
       return f;
@@ -108,25 +111,29 @@
       rq.onerror = () => rej(rq.error);
     });
   }
-  async function idbPut(k, v) {
+  // Хранилище браузера бывает отключено политикой компании и тогда «молчит» — ждём не дольше 1,5 секунды.
+  function withTimeout(p, ms, fallback) { return Promise.race([p, new Promise((r) => setTimeout(() => r(fallback), ms))]); }
+  async function idbPut(k, v) { return withTimeout(idbPut0(k, v), 1500, undefined); }
+  async function idbGet(k) { return withTimeout(idbGet0(k), 1500, null); }
+  async function idbPut0(k, v) {
     try { const db = await idb(); await new Promise((r, j) => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = r; t.onerror = () => j(t.error); }); } catch (e) { /* без памяти тоже работаем */ }
   }
-  async function idbGet(k) {
+  async function idbGet0(k) {
     try { const db = await idb(); return await new Promise((r) => { const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => r(q.result); q.onerror = () => r(null); }); } catch (e) { return null; }
   }
 
   async function pickFolder(mode) {
     if (!window.showDirectoryPicker) throw new Error('Этот браузер не умеет открывать папки. Откройте страницу в Chromium, Яндекс Браузере или Edge.');
     const dir = await window.showDirectoryPicker({ id: 'otchet', mode });
-    await idbPut('dir', dir);
-    return dir;
+    idbPut('dir', dir); // запоминаем в фоне, не ждём
+    return dataRoot(dir);
   }
   async function savedFolder() {
     const dir = await idbGet('dir');
-    return dir && dir.queryPermission ? dir : null;
+    return dir && dir.queryPermission ? dataRoot(dir) : null;
   }
   async function hasPermission(dir, mode) {
-    try { return (await dir.queryPermission({ mode })) === 'granted'; } catch (e) { return false; }
+    try { return (await withTimeout(dir.queryPermission({ mode }), 1500, 'prompt')) === 'granted'; } catch (e) { return false; }
   }
   async function askPermission(dir, mode) {
     return (await dir.requestPermission({ mode })) === 'granted';
@@ -136,7 +143,35 @@
     try { await readBytes(dir, [DATA, REG]); return true; } catch (e) { return false; }
   }
 
+  // Если выбрали саму папку «Данные», а не «Отчёт первой линейки» — тоже подходит.
+  function dataRoot(dir) {
+    if (dir.name !== DATA) return dir;
+    return {
+      kind: 'directory', name: 'Отчёт первой линейки', inner: dir,
+      async getDirectoryHandle(n, o) { if (n === DATA) return dir; throw new DOMException('Нет папки ' + n, 'NotFoundError'); },
+      async getFileHandle(n) { throw new DOMException('Нет файла ' + n, 'NotFoundError'); },
+      async *values() { yield dir; },
+      queryPermission: (o) => dir.queryPermission(o), requestPermission: (o) => dir.requestPermission(o),
+    };
+  }
+  // Запасной путь: обычное окно «выбрать папку» (работает в любом браузере, но только на чтение).
+  async function fromFileList(list) {
+    const root = new MemDir('папка');
+    for (const f of list) {
+      const parts = (f.webkitRelativePath || f.name).split('/');
+      if (parts[0] === DATA) parts.unshift('Отчёт первой линейки');
+      root.name = parts[0];
+      let d = root;
+      for (const x of parts.slice(1, -1)) d = await d.getDirectoryHandle(x, { create: true });
+      d.items.set(parts[parts.length - 1], new MemFile(parts[parts.length - 1], new Uint8Array(await f.arrayBuffer()), f.lastModified));
+    }
+    const lock = (d) => { d.readOnly = true; d.items.forEach((x) => (x.kind === 'directory' ? lock(x) : (x.readOnly = true))); };
+    lock(root);
+    return root;
+  }
+
   root.Store = {
+    withTimeout, dataRoot, fromFileList,
     DATA, REG, PEOPLE, ATT, ARCH, MemDir, MemFile, isNotFound, readBytes, writeBytes, readJSON, writeJSON, list, remove,
     dailyBackup, pickFolder, savedFolder, hasPermission, askPermission, checkFolder, idbPut, idbGet,
   };

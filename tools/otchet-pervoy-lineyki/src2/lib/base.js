@@ -22,30 +22,59 @@
   // Поток подключения папки: сохранённая → разрешение одним кликом → выбор папки.
   // opts: { mode: 'read'|'readwrite', onDir(dir) }
   function connector(opts) {
-    const c = { saved: null, error: '' };
+    const c = { saved: null, error: '', busy: false, readOnly: false };
+    const fail = (e) => { c.busy = false; c.error = (e && e.message) || String(e); opts.render(); };
     c.init = async () => {
-      const dir = await Store.savedFolder();
-      if (!dir) return false;
-      c.saved = dir;
-      if (await Store.hasPermission(dir, opts.mode)) { await c.use(dir); return true; }
+      try {
+        const dir = await Store.savedFolder();
+        if (!dir) return false;
+        c.saved = dir;
+        if (await Store.hasPermission(dir, opts.mode)) { await c.use(dir); return true; }
+      } catch (e) { /* начнём с выбора папки */ }
       return false;
     };
     c.pick = async () => {
-      try { const dir = await Store.pickFolder(opts.mode); await c.use(dir); } catch (e) { if (e.name !== 'AbortError') { c.error = e.message; opts.render(); } }
+      let dir;
+      try { dir = await Store.pickFolder(opts.mode); } catch (e) { if (e.name !== 'AbortError') fail(e); return; }
+      await c.use(dir);
     };
     c.grant = async () => {
-      try { if (await Store.askPermission(c.saved, opts.mode)) await c.use(c.saved); } catch (e) { c.error = e.message; opts.render(); }
+      try { if (await Store.askPermission(c.saved, opts.mode)) await c.use(c.saved); } catch (e) { fail(e); }
+    };
+    c.browse = async (files) => {
+      if (!files || !files.length) return;
+      c.busy = true; c.error = ''; opts.render();
+      try { const dir = await Store.fromFileList(files); c.readOnly = true; await c.use(dir); } catch (e) { fail(e); }
     };
     c.use = async (dir) => {
-      if (!(await Store.checkFolder(dir))) {
-        c.error = 'В папке «' + dir.name + '» нет «Данные/реестр.json». Выберите папку «Отчёт первой линейки».';
-        opts.render(); return;
-      }
-      c.error = '';
-      await opts.onDir(dir);
+      c.busy = true; c.error = ''; opts.render();
+      try {
+        if (!(await Store.checkFolder(dir))) {
+          fail(new Error('В папке «' + dir.name + '» нет «Данные/реестр.json». Выберите папку «Отчёт первой линейки» — ту, в которой лежит папка «Данные».'));
+          return;
+        }
+        await opts.onDir(dir);
+        c.busy = false;
+      } catch (e) { fail(new Error('Папку открыть не получилось: ' + e.message)); }
     };
-    c.screen = (title, text, demo) => View.folderScreen({ title, text, error: c.error, saved: c.saved && c.saved.name, demo });
+    c.screen = (title, text, demo) => (c.busy
+      ? '<div class="panel empty-state"><h2>Открываю папку…</h2><p>Читаю реестр и отчёты.</p></div>'
+      : View.folderScreen({ title, text, error: c.error, saved: c.saved && c.saved.name, demo, fallback: opts.mode === 'read' ? 'Не открывается? Открыть другим способом' : 'Не открывается? Открыть только для просмотра' }));
+    active = c;
     return c;
+  }
+  let active = null;
+  // Запасная кнопка и скрытое поле выбора папки — общие для всех страниц.
+  if (typeof document !== 'undefined') {
+    document.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-act="browse"]');
+      if (!b) return;
+      let inp = document.getElementById('dirFallback');
+      if (!inp) { inp = document.createElement('input'); inp.type = 'file'; inp.id = 'dirFallback'; inp.webkitdirectory = true; inp.multiple = true; inp.hidden = true; document.body.appendChild(inp); }
+      inp.value = '';
+      inp.click();
+    });
+    document.addEventListener('change', (e) => { if (e.target.id === 'dirFallback' && active) active.browse(e.target.files); });
   }
 
   // Демо-папка с вымышленными людьми — чтобы посмотреть, ничего не открывая.

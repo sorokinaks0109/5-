@@ -67,6 +67,52 @@ await pg0.waitForTimeout(200);
 check(await pg0.evaluate(() => window.__picked) === 1, 'кнопка «Выбрать папку» вызывает выбор папки');
 await pg0.close();
 
+// ---------- 0б. Корпоративный браузер: хранилище браузера «молчит» — папка всё равно открывается ----------
+{
+  const pg = await ctx.newPage();
+  pg.on('pageerror', (e) => errors.push('Директор(idb): ' + e.message));
+  await pg.addInitScript(() => { const o = indexedDB.open.bind(indexedDB); indexedDB.open = () => ({}); window.__idbBlocked = true; });
+  await pg.goto('file://' + path.join(root, 'Директор.html'));
+  await pg.evaluate(async (files) => {
+    const root = new Store.MemDir('Отчёт первой линейки');
+    for (const [p, b64] of Object.entries(files)) {
+      const parts = ['Данные', ...p.split('/')]; let d = root;
+      for (const x of parts.slice(0, -1)) d = await d.getDirectoryHandle(x, { create: true });
+      d.items.set(parts.at(-1), new Store.MemFile(parts.at(-1), Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))));
+    }
+    window.showDirectoryPicker = async () => root;
+  }, files);
+  await pg.click('text=Выбрать папку…');
+  await pg.waitForTimeout(2500);
+  check(await pg.locator('.tiles').first().isVisible().catch(() => false), 'Edge/Яндекс с отключённым хранилищем: после выбора папки сводка открывается');
+  await pg.close();
+}
+// ---------- 0в. Запасной способ: обычное окно выбора папки (только просмотр) ----------
+{
+  const pg = await open('Директор.html');
+  await pg.click('[data-act=browse]').catch(() => {});
+  await pg.evaluate(async (files) => {
+    const list = Object.entries(files).map(([p, b64]) => { const f = new File([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))], p.split('/').at(-1)); Object.defineProperty(f, 'webkitRelativePath', { value: 'Отчёт первой линейки/Данные/' + p }); return f; });
+    window.__files = list;
+  }, files);
+  await pg.evaluate(async () => { const ev = new Event('change', { bubbles: true }); const inp = document.getElementById('dirFallback'); Object.defineProperty(inp, 'files', { value: window.__files }); inp.dispatchEvent(ev); });
+  await pg.waitForTimeout(1500);
+  check(await pg.locator('.tiles').first().isVisible().catch(() => false), 'запасной способ (обычное окно выбора папки): директор видит сводку');
+  await pg.close();
+  const pm = await open('Страницы руководителей/Отчёт — Мещеряков.html');
+  await pm.click('[data-act=browse]').catch(() => {});
+  await pm.evaluate(async (files) => {
+    const list = Object.entries(files).map(([p, b64]) => { const f = new File([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))], p.split('/').at(-1)); Object.defineProperty(f, 'webkitRelativePath', { value: 'Данные/' + p }); return f; });
+    const inp = document.getElementById('dirFallback'); Object.defineProperty(inp, 'files', { value: list }); inp.dispatchEvent(new Event('change', { bubbles: true }));
+  }, files);
+  await pm.waitForTimeout(1500);
+  await pm.fill('#reportDate', '2026-10-02');
+  await pm.click('[data-act=save]');
+  await pm.waitForTimeout(300);
+  check((await pm.locator('#toast').innerText()).includes('только для просмотра'), 'в режиме просмотра руководитель видит понятное «сохранить нельзя»');
+  await pm.close();
+}
+
 // ---------- 1. Руководитель ----------
 let page = await open('Страницы руководителей/Отчёт — Мещеряков.html');
 await MOUNT(page, files);
