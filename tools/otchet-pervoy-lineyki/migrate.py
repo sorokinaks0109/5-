@@ -1,11 +1,7 @@
-"""Перенос старого общего отчёта (один файл, вкладка на человека) в новую схему.
+"""Перенос в новую схему (HTML + JSON) из старого общего отчёта и свежей карты УПЦ.
 
-Делает:
-  <out>/Реестр.xlsx                    — Мемо, План УПЦ, Руководители, Показатели УПЦ
-  <out>/Руководители/<Фамилия>.xlsx    — пока только лист «Приложения» (если были доп. таблицы)
-  <out>/../migr.json                   — РОС, текущие проекты и статусы для make-personal.mjs
-
-Запуск: python3 migrate.py старый.xlsx "папка/Отчёт первой линейки"
+Запуск: python3 migrate.py старый_отчёт.xlsx карта_УПЦ.xlsx "папка/Отчёт первой линейки"
+Создаёт папку «Данные»: реестр.json, руководители/<Фамилия>.json, вложения/<Фамилия>/Приложения.xlsx.
 """
 import copy
 import datetime as dt
@@ -15,253 +11,301 @@ import re
 import sys
 
 import openpyxl
-from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
-from openpyxl.worksheet.datavalidation import DataValidation
 
-SRC, OUT = sys.argv[1], sys.argv[2]
+SRC, CARD, OUT = sys.argv[1:4]
+DATA = os.path.join(OUT, 'Данные')
 MAX_COLS = 12
 
-wb = openpyxl.load_workbook(SRC, data_only=True)
-wb_styles = openpyxl.load_workbook(SRC)  # для копирования оформления приложений
+# Кто отчитывается за показатель, если лидер не из первой линейки (решение заказчика).
+REPORTER_BY_LEADER = {'Топинская': 'Арикулова', 'Усманов': 'Дрыков', 'Бруховский': None, 'Губаревич': None}
+EXTRA_PEOPLE = [('Лазар А.А.', False)]  # заполняет отчёт, на совещании не докладывает
 
-FIRST_LINE = [n for n in wb.sheetnames if n not in ('Как заполнять', 'Мемо', 'План мероприятий для УПЦ', 'УПЦ справочно')]
+DONE_RE = re.compile(r'(^|[^а-яё])(выполнен|проведен|исполнен|завершен|снят|закрыт)(о|а|ы)?(?![а-яё])', re.I)
+NOT_DONE_RE = re.compile(r'(^|[^а-яё])не\s+(выполнен|проведен|исполнен|завершен|снят|закрыт)', re.I)
 
-thin = Side(style='thin', color='BFBFBF')
-BORDER = Border(top=thin, bottom=thin, left=thin, right=thin)
-HEAD_FILL = PatternFill('solid', fgColor='DCE6F1')
-TITLE_FILL = PatternFill('solid', fgColor='1F3A5F')
-WRAP = Alignment(wrap_text=True, vertical='top')
+
+def is_done(t):
+    t = str(t or '')
+    return bool(DONE_RE.search(t)) and not NOT_DONE_RE.search(t)
 
 
 def clean(v):
     if isinstance(v, str):
-        v = v.replace('\xa0', ' ')
-        return v if v.strip() else None
+        v = v.replace('\xa0', ' ').strip()
+        return v or None
     return v
 
 
-def jsonable(v):
+def iso(v):
     if isinstance(v, dt.datetime):
-        return {'$d': v.strftime('%Y-%m-%d')}
-    return v
+        return v.strftime('%Y-%m-%d')
+    if isinstance(v, str):
+        m = re.fullmatch(r'(\d{1,2})\.(\d{1,2})\.(\d{4})', v.strip())
+        if m:
+            return f'{m[3]}-{int(m[2]):02d}-{int(m[1]):02d}'
+        return v.strip()
+    if v is None:
+        return ''
+    return str(v)
 
 
-def table_sheet(ws, title, note, headers, widths, rows, date_cols=()):
-    ws['A1'] = title
-    ws['A1'].font = Font(bold=True, size=14)
-    ws['A2'] = note
-    ws['A2'].font = Font(italic=True, size=9, color='595959')
-    ws['A2'].alignment = Alignment(wrap_text=True, vertical='top')
-    ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=len(headers))
-    ws.row_dimensions[2].height = 42
-    for i, (h, w) in enumerate(zip(headers, widths), 1):
-        c = ws.cell(3, i, h)
-        c.font = Font(bold=True)
-        c.fill = HEAD_FILL
-        c.border = BORDER
-        c.alignment = WRAP
-        ws.column_dimensions[get_column_letter(i)].width = w
-    for r, vals in enumerate(rows, 4):
-        for i, v in enumerate(vals, 1):
-            c = ws.cell(r, i, v)
-            c.border = BORDER
-            c.alignment = WRAP
-            if i in date_cols and isinstance(v, dt.datetime):
-                c.number_format = 'DD.MM.YYYY'
-    ws.freeze_panes = 'A4'
+def text(v):
+    v = clean(v)
+    if v is None:
+        return ''
+    if isinstance(v, float) and v.is_integer():
+        return str(int(v))
+    if isinstance(v, dt.datetime):
+        return v.strftime('%d.%m.%Y')
+    return str(v)
 
 
-# ---------- Реестр ----------
-os.makedirs(os.path.join(OUT, 'Руководители'), exist_ok=True)
-reg = openpyxl.Workbook()
-
-people = [{'fio': n, 'file': n.split()[0] + '.xlsx'} for n in FIRST_LINE]
-
-def memo_num(v):
-    # «М-007» → 7: номер нужен только помощнику, руководители его не видят
-    m = re.search(r'\d+', str(v or ''))
-    return int(m.group()) if m else v
+def surname(s):
+    return re.split(r'[\s.]+', str(s or '').strip())[0].lower().replace('ё', 'е')
 
 
-ws_m = wb['Мемо']
-memo_rows = []
-for r in range(5, ws_m.max_row + 1):
-    if not ws_m.cell(r, 1).value:
+wb = openpyxl.load_workbook(SRC, data_only=True)
+wb_st = openpyxl.load_workbook(SRC)
+card = openpyxl.load_workbook(CARD, data_only=True).active
+
+FIRST = [n for n in wb.sheetnames if n not in ('Как заполнять', 'Мемо', 'План мероприятий для УПЦ', 'УПЦ справочно')]
+
+# ---------- карта УПЦ ----------
+head_row, cols, card_date = None, {}, ''
+for r in range(1, 30):
+    vals = [text(card.cell(r, c).value) for c in range(1, 20)]
+    for i, v in enumerate(vals):
+        if re.search(r'дата выгрузки', v, re.I):
+            for cand in [vals[i + 1] if i + 1 < len(vals) else '', text(card.cell(r + 1, i + 1).value), text(card.cell(r + 1, i + 2).value)]:
+                if re.search(r'\d{2}\.\d{2}\.\d{4}', cand):
+                    card_date = iso(re.search(r'\d{2}\.\d{2}\.\d{4}', cand)[0])
+    if 'Идентификатор' in vals and 'Показатель' in vals:
+        head_row = r
+        cols = {v: i + 1 for i, v in enumerate(vals) if v}
+        break
+kpis = []
+for r in range(head_row + 1, card.max_row + 1):
+    g = lambda name: text(card.cell(r, cols[name]).value) if name in cols else ''
+    if not g('Идентификатор') or not g('Показатель'):
         continue
-    row = [clean(ws_m.cell(r, c).value) for c in (1, 2, 3, 4, 5, 6, 8)]
-    row[0] = memo_num(row[0])
-    memo_rows.append(row)
-ws = reg.active
-ws.title = 'Мемо'
-table_sheet(
-    ws, 'РЕЕСТР ПОРУЧЕНИЙ (МЕМО) СОВЕЩАНИЯ ПЕРВОЙ ЛИНЕЙКИ',
-    'Ведёт помощник. Новые поручения добавляйте вниз. № — порядковый номер для вас (руководители его не видят); '
-    'после рассылки его не меняйте. Ответственный — ровно как на листе «Руководители». '
-    'Соисполнители — «Фамилия И.О.» через запятую. Выполненные убирает Сборщик при рассылке (сам пишет отметку); '
-    'вручную снять поручение — напишите в «Отметке секретаря» «снято». Статусы сюда не пишутся: их показывает Сборщик.',
-    ['№', 'Дата совещания', 'Поручение', 'Ответственный', 'Соисполнители', 'Срок', 'Отметка секретаря'],
-    [8, 14, 70, 20, 30, 14, 24], memo_rows, date_cols=(6,))
-dv = DataValidation(type='list', formula1="='Руководители'!$A$4:$A$40", allow_blank=True, showErrorMessage=False)
-ws.add_data_validation(dv)
-dv.add('D4:D2000')
+    kpis.append({
+        'id': g('Идентификатор'), 'top3': g('ТОП 3').lower() == 'да', 'name': g('Показатель'), 'goal': g('Цель'),
+        'stretch': g('Напряженная цель'), 'fact': g('Факт (на дату мониторинга)'), 'forecast': g('Прогноз (на 31.12)'),
+        'grade': g('Оценка прогноза'), 'team': g('Команда ответственных'), 'leader': g('Лидер команды'),
+        'unit': g('Ед. Изм'), 'type': g('Тип'),
+    })
 
-ws_u = wb['План мероприятий для УПЦ']
-upc_rows, block, kpi_full = [], '', ''
-for r in range(7, ws_u.max_row + 1):
-    a, b, c, d, e, f, g, h, i = [clean(ws_u.cell(r, k).value) for k in range(1, 10)]
-    if h:
-        upc_rows.append([block, i or kpi_full, a, h, b, c, d, e, g, None if g else f])
-    elif a and not b and isinstance(a, str) and not re.fullmatch(r'\d+\.?', a.strip()):
-        if a.strip().lower().startswith('блок'):
-            block = a.strip()
-        else:
-            kpi_full = a.strip()
-ws = reg.create_sheet('План УПЦ')
-table_sheet(
-    ws, 'ПЛАН МЕРОПРИЯТИЙ ПО ДОСТИЖЕНИЮ ЦЕЛЕВЫХ ПОКАЗАТЕЛЕЙ (УПЦ)',
-    'Докладчик — тот, в чей личный файл уходит мероприятие и кто заполняет по нему статус. '
-    'Если докладчика нет (лидер не из первой линейки), статус пишется здесь, в последней колонке.',
-    ['Блок', 'Показатель', '№', 'Код (служебный)', 'Мероприятие', 'Ответственный исполнитель', 'Срок', 'Примечания', 'Докладчик',
-     'Статус (только если нет докладчика)'],
-    [10, 24, 5, 8, 60, 30, 14, 20, 18, 40], upc_rows, date_cols=(7,))
-dv2 = DataValidation(type='list', formula1="='Руководители'!$A$4:$A$40", allow_blank=True, showErrorMessage=False)
-ws.add_data_validation(dv2)
-dv2.add('I4:I2000')
-
-ws = reg.create_sheet('Руководители')
-table_sheet(
-    ws, 'РУКОВОДИТЕЛИ ПЕРВОЙ ЛИНЕЙКИ',
-    'Порядок строк = порядок докладов на совещании. Файл — имя личного файла в папке «Руководители». '
-    'Новый человек: добавьте строку, Сборщик сам создаст ему файл при рассылке.',
-    ['ФИО', 'Файл'], [24, 24], [[p['fio'], p['file']] for p in people])
-
-ws_k = wb['УПЦ справочно']
-kpi_rows = []
-for r in range(9, ws_k.max_row + 1):
-    vals = [clean(ws_k.cell(r, c).value) for c in range(1, 12)]
-    if vals[3]:
-        kpi_rows.append(vals)
-ws = reg.create_sheet('Показатели УПЦ')
-table_sheet(
-    ws, 'КАРТА УПЦ НА ГОД (справочно)', 'Обновляйте при новой выгрузке карты. Нужен для экрана «Показатели на год».',
-    [clean(ws_k.cell(8, c).value) or '' for c in range(1, 12)], [11, 7, 6, 45, 12, 14, 50, 28, 10, 8, 20], kpi_rows)
-
-reg.save(os.path.join(OUT, 'Реестр.xlsx'))
+# ---------- люди ----------
+people = []
+for name, on in [(n, True) for n in FIRST] + EXTRA_PEOPLE:
+    sn = surname(name)
+    full = ''
+    for k in kpis:
+        for part in re.split(r'[,()]', k['team'] + ',' + k['leader']):
+            part = part.strip()
+            if surname(part) == sn and len(part.split()) == 3:
+                full = part
+    slug = name.split()[0]
+    people.append({'id': slug, 'fio': name.strip(), 'full': full, 'slug': slug, 'email': '', 'onMeeting': on})
+by_surname = {surname(p['fio']): p for p in people}
 
 
-# ---------- Личные файлы ----------
-def is_heading(vals):
-    a = vals[0]
-    return isinstance(a, str) and not re.fullmatch(r'\s*\d+\.?\s*', a) and all(v is None for v in vals[1:5])
+for k in kpis:
+    ls = surname(k['leader'])
+    key = next((x for x in REPORTER_BY_LEADER if surname(x) == ls), None)
+    if key is not None:
+        target = REPORTER_BY_LEADER[key]
+        k['reporter'] = by_surname[surname(target)]['id'] if target else None
+    else:
+        k['reporter'] = by_surname[ls]['id'] if ls in by_surname else None
+
+# ---------- поручения ----------
+ws = wb['Мемо']
+memo = []
+for r in range(5, ws.max_row + 1):
+    mid = text(ws.cell(r, 1).value)
+    if not mid:
+        continue
+    resp_name = text(ws.cell(r, 4).value)
+    rp = by_surname.get(surname(resp_name))
+    co_names = [x.strip() for x in re.split(r'[,;]', text(ws.cell(r, 5).value)) if x.strip()]
+    co_ids = [by_surname[surname(x)]['id'] for x in co_names if surname(x) in by_surname]
+    co_other = [x for x in co_names if surname(x) not in by_surname]
+    num = int(re.search(r'\d+', mid)[0])
+    item = {
+        'id': mid, 'num': num, 'date': iso(ws.cell(r, 2).value) if text(ws.cell(r, 2).value) != 'ранее' else '',
+        'text': text(ws.cell(r, 3).value) + (('\nСоисп.: ' + ', '.join(co_other)) if co_other else ''),
+        'resp': rp['id'] if rp else '', 'respText': '' if rp else resp_name, 'co': co_ids, 'due': iso(ws.cell(r, 6).value),
+    }
+    mark = text(ws.cell(r, 8).value)
+    if is_done(mark):
+        item['closed'] = {'date': '', 'flag': 'done', 'text': mark}
+    memo.append(item)
+
+# ---------- мероприятия УПЦ ----------
+def core(s):
+    s = re.sub(r'(ГПН-ГПН_Снаб-)+', '', str(s or ''))
+    return re.sub(r'\s+', ' ', s).strip().lower()
 
 
-def is_title(a, word):
-    return isinstance(a, str) and a.strip().upper().startswith(word)
+ws = wb['План мероприятий для УПЦ']
+events, cur_kpi, dropped, manual = [], None, [], {}
+for r in range(7, ws.max_row + 1):
+    a, b, c, d, e, f, g, h = [clean(ws.cell(r, k).value) for k in range(1, 9)]
+    if not h and a and not b and isinstance(a, str) and not re.fullmatch(r'\d+\.?', a.strip()):
+        if a.lower().startswith('блок'):
+            continue
+        heading = core(a)
+        # «Качество планирования_Сибирь» ↔ «Качество планирования_Восточная сибирь»: сравниваем часть до «_»
+        found = [k for k in kpis if core(k['name']).split('_')[0][:60] in heading]
+        cur_kpi = max(found, key=lambda k: len(core(k['name']).split('_')[0][:60])) if found else None
+        if not cur_kpi:
+            dropped.append(a.strip())
+        continue
+    if not h or not cur_kpi:
+        if h:
+            dropped.append(f'  {h} {text(b)[:50]}')
+        continue
+    speaker = by_surname.get(surname(g))['id'] if g and surname(g) in by_surname else None
+    if not speaker:
+        speaker = cur_kpi['reporter']
+    if not speaker:
+        ex = [x for x in re.split(r'[,;]', text(c)) if x.strip()]
+        if len(ex) == 1 and surname(ex[0]) in by_surname:
+            speaker = by_surname[surname(ex[0])]['id']
+    ev = {'id': h, 'kpi': cur_kpi['id'], 'text': text(b), 'executors': text(c), 'due': iso(d), 'speaker': speaker}
+    if f and not g:
+        manual[h] = text(f)
+    events.append(ev)
+
+# ---------- личные отчёты ----------
+def flag_of(t):
+    return 'done' if is_done(t) else ('work' if t else '')
 
 
-migr = []
-for name in FIRST_LINE:
+def free_row(vals):
+    a, b, c, dd, e, f = (vals + [None] * 6)[:6]
+    extra = [text(x) for x in vals[6:] if clean(x) is not None]
+    due = ''
+    if isinstance(e, dt.datetime) or (isinstance(e, str) and re.fullmatch(r'\d{1,2}\.\d{1,2}\.\d{4}', e.strip())):
+        due = iso(e)
+        pct = f if isinstance(f, (int, float)) and 0 <= f <= 100 else ''
+        if pct == '' and clean(f) is not None:
+            extra.insert(0, text(f))
+    else:
+        pct = ''
+        extra = [text(x) for x in (e, f) if clean(x) is not None] + extra
+    body = text(c) + ((' | ' + ' | '.join(extra)) if extra else '')
+    return {'kind': 'row', 'task': text(b), 'text': body, 'resp': text(dd), 'due': due, 'flag': flag_of(text(c)) if text(c) else '', 'pct': pct}
+
+
+os.makedirs(os.path.join(DATA, 'руководители'), exist_ok=True)
+own = {p['id']: {'personId': p['id'], 'fio': p['fio'], 'reportDate': '', 'memo': {}, 'events': {}, 'kpi': {}, 'ros': [], 'proj': [], 'attachments': []} for p in people}
+memo_resp = {m['id']: m['resp'] for m in memo}
+ev_speaker = {e['id']: e['speaker'] for e in events}
+
+for name in FIRST:
     ws = wb[name]
-    ws_st = wb_styles[name]
+    ws_st = wb_st[name]
+    pid = by_surname[surname(name)]['id']
     rows = {r: [clean(ws.cell(r, c).value) for c in range(1, MAX_COLS + 1)] for r in range(1, ws.max_row + 1)}
-    memo_start = next(r for r, v in rows.items() if is_title(v[0], 'ПОРУЧЕНИЯ ПО МЕМО'))
-    upc_start = next(r for r, v in rows.items() if is_title(v[0], 'МЕРОПРИЯТИЯ УПЦ'))
-
-    ros, proj, cur = [], [], None
+    title = lambda v, w: isinstance(v[0], str) and v[0].strip().upper().startswith(w)
+    memo_start = next(r for r, v in rows.items() if title(v, 'ПОРУЧЕНИЯ ПО МЕМО'))
+    upc_start = next(r for r, v in rows.items() if title(v, 'МЕРОПРИЯТИЯ УПЦ'))
+    cur = None
     for r in range(2, memo_start):
-        vals = rows[r]
-        while vals and vals[-1] is None:
-            vals = vals[:-1]
-        if not vals or vals[0] in ('№ ', '№'):
+        v = [None if x == '•' else x for x in rows[r]]
+        while v and v[-1] is None:
+            v = v[:-1]
+        if not v or v[0] in ('№ ', '№') or (len([x for x in v if x is not None]) == 1 and str(v[0]).strip().upper() == name.upper()):
             continue
-        # служебный маркер «•» в колонке F не переносим
-        vals = [None if v == '•' else v for v in vals]
-        while vals and vals[-1] is None:
-            vals = vals[:-1]
-        if r == 1 or (is_heading(vals + [None] * 5) and len([v for v in vals if v is not None]) == 1
-                      and vals[0].strip().upper() == name.upper()):
+        is_head = isinstance(v[0], str) and not re.fullmatch(r'\s*\d+\.?\s*', v[0]) and all(x is None for x in (v + [None] * 5)[1:5])
+        if is_head:
+            hd = v[0].strip()
+            if hd.upper() == 'РОС':
+                cur = 'ros'
+            elif hd.lower().startswith('текущие проекты'):
+                cur = 'proj'
+            else:
+                own[pid][cur or 'proj'].append({'kind': 'head', 'task': hd})
             continue
-        if is_heading(vals + [None] * 5):
-            h = vals[0].strip()
-            if h.upper() == 'РОС':
-                cur = ros
-                continue
-            if h.lower().startswith('текущие проекты'):
-                cur = proj
-                continue
-            (cur if cur is not None else proj).append([h])
+        if all(x is None for x in v[1:]):
             continue
-        if all(v is None for v in vals[1:]):  # пустая заготовка «1.», «11»
-            continue
-        (cur if cur is not None else proj).append(vals)
-
-    def ids_status(start):
-        out, r = {}, start + 2
-        while r <= ws.max_row:
+        own[pid][cur or 'proj'].append(free_row(v))
+    for start, kind in ((memo_start, 'memo'), (upc_start, 'events')):
+        for r in range(start + 2, ws.max_row + 1):
             v = rows[r]
-            if isinstance(v[0], str) and re.fullmatch(r'[МУ]-\d+', v[0].strip()):
-                if v[2]:
-                    out[v[0].strip()] = v[2]
-            elif v[0] and r > start + 2 and not re.fullmatch(r'[МУ]-\d+', str(v[0])):
-                break
-            r += 1
-        return out
-
-    memo_st = ids_status(memo_start)
-    upc_st = ids_status(upc_start)
-
-    # всё, что ниже блока УПЦ и не является строкой УПЦ, — приложения
-    app_start = None
-    for r in range(upc_start + 2, ws.max_row + 1):
-        v = rows[r]
-        if any(x is not None for x in v) and not (isinstance(v[0], str) and re.fullmatch(r'У-\d+', v[0].strip())):
-            app_start = r
-            break
-
-    person_file = os.path.join(OUT, 'Руководители', name.split()[0] + '.xlsx')
-    has_app = False
+            key = v[0].strip() if isinstance(v[0], str) else ''
+            if not re.fullmatch(r'[МУ]-\d+', key):
+                if key and r > start + 2:
+                    break
+                continue
+            st = text(v[2])
+            if not st:
+                continue
+            owner = (memo_resp if kind == 'memo' else ev_speaker).get(key)
+            if owner == pid or (kind == 'events' and owner and owner not in own):
+                own[pid][kind][key] = {'flag': flag_of(st), 'text': st}
+            elif kind == 'events' and owner:
+                own[owner]['events'].setdefault(key, {'flag': flag_of(st), 'text': st})
+    # приложения: всё ниже блока УПЦ, что не строка УПЦ
+    app_start = next((r for r in range(upc_start + 2, ws.max_row + 1)
+                      if any(x is not None for x in rows[r]) and not (isinstance(rows[r][0], str) and re.fullmatch(r'У-\d+', rows[r][0].strip()))), None)
     if app_start:
-        out_wb = openpyxl.Workbook()
-        app = out_wb.active
+        out = openpyxl.Workbook()
+        app = out.active
         app.title = 'Приложения'
         last = max(r for r in range(app_start, ws.max_row + 1) if any(x is not None for x in rows[r]))
         for r in range(app_start, last + 1):
-            nr = r - app_start + 1
             for c in range(1, MAX_COLS + 1):
                 src = ws_st.cell(r, c)
-                dst = app.cell(nr, c, clean(ws.cell(r, c).value))
+                dst = app.cell(r - app_start + 1, c, clean(ws.cell(r, c).value))
                 if src.has_style:
-                    dst.font = copy.copy(src.font)
-                    dst.fill = copy.copy(src.fill)
-                    dst.border = copy.copy(src.border)
-                    dst.alignment = copy.copy(src.alignment)
+                    dst.font, dst.fill, dst.border, dst.alignment = copy.copy(src.font), copy.copy(src.fill), copy.copy(src.border), copy.copy(src.alignment)
                     dst.number_format = src.number_format
-            if ws_st.row_dimensions[r].height:
-                app.row_dimensions[nr].height = ws_st.row_dimensions[r].height
         for mr in ws_st.merged_cells.ranges:
             if mr.min_row >= app_start and mr.max_row <= last and mr.max_col <= MAX_COLS:
-                app.merge_cells(start_row=mr.min_row - app_start + 1, start_column=mr.min_col,
-                                end_row=mr.max_row - app_start + 1, end_column=mr.max_col)
+                app.merge_cells(start_row=mr.min_row - app_start + 1, start_column=mr.min_col, end_row=mr.max_row - app_start + 1, end_column=mr.max_col)
         for c in range(1, MAX_COLS + 1):
             w = ws_st.column_dimensions[get_column_letter(c)].width
             if w:
                 app.column_dimensions[get_column_letter(c)].width = w
-        out_wb.save(person_file)
-        has_app = True
-    elif os.path.exists(person_file):
-        os.remove(person_file)
+        slug = by_surname[surname(name)]['slug']
+        os.makedirs(os.path.join(DATA, 'вложения', slug), exist_ok=True)
+        out.save(os.path.join(DATA, 'вложения', slug, 'Приложения.xlsx'))
+        own[pid]['attachments'].append({'name': 'Приложения (перенесено из старого отчёта)', 'file': 'Приложения.xlsx', 'added': dt.date.today().isoformat()})
 
-    migr.append({
-        'fio': name, 'file': name.split()[0] + '.xlsx', 'hasAppendix': has_app,
-        'ros': [[jsonable(v) for v in row] for row in ros],
-        'proj': [[jsonable(v) for v in row] for row in proj],
-        'memo': {str(memo_num(k)): jsonable(v) for k, v in memo_st.items()},
-        'upc': {k: jsonable(v) for k, v in upc_st.items()},
-    })
-    print(f'{name}: РОС {len(ros)}, проекты {len(proj)}, статусов мемо {len(memo_st)}, УПЦ {len(upc_st)}, '
-          f'приложения {"да" if has_app else "нет"}')
+# статусы мероприятий без докладчика (ручные) и тех, у кого теперь появился докладчик
+for e in events:
+    t = manual.get(e['id'])
+    if not t:
+        continue
+    if e['speaker']:
+        own[e['speaker']]['events'].setdefault(e['id'], {'flag': flag_of(t), 'text': t})
+    else:
+        e['manual'] = {'flag': flag_of(t), 'text': t}
 
-with open(os.path.join(os.path.dirname(os.path.abspath(OUT)), 'migr.json'), 'w', encoding='utf-8') as f:
-    json.dump(migr, f, ensure_ascii=False, indent=1)
-print('Реестр: мемо', len(memo_rows), ', УПЦ', len(upc_rows), ', показателей', len(kpi_rows))
+last_meeting = max((m['date'] for m in memo if re.fullmatch(r'\d{4}-\d{2}-\d{2}', m['date'] or '')), default='')
+reg = {
+    'version': 2,
+    'settings': {'lastMeeting': last_meeting, 'cardDate': card_date, 'directorEmail': ''},
+    'people': people, 'memo': memo, 'kpis': kpis, 'events': events,
+}
+with open(os.path.join(DATA, 'реестр.json'), 'w', encoding='utf-8') as f:
+    json.dump(reg, f, ensure_ascii=False, indent=1)
+for p in people:
+    with open(os.path.join(DATA, 'руководители', p['slug'] + '.json'), 'w', encoding='utf-8') as f:
+        json.dump(own[p['id']], f, ensure_ascii=False, indent=1)
+
+print(f'Руководителей: {len(people)}, поручений: {len(memo)}, показателей: {len(kpis)}, мероприятий: {len(events)}, дата карты: {card_date}')
+for p in people:
+    o = own[p['id']]
+    rep = [k['name'].replace('ГПН-ГПН_Снаб-', '')[:40] for k in kpis if k['reporter'] == p['id']]
+    evs = sum(1 for e in events if e['speaker'] == p['id'])
+    print(f"  {p['fio']}: РОС {len(o['ros'])}, проекты {len(o['proj'])}, статусов поручений {len(o['memo'])}, мероприятий {evs} (статусов {len(o['events'])}), отчитывается: {rep}")
+print('Без отчитывающегося:', [k['name'].replace('ГПН-ГПН_Снаб-', '')[:50] for k in kpis if not k['reporter']])
+print('Мероприятий без докладчика:', sum(1 for e in events if not e['speaker']))
+print('Не перенесено (показателя нет в новой карте):')
+for d in dropped:
+    print('  ', d[:110])

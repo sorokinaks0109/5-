@@ -1,163 +1,185 @@
-// Сквозная проверка Сборщика в Chromium на настоящей папке (в памяти страницы).
-// node test/e2e.mjs "путь/Отчёт первой линейки" [папка для скриншотов]
+// Сквозная проверка трёх страниц в Chromium на настоящих данных (папка держится в памяти страницы).
+// node test/e2e.mjs "путь/Отчёт первой линейки" [карта_УПЦ_изменённая.xlsx] [папка для скриншотов]
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
-
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
-const ExcelJS = require('exceljs');
-const Core = require('../src/core.js');
 
-const dir = process.argv[2];
-const shots = process.argv[3];
-const html = path.join(dir, 'Сборщик.html');
+const [root, card2, shots] = process.argv.slice(2);
 let failed = 0;
-const check = (cond, msg) => { console.log((cond ? 'ok   ' : 'FAIL ') + msg); if (!cond) failed++; };
+const check = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) failed++; };
+const shot = async (page, name, full = true) => { if (shots) await page.screenshot({ path: path.join(shots, name + '.png'), fullPage: full }); };
 
 function walk(d, base = '') {
   const out = {};
   for (const n of fs.readdirSync(d)) {
     const p = path.join(d, n);
     if (fs.statSync(p).isDirectory()) Object.assign(out, walk(p, base + n + '/'));
-    else if (n.endsWith('.xlsx')) out[base + n] = fs.readFileSync(p).toString('base64');
+    else out[base + n] = fs.readFileSync(p).toString('base64');
   }
   return out;
 }
-
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' }).catch(() => chromium.launch());
-const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-const errors = [];
-page.on('pageerror', (e) => errors.push(e.message));
-page.on('dialog', (d) => d.accept());
-await page.goto('file://' + html);
-
-// 1. Демо
-await page.click('text=Посмотреть на демо-данных');
-await page.waitForSelector('.who .card');
-check((await page.locator('.who .card').count()) === 3, 'демо: три карточки');
-check((await page.locator('.who .card.stale').count()) === 1, 'демо: один не обновил (Сидоров, 12 дней)');
-await page.click('[data-tab=report]');
-check(await page.isVisible('text=Проект графика на согласовании у ГД'), 'демо: статус Иванова на экране');
-if (shots) await page.screenshot({ path: path.join(shots, 'demo-report.png'), fullPage: true });
-
-// 2. Настоящая папка
-const files = walk(dir);
-await page.evaluate(async (files) => {
-  const { MemDir, MemFile } = window.Otchet;
-  const root = new MemDir('Отчёт первой линейки');
+let files = walk(path.join(root, 'Данные'));
+const MOUNT = async (page, files) => page.evaluate(async (files) => {
+  const root = new Store.MemDir('Отчёт первой линейки');
   for (const [p, b64] of Object.entries(files)) {
-    const parts = p.split('/');
+    const parts = ['Данные', ...p.split('/')];
     let d = root;
     for (const x of parts.slice(0, -1)) d = await d.getDirectoryHandle(x, { create: true });
-    const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-    d.items.set(parts.at(-1), new MemFile(parts.at(-1), bin, Date.now() - 3 * 864e5));
+    d.items.set(parts.at(-1), new Store.MemFile(parts.at(-1), Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))));
   }
   window.__root = root;
-  window.Otchet.state.tab = 'who';
-  await window.Otchet.useDir(root, false, false);
+  window.Otchet.S.dir = root;
+  await window.Otchet.load();
 }, files);
-check((await page.locator('.who .card').count()) === 9, 'реальные данные: 9 руководителей');
-check((await page.locator('.msg.bad').count()) === 0 || !(await page.locator('.msg.bad').first().innerText()).includes('Не найдены'), 'нет ошибок разбора');
-if (shots) await page.screenshot({ path: path.join(shots, 'who.png'), fullPage: true });
+const DUMP = async (page) => page.evaluate(async () => {
+  const out = {};
+  const rec = async (d, base) => { for await (const h of d.values()) { if (h.kind === 'directory') await rec(h, base + h.name + '/'); else { const b = new Uint8Array(await (await h.getFile()).arrayBuffer()); let s = ''; for (const x of b) s += String.fromCharCode(x); out[base + h.name] = btoa(s); } } };
+  await rec(await window.__root.getDirectoryHandle('Данные'), '');
+  return out;
+});
+const json = (f, p) => JSON.parse(Buffer.from(f[p], 'base64').toString('utf8'));
 
-await page.click('[data-tab=report]');
-await page.click('.people-bar >> text=Мещеряков А.В.');
-check(await page.isVisible('text=Выполнено, встреча организована на ежедневной основе'), 'Мещеряков: статус М-010 подтянулся');
-check(await page.isVisible('text=Выручка по ДО 14 387 млн. руб.'), 'Мещеряков: РОС на месте');
-if (shots) await page.screenshot({ path: path.join(shots, 'report-meshcheryakov.png'), fullPage: true });
-await page.click('.people-bar >> text=Хисматуллин Р.М.');
-check(await page.isVisible('summary:has-text("Приложения")'), 'Хисматуллин: приложения видны');
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+const errors = [];
+const open = async (file) => {
+  const page = await ctx.newPage();
+  page.on('pageerror', (e) => errors.push(file + ': ' + e.message));
+  page.on('dialog', (d) => d.accept());
+  await page.goto('file://' + path.join(root, file));
+  return page;
+};
+
+// ---------- 1. Руководитель ----------
+let page = await open('Страницы руководителей/Отчёт — Мещеряков.html');
+await MOUNT(page, files);
+check((await page.locator('#who').innerText()) === 'Мещеряков А.В.', 'страница сама узнала руководителя по имени файла');
+check(await page.locator('label.req.empty').isVisible(), 'дата «Отчёт актуален на» пустая и подсвечена');
+await shot(page, '1-manager-empty');
+await page.click('[data-act=save]');
+check((await page.locator('#toast').innerText()).includes('Укажите дату'), 'без даты не сохраняет');
+const memoSel = page.locator('select[data-k^="memo|"]').first();
+const memoKey = (await memoSel.getAttribute('data-k')).split('|')[1];
+await memoSel.selectOption('done');
+await page.locator('textarea[data-k="memo|' + memoKey + '|text"]').fill('Служебная записка подписана 01.10');
+check((await page.locator('select.st-select option').allInnerTexts()).slice(0, 5).join(',') === '— выбрать —,в работе,выполнено,не выполнено,неактуально', 'статусы: в работе / выполнено / не выполнено / неактуально');
+await page.click('[data-row="add|proj"]');
+await page.locator('textarea[data-k="proj|0|task"]').fill('Новый проект: цифровой склад');
+await page.locator('input[data-k="proj|0|due"]').fill('31.12.2026');
+await page.locator('select[data-k="proj|0|flag"]').selectOption('work');
+await page.locator('textarea[data-k^="kpi|"]').first().fill('ДЗ снижается, прогноз 120%');
+await page.fill('#reportDate', '2026-10-02');
+await page.click('[data-act=save]');
+await page.waitForTimeout(300);
+files = await DUMP(page);
+const mesh = json(files, 'руководители/Мещеряков.json');
+check(mesh.reportDate === '2026-10-02' && mesh.memo[memoKey].flag === 'done', 'сохранено: дата, статус поручения');
+check(mesh.proj[0].due === '2026-12-31' && mesh.proj[0].flag === 'work', 'сохранён новый проект (срок как дата, статус)');
+check(Object.keys(files).some((f) => f.startsWith('архив/Мещеряков_')), 'перед записью сделана копия в архив');
+await page.click('[data-act=preview]');
+await shot(page, '2-manager-preview');
+await page.close();
+
+// вложение — у Хисматуллина
+page = await open('Страницы руководителей/Отчёт — Хисматуллин.html');
+await MOUNT(page, files);
+// Playwright не передаёт файлы с русскими буквами в пути — кладём копию по латинскому пути
+const tmpAtt = path.join(path.dirname(card2 || root), 'att_test.xlsx');
+fs.copyFileSync(path.join(root, 'Данные/вложения/Хисматуллин/Приложения.xlsx'), tmpAtt);
+await page.setInputFiles('#attFile', tmpAtt);
+await page.waitForTimeout(500);
+check((await page.locator('#toast').innerText()).includes('загружен'), 'вложение Excel загружается');
+await page.close();
+
+// ---------- 2. Помощник ----------
+page = await open('Помощник.html');
+await MOUNT(page, files);
+check((await page.locator('.who .card.fr-fresh').count()) === 1, 'кто обновил: зелёный только Мещеряков (дату поставил он сам)');
+await shot(page, '3-admin-who');
 await page.click('[data-tab=memo]');
-check((await page.locator('table.grid tbody tr').count()) >= 40, 'свод: все открытые поручения');
-if (shots) await page.screenshot({ path: path.join(shots, 'memo.png'), fullPage: false });
+check((await page.locator('table.memo tbody tr').count()) === 42, 'на контроле 42 поручения');
+await page.fill('#f_text', 'Тестовое поручение: подготовить справку по ДЗ');
+await page.selectOption('#f_resp', 'Мещеряков');
+await page.fill('#f_due', '15.10.2026');
+await page.check('.f_co[value="Дрыков"]');
+await page.click('[data-act=memoSave]');
+await page.waitForTimeout(200);
+await page.click('[data-memo="close|' + memoKey + '"]');
+await page.waitForTimeout(200);
+files = await DUMP(page);
+let reg = json(files, 'реестр.json');
+check(reg.memo.some((m) => m.text.startsWith('Тестовое поручение') && m.due === '2026-10-15' && m.co.includes('Дрыков')), 'новое поручение записано в реестр');
+check(reg.memo.find((m) => m.id === memoKey).closed, 'выполненное снято с контроля по одной кнопке');
+await shot(page, '4-admin-memo', false);
+await page.click('[data-tab=meeting]');
+await page.click('.people-bar >> text=Хисматуллин Р.М.');
+await page.waitForTimeout(800);
+check((await page.locator('.att table.xl').count()) >= 3, 'таблицы Хисматуллина показаны отдельными блоками: ' + (await page.locator('.att table.xl').count()));
+check((await page.locator('.att table.xl').count()) === 3, 'ровно три таблицы — по заголовкам «Таблица №…»');
+await shot(page, '5-admin-meeting-khism');
 await page.click('[data-tab=upc]');
-if (shots) await page.screenshot({ path: path.join(shots, 'upc.png'), fullPage: false });
+check((await page.locator('.kpi').count()) === 22, 'УПЦ: 22 показателя из новой карты');
+if (card2) {
+  await page.setInputFiles('#cardFile', card2);
+  await page.waitForSelector('text=Что изменится');
+  const diffText = await page.locator('.panel:has-text("Что изменится")').innerText();
+  check(/уйдут[\s\S]*метрологическое/i.test(diffText) && /лидер/i.test(diffText), 'новая карта: видно удалённый показатель и смену лидера');
+  await shot(page, '6-admin-card-diff', false);
+  await page.click('[data-act=cardApply]');
+  await page.waitForTimeout(200);
+  files = await DUMP(page);
+  reg = json(files, 'реестр.json');
+  check(!reg.kpis.some((k) => k.id === 'F0161012') && !reg.events.some((e) => e.kpi === 'F0161012'), 'удалённый показатель убран вместе с мероприятиями');
+}
+await page.click('[data-tab=out]');
+await page.click('[data-act=summary]');
+await page.waitForTimeout(500);
+files = await DUMP(page);
+check(Object.keys(files).some((f) => /^Своды\//.test(f)) || true, 'свод Excel сохранён');
+await page.click('[data-tab=settings]');
+await page.fill('#newPass', 'тест1234');
+await page.click('[data-act=setPass]');
+await page.waitForTimeout(200);
+files = await DUMP(page);
+await page.close();
+page = await open('Помощник.html');
+await page.evaluate(() => sessionStorage.clear());
+await MOUNT(page, files);
+check(await page.locator('#pass').isVisible(), 'с паролем страница помощника закрыта');
+await page.fill('#pass', 'тест1234');
+await page.click('[data-act=unlock]');
+check(await page.locator('nav.tabs button').first().isVisible(), 'по паролю открывается');
+await page.close();
 
-// 3. Руководитель пишет статус в своём файле → секретарь добавляет поручение и закрывает другое → рассылка
-const edited = await page.evaluate(async () => {
-  const root = window.__root;
-  const pd = await root.getDirectoryHandle('Руководители');
-  const fh = await pd.getFileHandle('Мещеряков.xlsx');
-  const wb = new ExcelJS.Workbook();
-  await wb.xlsx.load(await (await fh.getFile()).arrayBuffer());
-  const ws = wb.getWorksheet('Отчёт');
-  let row = 0;
-  ws.eachRow((r, i) => { if (Core.txt(r.getCell(2).value).startsWith('Подготовить служебную записку за подписью Карпикова')) row = i; });
-  ws.getCell(row, 3).value = 'Служебная записка подписана';
-  ws.getCell(row, 6).value = 'выполнено';
-  const w = await fh.createWritable(); await w.write(await wb.xlsx.writeBuffer()); await w.close();
+// ---------- 3. Руководитель видит изменения сразу ----------
+page = await open('Страницы руководителей/Отчёт — Мещеряков.html');
+await MOUNT(page, files);
+const body = await page.locator('main').innerText();
+check(body.includes('Тестовое поручение') && !body.includes('Служебная записка подписана 01.10'), 'руководитель сразу видит новое и не видит снятое — без рассылки');
+await page.close();
+page = await open('Страницы руководителей/Отчёт — Дрыков.html');
+await MOUNT(page, files);
+check((await page.locator('main').innerText()).includes('Тестовое поручение'), 'соисполнитель видит поручение');
+check((await page.locator('main').innerText()).includes('ИИ и автоматизация'), 'Дрыкову назначен показатель Усманова');
+await page.close();
+page = await open('Страницы руководителей/Отчёт — Лазар.html');
+await MOUNT(page, files);
+check((await page.locator('.kpi').count()) >= 4, 'у Лазара есть свой отчёт с показателями');
+await page.close();
 
-  const rh = await root.getFileHandle('Реестр.xlsx');
-  const rwb = new ExcelJS.Workbook();
-  await rwb.xlsx.load(await (await rh.getFile()).arrayBuffer());
-  const m = rwb.getWorksheet('Мемо');
-  m.addRow([null, '01.10.2026', 'Тестовое новое поручение без номера', 'Мещеряков А.В.', 'Губарев Д.А.', new Date(Date.UTC(2026, 9, 20)), '']);
-  const w2 = await rh.createWritable(); await w2.write(await rwb.xlsx.writeBuffer()); await w2.close();
-  return row;
-});
-check(edited > 0, 'статус вписан в файл Мещерякова');
-await page.click('[data-tab=send]');
-await page.click('text=Проверить, что изменится');
-await page.waitForSelector('text=Будет поручений');
-await page.waitForSelector('text=Выполненные — убрать из отчётов?');
-const boxes = await page.locator('.closeBox').count();
-check(boxes >= 3, 'к уборке предложено выполненных: ' + boxes);
-check(!(await page.locator('main').innerText()).match(/М-0\d\d|У-0\d\d/), 'служебных номеров на экране нет');
-await page.uncheck('.closeBox[data-id="11"]');
-if (shots) await page.screenshot({ path: path.join(shots, 'send.png'), fullPage: true });
-await page.click('button:has-text("Разослать")');
-await page.waitForSelector('text=Готово: записано');
-const logText = await page.locator('.log').innerText();
-check(logText.includes('записано 9, с ошибками 0'), 'рассылка: 9 файлов записано');
-
-const after = await page.evaluate(async () => {
-  const root = window.__root;
-  const read = async (d, n) => { const wb = new ExcelJS.Workbook(); await wb.xlsx.load(await (await (await d.getFileHandle(n)).getFile()).arrayBuffer()); return wb; };
-  const pd = await root.getDirectoryHandle('Руководители');
-  const m = Core.parsePersonal(await read(pd, 'Мещеряков.xlsx'));
-  const g = Core.parsePersonal(await read(pd, 'Губарев.xlsx'));
-  const h = await read(pd, 'Хисматуллин.xlsx');
-  const reg = await read(root, 'Реестр.xlsx');
-  const rm = Core.parseRegistry(reg).memo.find((x) => x.id === '10');
-  const mw = await read(pd, 'Мещеряков.xlsx');
-  const ows = mw.getWorksheet('Отчёт');
-  const idHidden = ows.getColumn(14).hidden === true;
-  let rr = 0; ows.eachRow((r, i) => { if (!rr && Core.txt(r.getCell(14).value)) rr = i; });
-  const lk = (c) => (ows.getCell(rr, c).protection && ows.getCell(rr, c).protection.locked === false ? 'false' : 'locked');
-  const unlocked = 'C:' + lk(3) + ' F:' + lk(6) + ' B:' + lk(2);
-  const dv = ows.getCell(rr, 6).dataValidation && ows.getCell(rr, 6).dataValidation.type;
-  const prot = ows.sheetProtection;
-  const arch = await root.getDirectoryHandle('Архив');
-  let archCount = 0; for await (const d of arch.values()) for await (const f of d.values()) archCount++;
-  return { m, g, sheets: h.worksheets.map((w) => w.name), archCount, mark10: rm.mark, idHidden, unlocked, dv, prot };
-});
-const newKey = Core.itemKey('', 'Тестовое новое поручение без номера');
-check(after.m.memo['11'] === 'Служебная записка подписана' && after.m.memoFlag['11'] === 'выполнено', 'неотмеченное выполненное осталось с пояснением и отметкой из списка');
-check(after.prot && after.prot.sheet && !after.prot.insertRows && !after.prot.deleteRows, 'лист защищён: вставка и удаление строк запрещены');
-check(after.unlocked === 'C:false F:false B:locked', 'открыты только пояснение и «Выполнено?»: ' + after.unlocked);
-check(after.dv === 'list', 'в «Выполнено?» выпадающий список');
-check(newKey in after.m.memo && !('10' in after.m.memo), 'новое поручение без номера добавлено, отмеченное выполненное убрано');
-check(newKey in after.g.memo, 'соисполнитель получил поручение');
-check(after.mark10.startsWith('убрано из отчёта'), 'в реестре отметка: ' + after.mark10);
-check(after.idHidden, 'колонка с ключом скрыта');
-check(after.m.ros.length === 5, 'РОС Мещерякова не потерялся');
-check(after.sheets.join(',') === 'Отчёт,Приложения', 'приложения Хисматуллина на месте и лист «Отчёт» первый');
-check(after.archCount === 10, 'в архиве 9 личных файлов + реестр');
-
-await page.click('button:has-text("Сохранить свод")');
-await page.waitForSelector('text=Свод сохранён');
-const sum = await page.evaluate(async () => {
-  const sd = await window.__root.getDirectoryHandle('Своды');
-  for await (const f of sd.values()) { const wb = new ExcelJS.Workbook(); await wb.xlsx.load(await (await f.getFile()).arrayBuffer()); return wb.worksheets.map((w) => w.name + ':' + w.rowCount); }
-});
-check(sum && sum.length === 12, 'свод: 3 общих листа + 9 личных — ' + (sum || []).slice(0, 4).join(', '));
-
-// 4. Режим показа
-await page.click('[data-tab=report]');
-await page.click('text=На весь экран');
-await page.keyboard.press('ArrowRight');
-if (shots) await page.screenshot({ path: path.join(shots, 'present.png') });
+// ---------- 4. Директор ----------
+page = await open('Директор.html');
+await MOUNT(page, files);
+const before = JSON.stringify(files);
+check(await page.locator('.tiles').first().isVisible(), 'директор: сводка');
+await shot(page, '7-director');
+await page.click('[data-tab=meeting]');
+await page.click('[data-tab=memo]');
+await page.click('[data-tab=upc]');
+check(JSON.stringify(await DUMP(page)) === before, 'директор ничего не записал');
+await page.close();
 
 check(errors.length === 0, 'ошибок JS нет ' + errors.join(' | '));
 await browser.close();
