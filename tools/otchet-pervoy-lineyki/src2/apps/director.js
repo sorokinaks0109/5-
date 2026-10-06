@@ -68,7 +68,7 @@
     else if (a === 'print') window.print();
     else if (a === 'prev') { S.person = (S.person - 1 + n) % n; render(); }
     else if (a === 'next') { S.person = (S.person + 1) % n; render(); }
-    else if (a === 'xlsx') { const wb = Model.buildSummary(ExcelJS, S.reg, S.data, today()); View.download(new Uint8Array(await wb.xlsx.writeBuffer()), 'Свод_' + today() + '.xlsx'); }
+    else if (a === 'xlsx') { const wb = Model.buildSummary(ExcelJS, S.reg, S.data, today()); await View.saveFile(new Uint8Array(await wb.xlsx.writeBuffer()), 'Свод_' + today() + '.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', '.xlsx', 'Excel'); }
   });
   document.addEventListener('change', (e) => { if (e.target.id === 'memoPerson') { S.memoPerson = e.target.value; render(); } });
   document.addEventListener('keydown', (e) => {

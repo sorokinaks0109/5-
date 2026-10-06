@@ -3,7 +3,8 @@
 (function () {
   'use strict';
   const { esc, $, $$ } = View;
-  const S = { dir: null, reg: null, data: {}, me: null, draft: null, dirty: false, preview: false, demo: false, saving: false };
+  const S = { dir: null, reg: null, data: {}, me: null, draft: null, dirty: false, preview: false, demo: false, saving: false, embedded: false, pendingAtt: {}, sent: null };
+  const LS = (k) => 'otchet.saved.' + k;
   const today = () => Model.todayISO();
 
   // Кто я: из имени файла страницы («Отчёт — Мещеряков.html»), иначе — выбор из списка.
@@ -38,7 +39,7 @@
   function render() {
     const main = $('#main');
     $('#who').textContent = S.me && S.reg ? Model.personById(S.reg, S.me).fio : '';
-    if (!S.dir || !S.reg) {
+    if (!S.reg || (!S.dir && !S.embedded)) {
       main.innerHTML = conn.screen('Мой отчёт к совещанию первой линейки',
         'Выберите общую папку «Отчёт первой линейки». Это нужно один раз — дальше страница её запомнит и попросит только подтвердить доступ.', true);
       return;
@@ -49,7 +50,7 @@
       return;
     }
     const pv = viewData();
-    main.innerHTML = headBar() + (S.preview
+    main.innerHTML = sentPanel() + headBar() + (S.preview
       ? '<div class="panel preview">' + View.personReport(S.reg, pv, S.me, today()) + '</div>'
       : memoSec() + freeSec('ros', '2. РОС') + freeSec('proj', '3. Текущие проекты') + upcSec() + attSec());
     if (S.preview) View.hydrateAttachments(main, S.dir, S.reg);
@@ -58,12 +59,22 @@
   // Данные «как будто уже сохранено» — для предпросмотра.
   function viewData() { const d = { ...S.data }; d[S.me] = { data: S.draft }; return d; }
 
+  // После сохранения файлом — что сделать с файлом (Windows, без доступа к папке).
+  function sentPanel() {
+    if (!S.sent) return '';
+    return '<div class="panel msg ok sent"><h2>Отчёт сохранён в файл «' + esc(S.sent) + '»</h2>' +
+      '<ol><li>Откройте папку, куда сохранили файл (обычно <b>«Загрузки»</b>; в браузере — значок загрузок справа вверху → «Показать в папке»).</li>' +
+      '<li><b>Перетащите файл</b> в общую папку отчёта, в папку <b>«Входящие»</b>: <span class="muted">…\\Отчёт первой линейки\\Входящие</span>.</li>' +
+      '<li>Всё. Помощник увидит отчёт, когда откроет свою страницу. Если перетащить не получается — отправьте файл помощнику по почте.</li></ol>' +
+      '<button data-act="sentOk">Понятно</button></div>';
+  }
   function headBar() {
     const last = S.reg.settings.lastMeeting;
     const need = !S.draft.reportDate;
     return '<div class="panel sticky head-bar">' +
       '<label class="req ' + (need ? 'empty' : '') + '">Отчёт актуален на <input type="date" id="reportDate" value="' + esc(S.draft.reportDate || '') + '" max="' + today() + '"></label>' +
-      '<span class="muted small">' + (last ? 'Последнее совещание: ' + Model.fmtISO(last) + '. ' : '') + (S.prevDate ? 'Прошлый раз указано: ' + Model.fmtISO(S.prevDate) : 'Отчёт ещё не заполнялся') + '</span>' +
+      '<span class="muted small">' + (last ? 'Последнее совещание: ' + Model.fmtISO(last) + '. ' : '') + (S.prevDate ? 'Прошлый раз указано: ' + Model.fmtISO(S.prevDate) : 'Отчёт ещё не заполнялся') +
+      (S.embedded && !S.dir ? '<br>Поручения на ' + Model.fmtDateTime(window.SNAPSHOT.at) + '. «Сохранить» сохранит файл — его нужно положить в папку «Входящие».' : '') + '</span>' +
       '<span class="spacer"></span><span id="saveState" class="small"></span>' +
       '<button data-act="preview">' + (S.preview ? 'Вернуться к заполнению' : 'Как увидят на совещании') + '</button>' +
       '<button class="primary" data-act="save">Сохранить</button></div>';
@@ -151,7 +162,7 @@
     const el = $('#saveState');
     if (!el) return;
     const own = S.data[S.me] && S.data[S.me].data;
-    el.textContent = S.dirty ? 'Есть несохранённые изменения' : own && own.savedAt ? 'Сохранено ' + Model.fmtDateTime(own.savedAt) : '';
+    el.textContent = S.dirty ? 'Есть несохранённые изменения' : own && own.savedAt ? (S.embedded && !S.dir ? 'Сохранено в файл ' : 'Сохранено ') + Model.fmtDateTime(own.savedAt) : '';
     el.className = 'small ' + (S.dirty ? 'warn-text' : 'muted');
     const req = $('label.req');
     if (req) req.classList.toggle('empty', !S.draft.reportDate);
@@ -184,11 +195,11 @@
     const out = { ...S.draft, personId: S.me, fio: p.fio, savedAt: Date.now() };
     out.ros = out.ros.filter((r) => (r.task || r.text || '').trim());
     out.proj = out.proj.filter((r) => (r.task || r.text || '').trim());
+    if (!S.dir) { await saveToFile(p, out); S.saving = false; return; }
     try {
       await Store.dailyBackup(S.dir, [Store.DATA, Store.PEOPLE, p.slug + '.json'], p.slug, 10);
       await Store.writeJSON(S.dir, [Store.DATA, Store.PEOPLE, p.slug + '.json'], out);
       S.data[S.me] = { data: out };
-      Base.writeSnapshot(S.dir, S.reg, S.data).catch(() => {}); // обновить «Для директора.html», если есть права
       S.draft = JSON.parse(JSON.stringify(out));
       S.prevDate = out.reportDate;
       S.dirty = false;
@@ -200,11 +211,45 @@
     S.saving = false;
   }
 
+  // Сохранение файлом (нет доступа к папке): браузер кладёт «Отчёт — Фамилия.json» в «Загрузки».
+  async function saveToFile(p, out) {
+    const pkg = { ...out, kind: 'otchet-report', attFiles: {} };
+    for (const [name, bytes] of Object.entries(S.pendingAtt)) {
+      if (!(out.attachments || []).some((a) => a.file === name)) continue;
+      let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+      pkg.attFiles[name] = btoa(s);
+    }
+    const r = await View.saveFile(new TextEncoder().encode(JSON.stringify(pkg)), 'Отчёт — ' + p.slug + '.json', 'application/json', '.json', 'Отчёт');
+    if (!r.ok) {
+      View.toast('Файл не сохранён. Если выбирали сетевую папку — сохраните в «Загрузки» и потом перетащите во «Входящие».', 'bad');
+      return;
+    }
+    const name = r.name;
+    // Копия на этом компьютере — чтобы при следующем открытии видеть свой последний отчёт, даже если помощник его ещё не забрал.
+    try { localStorage.setItem(LS(S.me), JSON.stringify(out)); } catch (e) { /* без копии тоже работает */ }
+    S.data[S.me] = { data: out };
+    S.draft = JSON.parse(JSON.stringify(out));
+    S.prevDate = out.reportDate;
+    S.dirty = false;
+    S.sent = name;
+    render();
+    window.scrollTo(0, 0);
+  }
+
   async function addAttachment(file) {
     const p = Model.personById(S.reg, S.me);
+    if (!S.dir) {
+      // без папки: файл уйдёт помощнику вместе с отчётом
+      S.pendingAtt[file.name] = new Uint8Array(await file.arrayBuffer());
+      S.draft.attachments = (S.draft.attachments || []).filter((a) => a.file !== file.name);
+      S.draft.attachments.push({ name: file.name.replace(/\.xlsx$/i, ''), file: file.name, added: today() });
+      S.dirty = true; render();
+      View.toast('Файл добавлен. Нажмите «Сохранить» — он уйдёт вместе с отчётом.', 'ok');
+      return;
+    }
     try {
       const bytes = new Uint8Array(await file.arrayBuffer());
-      await View.xlsxToHtml(bytes); // проверяем, что файл читается
+      if (typeof ExcelJS !== 'undefined') await View.xlsxToHtml(bytes); // проверяем, что файл читается
       await Store.writeBytes(S.dir, [Store.DATA, Store.ATT, p.slug, file.name], bytes);
       S.draft.attachments = (S.draft.attachments || []).filter((a) => a.file !== file.name);
       S.draft.attachments.push({ name: file.name.replace(/\.xlsx$/i, ''), file: file.name, added: today() });
@@ -247,12 +292,24 @@
     else if (a === 'grant') conn.grant();
     else if (a === 'demo') { S.demo = true; S.me = 'p1'; S.dir = await Base.demoFolder(); await load(); }
     else if (a === 'save') save();
+    else if (a === 'sentOk') { S.sent = null; render(); }
     else if (a === 'preview') { S.preview = !S.preview; render(); window.scrollTo(0, 0); }
   });
   document.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); save(); } });
   window.addEventListener('beforeunload', (e) => { if (S.dirty) { e.preventDefault(); e.returnValue = ''; } });
 
   window.Otchet = { S, load, render, Base };
-  render();
-  conn.init().then((ok) => { if (!ok) render(); });
+  if (window.SNAPSHOT && window.SNAPSHOT.me) {
+    // Страница с вшитыми данными (для Windows): папку выбирать не нужно.
+    S.embedded = true;
+    S.reg = window.SNAPSHOT.reg; S.data = window.SNAPSHOT.data; S.me = window.SNAPSHOT.me;
+    let local = null; try { local = JSON.parse(localStorage.getItem(LS(S.me)) || 'null'); } catch (e) { /* нет копии */ }
+    const own = S.data[S.me] && S.data[S.me].data;
+    if (local && local.savedAt && (!own || !own.savedAt || local.savedAt > own.savedAt)) S.data[S.me] = { data: local };
+    startDraft();
+    render();
+  } else {
+    render();
+    conn.init().then((ok) => { if (!ok) render(); });
+  }
 })();

@@ -19,7 +19,9 @@ MAX_COLS = 12
 
 # Кто отчитывается за показатель, если лидер не из первой линейки (решение заказчика).
 REPORTER_BY_LEADER = {'Топинская': 'Арикулова', 'Усманов': 'Дрыков', 'Бруховский': None, 'Губаревич': None}
-EXTRA_PEOPLE = [('Лазар А.А.', False)]  # заполняет отчёт, на совещании не докладывает
+EXTRA_PEOPLE = [('Лазар А.А.', False)]
+# У кого Windows: браузер не пускает страницу в сетевую папку — сохраняют файлом в «Входящие»
+FILE_MODE = {'Мещеряков', 'Арикулова'}  # заполняет отчёт, на совещании не докладывает
 
 DONE_RE = re.compile(r'(^|[^а-яё])(выполнен|проведен|исполнен|завершен|снят|закрыт)(о|а|ы)?(?![а-яё])', re.I)
 NOT_DONE_RE = re.compile(r'(^|[^а-яё])не\s+(выполнен|проведен|исполнен|завершен|снят|закрыт)', re.I)
@@ -107,7 +109,7 @@ for name, on in [(n, True) for n in FIRST] + EXTRA_PEOPLE:
             if surname(part) == sn and len(part.split()) == 3:
                 full = part
     slug = name.split()[0]
-    people.append({'id': slug, 'fio': name.strip(), 'full': full, 'slug': slug, 'email': '', 'onMeeting': on})
+    people.append({'id': slug, 'fio': name.strip(), 'full': full, 'slug': slug, 'email': '', 'onMeeting': on, 'fileMode': slug in FILE_MODE})
 by_surname = {surname(p['fio']): p for p in people}
 
 

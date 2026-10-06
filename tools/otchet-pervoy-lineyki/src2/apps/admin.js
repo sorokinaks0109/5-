@@ -17,8 +17,26 @@
     S.reg = all.reg; S.data = all.data; S.regModified = all.regModified ? all.regModified.getTime() : 0;
     let unlocked = false; try { unlocked = sessionStorage.getItem('otchet.unlocked') === S.reg.settings.passHash; } catch (e) { /* нет хранилища */ }
     S.locked = !!S.reg.settings.passHash && !unlocked;
+    if (!S.demo && !conn.readOnly) {
+      // Отчёты руководителей с Windows: забираем из папки «Входящие»
+      try {
+        const r = await Base.processInbox(S.dir, S.reg, S.data);
+        if (r.total) { S.log.push(...r.log); View.toast('Из «Входящих» принято отчётов: ' + r.accepted + (r.accepted < r.total ? ' (файлов было ' + r.total + ')' : ''), 'ok'); }
+      } catch (e) { S.log.push('«Входящие» не обработаны: ' + e.message); }
+    }
     render();
     snapshotSoon();
+  }
+  async function importFiles(list) {
+    let ok = 0;
+    for (const f of Array.from(list)) {
+      try {
+        const r = await Base.acceptReport(S.dir, S.reg, S.data, JSON.parse(await f.text()), f.name);
+        S.log.push(r.msg); if (r.ok) ok++;
+      } catch (e) { S.log.push(f.name + ': не читается — ' + e.message); }
+    }
+    View.toast('Принято отчётов: ' + ok + ' из ' + list.length + (ok < list.length ? '. Подробности — «Свод и письма» → Журнал' : ''), ok ? 'ok' : 'bad');
+    render(); snapshotSoon();
   }
   // После загрузки и каждого изменения обновляем «Для директора.html» (в фоне, не чаще раза в 2 секунды).
   let snapTimer = null;
@@ -74,7 +92,9 @@
       '<div class="row"><label class="small">Последнее совещание <input type="date" id="lastMeeting" value="' + esc(st.lastMeeting || '') + '"></label>' +
       '<button data-act="meetingToday">Совещание прошло сегодня</button><button data-act="reload">Обновить</button></div></div>' +
       '<div class="msg ' + (stale.length ? 'bad' : 'ok') + '" style="margin-top:10px">' + (stale.length ? 'Не обновили: ' + stale.map((p) => esc(p.fio)).join(', ') : 'Все обновили отчёт') + '</div>' +
-      (stale.length ? '<button data-act="remind">Написать напоминание не обновившим</button>' : '') + '</div>' + View.whoCards(S.reg, S.data, today());
+      '<div class="row">' + (stale.length ? '<button data-act="remind">Написать напоминание не обновившим</button>' : '') +
+      '<label class="button">Загрузить отчёты из файлов (присланные по почте)<input type="file" id="importFiles" multiple hidden></label></div>' +
+      '<div class="muted small">Отчёты из папки «Входящие» забираются сами, когда вы открываете эту страницу или нажимаете «Обновить».</div></div>' + View.whoCards(S.reg, S.data, today());
   }
 
   function meetingTab() {
@@ -230,9 +250,9 @@
     const wb = Model.buildSummary(ExcelJS, S.reg, S.data, today());
     const bytes = new Uint8Array(await wb.xlsx.writeBuffer());
     const name = 'Свод_' + today() + '.xlsx';
-    if (S.demo) { View.download(bytes, name); return; }
+    if (S.demo) { await View.saveFile(bytes, name, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', '.xlsx', 'Excel'); return; }
     try { await Store.writeBytes(S.dir, ['Своды', name], bytes); S.log.push('Свод сохранён: Своды/' + name); View.toast('Свод сохранён в папку «Своды»', 'ok'); }
-    catch (e) { View.download(bytes, name); S.log.push('В папку записать не удалось (' + e.message + '), файл скачан'); }
+    catch (e) { await View.saveFile(bytes, name, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', '.xlsx', 'Excel'); S.log.push('В папку записать не удалось (' + e.message + '), файл сохранён отдельно'); }
     render();
   }
 
@@ -240,9 +260,10 @@
   function settingsTab() {
     const st = S.reg.settings;
     return '<div class="panel"><h2>Руководители</h2><p class="muted small">Порядок строк — порядок докладов. «На совещании: нет» — человек заполняет отчёт, но в очереди докладов идёт в конце. ' +
-      '«Имя файла» — фамилия в имени личной страницы «Отчёт — Фамилия.html».</p><table class="grid"><thead><tr><th>ФИО (как в поручениях)</th><th>Полное ФИО (как в карте УПЦ)</th><th class="c-resp">Имя файла</th><th>Почта</th><th class="c-st">На совещании</th><th class="c-act"></th></tr></thead><tbody>' +
+      '«Имя файла» — фамилия в имени личной страницы «Отчёт — Фамилия.html». «Сохраняет» — «файлом» для тех, у кого Windows: их страница сама получает поручения, а отчёт они кладут в папку «Входящие».</p><table class="grid"><thead><tr><th>ФИО (как в поручениях)</th><th>Полное ФИО (как в карте УПЦ)</th><th class="c-resp">Имя файла</th><th>Почта</th><th class="c-st">На совещании</th><th class="c-st">Сохраняет</th><th class="c-act"></th></tr></thead><tbody>' +
       S.reg.people.map((p, i) => '<tr><td><input data-pp="' + i + '|fio" value="' + esc(p.fio) + '"></td><td><input data-pp="' + i + '|full" value="' + esc(p.full || '') + '"></td><td>' + esc(p.slug) + '</td>' +
         '<td><input data-pp="' + i + '|email" value="' + esc(p.email || '') + '"></td><td><select data-pp="' + i + '|onMeeting"><option value="1">да</option><option value="0"' + (p.onMeeting === false ? ' selected' : '') + '>нет</option></select></td>' +
+        '<td><select data-pp="' + i + '|fileMode"><option value="0">в папку (Astra)</option><option value="1"' + (p.fileMode ? ' selected' : '') + '>файлом (Windows)</option></select></td>' +
         '<td class="c-act"><button class="mini" data-pmove="up|' + i + '">↑</button><button class="mini" data-pmove="down|' + i + '">↓</button><button class="mini danger" data-pmove="del|' + i + '">✕</button></td></tr>').join('') +
       '</tbody></table><div class="row" style="margin-top:8px"><input id="newFio" placeholder="Фамилия И.О."><button data-act="addPerson">Добавить руководителя</button></div>' +
       '<p class="muted small">Новому руководителю скопируйте любую страницу из папки «Страницы руководителей» и переименуйте в «Отчёт — Фамилия.html».</p></div>' +
@@ -253,7 +274,7 @@
   async function settingsEdit(key, value) {
     const [i, f] = key.split('|');
     const p = S.reg.people[+i];
-    p[f] = f === 'onMeeting' ? value === '1' : value;
+    p[f] = f === 'onMeeting' || f === 'fileMode' ? value === '1' : value;
     await saveReg();
   }
 
@@ -264,6 +285,7 @@
       '<li><b>Страницы руководителей/Отчёт — Фамилия.html</b> — каждый руководитель заполняет свой отчёт. Ярлык можно положить на рабочий стол.</li>' +
       '<li><b>Для директора.html</b> — снимок всех данных для директора. Открывается двойным щелчком в любом браузере, ничего не спрашивает. Обновляется сам, когда вы открываете эту страницу или руководитель сохраняет отчёт.</li>' +
       '<li><b>Директор.html</b> — то же, но читает папку напрямую (нужен доступ браузера к папке).</li>' +
+      '<li><b>Входящие</b> — сюда руководители на Windows кладут файл отчёта после «Сохранить». Эта страница забирает их сама.</li>' +
       '<li><b>Данные</b> — реестр и отчёты в виде файлов. Руками их не открывать.</li></ul>' +
       '<h3>Неделя помощника</h3><ol>' +
       '<li><b>На совещании</b>: вкладка «Совещание» → «На весь экран», стрелки ← → листают докладчиков.</li>' +
@@ -349,6 +371,7 @@
     if (t.id === 'lastMeeting') { S.reg.settings.lastMeeting = t.value; if (await saveReg('Дата совещания сохранена')) render(); }
     if (t.id === 'dirEmail') { S.reg.settings.directorEmail = t.value.trim(); saveReg('Почта сохранена'); }
     if (t.id === 'cardFile' && t.files[0]) loadCard(t.files[0]);
+    if (t.id === 'importFiles' && t.files.length) importFiles(t.files);
     if (t.dataset.kpiRep) { S.reg.kpis.find((k) => k.id === t.dataset.kpiRep).reporter = t.value || null; if (await saveReg('Назначено')) render(); }
     if (t.dataset.ev && (t.tagName === 'SELECT')) evEdit(t.dataset.ev, t.value);
     if (t.dataset.pp) settingsEdit(t.dataset.pp, t.value);

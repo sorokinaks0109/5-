@@ -273,6 +273,76 @@ await page.close();
   check((await pg.locator('main').innerText()).includes('Открытие отменено'), 'зависшее открытие можно отменить');
   await pg.close();
 }
+// ---------- 3г. Windows: страница с вшитыми данными → «Сохранить» файлом → «Входящие» → помощник принимает ----------
+{
+  const pa = await open('Помощник.html');
+  await pa.evaluate(async () => sessionStorage.setItem('otchet.unlocked', await Base.sha('тест1234')));
+  await MOUNT(pa, files);
+  await pa.waitForTimeout(5000);
+  const winPage = await pa.evaluate(async () => { try { const d = await window.__root.getDirectoryHandle('Страницы руководителей'); return await (await (await d.getFileHandle('Отчёт — Мещеряков.html')).getFile()).text(); } catch (e) { return ''; } });
+  const astraPage = await pa.evaluate(async () => { try { const d = await window.__root.getDirectoryHandle('Страницы руководителей'); await d.getFileHandle('Отчёт — Якимович.html'); return 'есть'; } catch (e) { return 'нет'; } });
+  check(winPage.includes('window.SNAPSHOT') && winPage.includes('"me":"Мещеряков"'), 'помощник сам обновил страницу Мещерякова (Windows) с вшитыми данными');
+  check(astraPage === 'нет', 'страницы руководителей на Astra не трогаются');
+  const winPath = path.join(root, 'Страницы руководителей', 'win_test_Мещеряков.html');
+  fs.writeFileSync(winPath, winPage);
+  const tmpAtt2 = path.join(path.dirname(card2 || root), 'att_test2.xlsx');
+  fs.copyFileSync(path.join(root, 'Данные/вложения/Хисматуллин/Приложения.xlsx'), tmpAtt2);
+  const wp = await ctx.newPage();
+  wp.on('pageerror', (e) => errors.push('Windows-страница: ' + e.message));
+  await wp.addInitScript(() => {
+    delete window.showDirectoryPicker; indexedDB.open = () => ({});
+    // окно «Сохранить как»: человек нажимает «Сохранить» с предложенным именем
+    window.showSaveFilePicker = async (o) => { window.__saved = { name: o.suggestedName }; return { name: o.suggestedName, async createWritable() { const parts = []; return { async write(b) { parts.push(b); }, async close() { window.__saved.text = new TextDecoder().decode(await new Blob(parts).arrayBuffer()); } }; } }; };
+  });
+  await wp.goto('file://' + winPath);
+  await wp.waitForTimeout(300);
+  check((await wp.locator('#who').innerText()) === 'Мещеряков А.В.' && await wp.locator('#reportDate').isVisible(), 'на Windows страница открывается сразу, без выбора папки');
+  await wp.fill('#reportDate', '2026-10-06');
+  const sel = wp.locator('select[data-k^="memo|"]').nth(1);
+  const key = (await sel.getAttribute('data-k')).split('|')[1];
+  await sel.selectOption('work');
+  await wp.locator('textarea[data-k="memo|' + key + '|text"]').fill('Записка на согласовании (с Windows)');
+  await wp.setInputFiles('#attFile', tmpAtt2);
+  await wp.click('[data-act=save]');
+  await wp.waitForTimeout(400);
+  const saved = await wp.evaluate(() => window.__saved);
+  const dlPath = path.join(path.dirname(card2 || root), 'download');
+  fs.writeFileSync(dlPath, saved.text);
+  const pkg = JSON.parse(saved.text);
+  check(saved.name === 'Отчёт — Мещеряков.json' && pkg.kind === 'otchet-report' && pkg.memo[key].text.includes('Windows'), '«Сохранить» на Windows сохраняет файл «Отчёт — Мещеряков.json»');
+  check(Object.keys(pkg.attFiles || {}).length === 1, 'вложение Excel уходит внутри файла отчёта');
+  check((await wp.locator('.sent').innerText()).includes('Входящие'), 'после сохранения страница объясняет: перетащить файл во «Входящие»');
+  await wp.reload();
+  await wp.waitForTimeout(300);
+  check((await wp.locator('#reportDate').inputValue()) === '2026-10-06', 'при следующем открытии видно свой последний отчёт (ещё не принятый)');
+  await wp.close();
+  fs.rmSync(winPath); fs.rmSync(tmpAtt2);
+  // кладём файл во «Входящие» и открываем страницу помощника заново
+  const b64 = fs.readFileSync(dlPath).toString('base64');
+  await pa.evaluate(async (b64) => {
+    const inbox = await window.__root.getDirectoryHandle('Входящие', { create: true });
+    inbox.items.set('Отчёт — Мещеряков.json', new Store.MemFile('Отчёт — Мещеряков.json', Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))));
+    inbox.items.set('download', new Store.MemFile('download', Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))));
+    await window.Otchet.load();
+  }, b64);
+  await pa.waitForTimeout(500);
+  const after = await pa.evaluate(async () => {
+    const inbox = await window.__root.getDirectoryHandle('Входящие');
+    const left = []; for await (const h of inbox.values()) left.push(h.name);
+    const d = await (await window.__root.getDirectoryHandle('Данные')).getDirectoryHandle('руководители');
+    const m = JSON.parse(await (await (await d.getFileHandle('Мещеряков.json')).getFile()).text());
+    let att = false; try { await (await (await (await window.__root.getDirectoryHandle('Данные')).getDirectoryHandle('вложения')).getDirectoryHandle('Мещеряков')).getFileHandle('att_test2.xlsx'); att = true; } catch (e) { /* нет */ }
+    return { left, m, att, log: window.Otchet.S.log.join(' | ') };
+  });
+  check(after.m.reportDate === '2026-10-06' && after.m.memo[key].text.includes('Windows') && !after.m.kind, 'помощник сам принял отчёт из «Входящих»');
+  check(after.att, 'вложение из файла сохранено в папку');
+  check(after.left.length === 0, '«Входящие» очищены (файлы ушли в архив)');
+  check(/не новее/.test(after.log), 'повторный файл того же отчёта пропущен: ' + after.log.slice(0, 120));
+  check((await pa.locator('.card[data-person="Мещеряков"]').getAttribute('class')).includes('fr-fresh'), 'карточка Мещерякова зелёная');
+  files = await DUMP(pa);
+  await pa.close();
+  fs.rmSync(dlPath);
+}
 // ---------- 4. Директор ----------
 page = await open('Директор.html');
 await MOUNT(page, files);

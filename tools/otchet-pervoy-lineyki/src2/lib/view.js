@@ -242,7 +242,7 @@
     return '<div class="who">' + reg.people.map((p) => {
       const v = M().personView(reg, data, p.id, today);
       const c = v.counts;
-      return '<div class="card fr-' + v.fresh + '" data-person="' + esc(p.id) + '"><div class="name">' + esc(p.fio) + (p.onMeeting === false ? ' <span class="muted small">(не на совещании)</span>' : '') + '</div>' +
+      return '<div class="card fr-' + v.fresh + '" data-person="' + esc(p.id) + '"><div class="name">' + esc(p.fio) + (p.onMeeting === false ? ' <span class="muted small">(не на совещании)</span>' : '') + (p.fileMode ? ' <span class="muted small">· через файл</span>' : '') + '</div>' +
         '<div class="when">' + freshBadge(v) + '</div><div class="nums">' +
         '<span class="badge s-done">выполнено ' + c.done + '</span><span class="badge s-work">в работе ' + c.work + '</span>' +
         (c.fail ? '<span class="badge s-fail">не выполнено ' + c.fail + '</span>' : '') + (c.none ? '<span class="badge s-none">без статуса ' + c.none + '</span>' : '') +
@@ -275,6 +275,21 @@
       try { await navigator.clipboard.writeText(text); return true; } catch (e2) { return false; }
     }
   }
+  // Сохранение файла с правильным именем. У страниц, открытых с диска, обычная загрузка теряет имя
+  // («download»), поэтому сначала — окно «Сохранить как». Возвращает { ok, aborted, name }.
+  async function saveFile(bytes, name, type, ext, what) {
+    if (window.showSaveFilePicker) {
+      try {
+        const h = await window.showSaveFilePicker({ suggestedName: name, startIn: 'downloads', types: [{ description: what || 'Файл', accept: { [type]: [ext] } }] });
+        const w = await h.createWritable(); await w.write(bytes); await w.close();
+        return { ok: true, name: h.name };
+      } catch (e) {
+        if (e.name === 'AbortError') return { ok: false, aborted: true };
+      }
+    }
+    download(bytes, name, type);
+    return { ok: true, name, viaDownload: true };
+  }
   function download(bytes, name, type) {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([bytes], { type: type || 'application/octet-stream' }));
@@ -301,6 +316,6 @@
 
   root.View = {
     esc, $, $$, badge, due, ago, statusSelect, tile, countTiles, freshBadge, itemCard, freeTable, kpiHead, eventsTable, personReport,
-    hydrateAttachments, xlsxToHtml, memoTable, upcOverview, whoCards, printHtml, mailto, copyHtml, download, toast, folderScreen,
+    hydrateAttachments, xlsxToHtml, memoTable, upcOverview, whoCards, printHtml, mailto, copyHtml, download, saveFile, toast, folderScreen,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

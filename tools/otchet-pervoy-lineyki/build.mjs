@@ -19,12 +19,15 @@ function page(app, title, header) {
     .replace('/*CSS*/', () => read('styles.css'))
     .replace('/*EXCELJS*/', () => exceljs).replace('/*LIBS*/', () => libs)
     .replace('/*SNAPAPP*/', () => safe(read('apps/director.js')))
+    .replace('/*MGRAPP*/', () => safe(read('apps/manager.js')))
     .replace('/*APP*/', () => safe(read('apps/' + app)));
 }
 
 fs.mkdirSync(out, { recursive: true });
 fs.writeFileSync(path.join(out, 'Помощник.html'), page('admin.js', 'Помощник — отчёт первой линейки', 'Помощник · отчёт первой линейки'));
 fs.copyFileSync(path.join(here, 'src2', 'check.html'), path.join(out, 'Проверка доступа.html'));
+fs.mkdirSync(path.join(out, 'Входящие'), { recursive: true });
+fs.writeFileSync(path.join(out, 'Входящие', 'Что это за папка.txt'), 'Сюда руководители на Windows кладут файл «Отчёт — Фамилия.json» после нажатия «Сохранить».\r\nСтраница помощника забирает такие файлы сама при открытии. Руками ничего не открывать.\r\n');
 fs.writeFileSync(path.join(out, 'Директор.html'), page('director.js', 'Отчёт первой линейки', 'Отчёт первой линейки'));
 const mgr = page('manager.js', 'Мой отчёт', 'Мой отчёт к совещанию');
 const dir = path.join(out, 'Страницы руководителей');

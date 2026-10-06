@@ -172,19 +172,80 @@
     }
     const plain = {};
     for (const [k, v] of Object.entries(data)) plain[k] = { data: v.data };
-    const snap = JSON.stringify({ at: Date.now(), reg, data: plain, att }).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
-    const html = '<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">' +
-      '<title>Для директора — отчёт первой линейки</title><style>' + css.textContent + '</style></head><body>' +
-      '<header class="top"><h1>Отчёт первой линейки</h1><span class="sub" id="who"></span><span class="sub" id="folder"></span></header>' +
-      '<nav class="tabs" id="tabs"></nav><main id="main"></main>' +
-      '<script>window.SNAPSHOT=' + snap + ';<\/script><script>' + libs.textContent + '<\/script><script>' + app.textContent + '<\/script></body></html>';
-    const bytes = new TextEncoder().encode(html);
-    try { await Store.writeBytes(dir, ['Для директора.html'], bytes); return true; } catch (e) {
-      try { await Store.writeBytes(dir, [Store.DATA, 'Для директора.html'], bytes); return true; } catch (e2) { return false; }
+    const at = Date.now();
+    const page = (title, header, snapObj, appText) => {
+      const snap = JSON.stringify(snapObj).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
+      return new TextEncoder().encode('<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">' +
+        '<title>' + title + '</title><style>' + css.textContent + '</style></head><body>' +
+        '<header class="top"><h1>' + header + '</h1><span class="sub" id="who"></span><span class="sub" id="folder"></span></header>' +
+        '<nav class="tabs" id="tabs"></nav><main id="main"></main>' +
+        '<script>window.SNAPSHOT=' + snap + ';<\/script><script>' + libs.textContent + '<\/script><script>' + appText + '<\/script></body></html>');
+    };
+    let ok = false;
+    const dirBytes = page('Для директора — отчёт первой линейки', 'Отчёт первой линейки', { at, reg, data: plain, att }, app.textContent);
+    try { await Store.writeBytes(dir, ['Для директора.html'], dirBytes); ok = true; } catch (e) {
+      try { await Store.writeBytes(dir, [Store.DATA, 'Для директора.html'], dirBytes); ok = true; } catch (e2) { /* нет прав */ }
     }
+    // Руководителям, которые сохраняют файлом (Windows), — страница с уже вшитыми данными: папку выбирать не нужно.
+    const mgr = document.getElementById('mgr-app');
+    if (mgr) {
+      for (const p of reg.people.filter((x) => x.fileMode)) {
+        try {
+          await Store.writeBytes(dir, ['Страницы руководителей', 'Отчёт — ' + p.slug + '.html'],
+            page('Отчёт — ' + p.fio, 'Мой отчёт к совещанию', { at, reg, data: plain, att, me: p.id }, mgr.textContent));
+        } catch (e) { ok = false; }
+      }
+    }
+    return ok;
   }
 
-  root.Base = { loadAll, connector, demoFolder, sha, step, writeSnapshot };
+  // Отчёт руководителя, сохранённый файлом: принимаем в общую папку. Файл старее уже принятого не принимаем.
+  async function acceptReport(dir, reg, data, obj, fileName) {
+    if (!obj || obj.kind !== 'otchet-report' || !obj.personId) return { ok: false, msg: fileName + ': это не файл отчёта' };
+    const p = reg.people.find((x) => x.id === obj.personId);
+    if (!p) return { ok: false, msg: fileName + ': руководителя нет в списке' };
+    const cur = data[p.id] && data[p.id].data;
+    if (cur && cur.savedAt && obj.savedAt <= cur.savedAt) return { ok: false, old: true, msg: p.fio + ': файл не новее уже принятого — пропущен' };
+    for (const [name, b64] of Object.entries(obj.attFiles || {})) {
+      await Store.writeBytes(dir, [Store.DATA, Store.ATT, p.slug, name], Uint8Array.from(atob(b64), (ch) => ch.charCodeAt(0)));
+    }
+    const clean = { ...obj };
+    delete clean.attFiles; delete clean.kind;
+    await Store.dailyBackup(dir, [Store.DATA, Store.PEOPLE, p.slug + '.json'], p.slug, 10);
+    await Store.writeJSON(dir, [Store.DATA, Store.PEOPLE, p.slug + '.json'], clean);
+    data[p.id] = { data: clean };
+    return { ok: true, msg: p.fio + ': принят отчёт от ' + Model.fmtDateTime(obj.savedAt) };
+  }
+
+  // Забираем отчёты из папки «Входящие»; обработанные файлы переносим в «Данные/архив/входящие».
+  async function processInbox(dir, reg, data) {
+    // любое имя: браузер мог сохранить файл как «download» — проверяем содержимое
+    const files = (await Store.list(dir, ['Входящие'])).filter((f) => f.kind === 'file' && !/\.(txt|html?|xlsx?|docx?|pdf)$/i.test(f.name));
+    const items = [];
+    for (const f of files) {
+      try {
+        const { bytes } = await Store.readBytes(dir, ['Входящие', f.name]);
+        items.push({ name: f.name, bytes, obj: JSON.parse(new TextDecoder().decode(bytes)) });
+      } catch (e) { items.push({ name: f.name, err: e.message }); }
+    }
+    // если от одного человека несколько файлов — сначала старые, потом новые
+    items.sort((a, b) => ((a.obj && a.obj.savedAt) || 0) - ((b.obj && b.obj.savedAt) || 0));
+    const log = [];
+    let accepted = 0;
+    for (const it of items) {
+      if (it.err) { log.push(it.name + ': не читается — ' + it.err); continue; }
+      const r = await acceptReport(dir, reg, data, it.obj, it.name);
+      log.push(r.msg);
+      if (r.ok) accepted++;
+      try {
+        await Store.writeBytes(dir, [Store.DATA, Store.ARCH, 'входящие', Model.todayISO() + ' ' + it.name], it.bytes);
+        await Store.remove(dir, ['Входящие', it.name]);
+      } catch (e) { log.push(it.name + ': не удалось убрать из «Входящих» — ' + e.message); }
+    }
+    return { accepted, total: items.length, log };
+  }
+
+  root.Base = { loadAll, connector, demoFolder, sha, step, writeSnapshot, acceptReport, processInbox };
 })(typeof window !== 'undefined' ? window : globalThis);
 
 // Любая неожиданная ошибка — сообщением внизу экрана, чтобы кнопка не «молчала».
