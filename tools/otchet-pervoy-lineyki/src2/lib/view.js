@@ -117,7 +117,8 @@
   async function hydrateAttachments(container, dir, reg) {
     for (const el of $$('.att', container)) {
       const body = $('.att-body', el);
-      if (root.SNAPSHOT) {
+      // Страница со встроенными данными (без папки): таблицы уже готовы внутри файла
+      if (root.SNAPSHOT && (!dir || !dir.getDirectoryHandle)) {
         const h = root.SNAPSHOT.att && root.SNAPSHOT.att[el.dataset.pid] && root.SNAPSHOT.att[el.dataset.pid][el.dataset.file];
         body.innerHTML = h || 'Вложение не попало в снимок';
         body.classList.remove('muted', 'small');
@@ -139,6 +140,7 @@
     return x.toLocaleString('ru-RU', { maximumFractionDigits: digits }) + (pct ? '%' : '');
   }
   async function xlsxToHtml(bytes) {
+    if (typeof ExcelJS === 'undefined') throw new Error('таблица появится, когда помощник обновит страницы');
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.load(bytes);
     let out = '';

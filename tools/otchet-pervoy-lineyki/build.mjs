@@ -24,6 +24,7 @@ function page(app, title, header) {
 
 fs.mkdirSync(out, { recursive: true });
 fs.writeFileSync(path.join(out, 'Помощник.html'), page('admin.js', 'Помощник — отчёт первой линейки', 'Помощник · отчёт первой линейки'));
+fs.copyFileSync(path.join(here, 'src2', 'check.html'), path.join(out, 'Проверка доступа.html'));
 fs.writeFileSync(path.join(out, 'Директор.html'), page('director.js', 'Отчёт первой линейки', 'Отчёт первой линейки'));
 const mgr = page('manager.js', 'Мой отчёт', 'Мой отчёт к совещанию');
 const dir = path.join(out, 'Страницы руководителей');

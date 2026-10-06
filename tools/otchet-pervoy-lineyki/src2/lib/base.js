@@ -26,6 +26,7 @@
 
   // Поток подключения папки: сохранённая → разрешение одним кликом → выбор папки.
   // opts: { mode: 'read'|'readwrite', onDir(dir) }
+  const NO_ACCESS = 'Папка не открылась. Если вы нажали «Отмена» — просто выберите папку ещё раз. Если выбрали папку, а ничего не произошло, — браузер не даёт доступ к ней: откройте «Проверка доступа.html» и пришлите фото экрана.';
   function connector(opts) {
     const c = { saved: null, error: '', busy: false, readOnly: false };
     const fail = (e) => { c.busy = false; c.error = (e && e.message) || String(e); opts.render(); };
@@ -40,14 +41,18 @@
     };
     c.pick = async () => {
       let dir;
-      try { dir = await Store.pickFolder(opts.mode); } catch (e) { if (e.name !== 'AbortError') fail(e); return; }
+      try { dir = await Store.pickFolder(opts.mode); } catch (e) {
+        // Отмену и отказ браузера в доступе браузер сообщает одинаково — говорим об этом прямо, а не молчим.
+        fail(e.name === 'AbortError' ? new Error(NO_ACCESS) : e);
+        return;
+      }
       await c.use(dir);
     };
     c.grant = async () => {
       try { if (await Store.askPermission(c.saved, opts.mode)) await c.use(c.saved); } catch (e) { fail(e); }
     };
     c.browse = async (files) => {
-      if (!files || !files.length) return;
+      if (!files || !files.length) { fail(new Error('Браузер не передал ни одного файла из этой папки.')); return; }
       const tok = start();
       try { const dir = await Store.fromFileList(files, step); if (tok !== c.tok) return; c.readOnly = true; await c.use(dir, tok); } catch (e) { if (tok === c.tok) fail(e); }
     };

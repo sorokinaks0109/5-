@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Проверка доступа к папке</title>
+<style>
+  :root { --ok: #1e7b45; --bad: #b3261e; --wait: #8a5a00; --ink: #1d2733; --muted: #5d6b7a; --line: #d9e0e8; }
+  body { margin: 0; background: #f4f6f9; color: var(--ink); font-family: "Segoe UI", "PT Sans", Roboto, Arial, sans-serif; font-size: 16px; }
+  header { background: #1f3a5f; color: #fff; padding: 12px 20px; font-size: 19px; font-weight: 600; }
+  main { max-width: 980px; margin: 0 auto; padding: 18px 20px 60px; }
+  .panel { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; margin-bottom: 14px; }
+  button { font: inherit; padding: 10px 18px; border-radius: 8px; border: 1px solid #1f5fa8; background: #1f5fa8; color: #fff; cursor: pointer; margin: 4px 8px 4px 0; }
+  button.second { background: #fff; color: #1f5fa8; }
+  ol { margin: 0; padding-left: 22px; }
+  #log div { padding: 6px 0; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 34px 1fr; gap: 8px; }
+  #log .ok b { color: var(--ok); } #log .bad b { color: var(--bad); } #log .wait b { color: var(--wait); } #log .info b { color: var(--muted); }
+  #verdict { font-size: 22px; font-weight: 700; padding: 14px 18px; border-radius: 10px; display: none; }
+  #verdict.ok { display: block; background: #e3f4ea; color: var(--ok); }
+  #verdict.bad { display: block; background: #fde4e2; color: var(--bad); }
+  code { background: #eef1f4; padding: 1px 5px; border-radius: 4px; word-break: break-all; }
+  .muted { color: var(--muted); font-size: 14px; }
+</style>
+</head>
+<body>
+<header>Проверка: может ли браузер работать с папкой отчёта</header>
+<main>
+  <div class="panel">
+    <ol>
+      <li>Нажмите <b>«1. Проверить доступ к папке»</b> и выберите папку <b>«Отчёт первой линейки»</b>.</li>
+      <li>Подождите, пока внизу появится итог (до минуты).</li>
+      <li>Если итог красный — нажмите <b>«2. Проверить другим способом»</b> и выберите ту же папку.</li>
+      <li><b>Сфотографируйте весь экран</b> и пришлите. Страница ничего не отправляет в интернет и ничего не меняет в папке, кроме пробного файла, который сразу удаляет.</li>
+    </ol>
+    <p>
+      <button id="go">1. Проверить доступ к папке</button>
+      <button id="go2" class="second">2. Проверить другим способом</button>
+      <input type="file" id="dirInput" webkitdirectory multiple hidden>
+    </p>
+  </div>
+  <div id="verdict"></div>
+  <div class="panel"><div id="log"></div></div>
+</main>
+<script>
+(function () {
+  'use strict';
+  const log = document.getElementById('log');
+  const verdict = document.getElementById('verdict');
+  const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  function line(kind, text) {
+    const icon = { ok: '✔', bad: '✖', wait: '…', info: '•' }[kind];
+    const d = document.createElement('div');
+    d.className = kind;
+    d.innerHTML = '<b>' + icon + '</b><span>' + text + '</span>';
+    log.appendChild(d);
+    return d;
+  }
+  function done(ok, text) { verdict.className = ok ? 'ok' : 'bad'; verdict.textContent = text; }
+  // Ждём не дольше ms; пока ждём — показываем секунды.
+  function timed(p, ms, label) {
+    const row = line('wait', esc(label) + ' — жду ответа… <span class="sec">0</span> сек');
+    const t0 = Date.now();
+    const iv = setInterval(() => { row.querySelector('.sec').textContent = Math.round((Date.now() - t0) / 1000); }, 1000);
+    return Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(Object.assign(new Error('нет ответа за ' + ms / 1000 + ' сек'), { name: 'Timeout' })), ms))])
+      .then((v) => { clearInterval(iv); row.className = 'ok'; row.querySelector('b').textContent = '✔'; row.querySelector('span').innerHTML = esc(label) + ' — готово за ' + ((Date.now() - t0) / 1000).toFixed(1) + ' сек'; return v; },
+        (e) => { clearInterval(iv); row.className = 'bad'; row.querySelector('b').textContent = '✖'; row.querySelector('span').innerHTML = esc(label) + ' — <b>ошибка:</b> ' + esc(e.name) + ': ' + esc(e.message); throw e; });
+  }
+
+  // Сведения о компьютере и браузере
+  const ua = navigator.userAgent;
+  const br = /YaBrowser\/([\d.]+)/.exec(ua) ? 'Яндекс Браузер ' + /YaBrowser\/([\d.]+)/.exec(ua)[1]
+    : /Edg\/([\d.]+)/.exec(ua) ? 'Microsoft Edge ' + /Edg\/([\d.]+)/.exec(ua)[1]
+    : /Chrom(e|ium)\/([\d.]+)/.exec(ua) ? 'Chromium/Chrome ' + /Chrom(?:e|ium)\/([\d.]+)/.exec(ua)[1]
+    : /Firefox\/([\d.]+)/.exec(ua) ? 'Firefox ' + /Firefox\/([\d.]+)/.exec(ua)[1] : 'неизвестный браузер';
+  const os = /Windows/.test(ua) ? 'Windows' : /Linux/.test(ua) ? 'Linux (Astra)' : navigator.platform;
+  let where = '';
+  try { where = decodeURIComponent(location.href); } catch (e) { where = location.href; }
+  const unc = /^file:\/\/[^/]/.test(location.href);
+  line('info', 'Система: <b>' + esc(os) + '</b> · браузер: <b>' + esc(br) + '</b>');
+  line('info', 'Страница открыта отсюда: <code>' + esc(where) + '</code><br><span class="muted">' +
+    (unc ? 'Это сетевой адрес (\\\\сервер\\папка).' : /^file:\/\/\/[A-Za-z]:/.test(location.href) ? 'Это диск с буквой.' : 'Это локальная или подключённая папка.') + '</span>');
+  line('info', 'Окно выбора папки с доступом на запись (нужно для отчёта): <b>' + ('showDirectoryPicker' in window ? 'есть' : 'НЕТ') + '</b> · защищённый режим страницы: <b>' + (window.isSecureContext ? 'да' : 'нет') + '</b>');
+
+  document.getElementById('go').onclick = async () => {
+    verdict.className = '';
+    line('info', '<b>Способ 1</b>: доступ к папке на чтение и запись');
+    if (!window.showDirectoryPicker) { line('bad', 'Браузер не умеет давать странице доступ к папке.'); done(false, 'Способ 1 не работает: браузер не поддерживает доступ к папке'); return; }
+    let dir;
+    try {
+      dir = await timed(window.showDirectoryPicker({ mode: 'readwrite' }), 120000, 'Окно выбора папки');
+    } catch (e) {
+      if (e.name === 'AbortError') line('bad', 'Браузер ответил «отменено». Если вы выбрали папку и нажали «Выбрать» — значит, браузер <b>отказал в доступе к этой папке</b>.');
+      if (e.name === 'SecurityError' || e.name === 'NotAllowedError') line('bad', 'Доступ к папкам запрещён настройками браузера (политика компании).');
+      done(false, 'Способ 1 не работает: папку выбрать не удалось (' + e.name + ')');
+      return;
+    }
+    line('ok', 'Выбрана папка: <b>' + esc(dir.name) + '</b>');
+    try {
+      const perm = await timed(dir.queryPermission({ mode: 'readwrite' }), 15000, 'Разрешение на запись');
+      line(perm === 'granted' ? 'ok' : 'bad', 'Разрешение: <b>' + esc(perm) + '</b>');
+      const names = [];
+      await timed((async () => { for await (const h of dir.values()) { names.push((h.kind === 'directory' ? '📁 ' : '') + h.name); if (names.length > 30) break; } })(), 30000, 'Список файлов в папке');
+      line('info', 'В папке: ' + esc(names.join(', ') || 'пусто'));
+      let data = null;
+      try { data = await timed(dir.getDirectoryHandle('Данные'), 15000, 'Папка «Данные»'); } catch (e) { line('bad', 'В выбранной папке нет папки «Данные». Нужно выбирать папку «Отчёт первой линейки».'); }
+      if (data) {
+        const fh = await timed(data.getFileHandle('реестр.json'), 15000, 'Файл «реестр.json»');
+        const f = await timed(fh.getFile(), 15000, 'Открыть реестр');
+        const text = await timed(f.text(), 30000, 'Прочитать реестр (' + Math.round(f.size / 1024) + ' КБ)');
+        line('ok', 'Реестр прочитан: ' + text.length + ' символов');
+      }
+      const name = '_проверка_' + Date.now() + '.txt';
+      const th = await timed(dir.getFileHandle(name, { create: true }), 15000, 'Создать пробный файл');
+      const w = await timed(th.createWritable(), 15000, 'Открыть пробный файл на запись');
+      await timed(w.write('проверка ' + new Date().toLocaleString('ru-RU')), 15000, 'Записать');
+      await timed(w.close(), 30000, 'Сохранить пробный файл');
+      const back = await timed((await th.getFile()).text(), 15000, 'Прочитать пробный файл обратно');
+      line(back.startsWith('проверка') ? 'ok' : 'bad', 'Прочитано обратно: «' + esc(back) + '»');
+      await timed(dir.removeEntry(name), 15000, 'Удалить пробный файл');
+      done(true, 'Способ 1 РАБОТАЕТ: отчёт на этом компьютере будет работать');
+    } catch (e) {
+      done(false, 'Способ 1 остановился на шаге, отмеченном ✖ (' + e.name + ')');
+    }
+  };
+
+  document.getElementById('go2').onclick = () => { verdict.className = ''; document.getElementById('dirInput').click(); };
+  document.getElementById('dirInput').onchange = async (ev) => {
+    const files = Array.from(ev.target.files || []);
+    line('info', '<b>Способ 2</b>: обычное окно выбора папки (только чтение)');
+    line(files.length ? 'ok' : 'bad', 'Браузер передал файлов: <b>' + files.length + '</b>');
+    if (!files.length) { done(false, 'Способ 2 не работает: браузер не передал файлы'); return; }
+    const reg = files.find((f) => /(^|\/)Данные\/реестр\.json$/.test(f.webkitRelativePath));
+    if (!reg) { line('bad', 'Среди файлов нет «Данные/реестр.json». Нужно выбирать папку «Отчёт первой линейки».'); done(false, 'Способ 2: выбрана не та папка'); return; }
+    try {
+      const t = await timed(reg.text(), 30000, 'Прочитать реестр (' + Math.round(reg.size / 1024) + ' КБ)');
+      line('ok', 'Реестр прочитан: ' + t.length + ' символов');
+      done(true, 'Способ 2 работает: просматривать можно (сохранять этим способом нельзя)');
+    } catch (e) { done(false, 'Способ 2 остановился на чтении файла (' + e.name + ')'); }
+  };
+})();
+</script>
+</body>
+</html>
