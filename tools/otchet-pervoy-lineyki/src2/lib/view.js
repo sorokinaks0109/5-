@@ -42,16 +42,41 @@
   // ---------- одно поручение / мероприятие ----------
   function itemCard(it, today, extra) {
     const st = it.st || { flag: '', text: '' };
+    const all = it.all && it.all.progress ? '<div class="muted small">Поручено ' + it.all.progress.total + ' руководителям · выполнили ' + it.all.progress.done + ' из ' + it.all.progress.total + '</div>' : '';
     return '<div class="item f-' + (st.flag || 'none') + '">' +
-      '<div class="what">' + esc(it.text) + (extra || '') + '</div>' +
-      '<div class="status">' + (st.text ? esc(st.text) : '<span class="muted">пояснения нет</span>') + '</div>' +
+      '<div class="what">' + esc(it.text) + (extra || '') + all + '</div>' +
+      '<div class="status">' + (st.text ? esc(st.text) : '<span class="muted">пояснения нет</span>') + notesHtml(it.notes) + '</div>' +
       '<div class="meta">' + badge(st.flag) + '<span>Срок: ' + due(it.due, st.flag, today) + '</span></div></div>';
   }
 
+  function notesHtml(notes) {
+    if (!notes || !notes.length) return '';
+    return '<div class="co-notes">' + notes.map((x) => '<div><b>Соисп. ' + esc(x.fio) + ':</b> ' + esc(x.text) + '</div>').join('') + '</div>';
+  }
+
+  // ---------- фильтр по статусам (руководитель, совещание, директор) ----------
+  const FILTERS = [['', 'Все'], ['late', 'Срок прошёл'], ['done', 'Выполнено'], ['work', 'В работе'], ['fail', 'Не выполнено'], ['na', 'Неактуально'], ['none', 'Без статуса']];
+  function flagPass(filter, flag, d, today) {
+    if (!filter) return true;
+    if (filter === 'late') return M().isOverdue(d, flag, today);
+    return (flag || 'none') === filter;
+  }
+  function filterChips(cur, attr, counts) {
+    return '<div class="filters no-print">' + FILTERS.map(([k, t]) => '<button class="chip ' + ((cur || '') === k ? 'active' : '') + '" ' + attr + '="' + k + '">' + t +
+      (counts && counts[k || 'all'] !== undefined ? ' · ' + counts[k || 'all'] : '') + '</button>').join('') + '</div>';
+  }
+  // Сколько пунктов под каждым фильтром: items — [{flag, due}]
+  function filterCounts(items, today) {
+    const c = { all: items.length };
+    for (const [k] of FILTERS) if (k) c[k] = items.filter((x) => flagPass(k, x.flag, x.due, today)).length;
+    return c;
+  }
+
   // ---------- таблица РОС / проектов ----------
-  function freeTable(rows, today) {
-    if (!rows.length) return '<div class="muted small">Не заполнено</div>';
-    let h = '<table class="grid"><thead><tr><th class="c-no">№</th><th>Задача</th><th>Пояснение</th><th class="c-resp">Ответственные</th><th class="c-due">Срок</th><th class="c-st">Статус</th><th class="c-pct">%</th></tr></thead><tbody>';
+  function freeTable(rows, today, filter) {
+    rows = rows.filter((r) => r.kind === 'head' || flagPass(filter, r.flag, r.due, today));
+    if (!rows.some((r) => r.kind !== 'head')) return '<div class="muted small">' + (filter ? 'Под фильтр ничего не попало' : 'Не заполнено') + '</div>';
+    let h = '<table class="grid"><thead><tr><th class="c-no">№</th><th class="c-task">Задача</th><th>Пояснение</th><th class="c-resp">Ответственные</th><th class="c-due">Срок</th><th class="c-st">Статус</th><th class="c-pct">%</th></tr></thead><tbody>';
     let n = 0;
     for (const r of rows) {
       if (r.kind === 'head') { h += '<tr class="sub"><td colspan="7">' + esc(r.task) + '</td></tr>'; continue; }
@@ -72,8 +97,9 @@
       (k.grade ? '<span><b>Оценка прогноза:</b> ' + esc(k.grade) + '</span>' : '') + (k.unit ? '<span class="muted">' + esc(k.unit) + '</span>' : '') +
       '<span class="muted">Лидер: ' + esc(k.leader) + '</span></div></div>';
   }
-  function eventsTable(events, reg, today, showSpeaker) {
-    if (!events.length) return '<div class="muted small">Мероприятий нет</div>';
+  function eventsTable(events, reg, today, showSpeaker, filter) {
+    events = events.filter((e) => flagPass(filter, e.st.flag, e.due, today));
+    if (!events.length) return '<div class="muted small">' + (filter ? 'Под фильтр ничего не попало' : 'Мероприятий нет') + '</div>';
     let h = '<table class="grid"><thead><tr><th>Мероприятие</th><th class="c-due">Срок</th><th class="c-st">Статус</th><th>Пояснение</th>' + (showSpeaker ? '<th class="c-resp">Заполняет</th>' : '') + '</tr></thead><tbody>';
     for (const e of events) {
       const sp = M().personById(reg, e.speaker);
@@ -84,50 +110,99 @@
   }
 
   // ---------- доклад руководителя (экран совещания, директор, предпросмотр) ----------
-  function personReport(reg, data, pid, today) {
+  // opts.filter — фильтр по статусу ('late', 'done', …): показываем только такие пункты.
+  function personReport(reg, data, pid, today, opts) {
+    opts = opts || {};
+    const f = opts.filter || '';
     const v = M().personView(reg, data, pid, today);
     if (!v.person) return '<div class="panel">Нет такого руководителя</div>';
-    let h = '<div class="report-head"><h1>' + esc(v.person.fio) + '</h1>' + freshBadge(v) + '</div>';
+    const pass = (x) => flagPass(f, x.st.flag, x.due, today);
+    let h = '<div class="report-head"><h1>' + esc(v.person.fio) + '</h1>' + freshBadge(v) + (f ? '<span class="badge s-none">фильтр: ' + esc(FILTERS.find((x) => x[0] === f)[1]) + '</span>' : '') + '</div>';
     h += countTiles(v.counts, 'поручений');
-    h += '<h3 class="sec">1. Поручения</h3>' + (v.memo.length ? '<div class="items">' + v.memo.map((m) => itemCard(m, today)).join('') + '</div>' : '<div class="muted small">Открытых поручений нет</div>');
-    if (v.co.length) h += '<h3 class="sec">Соисполнитель <span class="muted">статус ведёт ответственный</span></h3><div class="items">' + v.co.map((m) => itemCard(m, today, '<div class="muted small">Отв.: ' + esc(M().respName(reg, m)) + '</div>')).join('') + '</div>';
-    h += '<h3 class="sec">2. РОС</h3>' + freeTable(v.ros, today);
-    h += '<h3 class="sec">3. Текущие проекты</h3>' + freeTable(v.proj, today);
+    const memo = v.memo.filter(pass), co = v.co.filter(pass);
+    h += '<h3 class="sec">1. Поручения</h3>' + (memo.length ? '<div class="items">' + memo.map((m) => itemCard(m, today)).join('') + '</div>' : '<div class="muted small">' + (f && v.memo.length ? 'Под фильтр ничего не попало' : 'Открытых поручений нет') + '</div>');
+    if (co.length) h += '<h3 class="sec">Соисполнитель <span class="muted">статус ведёт ответственный</span></h3><div class="items">' + co.map((m) => itemCard(m, today, '<div class="muted small">Отв.: ' + esc(M().respName(reg, m)) + '</div>')).join('') + '</div>';
+    h += '<h3 class="sec">2. РОС</h3>' + freeTable(v.ros, today, f);
+    h += '<h3 class="sec">3. Текущие проекты</h3>' + freeTable(v.proj, today, f);
     h += '<h3 class="sec">4. Показатели УПЦ</h3>';
     if (!v.kpiOwn.length && !v.kpiOther.length) h += '<div class="muted small">Показателей, по которым руководитель отчитывается, нет</div>';
     for (const k of v.kpiOwn) {
-      h += '<div class="kpi">' + kpiHead(k) + (k.comment ? '<div class="kpi-comment"><b>Комментарий:</b> ' + esc(k.comment) + '</div>' : '') + eventsTable(k.events, reg, today, k.events.some((e) => !e.mine)) + '</div>';
+      h += '<div class="kpi">' + kpiHead(k) + (k.comment ? '<div class="kpi-comment"><b>Комментарий:</b> ' + esc(k.comment) + '</div>' : '') + eventsTable(k.events, reg, today, k.events.some((e) => !e.mine), f) + '</div>';
     }
     if (v.kpiOther.length) {
       h += '<h3 class="sec">Мероприятия по показателям других лидеров</h3>';
-      for (const k of v.kpiOther) h += '<div class="kpi">' + kpiHead(k) + eventsTable(k.events, reg, today, false) + '</div>';
+      for (const k of v.kpiOther) h += '<div class="kpi">' + kpiHead(k) + eventsTable(k.events, reg, today, false, f) + '</div>';
     }
     if (v.kpiTeam.length) {
       h += '<details class="team"><summary>В составе команды (справочно): ' + v.kpiTeam.length + '</summary><table class="grid"><thead><tr><th>Показатель</th><th>Цель</th><th>Факт</th><th>Прогноз</th><th>Лидер</th></tr></thead><tbody>' +
         v.kpiTeam.map((k) => '<tr><td>' + esc(M().shortKpi(k.name)) + '</td><td>' + esc(k.goal) + '</td><td>' + esc(short(k.fact)) + '</td><td>' + esc(short(k.forecast)) + '</td><td>' + esc(k.leader) + '</td></tr>').join('') + '</tbody></table></details>';
     }
     if (v.attachments.length) {
-      h += '<h3 class="sec">Приложения</h3>' + v.attachments.map((a) => '<div class="att" data-pid="' + esc(pid) + '" data-file="' + esc(a.file) + '"><div class="att-title">' + esc(a.name) + '</div><div class="att-body muted small">Загрузка…</div></div>').join('');
+      h += '<h3 class="sec">Приложения</h3>' + v.attachments.map((a) => '<div class="att" data-pid="' + esc(pid) + '" data-file="' + esc(a.file) + '"><div class="att-title">' + fileIcon(a.file) + ' ' + esc(a.name) + '</div><div class="att-body muted small">Загрузка…</div></div>').join('');
     }
     return h;
   }
   function short(s) { s = String(s || ''); return s.length > 60 ? s.slice(0, 60) + '…' : s; }
 
-  // ---------- вложения: xlsx → HTML-таблицы (объединения, жирный, заливка, блоки) ----------
+  // ---------- вложения: Excel — таблицей, картинки — картинкой, PDF и остальное — кнопкой «Открыть» ----------
+  const EXT = (name) => (String(name).match(/\.([a-z0-9]+)$/i) || [, ''])[1].toLowerCase();
+  const IMG = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', bmp: 'image/bmp' };
+  const MIME = {
+    ...IMG, pdf: 'application/pdf', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', xls: 'application/vnd.ms-excel',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', doc: 'application/msword',
+    pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', ppt: 'application/vnd.ms-powerpoint',
+  };
+  const fileKind = (name) => { const e = EXT(name); return e === 'xlsx' ? 'xlsx' : IMG[e] ? 'img' : e === 'pdf' ? 'pdf' : 'other'; };
+  function fileIcon(name) {
+    const e = EXT(name);
+    const t = { xlsx: 'XLS', xls: 'XLS', pdf: 'PDF', docx: 'DOC', doc: 'DOC', pptx: 'PPT', ppt: 'PPT' }[e] || (IMG[e] ? 'IMG' : (e || 'файл').toUpperCase().slice(0, 4));
+    return '<span class="ficon f-' + esc(t.toLowerCase()) + '">' + esc(t) + '</span>';
+  }
+  function b64(bytes) { let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(s); }
+  const MAX_EMBED = 5 * 1024 * 1024;
+  // HTML одного вложения. embed — для файлов-снимков (данные вписываются в страницу).
+  async function attHtml(bytes, file, embed) {
+    const k = fileKind(file);
+    const size = (bytes.length / 1048576).toFixed(1).replace('.', ',') + ' МБ';
+    if (k === 'xlsx') return '<div class="xl-wrap">' + await xlsxToHtml(bytes) + '</div>';
+    if (k === 'img') {
+      const src = embed ? (bytes.length <= MAX_EMBED ? 'data:' + MIME[EXT(file)] + ';base64,' + b64(bytes) : '') : URL.createObjectURL(new Blob([bytes], { type: MIME[EXT(file)] }));
+      return src ? '<img class="att-img" src="' + src + '" alt="' + esc(file) + '">' : '<div class="muted small">Картинка больше 5 МБ — лежит в папке «Данные/вложения»</div>';
+    }
+    const what = k === 'pdf' ? 'Открыть PDF' : 'Открыть файл';
+    if (embed && bytes.length > MAX_EMBED) return '<div class="muted small">' + esc(file) + ' (' + size + ') — файл большой, лежит в папке «Данные/вложения»</div>';
+    if (embed) return '<button class="att-open" data-b64="' + b64(bytes) + '" data-name="' + esc(file) + '">' + what + '</button> <span class="muted small">' + size + '</span>';
+    return '<button class="att-open" data-blob="' + URL.createObjectURL(new Blob([bytes], { type: MIME[EXT(file)] || 'application/octet-stream' })) + '" data-name="' + esc(file) + '">' + what + '</button> <span class="muted small">' + size +
+      (k === 'other' ? ' · Word, PowerPoint и другие файлы браузер показать не может — откроется в программе на компьютере' : '') + '</span>';
+  }
+  // «Открыть»: PDF и картинки — во вкладке браузера, остальное — сохранить и открыть программой.
+  if (typeof document !== 'undefined') {
+    document.addEventListener('click', async (e) => {
+      const b = e.target.closest('.att-open');
+      if (!b) return;
+      const name = b.dataset.name;
+      const type = MIME[EXT(name)] || 'application/octet-stream';
+      let blob;
+      if (b.dataset.b64) blob = new Blob([Uint8Array.from(atob(b.dataset.b64), (c) => c.charCodeAt(0))], { type });
+      else blob = await (await fetch(b.dataset.blob)).blob();
+      if (fileKind(name) === 'pdf' || fileKind(name) === 'img') { window.open(URL.createObjectURL(new Blob([blob], { type })), '_blank'); return; }
+      await saveFile(new Uint8Array(await blob.arrayBuffer()), name, type, '.' + EXT(name), 'Файл');
+    });
+  }
   async function hydrateAttachments(container, dir, reg) {
     for (const el of $$('.att', container)) {
       const body = $('.att-body', el);
       // Страница со встроенными данными (без папки): таблицы уже готовы внутри файла
       if (root.SNAPSHOT && (!dir || !dir.getDirectoryHandle)) {
         const h = root.SNAPSHOT.att && root.SNAPSHOT.att[el.dataset.pid] && root.SNAPSHOT.att[el.dataset.pid][el.dataset.file];
-        body.innerHTML = h || 'Вложение не попало в снимок';
+        body.innerHTML = h || 'Вложение появится, когда помощник откроет свою страницу';
         body.classList.remove('muted', 'small');
         continue;
       }
       try {
         const p = M().personById(reg, el.dataset.pid);
         const { bytes } = await Store.readBytes(dir, [Store.DATA, Store.ATT, p.slug, el.dataset.file]);
-        body.innerHTML = await xlsxToHtml(bytes);
+        body.innerHTML = await attHtml(bytes, el.dataset.file, false);
         body.classList.remove('muted', 'small');
       } catch (e) { body.textContent = 'Не удалось открыть вложение: ' + e.message; }
     }
@@ -147,7 +222,8 @@
     for (const ws of wb.worksheets) {
       if (ws.state === 'hidden') continue;
       const maxR = ws.rowCount; let maxC = 0;
-      ws.eachRow((row) => { row.eachCell((c, i) => { if (M().cellText(c.value) !== '') maxC = Math.max(maxC, i); }); });
+      const used = new Set();
+      ws.eachRow((row) => { if (row.hidden) return; row.eachCell((c, i) => { if (M().cellText(c.value) !== '' && !ws.getColumn(i).hidden) { maxC = Math.max(maxC, i); used.add(i); } }); });
       if (!maxC) continue;
       const skip = new Set(); const span = {};
       for (const ref of Object.keys(ws._merges || {})) {
@@ -155,29 +231,32 @@
         span[m.top + ':' + m.left] = { rs: m.bottom - m.top + 1, cs: m.right - m.left + 1 };
         for (let r = m.top; r <= m.bottom; r++) for (let c = m.left; c <= m.right; c++) if (r !== m.top || c !== m.left) skip.add(r + ':' + c);
       }
-      const rowEmpty = (r) => { for (let c = 1; c <= maxC; c++) if (M().cellText(ws.getCell(r, c).value) !== '') return false; return true; };
+      // Показываем только колонки, где есть данные (пустые и скрытые убираем)
+      const cols = []; for (let c = 1; c <= maxC; c++) if (used.has(c)) cols.push(c);
+      const rowEmpty = (r) => { if (ws.getRow(r).hidden) return true; for (const c of cols) if (M().cellText(ws.getCell(r, c).value) !== '') return false; return true; };
       // Лист делим на таблицы по заголовкам: строка с одной заполненной ячейкой после пустой строки
       // («Таблица №2 — Контрактование»). Пустые строки внутри таблицы просто пропускаем.
-      const filled = (r) => { let n = 0; for (let c = 1; c <= maxC; c++) if (M().cellText(ws.getCell(r, c).value) !== '') n++; return n; };
+      const filled = (r) => { let n = 0; for (const c of cols) if (M().cellText(ws.getCell(r, c).value) !== '') n++; return n; };
       const blocks = []; let cur = null; let prevEmpty = true;
       for (let r = 1; r <= maxR; r++) {
         if (rowEmpty(r)) { prevEmpty = true; continue; }
         const caption = filled(r) === 1 && prevEmpty;
         if (!cur || caption) { cur = { title: '', rows: [] }; blocks.push(cur); }
-        if (caption) { for (let c = 1; c <= maxC; c++) { const t = M().cellText(ws.getCell(r, c).value); if (t) cur.title = t; } }
+        if (caption) { for (const c of cols) { const t = M().cellText(ws.getCell(r, c).value); if (t) cur.title = t; } }
         else cur.rows.push(r);
         prevEmpty = false;
       }
-      const widths = []; let tw = 0;
-      for (let c = 1; c <= maxC; c++) { const w = ws.getColumn(c).width || 10; widths.push(w); tw += w; }
+      // ширина колонки из Excel — как минимальная (в символах), чтобы узкие колонки не сжимались «по букве»
+      const minW = (c) => Math.max(4, Math.min(30, Math.round((ws.getColumn(c).width || 10) * 0.9)));
       out += (wb.worksheets.length > 1 ? '<div class="att-sheet">' + esc(ws.name) + '</div>' : '');
       for (const blk of blocks) {
         const rows = blk.rows;
         if (!rows.length) { if (blk.title) out += '<div class="att-cap">' + esc(blk.title) + '</div>'; continue; }
-        let h = (blk.title ? '<div class="att-cap">' + esc(blk.title) + '</div>' : '') + '<table class="grid xl"><colgroup>' + widths.map((w) => '<col style="width:' + (100 * w / tw).toFixed(1) + '%">').join('') + '</colgroup><tbody>';
+        let h = (blk.title ? '<div class="att-cap">' + esc(blk.title) + '</div>' : '') + '<table class="grid xl"><tbody>';
+        let first = true;
         for (const r of rows) {
           h += '<tr>';
-          for (let c = 1; c <= maxC; c++) {
+          for (const c of cols) {
             if (skip.has(r + ':' + c)) continue;
             const cell = ws.getCell(r, c);
             const sp = span[r + ':' + c];
@@ -191,10 +270,13 @@
             if (fill && cell.fill.pattern === 'solid' && !/^FFFFFFFF$/i.test(fill)) st.push('background:#' + fill.slice(2));
             // объединение по вертикали считаем только по показанным строкам (пустые пропущены)
             const rs = sp ? rows.filter((x) => x >= r && x < r + sp.rs).length : 1;
-            h += '<td' + (sp ? (rs > 1 ? ' rowspan="' + rs + '"' : '') + (sp.cs > 1 ? ' colspan="' + sp.cs + '"' : '') : '') +
+            const cs = sp ? cols.filter((x) => x >= c && x < c + sp.cs).length : 1;
+            if (first && cs === 1) st.push('min-width:' + minW(c) + 'ch');
+            h += '<td' + (rs > 1 ? ' rowspan="' + rs + '"' : '') + (cs > 1 ? ' colspan="' + cs + '"' : '') +
               (typeof raw === 'number' ? ' class="num"' : '') + (st.length ? ' style="' + st.join(';') + '"' : '') + '>' + esc(v) + '</td>';
           }
           h += '</tr>';
+          first = false;
         }
         out += h + '</tbody></table>';
       }
@@ -208,14 +290,14 @@
     const list = reg.memo.filter((m) => (opts.closed ? m.closed : !m.closed))
       .map((m) => ({ ...m, st: M().memoStatus(reg, data, m) }))
       .filter((m) => !opts.flag || (opts.flag === 'late' ? M().isOverdue(m.due, m.st.flag, today) : (m.st.flag || 'none') === opts.flag))
-      .filter((m) => !opts.person || m.resp === opts.person);
+      .filter((m) => !opts.person || M().isResp(m, opts.person));
     let h = '<table class="grid memo"><thead><tr><th class="c-due">Дата</th><th>Поручение</th><th class="c-resp">Ответственный</th><th class="c-due">Срок</th><th class="c-st">Статус</th><th>Пояснение</th>' +
       (opts.actions ? '<th class="c-act no-print"></th>' : '') + '</tr></thead><tbody>';
     for (const m of list) {
       const co = (m.co || []).map((id) => (M().personById(reg, id) || {}).fio).filter(Boolean);
       h += '<tr><td>' + esc(M().fmtISO(m.date)) + '</td><td>' + esc(m.text) + (co.length ? '<div class="muted small">Соисп.: ' + esc(co.join(', ')) + '</div>' : '') +
         (m.closed ? '<div class="muted small">Снято ' + esc(M().fmtISO(m.closed.date)) + '</div>' : '') + '</td><td>' + esc(M().respName(reg, m)) + '</td><td>' + due(m.due, m.st.flag, today) +
-        '</td><td>' + badge(m.st.flag) + '</td><td>' + esc(m.st.text) + '</td>' + (opts.actions ? '<td class="no-print">' + opts.actions(m) + '</td>' : '') + '</tr>';
+        '</td><td>' + badge(m.st.flag) + (m.st.progress ? '<div class="small">' + m.st.progress.done + ' из ' + m.st.progress.total + '</div>' : '') + '</td><td>' + esc(m.st.text) + notesHtml(M().coNotes(reg, data, m)) + '</td>' + (opts.actions ? '<td class="no-print">' + opts.actions(m) + '</td>' : '') + '</tr>';
     }
     if (!list.length) h += '<tr><td colspan="7" class="muted">Ничего нет</td></tr>';
     return h + '</tbody></table>';
@@ -251,14 +333,60 @@
   }
 
   // Печать нескольких докладов подряд, каждый с новой страницы.
-  function printHtml(html) {
+  // prepare(el) — дождаться, пока в напечатанное попадут вложения.
+  async function printHtml(html, prepare) {
     let el = $('#printArea');
     if (!el) { el = document.createElement('div'); el.id = 'printArea'; document.body.appendChild(el); }
     el.innerHTML = html;
+    if (prepare) { try { await prepare(el); } catch (e) { /* печатаем без вложений */ } }
     document.body.classList.add('printing');
     window.print();
     document.body.classList.remove('printing');
     el.innerHTML = '';
+  }
+
+  // ---------- поля ввода: растут под текст, «развернуть» — большое окно ----------
+  function ta(attrs, value, placeholder) {
+    return '<div class="ta-wrap"><textarea rows="2" ' + attrs + (placeholder ? ' placeholder="' + esc(placeholder) + '"' : '') + '>' + esc(value) + '</textarea>' +
+      '<button type="button" class="ta-exp no-print" title="Развернуть в большое окно" tabindex="-1">⤢</button></div>';
+  }
+  function grow(t) { t.style.height = 'auto'; t.style.height = (t.scrollHeight + 2) + 'px'; }
+  function autoGrow(container) { $$('.ta-wrap textarea', container).forEach(grow); }
+  if (typeof document !== 'undefined') {
+    document.addEventListener('input', (e) => { if (e.target.matches && e.target.matches('.ta-wrap textarea')) grow(e.target); });
+    document.addEventListener('click', (e) => {
+      const b = e.target.closest('.ta-exp');
+      if (!b) return;
+      const src = b.parentNode.querySelector('textarea');
+      const box = document.createElement('div');
+      box.className = 'modal';
+      const label = (src.closest('tr') && src.closest('tr').querySelector('textarea') !== src ? src.closest('tr').querySelector('textarea').value.slice(0, 120) : '') ||
+        (src.closest('.edit-item') && src.closest('.edit-item').querySelector('.ei-text') ? src.closest('.edit-item').querySelector('.ei-text').innerText.split('\n')[0].slice(0, 160) : '');
+      box.innerHTML = '<div class="modal-box"><div class="modal-title">' + esc(label || src.placeholder || 'Текст') + '</div><textarea class="modal-ta"></textarea>' +
+        '<div class="row between"><span class="muted small">Esc — закрыть без изменений</span><span class="row"><button data-m="cancel">Отмена</button><button class="primary" data-m="ok">Готово</button></span></div></div>';
+      document.body.appendChild(box);
+      const t = box.querySelector('textarea');
+      t.value = src.value; t.focus();
+      const close = (ok) => {
+        if (ok && t.value !== src.value) { src.value = t.value; src.dispatchEvent(new Event('input', { bubbles: true })); grow(src); }
+        box.remove(); document.removeEventListener('keydown', key, true);
+      };
+      const key = (ev) => { if (ev.key === 'Escape') { ev.stopPropagation(); close(false); } };
+      document.addEventListener('keydown', key, true);
+      box.addEventListener('click', (ev) => { const m = ev.target.dataset && ev.target.dataset.m; if (m) close(m === 'ok'); else if (ev.target === box) close(false); });
+    });
+  }
+
+  // Новое письмо в веб-почте (OWA) или, если так выбрано в настройках, в почтовой программе.
+  function mail(settings, to, subject, body) {
+    const via = (settings && settings.mailVia) || 'owa';
+    if (via === 'mailto') { mailto(to, subject, body); return; }
+    const base = (settings && settings.owaUrl) || 'https://mail.gazprom-neft.ru/owa/';
+    const cut = body.length > 1500 ? body.slice(0, 1500) + '\n…' : body;
+    const url = base.replace(/[?#].*$/, '').replace(/\/?$/, '/') + '?path=/mail/action/compose&to=' + encodeURIComponent(to.join(';')) +
+      '&subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(cut);
+    const w = window.open(url, '_blank');
+    if (!w) { const a = document.createElement('a'); a.href = url; a.target = '_blank'; document.body.appendChild(a); a.click(); a.remove(); }
   }
 
   function mailto(to, subject, body) {
@@ -317,5 +445,6 @@
   root.View = {
     esc, $, $$, badge, due, ago, statusSelect, tile, countTiles, freshBadge, itemCard, freeTable, kpiHead, eventsTable, personReport,
     hydrateAttachments, xlsxToHtml, memoTable, upcOverview, whoCards, printHtml, mailto, copyHtml, download, saveFile, toast, folderScreen,
+    FILTERS, flagPass, filterChips, filterCounts, notesHtml, fileKind, fileIcon, attHtml, b64, ta, autoGrow, mail, MIME, EXT,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

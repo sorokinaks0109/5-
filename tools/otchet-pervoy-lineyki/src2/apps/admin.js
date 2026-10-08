@@ -5,7 +5,7 @@
   const { esc, $, $$ } = View;
   const S = {
     dir: null, reg: null, data: {}, regModified: 0, tab: 'who', person: 0, locked: false, demo: false,
-    memoFilter: '', memoPerson: '', edit: null, cardDiff: null, card: null, upcPerson: '', log: [],
+    memoFilter: '', memoPerson: '', edit: null, cardDiff: null, card: null, upcPerson: '', log: [], meetFilter: '', sentFile: '',
   };
   const today = () => Model.todayISO();
   const TABS = [['who', 'Кто обновил'], ['meeting', 'Совещание'], ['memo', 'Поручения'], ['upc', 'УПЦ'], ['out', 'Свод и письма'], ['settings', 'Настройки'], ['help', 'Как пользоваться']];
@@ -82,6 +82,7 @@
     const views = { who: whoTab, meeting: meetingTab, memo: memoTab, upc: upcTab, out: outTab, settings: settingsTab, help: helpTab };
     main.innerHTML = views[S.tab]();
     if (S.tab === 'meeting') View.hydrateAttachments(main, S.dir, S.reg);
+    View.autoGrow(main);
   }
 
   function whoTab() {
@@ -104,18 +105,21 @@
     return '<div class="people-bar">' + people.map((x, i) => '<button class="chip ' + (i === S.person ? 'active' : '') + '" data-person-idx="' + i + '">' + esc(x.fio) + '</button>').join('') +
       '<span class="tools row"><button data-act="prev">←</button><button data-act="next">→</button><button class="primary" data-act="present">На весь экран</button>' +
       '<button data-act="print">Печать</button><button data-act="printAll">Печать всех</button></span></div>' +
-      '<div id="report">' + (p ? View.personReport(S.reg, S.data, p.id, today()) : '') + '</div>';
+      View.filterChips(S.meetFilter, 'data-meetf') +
+      '<div id="report">' + (p ? View.personReport(S.reg, S.data, p.id, today(), { filter: S.meetFilter }) : '') + '</div>';
   }
 
   // ---------- поручения ----------
   function memoForm() {
     const e = S.edit || { date: today(), text: '', resp: '', co: [], due: '' };
-    const opts = '<option value="">— выбрать —</option>' + S.reg.people.map((p) => '<option value="' + esc(p.id) + '"' + (e.resp === p.id ? ' selected' : '') + '>' + esc(p.fio) + '</option>').join('') +
-      '<option value="__other"' + (!e.resp && e.respText ? ' selected' : '') + '>другой (вписать)</option>';
+    const rs = Model.respsOf(e);
     return '<div class="panel form"><h2>' + (S.edit && S.edit.id ? 'Изменить поручение' : 'Новое поручение') + '</h2>' +
       '<div class="form-grid"><label>Дата совещания<input type="date" id="f_date" value="' + esc(e.date) + '"></label>' +
-      '<label class="wide">Поручение<textarea id="f_text" rows="2">' + esc(e.text) + '</textarea></label>' +
-      '<label>Ответственный<select id="f_resp">' + opts + '</select><input id="f_respText" placeholder="ФИО, если нет в списке" value="' + esc(e.respText || '') + '" ' + (!e.resp && e.respText ? '' : 'hidden') + '></label>' +
+      '<label class="wide">Поручение' + View.ta('id="f_text"', e.text) + '</label>' +
+      '<div class="wide"><div class="small muted">Ответственные — можно нескольких: у каждого будет свой статус, у поручения — общий итог «выполнили N из M» ' +
+      '<button type="button" class="mini" data-act="respAll">Все на совещании</button> <button type="button" class="mini" data-act="respNone">Снять всех</button></div>' +
+      '<div class="checks">' + S.reg.people.map((p) => '<label class="chk"><input type="checkbox" class="f_resp" value="' + esc(p.id) + '"' + (rs.includes(p.id) ? ' checked' : '') + '>' + esc(p.fio) + '</label>').join('') + '</div>' +
+      '<input id="f_respText" placeholder="Если ответственного нет в списке — впишите ФИО" value="' + esc(rs.length ? '' : e.respText || '') + '" style="margin-top:6px;min-width:320px"></div>' +
       '<label>Срок<input id="f_due" placeholder="дд.мм.гггг или «постоянно»" value="' + esc(Model.fmtISO(e.due)) + '"></label>' +
       '<div class="wide"><div class="small muted">Соисполнители</div><div class="checks">' + S.reg.people.map((p) => '<label class="chk"><input type="checkbox" class="f_co" value="' + esc(p.id) + '"' + ((e.co || []).includes(p.id) ? ' checked' : '') + '>' + esc(p.fio) + '</label>').join('') + '</div></div></div>' +
       '<div class="row"><button class="primary" data-act="memoSave">' + (S.edit && S.edit.id ? 'Сохранить изменения' : 'Добавить поручение') + '</button>' + (S.edit ? '<button data-act="memoCancel">Отмена</button>' : '') + '</div></div>';
@@ -140,14 +144,17 @@
   }
   async function memoSave() {
     const text = $('#f_text').value.trim();
-    const respSel = $('#f_resp').value;
+    const rs = $$('.f_resp').filter((x) => x.checked).map((x) => x.value);
+    const respText = $('#f_respText').value.trim();
     if (!text) { View.toast('Впишите текст поручения', 'bad'); return; }
-    if (!respSel) { View.toast('Выберите ответственного', 'bad'); return; }
+    if (!rs.length && !respText) { View.toast('Выберите ответственного', 'bad'); return; }
     const item = S.edit && S.edit.id ? S.reg.memo.find((m) => m.id === S.edit.id) : { id: Model.uid('m'), created: today() };
+    // один ответственный — по-старому поле resp; несколько — ещё и список resps
     Object.assign(item, {
-      date: $('#f_date').value || today(), text, resp: respSel === '__other' ? '' : respSel, respText: respSel === '__other' ? $('#f_respText').value.trim() : '',
-      due: Model.parseDue($('#f_due').value), co: $$('.f_co').filter((x) => x.checked).map((x) => x.value).filter((x) => x !== respSel),
+      date: $('#f_date').value || today(), text, resp: rs[0] || '', respText: rs.length ? '' : respText,
+      due: Model.parseDue($('#f_due').value), co: $$('.f_co').filter((x) => x.checked).map((x) => x.value).filter((x) => !rs.includes(x)),
     });
+    if (rs.length > 1) item.resps = rs; else delete item.resps;
     if (!(S.edit && S.edit.id)) { item.num = Math.max(0, ...S.reg.memo.map((m) => m.num || 0)) + 1; S.reg.memo.push(item); }
     S.edit = null;
     if (await saveReg('Поручение сохранено')) render();
@@ -184,10 +191,10 @@
       person: S.upcPerson,
       editor: (k, evs) => '<div class="row small no-print">Отчитывается: <select data-kpi-rep="' + esc(k.id) + '">' + peopleOpts(k.reporter).replace('— помощник —', '— не назначен —') + '</select></div>' +
         '<table class="grid"><thead><tr><th>Мероприятие</th><th class="c-resp">Исполнители</th><th class="c-due">Срок</th><th class="c-resp">Заполняет</th><th class="c-st">Статус</th><th>Пояснение</th><th class="c-act no-print"></th></tr></thead><tbody>' +
-        evs.map((e) => '<tr><td><textarea rows="2" data-ev="' + esc(e.id) + '|text">' + esc(e.text) + '</textarea></td><td><input data-ev="' + esc(e.id) + '|executors" value="' + esc(e.executors) + '"></td>' +
+        evs.map((e) => '<tr><td>' + View.ta('data-ev="' + esc(e.id) + '|text"', e.text) + '</td><td><input data-ev="' + esc(e.id) + '|executors" value="' + esc(e.executors) + '"></td>' +
           '<td><input data-ev="' + esc(e.id) + '|due" value="' + esc(Model.fmtISO(e.due)) + '"></td><td><select data-ev="' + esc(e.id) + '|speaker">' + peopleOpts(e.speaker) + '</select></td>' +
           (e.speaker ? '<td>' + View.badge(e.st.flag) + '</td><td class="small">' + esc(e.st.text) + '</td>'
-            : '<td>' + View.statusSelect('', e.st.flag, 'data-ev="' + esc(e.id) + '|mflag"') + '</td><td><textarea rows="2" data-ev="' + esc(e.id) + '|mtext">' + esc(e.st.text) + '</textarea></td>') +
+            : '<td>' + View.statusSelect('', e.st.flag, 'data-ev="' + esc(e.id) + '|mflag"') + '</td><td>' + View.ta('data-ev="' + esc(e.id) + '|mtext"', e.st.text) + '</td>') +
           '<td class="no-print"><button class="mini danger" data-evdel="' + esc(e.id) + '">✕</button></td></tr>').join('') +
         '</tbody></table><button class="mini no-print" data-evadd="' + esc(k.id) + '">+ мероприятие</button>',
     });
@@ -230,12 +237,18 @@
   // ---------- свод и письма ----------
   function outTab() {
     const st = S.reg.settings;
-    return '<div class="panel"><h2>Свод для директора</h2><p class="muted small">Excel-файл: кто обновил, все поручения со статусами, УПЦ. ' + (S.demo ? 'В демо файл скачается.' : 'Файл появится в папке «Своды».') + '</p>' +
-      '<div class="row"><button class="primary" data-act="summary">Сохранить свод в Excel</button><button data-act="printAll">Печать всех докладов</button></div></div>' +
-      '<div class="panel"><h2>Письмо директору с итогами</h2><p class="muted small">«Скопировать итоги» кладёт в буфер таблицу по руководителям — вставьте её в письмо (Ctrl+V). «Открыть письмо» создаёт письмо в почтовой программе с текстом итогов. ' +
-      'Файл свода прикрепите сами — браузер не умеет прикреплять файлы к письмам.</p>' +
+    return '<div class="panel"><h2>Отправить отчёт директору</h2><p class="muted small">Готовит файл для телефона (iPhone, Outlook): сводка, «Просрочено и не выполнено», ' +
+      'руководители раскрываются нажатием. Файл кладётся в папку «Своды», затем открывается новое письмо в веб-почте — <b>прикрепите файл к письму</b> (браузер сам прикрепить не может).</p>' +
       '<div class="row"><label class="small">Почта директора <input id="dirEmail" value="' + esc(st.directorEmail || '') + '" placeholder="director@..."></label>' +
-      '<button data-act="copySummary">Скопировать итоги</button><button class="primary" data-act="mailDirector">Открыть письмо</button></div>' +
+      '<button class="primary" data-act="sendDirector">Отправить отчёт директору</button><button data-act="mobileCopy">Сохранить копию файла…</button></div>' +
+      (S.sentFile ? '<div class="msg ok">Файл: <b>' + esc(S.sentFile) + '</b>. В письме нажмите «Вложить» (скрепка) и выберите этот файл ' +
+        '(папка «Отчёт первой линейки» → «Своды»), или «Сохранить копию файла…» в «Загрузки» и прикрепите оттуда. ' +
+        'Если почта не пропустит .html — откройте файл и напечатайте в PDF.</div>' : '') + '</div>' +
+      '<div class="panel"><h2>Свод для директора</h2><p class="muted small">Excel-файл: кто обновил, все поручения со статусами, УПЦ. ' + (S.demo ? 'В демо файл скачается.' : 'Файл появится в папке «Своды».') + '</p>' +
+      '<div class="row"><button class="primary" data-act="summary">Сохранить свод в Excel</button><button data-act="printAll">Печать всех докладов</button></div></div>' +
+      '<div class="panel"><h2>Письмо директору с итогами</h2><p class="muted small">«Скопировать итоги» кладёт в буфер таблицу по руководителям — вставьте её в письмо (Ctrl+V). «Открыть письмо» создаёт письмо в веб-почте с текстом итогов. ' +
+      'Файл свода прикрепите сами — браузер не умеет прикреплять файлы к письмам.</p>' +
+      '<div class="row"><button data-act="copySummary">Скопировать итоги</button><button data-act="mailDirector">Открыть письмо</button></div>' +
       '<pre class="summary">' + esc(Model.summaryText(S.reg, S.data, today())) + '</pre></div>' +
       (S.log.length ? '<div class="panel"><h2>Журнал</h2><pre class="log">' + esc(S.log.join('\n')) + '</pre></div>' : '');
   }
@@ -245,6 +258,24 @@
       return '<tr><td>' + esc(p.fio) + '</td><td>' + c.total + '</td><td>' + c.done + '</td><td>' + c.work + '</td><td>' + c.fail + '</td><td>' + c.none + '</td><td>' + c.overdue + '</td><td>' + (v.fresh === 'fresh' ? Model.fmtISO(v.reportDate) : 'не обновлён') + '</td></tr>';
     }).join('');
     return '<p>Итоги по поручениям совещания первой линейки на ' + Model.fmtISO(today()) + '</p><table border="1" cellpadding="4" style="border-collapse:collapse"><tr><th>Руководитель</th><th>Поручений</th><th>Выполнено</th><th>В работе</th><th>Не выполнено</th><th>Без статуса</th><th>Срок прошёл</th><th>Отчёт актуален</th></tr>' + rows + '</table>';
+  }
+  const mobileName = () => 'Отчёт директору ' + Model.fmtISO(today()) + '.html';
+  async function sendDirector() {
+    const bytes = await Base.mobileFile(S.dir, S.reg, S.data);
+    const name = mobileName();
+    try {
+      if (S.demo) throw new Error('демо');
+      await Store.writeBytes(S.dir, ['Своды', name], bytes);
+      S.sentFile = 'Своды/' + name; S.log.push('Отчёт для директора сохранён: Своды/' + name);
+    } catch (e) {
+      const r = await View.saveFile(bytes, name, 'text/html', '.html', 'Страница');
+      if (!r.ok) return;
+      S.sentFile = r.name + ' (сохранён отдельно)';
+    }
+    const to = (($('#dirEmail') && $('#dirEmail').value) || S.reg.settings.directorEmail || '').trim();
+    View.mail(S.reg.settings, to ? [to] : [], 'Отчёт первой линейки на ' + Model.fmtISO(today()),
+      'Добрый день!\n\nВо вложении — отчёт первой линейки на ' + Model.fmtISO(today()) + '. Откройте файл: сверху сводка и просроченные поручения, по руководителям — нажмите на фамилию.\n\n' + Model.summaryText(S.reg, S.data, today()));
+    render();
   }
   async function saveSummary() {
     const wb = Model.buildSummary(ExcelJS, S.reg, S.data, today());
@@ -260,13 +291,16 @@
   function settingsTab() {
     const st = S.reg.settings;
     return '<div class="panel"><h2>Руководители</h2><p class="muted small">Порядок строк — порядок докладов. «На совещании: нет» — человек заполняет отчёт, но в очереди докладов идёт в конце. ' +
-      '«Имя файла» — фамилия в имени личной страницы «Отчёт — Фамилия.html». «Сохраняет» — «файлом» для тех, у кого Windows: их страница сама получает поручения, а отчёт они кладут в папку «Входящие».</p><table class="grid"><thead><tr><th>ФИО (как в поручениях)</th><th>Полное ФИО (как в карте УПЦ)</th><th class="c-resp">Имя файла</th><th>Почта</th><th class="c-st">На совещании</th><th class="c-st">Сохраняет</th><th class="c-act"></th></tr></thead><tbody>' +
+      '«Имя файла» — фамилия в имени личной страницы «Отчёт — Фамилия.html». «Страница» — «с данными» для тех, у кого Windows, и для отчётов, которые заполняют люди на разных системах: страница сама получает поручения; на Windows отчёт сохраняется файлом в «Входящие», на Astra — кнопкой «Сохранять сразу в папку».</p><table class="grid"><thead><tr><th>ФИО (как в поручениях)</th><th>Полное ФИО (как в карте УПЦ)</th><th class="c-resp">Имя файла</th><th>Почта</th><th class="c-st">На совещании</th><th class="c-st">Страница</th><th class="c-act"></th></tr></thead><tbody>' +
       S.reg.people.map((p, i) => '<tr><td><input data-pp="' + i + '|fio" value="' + esc(p.fio) + '"></td><td><input data-pp="' + i + '|full" value="' + esc(p.full || '') + '"></td><td>' + esc(p.slug) + '</td>' +
         '<td><input data-pp="' + i + '|email" value="' + esc(p.email || '') + '"></td><td><select data-pp="' + i + '|onMeeting"><option value="1">да</option><option value="0"' + (p.onMeeting === false ? ' selected' : '') + '>нет</option></select></td>' +
-        '<td><select data-pp="' + i + '|fileMode"><option value="0">в папку (Astra)</option><option value="1"' + (p.fileMode ? ' selected' : '') + '>файлом (Windows)</option></select></td>' +
+        '<td><select data-pp="' + i + '|fileMode"><option value="0">обычная (Astra)</option><option value="1"' + (p.fileMode ? ' selected' : '') + '>с данными (Windows / смешанно)</option></select></td>' +
         '<td class="c-act"><button class="mini" data-pmove="up|' + i + '">↑</button><button class="mini" data-pmove="down|' + i + '">↓</button><button class="mini danger" data-pmove="del|' + i + '">✕</button></td></tr>').join('') +
       '</tbody></table><div class="row" style="margin-top:8px"><input id="newFio" placeholder="Фамилия И.О."><button data-act="addPerson">Добавить руководителя</button></div>' +
       '<p class="muted small">Новому руководителю скопируйте любую страницу из папки «Страницы руководителей» и переименуйте в «Отчёт — Фамилия.html».</p></div>' +
+      '<div class="panel"><h2>Почта</h2><p class="muted small">Письма (напоминания, директору) открываются в веб-почте Outlook (OWA). Если адрес почты другой — поправьте.</p>' +
+      '<div class="row"><label class="small">Открывать письма <select id="mailVia"><option value="owa">в веб-почте (OWA)</option><option value="mailto"' + (st.mailVia === 'mailto' ? ' selected' : '') + '>в почтовой программе</option></select></label>' +
+      '<label class="small">Адрес OWA <input id="owaUrl" style="min-width:320px" value="' + esc(st.owaUrl || 'https://mail.gazprom-neft.ru/owa/') + '"></label></div></div>' +
       '<div class="panel"><h2>Пароль помощника</h2><p class="muted small">Пароль защищает страницу помощника от случайного входа. Настоящая защита реестра — права на папку «Данные» (см. «Как пользоваться»).</p>' +
       '<div class="row"><input type="password" id="newPass" placeholder="' + (st.passHash ? 'Новый пароль' : 'Пароль') + '"><button data-act="setPass">' + (st.passHash ? 'Сменить пароль' : 'Установить пароль') + '</button>' +
       (st.passHash ? '<button data-act="clearPass">Убрать пароль</button>' : '') + '</div></div>';
@@ -291,8 +325,10 @@
       '<li><b>На совещании</b>: вкладка «Совещание» → «На весь экран», стрелки ← → листают докладчиков.</li>' +
       '<li><b>После совещания</b>: «Кто обновил» → «Совещание прошло сегодня». Вкладка «Поручения»: добавьте новые (появляются у руководителей сразу). ' +
       'Выполненные и неактуальные, которые показали на совещании, снимите кнопкой «Снять с контроля» — по одному или все сразу.</li>' +
-      '<li><b>За день до совещания</b>: «Кто обновил» — красные не обновили. Кнопка «Написать напоминание» откроет письмо им.</li>' +
-      '<li><b>Директору</b>: «Свод и письма» — Excel-свод и письмо с итогами.</li>' +
+      '<li><b>За день до совещания</b>: «Кто обновил» — красные не обновили. Кнопка «Написать напоминание» откроет письмо им в веб-почте.</li>' +
+      '<li><b>Директору</b>: «Свод и письма» → «Отправить отчёт директору» — файл для телефона в папке «Своды» и новое письмо; файл прикрепите к письму. Там же Excel-свод.</li>' +
+      '<li><b>Поручение нескольким</b>: отметьте нескольких ответственных (или «Все на совещании»). У каждого свой статус, у поручения — «выполнили N из M». Снимается, когда выполнили все (или вручную).</li>' +
+      '<li><b>Соисполнители</b> пишут свой комментарий по поручению в своём отчёте — он виден у ответственного и на совещании.</li>' +
       '<li><b>Раз в месяц</b>: «УПЦ» → «Загрузить новую карту УПЦ». Сборщик покажет, что добавится, уйдёт и изменится.</li></ol>' +
       '<h3>Статусы</h3><p>Везде одни и те же: ' + Model.STATUSES.map((s) => View.badge(s.key)).join(' ') + ' и ' + View.badge('') + '. ' +
       'Если срок прошёл, а статус не «выполнено» и не «неактуально», дата подсвечивается красным.</p>' +
@@ -304,9 +340,10 @@
   // ---------- события ----------
   function people() { return S.reg.people.filter((p) => p.onMeeting !== false).concat(S.reg.people.filter((p) => p.onMeeting === false)); }
   document.addEventListener('click', async (e) => {
-    const b = e.target.closest('[data-tab],[data-act],[data-person-idx],[data-mf],[data-memo],[data-evdel],[data-evadd],[data-pmove],.who .card');
+    const b = e.target.closest('[data-tab],[data-act],[data-person-idx],[data-mf],[data-meetf],[data-memo],[data-evdel],[data-evadd],[data-pmove],.who .card');
     if (!b) return;
     if (b.dataset.tab) { S.tab = b.dataset.tab; render(); return; }
+    if (b.dataset.meetf !== undefined) { S.meetFilter = b.dataset.meetf; render(); return; }
     if (b.classList.contains('card') && b.dataset.person) { S.person = people().findIndex((p) => p.id === b.dataset.person); S.tab = 'meeting'; render(); return; }
     if (b.dataset.personIdx) { S.person = +b.dataset.personIdx; render(); return; }
     if (b.dataset.mf !== undefined) { S.memoFilter = b.dataset.mf; render(); return; }
@@ -317,7 +354,7 @@
       const [op, i] = b.dataset.pmove.split('|'); const n = +i; const arr = S.reg.people;
       if (op === 'del') {
         const p = arr[n];
-        if (S.reg.memo.some((m) => !m.closed && m.resp === p.id) || S.reg.kpis.some((k) => k.reporter === p.id)) { alert('У ' + p.fio + ' есть открытые поручения или показатели. Сначала передайте их другому.'); return; }
+        if (S.reg.memo.some((m) => !m.closed && Model.isResp(m, p.id)) || S.reg.kpis.some((k) => k.reporter === p.id)) { alert('У ' + p.fio + ' есть открытые поручения или показатели. Сначала передайте их другому.'); return; }
         if (!confirm('Убрать ' + p.fio + ' из списка? Его отчёт останется в папке.')) return;
         arr.splice(n, 1);
       }
@@ -338,13 +375,17 @@
       const to = stale.map((p) => p.email).filter(Boolean);
       const noMail = stale.filter((p) => !p.email).map((p) => p.fio);
       if (noMail.length) View.toast('Нет почты у: ' + noMail.join(', ') + '. Добавьте в «Настройках».', 'bad');
-      View.mailto(to, 'Отчёт к совещанию первой линейки', 'Коллеги, добрый день!\n\nНапоминаю: обновите, пожалуйста, свой отчёт к совещанию первой линейки — статусы поручений и мероприятий, дату «Отчёт актуален на» — и нажмите «Сохранить».\n\nСпасибо!');
+      View.mail(S.reg.settings, to, 'Отчёт к совещанию первой линейки', 'Коллеги, добрый день!\n\nНапоминаю: обновите, пожалуйста, свой отчёт к совещанию первой линейки — статусы поручений и мероприятий, дату «Отчёт актуален на» — и нажмите «Сохранить».\n\nСпасибо!');
     }
     else if (a === 'prev') { S.person = (S.person - 1 + n) % n; render(); }
     else if (a === 'next') { S.person = (S.person + 1) % n; render(); }
     else if (a === 'present') { document.body.classList.add('present'); if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {}); }
     else if (a === 'print') window.print();
-    else if (a === 'printAll') { View.printHtml(people().map((p, i) => '<div class="' + (i ? 'page-break' : '') + '">' + View.personReport(S.reg, S.data, p.id, today()) + '</div>').join('')); }
+    else if (a === 'printAll') { View.printHtml(people().map((p, i) => '<div class="' + (i ? 'page-break' : '') + '">' + View.personReport(S.reg, S.data, p.id, today(), { filter: S.tab === 'meeting' ? S.meetFilter : '' }) + '</div>').join(''), (el) => View.hydrateAttachments(el, S.dir, S.reg)); }
+    else if (a === 'respAll') { const ids = S.reg.people.filter((p) => p.onMeeting !== false).map((p) => p.id); $$('.f_resp').forEach((x) => { x.checked = ids.includes(x.value); }); }
+    else if (a === 'respNone') { $$('.f_resp').forEach((x) => { x.checked = false; }); }
+    else if (a === 'sendDirector') sendDirector();
+    else if (a === 'mobileCopy') { await View.saveFile(await Base.mobileFile(S.dir, S.reg, S.data), mobileName(), 'text/html', '.html', 'Страница'); }
     else if (a === 'memoSave') memoSave();
     else if (a === 'memoCancel') { S.edit = null; render(); }
     else if (a === 'closeReady') closeReady();
@@ -352,7 +393,7 @@
     else if (a === 'cardCancel') { S.card = null; S.cardDiff = null; render(); }
     else if (a === 'summary') saveSummary();
     else if (a === 'copySummary') { const ok = await View.copyHtml(summaryHtml(), Model.summaryText(S.reg, S.data, today())); View.toast(ok ? 'Итоги скопированы — вставьте в письмо (Ctrl+V)' : 'Не удалось скопировать', ok ? 'ok' : 'bad'); }
-    else if (a === 'mailDirector') { const to = ($('#dirEmail').value || '').trim(); View.mailto(to ? [to] : [], 'Итоги по поручениям совещания первой линейки на ' + Model.fmtISO(today()), Model.summaryText(S.reg, S.data, today())); }
+    else if (a === 'mailDirector') { const to = (S.reg.settings.directorEmail || '').trim(); View.mail(S.reg.settings, to ? [to] : [], 'Итоги по поручениям совещания первой линейки на ' + Model.fmtISO(today()), Model.summaryText(S.reg, S.data, today())); }
     else if (a === 'addPerson') {
       const fio = $('#newFio').value.trim(); if (!fio) return;
       const slug = fio.split(/\s+/)[0];
@@ -365,7 +406,8 @@
   });
   document.addEventListener('change', async (e) => {
     const t = e.target;
-    if (t.id === 'f_resp') { $('#f_respText').hidden = t.value !== '__other'; }
+    if (t.id === 'mailVia') { S.reg.settings.mailVia = t.value; saveReg('Сохранено'); }
+    if (t.id === 'owaUrl') { S.reg.settings.owaUrl = t.value.trim(); saveReg('Адрес почты сохранён'); }
     if (t.id === 'memoPerson') { S.memoPerson = t.value; render(); }
     if (t.id === 'upcPerson') { S.upcPerson = t.value; render(); }
     if (t.id === 'lastMeeting') { S.reg.settings.lastMeeting = t.value; if (await saveReg('Дата совещания сохранена')) render(); }

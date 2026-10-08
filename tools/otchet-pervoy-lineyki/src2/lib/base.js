@@ -156,20 +156,33 @@
 
   // «Для директора.html»: снимок всех данных в одном файле. Открывается двойным щелчком в любом браузере,
   // ничего не спрашивает. Обновляется, когда помощник или руководитель открывает и сохраняет свою страницу.
+  // Вложения в виде готового HTML — для страниц со вшитыми данными.
+  async function collectAtt(dir, reg, data, onlyPid) {
+    const att = {};
+    for (const p of reg.people) {
+      if (onlyPid && p.id !== onlyPid) continue;
+      for (const a of ((data[p.id] && data[p.id].data && data[p.id].data.attachments) || [])) {
+        try {
+          const { bytes } = await Store.readBytes(dir, [Store.DATA, Store.ATT, p.slug, a.file]);
+          (att[p.id] = att[p.id] || {})[a.file] = await View.attHtml(bytes, a.file, true);
+        } catch (e) { /* вложение не прочиталось — в снимке будет без него */ }
+      }
+    }
+    return att;
+  }
+
+  // Версия для телефона директора: файл без скриптов. Возвращает байты страницы.
+  async function mobileFile(dir, reg, data) {
+    const att = await collectAtt(dir, reg, data);
+    return new TextEncoder().encode(root.Mobile.build(reg, data, Model.todayISO(), att, Date.now()));
+  }
+
   async function writeSnapshot(dir, reg, data) {
     const libs = document.getElementById('libs');
     const app = document.getElementById('snap-app');
     const css = document.getElementById('css');
     if (!libs || !app || !css || !dir) return false;
-    const att = {};
-    for (const p of reg.people) {
-      for (const a of ((data[p.id] && data[p.id].data && data[p.id].data.attachments) || [])) {
-        try {
-          const { bytes } = await Store.readBytes(dir, [Store.DATA, Store.ATT, p.slug, a.file]);
-          (att[p.id] = att[p.id] || {})[a.file] = await View.xlsxToHtml(bytes);
-        } catch (e) { /* вложение не прочиталось — в снимке будет без него */ }
-      }
-    }
+    const att = await collectAtt(dir, reg, data);
     const plain = {};
     for (const [k, v] of Object.entries(data)) plain[k] = { data: v.data };
     const at = Date.now();
@@ -192,7 +205,7 @@
       for (const p of reg.people.filter((x) => x.fileMode)) {
         try {
           await Store.writeBytes(dir, ['Страницы руководителей', 'Отчёт — ' + p.slug + '.html'],
-            page('Отчёт — ' + p.fio, 'Мой отчёт к совещанию', { at, reg, data: plain, att, me: p.id }, mgr.textContent));
+            page('Отчёт — ' + p.fio, 'Мой отчёт к совещанию', { at, reg, data: plain, att: att[p.id] ? { [p.id]: att[p.id] } : {}, me: p.id }, mgr.textContent));
         } catch (e) { ok = false; }
       }
     }
@@ -200,21 +213,30 @@
   }
 
   // Отчёт руководителя, сохранённый файлом: принимаем в общую папку. Файл старее уже принятого не принимаем.
+  // Один отчёт могут заполнять несколько человек: файл несёт версию, с которой человек начал (base),
+  // и из него переносятся только его правки — чужие, принятые раньше, не затираются.
   async function acceptReport(dir, reg, data, obj, fileName) {
     if (!obj || obj.kind !== 'otchet-report' || !obj.personId) return { ok: false, msg: fileName + ': это не файл отчёта' };
     const p = reg.people.find((x) => x.id === obj.personId);
     if (!p) return { ok: false, msg: fileName + ': руководителя нет в списке' };
     const cur = data[p.id] && data[p.id].data;
-    if (cur && cur.savedAt && obj.savedAt <= cur.savedAt) return { ok: false, old: true, msg: p.fio + ': файл не новее уже принятого — пропущен' };
+    if (cur && obj.saveId && (cur.saveIds || []).includes(obj.saveId)) return { ok: false, old: true, msg: p.fio + ': этот файл уже принят — пропущен' };
+    const hasBase = Object.prototype.hasOwnProperty.call(obj, 'base');
+    if (cur && cur.savedAt && !hasBase && obj.savedAt <= cur.savedAt) return { ok: false, old: true, msg: p.fio + ': файл не новее уже принятого — пропущен' };
     for (const [name, b64] of Object.entries(obj.attFiles || {})) {
       await Store.writeBytes(dir, [Store.DATA, Store.ATT, p.slug, name], Uint8Array.from(atob(b64), (ch) => ch.charCodeAt(0)));
     }
-    const clean = { ...obj };
-    delete clean.attFiles; delete clean.kind;
+    const mine = { ...obj };
+    delete mine.attFiles; delete mine.kind; delete mine.base;
+    if (mine.saveId) mine.saveIds = [mine.saveId];
+    const merged = hasBase && cur && !Model.sameVersion(obj.base, cur);
+    let clean = merged ? Model.mergeReport(obj.base, mine, cur) : mine;
+    if (!merged && cur && cur.saveIds) clean.saveIds = Array.from(new Set([...cur.saveIds, ...(mine.saveIds || [])])).slice(-100);
+    if (merged) clean.savedAt = Math.max(cur.savedAt || 0, mine.savedAt || 0);
     await Store.dailyBackup(dir, [Store.DATA, Store.PEOPLE, p.slug + '.json'], p.slug, 10);
     await Store.writeJSON(dir, [Store.DATA, Store.PEOPLE, p.slug + '.json'], clean);
     data[p.id] = { data: clean };
-    return { ok: true, msg: p.fio + ': принят отчёт от ' + Model.fmtDateTime(obj.savedAt) };
+    return { ok: true, merged, msg: p.fio + ': принят отчёт от ' + Model.fmtDateTime(obj.savedAt) + (merged ? ' (объединён с правками, принятыми раньше)' : '') };
   }
 
   // Забираем отчёты из папки «Входящие»; обработанные файлы переносим в «Данные/архив/входящие».
@@ -245,7 +267,7 @@
     return { accepted, total: items.length, log };
   }
 
-  root.Base = { loadAll, connector, demoFolder, sha, step, writeSnapshot, acceptReport, processInbox };
+  root.Base = { loadAll, connector, demoFolder, sha, step, writeSnapshot, acceptReport, processInbox, collectAtt, mobileFile };
 })(typeof window !== 'undefined' ? window : globalThis);
 
 // Любая неожиданная ошибка — сообщением внизу экрана, чтобы кнопка не «молчала».

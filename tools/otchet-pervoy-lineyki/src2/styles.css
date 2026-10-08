@@ -177,3 +177,32 @@ body.present .tile .v { font-size: 40px; }
 nav.tabs:empty { display: none; }
 .att-cap { font-weight: 700; margin: 12px 0 4px; break-after: avoid; }
 button.linkish { border: 0; background: none; color: var(--accent); text-decoration: underline; padding: 0; }
+
+/* поля ввода: растут под текст, кнопка «развернуть» */
+.ta-wrap { position: relative; }
+.ta-wrap textarea { min-height: 54px; overflow: hidden; resize: none; padding-right: 26px; }
+.ta-exp { position: absolute; top: 3px; right: 3px; border: 0; background: transparent; padding: 0 4px; font-size: 15px; line-height: 1.2; color: var(--muted); opacity: .6; }
+.ta-exp:hover { opacity: 1; color: var(--accent); }
+.modal { position: fixed; inset: 0; background: rgba(20, 30, 45, .45); z-index: 60; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.modal-box { background: var(--panel); border-radius: 12px; padding: 16px 18px; width: min(1000px, 96vw); display: flex; flex-direction: column; gap: 10px; box-shadow: 0 10px 40px rgba(0,0,0,.25); }
+.modal-title { font-weight: 700; }
+.modal-ta { height: 55vh; font-size: 16px; resize: vertical; }
+table.grid.edit .c-task { width: 24%; }
+table.grid.edit .c-text { width: auto; }
+table.grid.edit .c-resp { width: 150px; }
+table.grid .c-task { width: 26%; }
+.filter-bar { display: flex; align-items: center; gap: 10px; padding: 6px 14px; }
+.filter-bar .filters { margin: 0; }
+.co-notes { margin-top: 6px; font-size: 13px; background: #f6f8fa; border-radius: 6px; padding: 4px 8px; white-space: pre-wrap; }
+/* вложения */
+.ficon { display: inline-block; font-size: 10px; font-weight: 700; padding: 1px 4px; border-radius: 3px; background: #6b7785; color: #fff; vertical-align: 2px; }
+.ficon.f-xls { background: #1e7b45; } .ficon.f-pdf { background: #b3261e; } .ficon.f-doc { background: #1f5fa8; } .ficon.f-ppt { background: #c55a11; } .ficon.f-img { background: #7b4fa8; }
+.att-img { max-width: 100%; border: 1px solid var(--line); border-radius: 6px; }
+.xl-wrap { overflow-x: auto; }
+table.grid.xl { table-layout: auto; width: auto; min-width: 60%; max-width: none; }
+table.grid.xl td { overflow-wrap: normal; word-break: normal; max-width: 40em; }
+@media print {
+  .ta-exp, .filter-bar { display: none !important; }
+  .xl-wrap { overflow: visible; }
+  table.grid.xl td { max-width: none; }
+}

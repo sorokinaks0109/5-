@@ -61,17 +61,56 @@
     const s = d && d[kind] && d[kind][id];
     return { flag: (s && s.flag) || '', text: (s && s.text) || '' };
   }
-  function memoStatus(reg, data, m) { return m.resp ? stOf(data, m.resp, 'memo', m.id) : { flag: m.flag || '', text: m.note || '' }; }
+  // Ответственные поручения. Старые записи — одно поле resp; новые, выданные нескольким, — список resps.
+  function respsOf(m) { return m.resps && m.resps.length ? m.resps : m.resp ? [m.resp] : []; }
+  function isResp(m, pid) { return respsOf(m).includes(pid); }
+  // Общий статус поручения, выданного нескольким: у каждого свой, сверху — «выполнили N из M».
+  function combineFlags(flags) {
+    if (!flags.length) return '';
+    if (flags.every(isFinal)) return flags.every((f) => f === 'na') ? 'na' : 'done';
+    if (flags.includes('fail')) return 'fail';
+    if (flags.some((f) => f === 'work' || isFinal(f))) return 'work';
+    return '';
+  }
+  function memoStatus(reg, data, m) {
+    const rs = respsOf(m);
+    if (!rs.length) return { flag: m.flag || '', text: m.note || '' };
+    if (rs.length === 1) return stOf(data, rs[0], 'memo', m.id);
+    const parts = rs.map((pid) => ({ pid, fio: (personById(reg, pid) || {}).fio || pid, ...stOf(data, pid, 'memo', m.id) }));
+    const done = parts.filter((x) => isFinal(x.flag)).length;
+    return {
+      flag: combineFlags(parts.map((x) => x.flag)), parts, progress: { done, total: parts.length },
+      text: 'Выполнили ' + done + ' из ' + parts.length + '\n' + parts.map((x) => x.fio + ': ' + statusLabel(x.flag) + (x.text ? ' — ' + x.text : '')).join('\n'),
+    };
+  }
   function eventStatus(reg, data, ev) { return ev.speaker ? stOf(data, ev.speaker, 'events', ev.id) : { flag: (ev.manual && ev.manual.flag) || '', text: (ev.manual && ev.manual.text) || '' }; }
-  function respName(reg, m) { const p = personById(reg, m.resp); return p ? p.fio : (m.respText || '—'); }
+  function respName(reg, m) {
+    const rs = respsOf(m);
+    if (!rs.length) return m.respText || '—';
+    const meet = reg.people.filter((p) => p.onMeeting !== false).map((p) => p.id);
+    if (rs.length > 2 && meet.every((id) => rs.includes(id))) return 'Все руководители (' + rs.length + ')';
+    return rs.map((id) => (personById(reg, id) || {}).fio || id).join(', ');
+  }
+  // Комментарии соисполнителей: каждый пишет в своём отчёте, показываем у поручения.
+  function coNotes(reg, data, m) {
+    return (m.co || []).map((pid) => {
+      const d = data[pid] && data[pid].data;
+      const text = (d && d.coNotes && d.coNotes[m.id]) || '';
+      return { pid, fio: (personById(reg, pid) || {}).fio || pid, text };
+    }).filter((x) => x.text.trim());
+  }
 
   // Всё, что видно в отчёте одного руководителя.
   function personView(reg, data, pid, today) {
     const p = personById(reg, pid);
     const own = (data[pid] && data[pid].data) || {};
     const open = reg.memo.filter((m) => !m.closed);
-    const memo = open.filter((m) => m.resp === pid).map((m) => ({ ...m, st: memoStatus(reg, data, m), role: 'ответственный' }));
-    const co = open.filter((m) => m.resp !== pid && (m.co || []).includes(pid)).map((m) => ({ ...m, st: memoStatus(reg, data, m), role: 'соисполнитель' }));
+    // у поручения на нескольких у каждого свой статус; общий прогресс — в all
+    const memo = open.filter((m) => isResp(m, pid)).map((m) => {
+      const all = memoStatus(reg, data, m);
+      return { ...m, st: respsOf(m).length > 1 ? stOf(data, pid, 'memo', m.id) : all, all, notes: coNotes(reg, data, m), role: 'ответственный' };
+    });
+    const co = open.filter((m) => !isResp(m, pid) && (m.co || []).includes(pid)).map((m) => ({ ...m, st: memoStatus(reg, data, m), myNote: (own.coNotes && own.coNotes[m.id]) || '', notes: coNotes(reg, data, m), role: 'соисполнитель' }));
     const evs = (k) => reg.events.filter((e) => e.kpi === k.id).map((e) => ({ ...e, st: eventStatus(reg, data, e), mine: e.speaker === pid }));
     const kpiOwn = reg.kpis.filter((k) => k.reporter === pid).map((k) => ({ ...k, comment: (own.kpi && own.kpi[k.id]) || '', events: evs(k) }));
     const otherK = reg.kpis.filter((k) => k.reporter !== pid && reg.events.some((e) => e.kpi === k.id && e.speaker === pid));
@@ -209,7 +248,11 @@
       [24, 16, 11, 11, 11, 13, 13, 12, 12],
       views.map((v) => ({ vals: [v.person.fio, v.reportDate ? fmtISO(v.reportDate) : 'не заполнен', v.counts.total, v.counts.done, v.counts.work, v.counts.fail, v.counts.na, v.counts.none, v.counts.overdue] })));
     sheet('Поручения', ['Дата совещания', 'Поручение', 'Ответственный', 'Срок', 'Статус', 'Пояснение', 'Снято'], [13, 60, 20, 12, 14, 60, 14],
-      reg.memo.map((m) => { const s = memoStatus(reg, data, m); return { vals: [fmtISO(m.date), m.text, respName(reg, m), fmtISO(m.due), statusLabel(s.flag), s.text, m.closed ? fmtISO(m.closed.date) : ''], flag: s.flag, flagCol: 5 }; }));
+      reg.memo.map((m) => {
+        const s = memoStatus(reg, data, m);
+        const notes = coNotes(reg, data, m).map((x) => 'Соисп. ' + x.fio + ': ' + x.text).join('\n');
+        return { vals: [fmtISO(m.date), m.text, respName(reg, m), fmtISO(m.due), statusLabel(s.flag), s.text + (notes ? (s.text ? '\n' : '') + notes : ''), m.closed ? fmtISO(m.closed.date) : ''], flag: s.flag, flagCol: 5 };
+      }));
     const rows = [];
     for (const k of reg.kpis) {
       const rep = personById(reg, k.reporter);
@@ -244,9 +287,50 @@
     return lines.join('\n');
   }
 
+  // ---------- слияние правок: один отчёт заполняют несколько человек ----------
+  // base — версия, с которой человек начал; mine — что он сохраняет; theirs — что сейчас лежит в папке.
+  // Берём из mine только то, что он сам поменял относительно base; остальное — из theirs.
+  const J = (x) => JSON.stringify(x === undefined ? null : x);
+  function mergeReport(base, mine, theirs) {
+    if (!theirs) return mine;
+    base = base || {};
+    const out = { ...theirs };
+    for (const f of ['memo', 'events']) {
+      const b = base[f] || {}, m = mine[f] || {};
+      out[f] = { ...(theirs[f] || {}) };
+      for (const id of new Set([...Object.keys(b), ...Object.keys(m)])) {
+        const bi = b[id] || {}, mi = m[id] || {};
+        for (const k of new Set([...Object.keys(bi), ...Object.keys(mi)])) {
+          if (J(bi[k]) !== J(mi[k])) out[f][id] = { ...(out[f][id] || {}), [k]: mi[k] };
+        }
+      }
+    }
+    for (const f of ['kpi', 'coNotes']) {
+      const b = base[f] || {}, m = mine[f] || {};
+      out[f] = { ...(theirs[f] || {}) };
+      for (const id of new Set([...Object.keys(b), ...Object.keys(m)])) if (J(b[id]) !== J(m[id])) out[f][id] = m[id];
+    }
+    for (const f of ['ros', 'proj']) if (J(base[f] || []) !== J(mine[f] || [])) out[f] = mine[f];
+    // вложения — по имени файла: добавленные мной добавляются, удалённые мной удаляются, чужие остаются
+    const bA = base.attachments || [], mA = mine.attachments || [];
+    const removed = bA.filter((a) => !mA.some((x) => x.file === a.file)).map((a) => a.file);
+    const changed = mA.filter((a) => J(a) !== J(bA.find((x) => x.file === a.file)));
+    out.attachments = (theirs.attachments || []).filter((a) => !removed.includes(a.file) && !changed.some((x) => x.file === a.file)).concat(changed);
+    out.reportDate = [mine.reportDate || '', theirs.reportDate || ''].sort().pop();
+    for (const k of ['personId', 'fio', 'savedAt', 'saveId']) if (mine[k] !== undefined) out[k] = mine[k];
+    out.saveIds = Array.from(new Set([...(theirs.saveIds || []), ...(mine.saveIds || [])])).slice(-100);
+    return out;
+  }
+  // Изменилось ли что-то в папке с тех пор, как человек открыл отчёт.
+  function sameVersion(a, b) {
+    if (!a || !b) return !a && !b;
+    return (a.saveId || '') === (b.saveId || '') && (a.savedAt || 0) === (b.savedAt || 0);
+  }
+
   root.Model = {
     STATUSES, NO_STATUS, statusLabel, isFinal, ISO, todayISO, fmtISO, parseDue, isOverdue, fmtDateTime, uid, norm, surname,
     personById, personByName, inTeam, shortKpi, memoStatus, eventStatus, respName, personView, countFlags, freshness,
+    respsOf, isResp, combineFlags, coNotes, mergeReport, sameVersion, stOf,
     cellText, parseCard, diffCard, applyCard, defaultReporter, buildSummary, summaryText,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

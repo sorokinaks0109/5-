@@ -3,7 +3,7 @@
 (function () {
   'use strict';
   const { esc, $ } = View;
-  const S = { dir: null, reg: null, data: {}, tab: 'sum', person: 0, memoFilter: '', memoPerson: '', demo: false };
+  const S = { dir: null, reg: null, data: {}, tab: 'sum', person: 0, memoFilter: '', memoPerson: '', demo: false, meetFilter: '' };
   const today = () => Model.todayISO();
   const TABS = [['sum', 'Сводка'], ['meeting', 'Доклады'], ['memo', 'Поручения'], ['upc', 'Показатели УПЦ']];
   const conn = Base.connector({ mode: 'read', render: () => render(), onDir: async (dir) => { S.dir = dir; await load(); } });
@@ -43,7 +43,8 @@
     const ps = people(); if (S.person >= ps.length) S.person = 0;
     return '<div class="people-bar">' + ps.map((x, i) => '<button class="chip ' + (i === S.person ? 'active' : '') + '" data-person-idx="' + i + '">' + esc(x.fio) + '</button>').join('') +
       '<span class="tools row"><button data-act="prev">←</button><button data-act="next">→</button><button data-act="print">Печать</button></span></div>' +
-      View.personReport(S.reg, S.data, ps[S.person].id, today());
+      View.filterChips(S.meetFilter, 'data-meetf') +
+      View.personReport(S.reg, S.data, ps[S.person].id, today(), { filter: S.meetFilter });
   }
   function memoTab() {
     const chip = (k, t) => '<button class="chip ' + (S.memoFilter === k ? 'active' : '') + '" data-mf="' + k + '">' + t + '</button>';
@@ -54,8 +55,9 @@
   function upcTab() { return '<div class="row between no-print"><span></span><button data-act="print">Печать</button></div>' + View.upcOverview(S.reg, S.data, today()); }
 
   document.addEventListener('click', async (e) => {
-    const b = e.target.closest('[data-tab],[data-act],[data-person-idx],[data-mf],.who .card');
+    const b = e.target.closest('[data-tab],[data-act],[data-person-idx],[data-mf],[data-meetf],.who .card');
     if (!b) return;
+    if (b.dataset.meetf !== undefined) { S.meetFilter = b.dataset.meetf; render(); return; }
     if (b.dataset.tab) { S.tab = b.dataset.tab; render(); return; }
     if (b.classList.contains('card') && b.dataset.person) { S.person = people().findIndex((p) => p.id === b.dataset.person); S.tab = 'meeting'; render(); return; }
     if (b.dataset.personIdx) { S.person = +b.dataset.personIdx; render(); return; }
