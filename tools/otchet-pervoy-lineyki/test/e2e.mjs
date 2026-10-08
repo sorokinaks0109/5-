@@ -334,9 +334,11 @@ await page.click('[data-act=sendDirector]');
 await page.waitForTimeout(1500);
 {
   const u = await page.evaluate(() => window.__opened || '');
-  check(u.startsWith('https://mail.gazprom-neft.ru/owa/?path=/mail/action/compose&to=') && u.includes('subject='), 'письмо директору открывается в OWA: ' + u.slice(0, 70));
-  check(await page.evaluate(() => window.__openCalls) === 1 && await page.evaluate(() => window.__firstOpen || '').then((x) => x.startsWith('https://')), 'письмо открывается одной вкладкой сразу по нажатию, сразу с адресом OWA');
-  check(await page.locator('[data-act=openMail]').isVisible(), 'есть запасная кнопка «Открыть письмо»');
+  check(u === 'https://mail.gazprom-neft.ru/owa/' && await page.locator('#letterBox').isVisible(), 'по умолчанию: открывается почта OWA, текст письма в буфере, адрес и тема — кнопками');
+  check(await page.evaluate(() => window.__openCalls) === 1, 'почта открывается одной вкладкой сразу по нажатию');
+  check(await page.locator('[data-act=openMail]').isVisible(), 'есть кнопка «Открыть письмо ещё раз»');
+  const urls = await page.evaluate(() => ['owa-ae', 'owa-hash', 'owa-path'].map((m) => View.mailUrl({}, ['d@x.ru'], 'Тема', 'Текст', m)));
+  check(urls[0].includes('/owa/?ae=Item&a=New&t=IPM.Note&to=d%40x.ru') && urls[1].includes('/owa/#path=/mail/action/compose&to=') && urls[2].includes('/owa/?path=/mail/action/compose'), 'три варианта ссылки на новое письмо для проверки в «Настройках»');
   files = await DUMP(page);
   const mob = await page.evaluate(async () => { const d = await window.__root.getDirectoryHandle('Своды'); for await (const h of d.values()) if (h.name.endsWith('.html')) return await (await h.getFile()).text(); return ''; });
   check(mob.length > 5000 && !/<script/i.test(mob) && /<details/.test(mob) && mob.includes('Просрочено и не выполнено'), 'версия для телефона: без скриптов, руководители раскрываются, есть «Просрочено» (' + Math.round(mob.length / 1024) + ' КБ)');

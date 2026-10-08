@@ -242,7 +242,7 @@
       '<div class="row"><label class="small">Почта директора <input id="dirEmail" value="' + esc(st.directorEmail || '') + '" placeholder="director@..."></label>' +
       '<button class="primary" data-act="sendDirector">Отправить отчёт директору</button><button data-act="mobileCopy">Сохранить копию файла…</button></div>' +
       (S.sentFile && S.mailBlocked ? '<div class="msg warn">Браузер не дал открыть письмо сам. Нажмите «Открыть письмо» справа.</div>' : '') +
-      (S.sentFile ? '<div class="msg ok">' + (S.mailUrl ? '<button class="primary" data-act="openMail" style="float:right;margin-left:10px">Открыть письмо</button>' : '') +
+      (S.sentFile ? '<div class="msg ok">' + (S.letter ? '<button class="primary" data-act="openMail" style="float:right;margin-left:10px">Открыть письмо ещё раз</button>' : '') +
         'Файл: <b>' + esc(S.sentFile) + '</b>. В письме нажмите «Вложить» (скрепка) и выберите этот файл ' +
         '(папка «Отчёт первой линейки» → «Своды»), или «Сохранить копию файла…» в «Загрузки» и прикрепите оттуда. ' +
         'Если почта не пропустит .html — откройте файл и напечатайте в PDF.</div>' : '') + '</div>' +
@@ -270,8 +270,9 @@
     const body = 'Добрый день!\n\nВо вложении — отчёт первой линейки на ' + Model.fmtISO(today()) + '. Откройте файл: сверху сводка и просроченные поручения, по руководителям — нажмите на фамилию.\n\n' + Model.summaryText(S.reg, S.data, today());
     S.mailUrl = View.mailUrl(S.reg.settings, to ? [to] : [], subject, body);
     S.mailBlocked = !View.mail(S.reg.settings, to ? [to] : [], subject, body);
+    S.letter = { to: to ? [to] : [], subject, body };
     S.sentFile = '';
-    View.toast('Письмо открыто в соседней вкладке. Готовлю файл для вложения…');
+    View.toast((View.mailMode(S.reg.settings) === 'owa-copy' ? 'Почта открыта в соседней вкладке, текст письма скопирован. ' : 'Письмо открыто в соседней вкладке. ') + 'Готовлю файл для вложения…');
     const name = mobileName();
     let bytes;
     try { bytes = await Base.mobileFile(S.dir, S.reg, S.data); } catch (e) {
@@ -310,9 +311,12 @@
         '<td class="c-act"><button class="mini" data-pmove="up|' + i + '">↑</button><button class="mini" data-pmove="down|' + i + '">↓</button><button class="mini danger" data-pmove="del|' + i + '">✕</button></td></tr>').join('') +
       '</tbody></table><div class="row" style="margin-top:8px"><input id="newFio" placeholder="Фамилия И.О."><button data-act="addPerson">Добавить руководителя</button></div>' +
       '<p class="muted small">Новому руководителю скопируйте любую страницу из папки «Страницы руководителей» и переименуйте в «Отчёт — Фамилия.html».</p></div>' +
-      '<div class="panel"><h2>Почта</h2><p class="muted small">Письма (напоминания, директору) открываются в веб-почте Outlook (OWA). Если адрес почты другой — поправьте.</p>' +
-      '<div class="row"><label class="small">Открывать письма <select id="mailVia"><option value="owa">в веб-почте (OWA)</option><option value="mailto"' + (st.mailVia === 'mailto' ? ' selected' : '') + '>в почтовой программе</option></select></label>' +
-      '<label class="small">Адрес OWA <input id="owaUrl" style="min-width:320px" value="' + esc(st.owaUrl || 'https://mail.gazprom-neft.ru/owa/') + '"></label></div></div>' +
+      '<div class="panel"><h2>Почта</h2><p class="muted small">Как открывать письма (напоминания, директору). Ссылка на новое письмо в OWA зависит от версии почтового сервера. ' +
+      'Нажмите по очереди кнопки «Проверить»: какая откроет <b>новое письмо с заполненными адресом и темой</b> — тот способ и выберите. Если ни одна — оставьте первый способ: почта откроется, а текст письма будет скопирован, останется вставить Ctrl+V.</p>' +
+      '<div class="row"><label class="small">Открывать письма <select id="mailVia">' + View.MAIL_MODES.map(([k, t]) => '<option value="' + k + '"' + (View.mailMode(st) === k ? ' selected' : '') + '>' + esc(t) + '</option>').join('') + '</select></label>' +
+      '<label class="small">Адрес OWA <input id="owaUrl" style="min-width:320px" value="' + esc(st.owaUrl || 'https://mail.gazprom-neft.ru/owa/') + '"></label></div>' +
+      '<div class="row" style="margin-top:8px"><span class="small muted">Проверить:</span>' + View.MAIL_MODES.filter(([k]) => /^owa-(ae|hash|path)$/.test(k)).map(([k], i) => '<button class="mini" data-mailtest="' + k + '">Проверить вариант ' + (i + 1) + '</button>').join('') +
+      '<span class="small muted">Письмо-проверку не отправляйте, просто закройте.</span></div></div>' +
       '<div class="panel"><h2>Пароль помощника</h2><p class="muted small">Пароль защищает страницу помощника от случайного входа. Настоящая защита реестра — права на папку «Данные» (см. «Как пользоваться»).</p>' +
       '<div class="row"><input type="password" id="newPass" placeholder="' + (st.passHash ? 'Новый пароль' : 'Пароль') + '"><button data-act="setPass">' + (st.passHash ? 'Сменить пароль' : 'Установить пароль') + '</button>' +
       (st.passHash ? '<button data-act="clearPass">Убрать пароль</button>' : '') + '</div></div>';
@@ -352,10 +356,11 @@
   // ---------- события ----------
   function people() { return S.reg.people.filter((p) => p.onMeeting !== false).concat(S.reg.people.filter((p) => p.onMeeting === false)); }
   document.addEventListener('click', async (e) => {
-    const b = e.target.closest('[data-tab],[data-act],[data-person-idx],[data-mf],[data-meetf],[data-memo],[data-evdel],[data-evadd],[data-pmove],.who .card');
+    const b = e.target.closest('[data-tab],[data-act],[data-mailtest],[data-person-idx],[data-mf],[data-meetf],[data-memo],[data-evdel],[data-evadd],[data-pmove],.who .card');
     if (!b) return;
     if (b.dataset.tab) { S.tab = b.dataset.tab; render(); return; }
     if (b.dataset.meetf !== undefined) { S.meetFilter = b.dataset.meetf; render(); return; }
+    if (b.dataset.mailtest) { const to = S.reg.settings.directorEmail || ''; View.mail(S.reg.settings, to ? [to] : [], 'Проверка ссылки — не отправлять', 'Это проверка: открылось ли новое письмо с адресом и темой.', b.dataset.mailtest); return; }
     if (b.classList.contains('card') && b.dataset.person) { S.person = people().findIndex((p) => p.id === b.dataset.person); S.tab = 'meeting'; render(); return; }
     if (b.dataset.personIdx) { S.person = +b.dataset.personIdx; render(); return; }
     if (b.dataset.mf !== undefined) { S.memoFilter = b.dataset.mf; render(); return; }
@@ -397,7 +402,7 @@
     else if (a === 'respAll') { const ids = S.reg.people.filter((p) => p.onMeeting !== false).map((p) => p.id); $$('.f_resp').forEach((x) => { x.checked = ids.includes(x.value); }); }
     else if (a === 'respNone') { $$('.f_resp').forEach((x) => { x.checked = false; }); }
     else if (a === 'sendDirector') sendDirector();
-    else if (a === 'openMail') { if (S.mailUrl) window.open(S.mailUrl, '_blank'); }
+    else if (a === 'openMail') { if (S.letter) View.mail(S.reg.settings, S.letter.to, S.letter.subject, S.letter.body); }
     else if (a === 'mobileCopy') { await View.saveFile(await Base.mobileFile(S.dir, S.reg, S.data), mobileName(), 'text/html', '.html', 'Страница'); }
     else if (a === 'memoSave') memoSave();
     else if (a === 'memoCancel') { S.edit = null; render(); }

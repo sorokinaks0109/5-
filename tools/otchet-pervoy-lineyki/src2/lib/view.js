@@ -411,20 +411,65 @@
   }
 
   // Новое письмо в веб-почте (OWA) или, если так выбрано в настройках, в почтовой программе.
-  function mailUrl(settings, to, subject, body) {
-    if (((settings && settings.mailVia) || 'owa') === 'mailto') return null;
-    const base = (settings && settings.owaUrl) || 'https://mail.gazprom-neft.ru/owa/';
-    const cut = body.length > 1500 ? body.slice(0, 1500) + '\n…' : body;
-    return base.replace(/[?#].*$/, '').replace(/\/?$/, '/') + '?path=/mail/action/compose&to=' + encodeURIComponent(to.join(';')) +
-      '&subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(cut);
+  // Как открывать письмо. У OWA на своём сервере формат ссылки на новое письмо зависит от версии Exchange,
+  // поэтому вариантов несколько; «copy» работает всегда: открывает почту и кладёт текст письма в буфер.
+  const MAIL_MODES = [
+    ['owa-copy', 'Открыть почту, текст письма — в буфер (работает всегда)'],
+    ['owa-ae', 'Новое письмо в OWA — ссылка вида ?ae=Item'],
+    ['owa-hash', 'Новое письмо в OWA — ссылка вида #path=/mail/action/compose'],
+    ['owa-path', 'Новое письмо в OWA — ссылка вида ?path=/mail/action/compose'],
+    ['mailto', 'В почтовой программе компьютера (Р7)'],
+  ];
+  function mailMode(settings) {
+    const m = (settings && settings.mailVia) || 'owa-copy';
+    return m === 'owa' ? 'owa-copy' : m;
   }
-  // win — вкладка, открытая заранее, прямо по нажатию кнопки: иначе браузер блокирует новое окно,
-  // если до его открытия страница несколько секунд готовила файл. Возвращает false, если окно не открылось.
-  function mail(settings, to, subject, body, win) {
-    const url = mailUrl(settings, to, subject, body);
-    if (!url) { mailto(to, subject, body); return true; }
-    if (win && !win.closed) { win.location.href = url; return true; }
-    return !!window.open(url, '_blank');
+  function owaBase(settings) { return ((settings && settings.owaUrl) || 'https://mail.gazprom-neft.ru/owa/').replace(/[?#].*$/, '').replace(/\/?$/, '/'); }
+  function mailUrl(settings, to, subject, body, mode) {
+    mode = mode || mailMode(settings);
+    if (mode === 'mailto') return null;
+    const base = owaBase(settings);
+    if (mode === 'owa-copy') return base;
+    const cut = body.length > 1500 ? body.slice(0, 1500) + '\n…' : body;
+    const q = 'to=' + encodeURIComponent(to.join(';')) + '&subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(cut);
+    if (mode === 'owa-ae') return base + '?ae=Item&a=New&t=IPM.Note&' + q;
+    if (mode === 'owa-hash') return base + '#path=/mail/action/compose&' + q;
+    return base + '?path=/mail/action/compose&' + q;
+  }
+  function copyText(text) {
+    try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).catch(() => copyOld(text)); return; } } catch (e) { /* старый способ */ }
+    copyOld(text);
+  }
+  function copyOld(text) {
+    const t = document.createElement('textarea'); t.value = text; t.style.position = 'fixed'; t.style.opacity = '0';
+    document.body.appendChild(t); t.select(); try { document.execCommand('copy'); } catch (e) { /* */ } t.remove();
+  }
+  // Окошко с адресом, темой и текстом письма — каждое копируется кнопкой.
+  function letterBox(to, subject, body) {
+    let box = document.getElementById('letterBox');
+    if (box) box.remove();
+    box = document.createElement('div'); box.id = 'letterBox';
+    box.innerHTML = '<div class="row between"><b>Письмо</b><button class="mini" data-lb="close">✕</button></div>' +
+      '<div class="small muted">В почте нажмите «Создать», затем вставьте (Ctrl+V). Текст письма уже скопирован.</div>' +
+      '<div class="lb-row"><span>Кому:</span> <b>' + esc(to.join('; ') || '—') + '</b> <button class="mini" data-lb="to">Копировать</button></div>' +
+      '<div class="lb-row"><span>Тема:</span> <b>' + esc(subject) + '</b> <button class="mini" data-lb="subject">Копировать</button></div>' +
+      '<div class="lb-row"><span>Текст:</span> <button class="mini" data-lb="body">Копировать текст</button></div>';
+    box._v = { to: to.join('; '), subject, body };
+    box.addEventListener('click', (e) => {
+      const k = e.target.dataset && e.target.dataset.lb;
+      if (!k) return;
+      if (k === 'close') { box.remove(); return; }
+      copyText(box._v[k]); toast('Скопировано', 'ok');
+    });
+    document.body.appendChild(box);
+  }
+  // Открыть письмо. Вызывать прямо по нажатию кнопки — иначе браузер не откроет новую вкладку.
+  // Возвращает false, если вкладка не открылась.
+  function mail(settings, to, subject, body, mode) {
+    mode = mode || mailMode(settings);
+    if (mode === 'mailto') { mailto(to, subject, body); return true; }
+    if (mode === 'owa-copy') { copyText(body); letterBox(to, subject, body); }
+    return !!window.open(mailUrl(settings, to, subject, body, mode), '_blank');
   }
 
   function mailto(to, subject, body) {
@@ -483,6 +528,6 @@
   root.View = {
     esc, $, $$, badge, due, ago, statusSelect, tile, countTiles, freshBadge, itemCard, freeTable, kpiHead, eventsTable, personReport,
     hydrateAttachments, xlsxToHtml, memoTable, upcOverview, whoCards, printHtml, mailto, copyHtml, download, saveFile, toast, folderScreen,
-    FILTERS, flagPass, filterChips, filterCounts, notesHtml, fileKind, fileIcon, attHtml, docxToHtml, activatePdf, b64, ta, autoGrow, mail, mailUrl, MIME, EXT,
+    FILTERS, flagPass, filterChips, filterCounts, notesHtml, fileKind, fileIcon, attHtml, docxToHtml, activatePdf, b64, ta, autoGrow, mail, mailUrl, mailMode, MAIL_MODES, copyText, MIME, EXT,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
