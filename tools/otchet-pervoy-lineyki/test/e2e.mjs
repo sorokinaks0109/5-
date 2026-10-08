@@ -40,6 +40,26 @@ const DUMP = async (page) => page.evaluate(async () => {
   return out;
 });
 const json = (f, p) => JSON.parse(Buffer.from(f[p], 'base64').toString('utf8'));
+// Минимальный .docx (zip без сжатия) — для проверки показа Word во вложениях
+function makeDocx(text) {
+  const crcT = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
+  const crc = (b) => { let c = 0xFFFFFFFF; for (const x of b) c = crcT[(c ^ x) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+  const files = {
+    '[Content_Types].xml': '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>',
+    '_rels/.rels': '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>',
+    'word/document.xml': '<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>' + text + '</w:t></w:r></w:p></w:body></w:document>',
+  };
+  const parts = []; const central = []; let off = 0;
+  for (const [name, str] of Object.entries(files)) {
+    const nb = Buffer.from(name); const data = Buffer.from(str); const c = crc(data);
+    const h = Buffer.alloc(30); h.writeUInt32LE(0x04034b50, 0); h.writeUInt16LE(20, 4); h.writeUInt32LE(c, 14); h.writeUInt32LE(data.length, 18); h.writeUInt32LE(data.length, 22); h.writeUInt16LE(nb.length, 26);
+    const ch = Buffer.alloc(46); ch.writeUInt32LE(0x02014b50, 0); ch.writeUInt16LE(20, 4); ch.writeUInt16LE(20, 6); ch.writeUInt32LE(c, 16); ch.writeUInt32LE(data.length, 20); ch.writeUInt32LE(data.length, 24); ch.writeUInt16LE(nb.length, 28); ch.writeUInt32LE(off, 42);
+    parts.push(h, nb, data); central.push(ch, nb); off += 30 + nb.length + data.length;
+  }
+  const cd = Buffer.concat(central);
+  const end = Buffer.alloc(22); end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(Object.keys(files).length, 8); end.writeUInt16LE(Object.keys(files).length, 10); end.writeUInt32LE(cd.length, 12); end.writeUInt32LE(off, 16);
+  return Buffer.concat([...parts, cd, end]);
+}
 
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
@@ -217,12 +237,21 @@ check((await page.locator('#toast').innerText()).includes('загружен'), '
   fs.writeFileSync(pdf, '%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n');
   await page.setInputFiles('#attFile', png); await page.waitForTimeout(300);
   await page.setInputFiles('#attFile', pdf); await page.waitForTimeout(300);
+  const docx = path.join(dirT, 'word_test.docx');
+  fs.writeFileSync(docx, makeDocx('Справка по претензионной работе'));
+  await page.setInputFiles('#attFile', docx); await page.waitForTimeout(300);
+  fs.rmSync(docx);
   check((await page.locator('main').innerText()).includes('doc_test'), 'вложение PDF и картинка загружаются');
   await page.fill('#reportDate', '2026-10-03');
   await page.click('[data-act=save]');
   await page.waitForTimeout(300);
   files = await DUMP(page);
-  check(json(files, 'руководители/Хисматуллин.json').attachments.length >= 3, 'в отчёте Хисматуллина три вложения разных типов');
+  check(json(files, 'руководители/Хисматуллин.json').attachments.length >= 4, 'в отчёте Хисматуллина вложения разных типов');
+  await page.click('[data-act=preview]');
+  await page.waitForTimeout(800);
+  check((await page.locator('.att iframe.att-pdf').count()) === 1, 'PDF раскрывается прямо в докладе');
+  check((await page.locator('.att .att-doc').innerText()).includes('Справка по претензионной работе'), 'Word (.docx) раскрывается в докладе текстом');
+  await page.click('[data-act=preview]');
   fs.rmSync(png); fs.rmSync(pdf);
 }
 await page.close();
@@ -263,7 +292,7 @@ await page.click('[data-tab=meeting]');
 await page.click('.people-bar >> text=Хисматуллин Р.М.');
 await page.waitForTimeout(800);
 check((await page.locator('.att[data-file="Приложения.xlsx"] table.xl').count()) === 3, 'ровно три таблицы — по заголовкам «Таблица №…»');
-check((await page.locator('.att img.att-img').count()) === 1 && (await page.locator('.att .att-open').count()) === 1, 'картинка показана в докладе, PDF — кнопкой «Открыть»');
+check((await page.locator('.att img.att-img').count()) === 1 && (await page.locator('.att iframe.att-pdf').count()) === 1 && (await page.locator('.att .att-doc').count()) === 1, 'на совещании: картинка, PDF и Word видны прямо в докладе');
 await page.click('[data-meetf="done"]');
 check((await page.locator('#report .item').count()) === (await page.locator('#report .item.f-done').count()), 'фильтр на экране совещания: только выполненные');
 await page.click('[data-meetf=""]');
@@ -299,12 +328,15 @@ if (card2) {
   check(!reg.kpis.some((k) => k.id === 'F0161012') && !reg.events.some((e) => e.kpi === 'F0161012'), 'удалённый показатель убран вместе с мероприятиями');
 }
 await page.click('[data-tab=out]');
-await page.evaluate(() => { window.open = (u) => { window.__opened = u; return {}; }; });
+// вкладка письма открывается сразу по нажатию, адрес подставляется, когда файл готов
+await page.evaluate(() => { window.open = (u) => { window.__openCalls = (window.__openCalls || 0) + 1; if (u) window.__opened = u; return { closed: false, document: { write() {} }, location: { set href(v) { window.__opened = v; } } }; }; });
 await page.click('[data-act=sendDirector]');
 await page.waitForTimeout(1500);
 {
   const u = await page.evaluate(() => window.__opened || '');
   check(u.startsWith('https://mail.gazprom-neft.ru/owa/?path=/mail/action/compose&to=') && u.includes('subject='), 'письмо директору открывается в OWA: ' + u.slice(0, 70));
+  check(await page.evaluate(() => window.__openCalls) === 1, 'вкладка письма открывается одна, сразу по нажатию (браузер не блокирует)');
+  check(await page.locator('[data-act=openMail]').isVisible(), 'есть запасная кнопка «Открыть письмо»');
   files = await DUMP(page);
   const mob = await page.evaluate(async () => { const d = await window.__root.getDirectoryHandle('Своды'); for await (const h of d.values()) if (h.name.endsWith('.html')) return await (await h.getFile()).text(); return ''; });
   check(mob.length > 5000 && !/<script/i.test(mob) && /<details/.test(mob) && mob.includes('Просрочено и не выполнено'), 'версия для телефона: без скриптов, руководители раскрываются, есть «Просрочено» (' + Math.round(mob.length / 1024) + ' КБ)');
@@ -393,7 +425,7 @@ await page.close();
   await sp.click('.people-bar >> text=Хисматуллин Р.М.');
   await sp.waitForTimeout(300);
   check((await sp.locator('.att[data-file="Приложения.xlsx"] table.xl').count()) === 3, 'в снимке есть таблицы Хисматуллина');
-  check((await sp.locator('.att img.att-img').count()) === 1 && (await sp.locator('.att .att-open').count()) === 1, 'в снимке есть картинка и PDF');
+  check((await sp.locator('.att img.att-img').count()) === 1 && (await sp.locator('.att iframe.att-pdf').count()) === 1 && (await sp.locator('.att .att-doc').count()) === 1, 'в снимке для директора видны картинка, PDF и Word');
   await sp.click('[data-tab=upc]');
   check((await sp.locator('.kpi').count()) >= 20, 'в снимке есть показатели УПЦ');
   await shot(sp, '8-snapshot');
@@ -445,6 +477,10 @@ await page.close();
   await sel.selectOption('work');
   await wp.locator('textarea[data-k="memo|' + key + '|text"]').fill('Записка на согласовании (с Windows)');
   await wp.setInputFiles('#attFile', tmpAtt2);
+  await wp.click('[data-act=preview]');
+  await wp.waitForTimeout(800);
+  check((await wp.locator('.att table.xl').count()) >= 1, 'Windows: только что добавленное вложение видно в «Как увидят на совещании»');
+  await wp.click('[data-act=preview]');
   await wp.click('[data-act=save]');
   await wp.waitForTimeout(400);
   const saved = await wp.evaluate(() => window.__saved);

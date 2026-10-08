@@ -152,7 +152,7 @@
     docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', doc: 'application/msword',
     pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', ppt: 'application/vnd.ms-powerpoint',
   };
-  const fileKind = (name) => { const e = EXT(name); return e === 'xlsx' ? 'xlsx' : IMG[e] ? 'img' : e === 'pdf' ? 'pdf' : 'other'; };
+  const fileKind = (name) => { const e = EXT(name); return e === 'xlsx' ? 'xlsx' : IMG[e] ? 'img' : e === 'pdf' ? 'pdf' : e === 'docx' ? 'docx' : 'other'; };
   function fileIcon(name) {
     const e = EXT(name);
     const t = { xlsx: 'XLS', xls: 'XLS', pdf: 'PDF', docx: 'DOC', doc: 'DOC', pptx: 'PPT', ppt: 'PPT' }[e] || (IMG[e] ? 'IMG' : (e || 'файл').toUpperCase().slice(0, 4));
@@ -161,19 +161,49 @@
   function b64(bytes) { let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(s); }
   const MAX_EMBED = 5 * 1024 * 1024;
   // HTML одного вложения. embed — для файлов-снимков (данные вписываются в страницу).
+  // Word (.docx) → HTML: текст, заголовки, списки, таблицы, картинки. Сложное оформление упрощается.
+  async function docxToHtml(bytes) {
+    if (typeof mammoth === 'undefined') throw new Error('документ покажется, когда помощник обновит страницы');
+    const r = await mammoth.convertToHtml({ arrayBuffer: bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) });
+    return String(r.value || '').replace(/\s(href|src)\s*=\s*"\s*javascript:[^"]*"/gi, '');
+  }
+  // HTML одного вложения. embed — для файлов-снимков (данные вписываются в страницу).
   async function attHtml(bytes, file, embed) {
     const k = fileKind(file);
+    const type = MIME[EXT(file)] || 'application/octet-stream';
     const size = (bytes.length / 1048576).toFixed(1).replace('.', ',') + ' МБ';
+    const big = embed && bytes.length > MAX_EMBED;
+    const openBtn = (what) => (big ? '<span class="muted small">' + esc(file) + ' (' + size + ') — файл большой, лежит в папке «Данные/вложения»</span>'
+      : embed ? '<button class="att-open" data-b64="' + b64(bytes) + '" data-name="' + esc(file) + '">' + what + '</button> <span class="muted small">' + size + '</span>'
+        : '<button class="att-open" data-blob="' + URL.createObjectURL(new Blob([bytes], { type })) + '" data-name="' + esc(file) + '">' + what + '</button> <span class="muted small">' + size + '</span>');
     if (k === 'xlsx') return '<div class="xl-wrap">' + await xlsxToHtml(bytes) + '</div>';
     if (k === 'img') {
-      const src = embed ? (bytes.length <= MAX_EMBED ? 'data:' + MIME[EXT(file)] + ';base64,' + b64(bytes) : '') : URL.createObjectURL(new Blob([bytes], { type: MIME[EXT(file)] }));
+      const src = embed ? (big ? '' : 'data:' + type + ';base64,' + b64(bytes)) : URL.createObjectURL(new Blob([bytes], { type }));
       return src ? '<img class="att-img" src="' + src + '" alt="' + esc(file) + '">' : '<div class="muted small">Картинка больше 5 МБ — лежит в папке «Данные/вложения»</div>';
     }
-    const what = k === 'pdf' ? 'Открыть PDF' : 'Открыть файл';
-    if (embed && bytes.length > MAX_EMBED) return '<div class="muted small">' + esc(file) + ' (' + size + ') — файл большой, лежит в папке «Данные/вложения»</div>';
-    if (embed) return '<button class="att-open" data-b64="' + b64(bytes) + '" data-name="' + esc(file) + '">' + what + '</button> <span class="muted small">' + size + '</span>';
-    return '<button class="att-open" data-blob="' + URL.createObjectURL(new Blob([bytes], { type: MIME[EXT(file)] || 'application/octet-stream' })) + '" data-name="' + esc(file) + '">' + what + '</button> <span class="muted small">' + size +
-      (k === 'other' ? ' · Word, PowerPoint и другие файлы браузер показать не может — откроется в программе на компьютере' : '') + '</span>';
+    if (k === 'pdf') {
+      // PDF показываем прямо в докладе встроенным просмотрщиком браузера
+      const frame = big ? '' : embed ? '<div class="att-pdf-b64" data-b64="' + b64(bytes) + '"></div>'
+        : '<iframe class="att-pdf" src="' + URL.createObjectURL(new Blob([bytes], { type })) + '#view=FitH"></iframe>';
+      return frame + '<div class="att-tools">' + openBtn('Открыть PDF в отдельной вкладке') + '</div>';
+    }
+    if (k === 'docx') {
+      let doc;
+      try { doc = await docxToHtml(bytes); } catch (e) { doc = '<div class="muted small">' + esc(e.message) + '</div>'; }
+      return '<div class="att-doc">' + (doc || '<div class="muted small">Документ пустой</div>') + '</div><div class="att-tools">' + openBtn('Открыть в Word') +
+        ' <span class="muted small">Показан текст документа; точное оформление — в Word</span></div>';
+    }
+    return openBtn('Открыть файл') + '<div class="muted small">' + (/^pptx?$/.test(EXT(file)) ? 'Презентацию браузер показать не может — откроется в PowerPoint. Чтобы слайды были видны в докладе, сохраните презентацию в PDF и загрузите PDF.'
+      : EXT(file) === 'doc' ? 'Старый формат Word (.doc) браузер показать не может. Чтобы текст был виден в докладе, сохраните документ как .docx или PDF.'
+        : 'Этот файл браузер показать не может — откроется в программе на компьютере.') + '</div>';
+  }
+  // PDF из страницы-снимка: превращаем вписанные данные во встроенный просмотрщик
+  function activatePdf(container) {
+    for (const d of $$('.att-pdf-b64', container)) {
+      const url = URL.createObjectURL(new Blob([Uint8Array.from(atob(d.dataset.b64), (c) => c.charCodeAt(0))], { type: 'application/pdf' }));
+      const f = document.createElement('iframe'); f.className = 'att-pdf'; f.src = url + '#view=FitH';
+      d.replaceWith(f);
+    }
   }
   // «Открыть»: PDF и картинки — во вкладке браузера, остальное — сохранить и открыть программой.
   if (typeof document !== 'undefined') {
@@ -189,20 +219,23 @@
       await saveFile(new Uint8Array(await blob.arrayBuffer()), name, type, '.' + EXT(name), 'Файл');
     });
   }
-  async function hydrateAttachments(container, dir, reg) {
+  // pending — файлы, добавленные, но ещё не отправленные помощнику: { pid: { имя: байты } }
+  async function hydrateAttachments(container, dir, reg, pending) {
     for (const el of $$('.att', container)) {
       const body = $('.att-body', el);
-      // Страница со встроенными данными (без папки): таблицы уже готовы внутри файла
-      if (root.SNAPSHOT && (!dir || !dir.getDirectoryHandle)) {
-        const h = root.SNAPSHOT.att && root.SNAPSHOT.att[el.dataset.pid] && root.SNAPSHOT.att[el.dataset.pid][el.dataset.file];
-        body.innerHTML = h || 'Вложение появится, когда помощник откроет свою страницу';
-        body.classList.remove('muted', 'small');
-        continue;
-      }
+      const own = pending && pending[el.dataset.pid] && pending[el.dataset.pid][el.dataset.file];
       try {
-        const p = M().personById(reg, el.dataset.pid);
-        const { bytes } = await Store.readBytes(dir, [Store.DATA, Store.ATT, p.slug, el.dataset.file]);
-        body.innerHTML = await attHtml(bytes, el.dataset.file, false);
+        if (own) body.innerHTML = await attHtml(own, el.dataset.file, false);
+        else if (root.SNAPSHOT && (!dir || !dir.getDirectoryHandle)) {
+          // Страница со встроенными данными (без папки): вложения уже готовы внутри файла
+          const h = root.SNAPSHOT.att && root.SNAPSHOT.att[el.dataset.pid] && root.SNAPSHOT.att[el.dataset.pid][el.dataset.file];
+          body.innerHTML = h || 'Вложение появится, когда помощник откроет свою страницу';
+          activatePdf(body);
+        } else {
+          const p = M().personById(reg, el.dataset.pid);
+          const { bytes } = await Store.readBytes(dir, [Store.DATA, Store.ATT, p.slug, el.dataset.file]);
+          body.innerHTML = await attHtml(bytes, el.dataset.file, false);
+        }
         body.classList.remove('muted', 'small');
       } catch (e) { body.textContent = 'Не удалось открыть вложение: ' + e.message; }
     }
@@ -378,15 +411,20 @@
   }
 
   // Новое письмо в веб-почте (OWA) или, если так выбрано в настройках, в почтовой программе.
-  function mail(settings, to, subject, body) {
-    const via = (settings && settings.mailVia) || 'owa';
-    if (via === 'mailto') { mailto(to, subject, body); return; }
+  function mailUrl(settings, to, subject, body) {
+    if (((settings && settings.mailVia) || 'owa') === 'mailto') return null;
     const base = (settings && settings.owaUrl) || 'https://mail.gazprom-neft.ru/owa/';
     const cut = body.length > 1500 ? body.slice(0, 1500) + '\n…' : body;
-    const url = base.replace(/[?#].*$/, '').replace(/\/?$/, '/') + '?path=/mail/action/compose&to=' + encodeURIComponent(to.join(';')) +
+    return base.replace(/[?#].*$/, '').replace(/\/?$/, '/') + '?path=/mail/action/compose&to=' + encodeURIComponent(to.join(';')) +
       '&subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(cut);
-    const w = window.open(url, '_blank');
-    if (!w) { const a = document.createElement('a'); a.href = url; a.target = '_blank'; document.body.appendChild(a); a.click(); a.remove(); }
+  }
+  // win — вкладка, открытая заранее, прямо по нажатию кнопки: иначе браузер блокирует новое окно,
+  // если до его открытия страница несколько секунд готовила файл. Возвращает false, если окно не открылось.
+  function mail(settings, to, subject, body, win) {
+    const url = mailUrl(settings, to, subject, body);
+    if (!url) { mailto(to, subject, body); return true; }
+    if (win && !win.closed) { win.location.href = url; return true; }
+    return !!window.open(url, '_blank');
   }
 
   function mailto(to, subject, body) {
@@ -445,6 +483,6 @@
   root.View = {
     esc, $, $$, badge, due, ago, statusSelect, tile, countTiles, freshBadge, itemCard, freeTable, kpiHead, eventsTable, personReport,
     hydrateAttachments, xlsxToHtml, memoTable, upcOverview, whoCards, printHtml, mailto, copyHtml, download, saveFile, toast, folderScreen,
-    FILTERS, flagPass, filterChips, filterCounts, notesHtml, fileKind, fileIcon, attHtml, b64, ta, autoGrow, mail, MIME, EXT,
+    FILTERS, flagPass, filterChips, filterCounts, notesHtml, fileKind, fileIcon, attHtml, docxToHtml, activatePdf, b64, ta, autoGrow, mail, mailUrl, MIME, EXT,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

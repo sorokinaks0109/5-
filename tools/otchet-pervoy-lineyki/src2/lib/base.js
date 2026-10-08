@@ -181,18 +181,19 @@
     const libs = document.getElementById('libs');
     const app = document.getElementById('snap-app');
     const css = document.getElementById('css');
+    const xl = document.getElementById('xl');
     if (!libs || !app || !css || !dir) return false;
     const att = await collectAtt(dir, reg, data);
     const plain = {};
     for (const [k, v] of Object.entries(data)) plain[k] = { data: v.data };
     const at = Date.now();
-    const page = (title, header, snapObj, appText) => {
+    const page = (title, header, snapObj, appText, withXl) => {
       const snap = JSON.stringify(snapObj).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
       return new TextEncoder().encode('<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">' +
         '<title>' + title + '</title><style>' + css.textContent + '</style></head><body>' +
         '<header class="top"><h1>' + header + '</h1><span class="sub" id="who"></span><span class="sub" id="folder"></span></header>' +
         '<nav class="tabs" id="tabs"></nav><main id="main"></main>' +
-        '<script>window.SNAPSHOT=' + snap + ';<\/script><script>' + libs.textContent + '<\/script><script>' + appText + '<\/script></body></html>');
+        '<script>window.SNAPSHOT=' + snap + ';<\/script>' + (withXl && xl ? '<script>' + xl.textContent + '<\/script>' : '') + '<script>' + libs.textContent + '<\/script><script>' + appText + '<\/script></body></html>');
     };
     let ok = false;
     const dirBytes = page('Для директора — отчёт первой линейки', 'Отчёт первой линейки', { at, reg, data: plain, att }, app.textContent);
@@ -205,7 +206,7 @@
       for (const p of reg.people.filter((x) => x.fileMode)) {
         try {
           await Store.writeBytes(dir, ['Страницы руководителей', 'Отчёт — ' + p.slug + '.html'],
-            page('Отчёт — ' + p.fio, 'Мой отчёт к совещанию', { at, reg, data: plain, att: att[p.id] ? { [p.id]: att[p.id] } : {}, me: p.id }, mgr.textContent));
+            page('Отчёт — ' + p.fio, 'Мой отчёт к совещанию', { at, reg, data: plain, att: att[p.id] ? { [p.id]: att[p.id] } : {}, me: p.id }, mgr.textContent, true));
         } catch (e) { ok = false; }
       }
     }

@@ -32,6 +32,7 @@
     '.kpi{background:#fbfcfe;border:1px solid #d9e0e8;border-radius:8px;padding:8px;margin:6px 0}.kpi .nm{font-weight:700}.kpi .v{font-size:13px;color:#5d6b7a}',
     'img{max-width:100%;height:auto;border:1px solid #d9e0e8;border-radius:6px}',
     '.muted{color:#5d6b7a}.small{font-size:13px}',
+    '.att-doc{background:#fff;border:1px solid #d9e0e8;border-radius:8px;padding:8px 10px}.att-doc table{margin:6px 0}',
     '.att-cap{font-weight:700;margin:8px 0 4px}.att-sheet{font-weight:600;color:#5d6b7a;margin:8px 0 4px}',
   ].join('\n');
 
@@ -88,7 +89,7 @@
           const body = att && att[p.id] && att[p.id][a.file];
           const kind = V().fileKind(a.file);
           h += '<div class="small"><b>' + esc(a.name) + '</b></div>' +
-            (body && (kind === 'xlsx' || kind === 'img') ? '<div class="scroll">' + body.replace(/<button[^>]*>[\s\S]*?<\/button>/g, '') + '</div>'
+            (body && (kind === 'xlsx' || kind === 'img' || kind === 'docx') ? '<div class="scroll">' + body.replace(/<div class="att-tools">[\s\S]*?<\/div>$/, '').replace(/<button[^>]*>[\s\S]*?<\/button>/g, '') + '</div>'
               : '<div class="muted small">' + esc(a.file) + ' — файл в папке отчёта</div>');
         }
       }

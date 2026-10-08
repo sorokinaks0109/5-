@@ -64,7 +64,7 @@
     main.innerHTML = sentPanel() + headBar() + filterBar() + (S.preview
       ? '<div class="panel preview">' + View.personReport(S.reg, pv, S.me, today(), { filter: S.filter }) + '</div>'
       : memoSec() + freeSec('ros', '2. РОС') + freeSec('proj', '3. Текущие проекты') + upcSec() + attSec());
-    if (S.preview) View.hydrateAttachments(main, S.dir, S.reg);
+    if (S.preview) View.hydrateAttachments(main, S.dir, S.reg, { [S.me]: S.pendingAtt });
     View.autoGrow(main);
     updateSaveState();
   }
@@ -315,7 +315,7 @@
     if (e.target.id === 'attFile' && e.target.files[0]) addAttachment(e.target.files[0]);
   });
   async function printMine() {
-    await View.printHtml(View.personReport(S.reg, viewData(), S.me, today(), { filter: S.filter }), (el) => View.hydrateAttachments(el, S.dir, S.reg));
+    await View.printHtml(View.personReport(S.reg, viewData(), S.me, today(), { filter: S.filter }), (el) => View.hydrateAttachments(el, S.dir, S.reg, { [S.me]: S.pendingAtt }));
   }
   document.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-act],[data-me],[data-row],[data-att],[data-flt]');
