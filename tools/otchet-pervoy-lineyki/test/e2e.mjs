@@ -329,13 +329,13 @@ if (card2) {
 }
 await page.click('[data-tab=out]');
 // вкладка письма открывается сразу по нажатию, адрес подставляется, когда файл готов
-await page.evaluate(() => { window.open = (u) => { window.__openCalls = (window.__openCalls || 0) + 1; if (u) window.__opened = u; return { closed: false, document: { write() {} }, location: { set href(v) { window.__opened = v; } } }; }; });
+await page.evaluate(() => { window.open = (u) => { window.__openCalls = (window.__openCalls || 0) + 1; if (window.__openCalls === 1) window.__firstOpen = u || ''; if (u) window.__opened = u; return { closed: false, document: { write() {} }, location: { set href(v) { window.__opened = v; } } }; }; });
 await page.click('[data-act=sendDirector]');
 await page.waitForTimeout(1500);
 {
   const u = await page.evaluate(() => window.__opened || '');
   check(u.startsWith('https://mail.gazprom-neft.ru/owa/?path=/mail/action/compose&to=') && u.includes('subject='), 'письмо директору открывается в OWA: ' + u.slice(0, 70));
-  check(await page.evaluate(() => window.__openCalls) === 1, 'вкладка письма открывается одна, сразу по нажатию (браузер не блокирует)');
+  check(await page.evaluate(() => window.__openCalls) === 1 && await page.evaluate(() => window.__firstOpen || '').then((x) => x.startsWith('https://')), 'письмо открывается одной вкладкой сразу по нажатию, сразу с адресом OWA');
   check(await page.locator('[data-act=openMail]').isVisible(), 'есть запасная кнопка «Открыть письмо»');
   files = await DUMP(page);
   const mob = await page.evaluate(async () => { const d = await window.__root.getDirectoryHandle('Своды'); for await (const h of d.values()) if (h.name.endsWith('.html')) return await (await h.getFile()).text(); return ''; });

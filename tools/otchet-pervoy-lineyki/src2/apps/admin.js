@@ -241,7 +241,7 @@
       'руководители раскрываются нажатием. Файл кладётся в папку «Своды», затем открывается новое письмо в веб-почте — <b>прикрепите файл к письму</b> (браузер сам прикрепить не может).</p>' +
       '<div class="row"><label class="small">Почта директора <input id="dirEmail" value="' + esc(st.directorEmail || '') + '" placeholder="director@..."></label>' +
       '<button class="primary" data-act="sendDirector">Отправить отчёт директору</button><button data-act="mobileCopy">Сохранить копию файла…</button></div>' +
-      (S.sentFile && S.mailBlocked ? '<div class="msg warn">Браузер не дал открыть письмо сам. Нажмите «Открыть письмо».</div>' : '') +
+      (S.sentFile && S.mailBlocked ? '<div class="msg warn">Браузер не дал открыть письмо сам. Нажмите «Открыть письмо» справа.</div>' : '') +
       (S.sentFile ? '<div class="msg ok">' + (S.mailUrl ? '<button class="primary" data-act="openMail" style="float:right;margin-left:10px">Открыть письмо</button>' : '') +
         'Файл: <b>' + esc(S.sentFile) + '</b>. В письме нажмите «Вложить» (скрепка) и выберите этот файл ' +
         '(папка «Отчёт первой линейки» → «Своды»), или «Сохранить копию файла…» в «Загрузки» и прикрепите оттуда. ' +
@@ -263,27 +263,30 @@
   }
   const mobileName = () => 'Отчёт директору ' + Model.fmtISO(today()) + '.html';
   async function sendDirector() {
-    // вкладку письма открываем сразу, по нажатию: после подготовки файла браузер уже не даст её открыть
-    const owa = (S.reg.settings.mailVia || 'owa') !== 'mailto';
-    const win = owa ? window.open('', '_blank') : null;
-    if (win) { try { win.document.write('<p style="font:16px sans-serif;padding:24px">Готовлю письмо директору…</p>'); } catch (e) { /* не страшно */ } }
-    View.toast('Готовлю файл для директора…');
-    const bytes = await Base.mobileFile(S.dir, S.reg, S.data);
+    // Письмо открываем сразу по нажатию, уже с адресом и текстом: если сначала готовить файл,
+    // браузер считает новое окно «не по нажатию» и не открывает его. Файл к письму готовится следом.
+    const to = (($('#dirEmail') && $('#dirEmail').value) || S.reg.settings.directorEmail || '').trim();
+    const subject = 'Отчёт первой линейки на ' + Model.fmtISO(today());
+    const body = 'Добрый день!\n\nВо вложении — отчёт первой линейки на ' + Model.fmtISO(today()) + '. Откройте файл: сверху сводка и просроченные поручения, по руководителям — нажмите на фамилию.\n\n' + Model.summaryText(S.reg, S.data, today());
+    S.mailUrl = View.mailUrl(S.reg.settings, to ? [to] : [], subject, body);
+    S.mailBlocked = !View.mail(S.reg.settings, to ? [to] : [], subject, body);
+    S.sentFile = '';
+    View.toast('Письмо открыто в соседней вкладке. Готовлю файл для вложения…');
     const name = mobileName();
+    let bytes;
+    try { bytes = await Base.mobileFile(S.dir, S.reg, S.data); } catch (e) {
+      S.log.push('Файл для директора не собрался: ' + e.message); View.toast('Файл для директора не собрался: ' + e.message, 'bad'); render(); return;
+    }
     try {
       if (S.demo) throw new Error('демо');
       await Store.writeBytes(S.dir, ['Своды', name], bytes);
       S.sentFile = 'Своды/' + name; S.log.push('Отчёт для директора сохранён: Своды/' + name);
     } catch (e) {
       const r = await View.saveFile(bytes, name, 'text/html', '.html', 'Страница');
-      if (!r.ok) { if (win) win.close(); return; }
+      if (!r.ok) { render(); return; }
       S.sentFile = r.name + ' (сохранён отдельно)';
     }
-    const to = (($('#dirEmail') && $('#dirEmail').value) || S.reg.settings.directorEmail || '').trim();
-    const subject = 'Отчёт первой линейки на ' + Model.fmtISO(today());
-    const body = 'Добрый день!\n\nВо вложении — отчёт первой линейки на ' + Model.fmtISO(today()) + '. Откройте файл: сверху сводка и просроченные поручения, по руководителям — нажмите на фамилию.\n\n' + Model.summaryText(S.reg, S.data, today());
-    S.mailUrl = View.mailUrl(S.reg.settings, to ? [to] : [], subject, body);
-    S.mailBlocked = !View.mail(S.reg.settings, to ? [to] : [], subject, body, win);
+    View.toast('Файл готов: ' + S.sentFile + '. Прикрепите его к письму.', 'ok');
     render();
   }
   async function saveSummary() {
