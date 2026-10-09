@@ -414,24 +414,20 @@
   // Как открывать письмо. У OWA на своём сервере формат ссылки на новое письмо зависит от версии Exchange,
   // поэтому вариантов несколько; «copy» работает всегда: открывает почту и кладёт текст письма в буфер.
   const MAIL_MODES = [
-    ['owa-copy', 'Открыть почту, текст письма — в буфер (работает всегда)'],
+    ['owa-path', 'Новое письмо в OWA (основной способ)'],
     ['owa-ae', 'Новое письмо в OWA — ссылка вида ?ae=Item'],
     ['owa-hash', 'Новое письмо в OWA — ссылка вида #path=/mail/action/compose'],
-    ['owa-path', 'Новое письмо в OWA — ссылка вида ?path=/mail/action/compose'],
+    ['owa-copy', 'Открыть почту, текст письма — в буфер'],
     ['mailto', 'В почтовой программе компьютера (Р7)'],
   ];
-  function mailMode(settings) {
-    const m = (settings && settings.mailVia) || 'owa-copy';
-    return m === 'owa' ? 'owa-copy' : m;
-  }
+  function mailMode(settings) { return (settings && settings.mailMode) || 'owa-path'; }
   function owaBase(settings) { return ((settings && settings.owaUrl) || 'https://mail.gazprom-neft.ru/owa/').replace(/[?#].*$/, '').replace(/\/?$/, '/'); }
   function mailUrl(settings, to, subject, body, mode) {
     mode = mode || mailMode(settings);
     if (mode === 'mailto') return null;
     const base = owaBase(settings);
     if (mode === 'owa-copy') return base;
-    const cut = body.length > 1500 ? body.slice(0, 1500) + '\n…' : body;
-    const q = 'to=' + encodeURIComponent(to.join(';')) + '&subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(cut);
+    const q = 'to=' + encodeURIComponent(to.join(';')) + '&subject=' + encodeURIComponent(subject) + (body ? '&body=' + encodeURIComponent(body) : '');
     if (mode === 'owa-ae') return base + '?ae=Item&a=New&t=IPM.Note&' + q;
     if (mode === 'owa-hash') return base + '#path=/mail/action/compose&' + q;
     return base + '?path=/mail/action/compose&' + q;
@@ -465,11 +461,27 @@
   }
   // Открыть письмо. Вызывать прямо по нажатию кнопки — иначе браузер не откроет новую вкладку.
   // Возвращает false, если вкладка не открылась.
-  function mail(settings, to, subject, body, mode) {
+  // Почтовый сервер не принимает слишком длинные ссылки (русская буква в ссылке занимает 6 знаков).
+  // Длинный текст в ссылку не кладём: адресаты и тема встают сами, текст — в буфер, вставить Ctrl+V.
+  // html — тот же текст с оформлением (таблицей), для вставки в письмо.
+  const MAX_URL = 1900;
+  function mail(settings, to, subject, body, mode, html) {
     mode = mode || mailMode(settings);
     if (mode === 'mailto') { mailto(to, subject, body); return true; }
-    if (mode === 'owa-copy') { copyText(body); letterBox(to, subject, body); }
-    return !!window.open(mailUrl(settings, to, subject, body, mode), '_blank');
+    if (mode === 'owa-copy') { copyRich(html, body); letterBox(to, subject, body); return !!window.open(mailUrl(settings, to, subject, body, mode), '_blank'); }
+    let url = mailUrl(settings, to, subject, body, mode);
+    if (html || url.length > MAX_URL) {
+      copyRich(html, body);
+      url = mailUrl(settings, to, subject, '', mode);
+      toast('Текст письма скопирован — в письме поставьте курсор в поле текста и нажмите Ctrl+V', 'ok');
+    }
+    return !!window.open(url, '_blank');
+  }
+  function copyRich(html, text) {
+    if (!html) { copyText(text); return; }
+    try {
+      navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }), 'text/plain': new Blob([text], { type: 'text/plain' }) })]).catch(() => copyText(text));
+    } catch (e) { copyText(text); }
   }
 
   function mailto(to, subject, body) {

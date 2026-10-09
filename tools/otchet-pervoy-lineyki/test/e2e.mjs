@@ -334,9 +334,19 @@ await page.click('[data-act=sendDirector]');
 await page.waitForTimeout(1500);
 {
   const u = await page.evaluate(() => window.__opened || '');
-  check(u === 'https://mail.gazprom-neft.ru/owa/' && await page.locator('#letterBox').isVisible(), 'по умолчанию: открывается почта OWA, текст письма в буфере, адрес и тема — кнопками');
+  check(u.startsWith('https://mail.gazprom-neft.ru/owa/?path=/mail/action/compose&to=') && u.length < 1900, 'письмо директору открывается в OWA, ссылка короткая (' + u.length + ' знаков)');
   check(await page.evaluate(() => window.__openCalls) === 1, 'почта открывается одной вкладкой сразу по нажатию');
   check(await page.locator('[data-act=openMail]').isVisible(), 'есть кнопка «Открыть письмо ещё раз»');
+  // итоговое мемо: письмо всем, адреса и тема в ссылке, длинный текст с таблицей — в буфер
+  await page.evaluate(() => { window.__openCalls = 0; window.Otchet.S.reg.people.forEach((p, i) => { p.email = 'r' + i + '@test.ru'; }); });
+  await page.click('[data-act=sendMemo]');
+  await page.waitForTimeout(800);
+  const mu = await page.evaluate(() => window.__opened);
+  const memoFile = await page.evaluate(async () => { const d = await window.__root.getDirectoryHandle('Своды'); for await (const h of d.values()) if (h.name.startsWith('Мемо')) return h.name; return ''; });
+  check(mu.includes('subject=' + encodeURIComponent('Мемо совещания')) && mu.includes('%40') && !mu.includes('&body=') && mu.length < 1900, 'мемо всем: письмо с адресатами и темой, текст с таблицей — вставкой');
+  check(memoFile.endsWith('.xlsx'), 'мемо в Excel сохранено в «Своды»: ' + memoFile);
+  const longU = await page.evaluate(() => View.mailUrl({}, ['a@b.ru'], 'Тема', 'Текст '.repeat(300)));
+  check(longU.length > 1900, 'длинное письмо не влезает в ссылку — поэтому текст идёт через буфер');
   const urls = await page.evaluate(() => ['owa-ae', 'owa-hash', 'owa-path'].map((m) => View.mailUrl({}, ['d@x.ru'], 'Тема', 'Текст', m)));
   check(urls[0].includes('/owa/?ae=Item&a=New&t=IPM.Note&to=d%40x.ru') && urls[1].includes('/owa/#path=/mail/action/compose&to=') && urls[2].includes('/owa/?path=/mail/action/compose'), 'три варианта ссылки на новое письмо для проверки в «Настройках»');
   files = await DUMP(page);

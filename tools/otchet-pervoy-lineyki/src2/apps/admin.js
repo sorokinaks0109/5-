@@ -246,6 +246,9 @@
         'Файл: <b>' + esc(S.sentFile) + '</b>. В письме нажмите «Вложить» (скрепка) и выберите этот файл ' +
         '(папка «Отчёт первой линейки» → «Своды»), или «Сохранить копию файла…» в «Загрузки» и прикрепите оттуда. ' +
         'Если почта не пропустит .html — откройте файл и напечатайте в PDF.</div>' : '') + '</div>' +
+      '<div class="panel"><h2>Итоговое мемо после совещания</h2><p class="muted small">Открывает письмо всем руководителям (у кого указана почта) с текстом и таблицей актуальных поручений. ' +
+      'Таблица копируется — в письме поставьте курсор в поле текста и нажмите Ctrl+V. Мемо в Excel кладётся в папку «Своды», его можно приложить.</p>' +
+      '<div class="row"><button class="primary" data-act="sendMemo">Отправить мемо всем</button></div></div>' +
       '<div class="panel"><h2>Свод для директора</h2><p class="muted small">Excel-файл: кто обновил, все поручения со статусами, УПЦ. ' + (S.demo ? 'В демо файл скачается.' : 'Файл появится в папке «Своды».') + '</p>' +
       '<div class="row"><button class="primary" data-act="summary">Сохранить свод в Excel</button><button data-act="printAll">Печать всех докладов</button></div></div>' +
       '<div class="panel"><h2>Письмо директору с итогами</h2><p class="muted small">«Скопировать итоги» кладёт в буфер таблицу по руководителям — вставьте её в письмо (Ctrl+V). «Открыть письмо» создаёт письмо в веб-почте с текстом итогов. ' +
@@ -261,13 +264,55 @@
     }).join('');
     return '<p>Итоги по поручениям совещания первой линейки на ' + Model.fmtISO(today()) + '</p><table border="1" cellpadding="4" style="border-collapse:collapse"><tr><th>Руководитель</th><th>Поручений</th><th>Выполнено</th><th>В работе</th><th>Не выполнено</th><th>Без статуса</th><th>Срок прошёл</th><th>Отчёт актуален</th></tr>' + rows + '</table>';
   }
+  // ---------- итоговое мемо после совещания ----------
+  function memoLetter() {
+    const meet = S.reg.settings.lastMeeting || today();
+    const list = S.reg.memo.filter((m) => !m.closed).slice().sort((a, b) => (a.num || 0) - (b.num || 0));
+    const intro = ['Коллеги, добрый день!',
+      'По итогам совещания с руководителями первой линейки от ' + Model.fmtISO(meet) + ' направляю актуализированное мемо совещания. Прошу принять поручения в работу и обеспечить их исполнение в установленные сроки.',
+      'Поручения в отчёте первой линейки уже обновлены. Прошу своевременно вносить в свой отчёт актуальные статусы и пояснения — директор просматривает отчёт на постоянной основе.'];
+    const row = (m, i) => ({ n: i + 1, text: m.text, resp: Model.respName(S.reg, m), co: (m.co || []).map((id) => (Model.personById(S.reg, id) || {}).fio).filter(Boolean).join(', '), due: Model.fmtISO(m.due) || '—', isNew: m.date === meet });
+    const rows = list.map(row);
+    const text = intro.join('\n\n') + '\n\nАктуальные поручения (' + rows.length + '):\n' +
+      rows.map((r) => r.n + '. ' + r.text + ' — отв.: ' + r.resp + (r.co ? '; соисп.: ' + r.co : '') + '; срок: ' + r.due + (r.isNew ? ' (новое)' : '')).join('\n') + '\n\nСпасибо!';
+    const td = 'style="border:1px solid #999;padding:4px 6px;vertical-align:top"';
+    const html = intro.map((x) => '<p>' + esc(x) + '</p>').join('') + '<p><b>Актуальные поручения (' + rows.length + ')</b></p>' +
+      '<table style="border-collapse:collapse;font-size:10pt"><tr><th ' + td + '>№</th><th ' + td + '>Поручение</th><th ' + td + '>Ответственный</th><th ' + td + '>Соисполнители</th><th ' + td + '>Срок</th></tr>' +
+      rows.map((r) => '<tr' + (r.isNew ? ' style="background:#fff4d6"' : '') + '><td ' + td + '>' + r.n + '</td><td ' + td + '>' + esc(r.text) + (r.isNew ? ' <b>(новое)</b>' : '') + '</td><td ' + td + '>' + esc(r.resp) + '</td><td ' + td + '>' + esc(r.co) + '</td><td ' + td + '>' + esc(r.due) + '</td></tr>').join('') +
+      '</table><p>Спасибо!</p>';
+    return { meet, rows, text, html };
+  }
+  async function sendMemo() {
+    const L = memoLetter();
+    const to = S.reg.people.map((p) => p.email).filter(Boolean);
+    const noMail = S.reg.people.filter((p) => !p.email).map((p) => p.fio);
+    const subject = 'Мемо совещания первой линейки от ' + Model.fmtISO(L.meet);
+    // письмо открываем сразу по нажатию — до любых ожиданий, иначе браузер не откроет вкладку
+    View.mail(S.reg.settings, to, subject, L.text, null, L.html);
+    if (noMail.length) setTimeout(() => View.toast('Нет почты у: ' + noMail.join(', ') + '. Добавьте в «Настройках».', 'bad'), 3600);
+    try {
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet('Мемо', { pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, paperSize: 9 } });
+      ws.addRow(['Мемо совещания первой линейки от ' + Model.fmtISO(L.meet)]).font = { bold: true, size: 13 };
+      ws.addRow([]);
+      const h = ws.addRow(['№', 'Поручение', 'Ответственный', 'Соисполнители', 'Срок']);
+      h.font = { bold: true };
+      L.rows.forEach((r) => { const x = ws.addRow([r.n, r.text + (r.isNew ? ' (новое)' : ''), r.resp, r.co, r.due]); x.alignment = { wrapText: true, vertical: 'top' }; });
+      [6, 70, 26, 26, 14].forEach((w, i) => (ws.getColumn(i + 1).width = w));
+      const bytes = new Uint8Array(await wb.xlsx.writeBuffer());
+      const name = 'Мемо ' + Model.fmtISO(L.meet) + '.xlsx';
+      if (S.demo) return;
+      await Store.writeBytes(S.dir, ['Своды', name], bytes);
+      S.log.push('Мемо сохранено: Своды/' + name);
+    } catch (e) { S.log.push('Мемо в Excel не сохранилось: ' + e.message); }
+  }
   const mobileName = () => 'Отчёт директору ' + Model.fmtISO(today()) + '.html';
   async function sendDirector() {
     // Письмо открываем сразу по нажатию, уже с адресом и текстом: если сначала готовить файл,
     // браузер считает новое окно «не по нажатию» и не открывает его. Файл к письму готовится следом.
     const to = (($('#dirEmail') && $('#dirEmail').value) || S.reg.settings.directorEmail || '').trim();
     const subject = 'Отчёт первой линейки на ' + Model.fmtISO(today());
-    const body = 'Добрый день!\n\nВо вложении — отчёт первой линейки на ' + Model.fmtISO(today()) + '. Откройте файл: сверху сводка и просроченные поручения, по руководителям — нажмите на фамилию.\n\n' + Model.summaryText(S.reg, S.data, today());
+    const body = 'Добрый день!\n\nВо вложении — отчёт первой линейки на ' + Model.fmtISO(today()) + '. Откройте файл: сверху сводка и просроченные поручения, по руководителям — нажмите на фамилию.';
     S.mailUrl = View.mailUrl(S.reg.settings, to ? [to] : [], subject, body);
     S.mailBlocked = !View.mail(S.reg.settings, to ? [to] : [], subject, body);
     S.letter = { to: to ? [to] : [], subject, body };
@@ -402,6 +447,7 @@
     else if (a === 'respAll') { const ids = S.reg.people.filter((p) => p.onMeeting !== false).map((p) => p.id); $$('.f_resp').forEach((x) => { x.checked = ids.includes(x.value); }); }
     else if (a === 'respNone') { $$('.f_resp').forEach((x) => { x.checked = false; }); }
     else if (a === 'sendDirector') sendDirector();
+    else if (a === 'sendMemo') sendMemo();
     else if (a === 'openMail') { if (S.letter) View.mail(S.reg.settings, S.letter.to, S.letter.subject, S.letter.body); }
     else if (a === 'mobileCopy') { await View.saveFile(await Base.mobileFile(S.dir, S.reg, S.data), mobileName(), 'text/html', '.html', 'Страница'); }
     else if (a === 'memoSave') memoSave();
@@ -411,7 +457,7 @@
     else if (a === 'cardCancel') { S.card = null; S.cardDiff = null; render(); }
     else if (a === 'summary') saveSummary();
     else if (a === 'copySummary') { const ok = await View.copyHtml(summaryHtml(), Model.summaryText(S.reg, S.data, today())); View.toast(ok ? 'Итоги скопированы — вставьте в письмо (Ctrl+V)' : 'Не удалось скопировать', ok ? 'ok' : 'bad'); }
-    else if (a === 'mailDirector') { const to = (S.reg.settings.directorEmail || '').trim(); View.mail(S.reg.settings, to ? [to] : [], 'Итоги по поручениям совещания первой линейки на ' + Model.fmtISO(today()), Model.summaryText(S.reg, S.data, today())); }
+    else if (a === 'mailDirector') { const to = (S.reg.settings.directorEmail || '').trim(); View.mail(S.reg.settings, to ? [to] : [], 'Итоги по поручениям совещания первой линейки на ' + Model.fmtISO(today()), Model.summaryText(S.reg, S.data, today()), null, summaryHtml()); }
     else if (a === 'addPerson') {
       const fio = $('#newFio').value.trim(); if (!fio) return;
       const slug = fio.split(/\s+/)[0];
@@ -424,7 +470,7 @@
   });
   document.addEventListener('change', async (e) => {
     const t = e.target;
-    if (t.id === 'mailVia') { S.reg.settings.mailVia = t.value; saveReg('Сохранено'); }
+    if (t.id === 'mailVia') { S.reg.settings.mailMode = t.value; saveReg('Сохранено'); }
     if (t.id === 'owaUrl') { S.reg.settings.owaUrl = t.value.trim(); saveReg('Адрес почты сохранён'); }
     if (t.id === 'memoPerson') { S.memoPerson = t.value; render(); }
     if (t.id === 'upcPerson') { S.upcPerson = t.value; render(); }
