@@ -3,226 +3,332 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Смутное время в играх</title>
+<title>Учу играя</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Ruslan+Display&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Nunito:wght@500;600;700;800;900&family=Lora:ital,wght@0,500;0,600;1,500&display=swap">
 <style>
-/* Макет: одна узкая колонка как в телефоне; сверху параграф, ниже игры. Название — древнерусским шрифтом, всё остальное спокойное. */
+/* Макет: тёмная «игровая» сцена, яркие объёмные кнопки-плитки, одна колонка под телефон.
+   Тема одна (тёмная) — так задумано, на любом фоне выглядит одинаково. */
 :root {
-  --bg: #f2f4f9;
-  --surface: #ffffff;
-  --ink: #18203a;
-  --muted: #5a6482;
-  --line: #dce1ee;
-  --accent: #2b4fd8;
-  --accent-soft: #e3e8fc;
-  --on-accent: #ffffff;
-  --gold: #d4930c;
-  --ok: #1d8752;
-  --ok-soft: #dcf2e5;
-  --bad: #cc3a2e;
-  --bad-soft: #fbe2df;
-  --land: #e9eedf;
-  --water: #8db6e3;
-  --font-display: "Ruslan Display", "Golos Text", Georgia, serif;
-  --font-body: "Golos Text", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --radius: 14px;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0f131d; --surface: #182031; --ink: #e8ecf6; --muted: #9aa4c0; --line: #2a3450;
-    --accent: #8098ff; --accent-soft: #232f58; --on-accent: #0c1330; --gold: #f0b73a;
-    --ok: #4cc488; --ok-soft: #173a29; --bad: #ff7d6e; --bad-soft: #43221f;
-    --land: #1c2622; --water: #3a6496; color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #0f131d; --surface: #182031; --ink: #e8ecf6; --muted: #9aa4c0; --line: #2a3450;
-  --accent: #8098ff; --accent-soft: #232f58; --on-accent: #0c1330; --gold: #f0b73a;
-  --ok: #4cc488; --ok-soft: #173a29; --bad: #ff7d6e; --bad-soft: #43221f;
-  --land: #1c2622; --water: #3a6496; color-scheme: dark;
+  --bg: #140f35;
+  --card: #262063;
+  --card2: #322a7a;
+  --line: #3e3592;
+  --ink: #ffffff;
+  --muted: #bab3ec;
+  --page: #fffdf8;
+  --page-ink: #1d1840;
+  --page-muted: #6b6690;
+  --mark: #ffe377;
+  --violet: #8a6bff; --violet-d: #5b40d6;
+  --pink: #ff5d8f;   --pink-d: #cf3468;
+  --orange: #ff9a3c; --orange-d: #d4701a;
+  --mint: #2fe0a6;   --mint-d: #13a576;
+  --sky: #4cb8ff;    --sky-d: #1f86d4;
+  --yellow: #ffd23f; --yellow-d: #d4a50c;
+  --bad: #ff5468;    --bad-d: #c42d42;
+  --dark-text: #1a1240;
+  --f-display: "Unbounded", "Nunito", system-ui, sans-serif;
+  --f-body: "Nunito", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --f-verse: "Lora", Georgia, "Times New Roman", serif;
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
-html, body { margin: 0; }
+html, body { margin: 0; min-height: 100%; }
 body {
-  background: var(--bg); color: var(--ink);
-  font: 16px/1.45 var(--font-body);
+  background:
+    radial-gradient(900px 520px at 85% -8%, #3b2a96 0, transparent 62%),
+    radial-gradient(760px 480px at -12% 108%, #5b1d70 0, transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
+  color: var(--ink);
+  font: 600 16px/1.45 var(--f-body);
   -webkit-tap-highlight-color: transparent;
 }
-#app { max-width: 560px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 48px; }
-button { font: inherit; color: inherit; cursor: pointer; }
-button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-h1, h2 { text-wrap: balance; margin: 0; }
+#app { max-width: 560px; margin: 0 auto; padding-inline: 16px; padding-block: 18px 110px; }
+button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; padding: 0; }
+button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--yellow); outline-offset: 3px; }
+h1, h2, h3 { text-wrap: balance; margin: 0; }
+svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 
-/* Главный экран */
-.eyebrow { font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
-.lesson { display: grid; gap: 6px; padding-block: 8px 20px; }
-.lesson h1 { font: 400 40px/1.1 var(--font-display); letter-spacing: .01em; }
-.lesson .years { font-size: 18px; font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; }
-.demo {
-  display: grid; gap: 10px; padding: 14px 16px; margin-bottom: 22px;
-  border: 1.5px dashed var(--line); border-radius: var(--radius); color: var(--muted); font-size: 14px;
+/* Появление экрана */
+.enter .screen > * { animation: rise .42s cubic-bezier(.2,.8,.2,1) backwards; }
+.enter .screen > *:nth-child(2) { animation-delay: .05s; }
+.enter .screen > *:nth-child(3) { animation-delay: .1s; }
+.enter .screen > *:nth-child(4) { animation-delay: .15s; }
+.enter .screen > *:nth-child(n+5) { animation-delay: .2s; }
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } }
+.screen { display: grid; gap: 18px; }
+
+/* Объёмная кнопка: цвет задаётся классом c-* */
+.b3 {
+  --c: var(--violet); --cd: var(--violet-d);
+  background: var(--c); color: #fff; border-radius: 18px;
+  box-shadow: 0 5px 0 var(--cd); transition: transform .08s ease, box-shadow .08s ease, filter .15s;
 }
-.demo p { margin: 0; }
-.photo-btn {
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  padding: 12px; border-radius: 12px; border: 0; background: var(--accent-soft); color: var(--muted);
-  font-weight: 600; cursor: not-allowed;
-}
-.games { display: grid; gap: 12px; }
-.game-card {
-  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 12px;
-  width: 100%; text-align: left; padding: 16px; border-radius: var(--radius);
-  background: var(--surface); border: 1px solid var(--line);
-  transition: transform .12s ease, border-color .12s ease;
-}
-.game-card:hover { border-color: var(--accent); }
-.game-card:active { transform: scale(.98); }
-.game-card .kind { grid-column: 1 / -1; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
-.game-card .name { font-size: 20px; font-weight: 700; }
-.game-card .sub { grid-column: 1; color: var(--muted); font-size: 14px; min-width: 0; }
-.game-card .best { grid-column: 2; grid-row: 2 / 4; display: flex; gap: 2px; }
+.b3:hover { filter: brightness(1.06); }
+.b3:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--cd); }
+.b3:disabled { filter: grayscale(.7) brightness(.8); cursor: not-allowed; transform: none; }
+.c-violet { --c: var(--violet); --cd: var(--violet-d); }
+.c-pink { --c: var(--pink); --cd: var(--pink-d); }
+.c-orange { --c: var(--orange); --cd: var(--orange-d); }
+.c-mint { --c: var(--mint); --cd: var(--mint-d); color: var(--dark-text); }
+.c-sky { --c: var(--sky); --cd: var(--sky-d); }
+.c-yellow { --c: var(--yellow); --cd: var(--yellow-d); color: var(--dark-text); }
+.c-card { --c: var(--card2); --cd: #1c1650; }
+.btn { padding: 15px 22px; font-weight: 800; font-size: 17px; text-align: center; }
+
+/* Звёзды */
+.stars { display: inline-flex; gap: 3px; }
 .star { width: 18px; height: 18px; }
-.star path { fill: var(--line); }
-.star.on path { fill: var(--gold); }
-.foot { margin-top: 24px; color: var(--muted); font-size: 13px; }
+.star path { fill: rgba(255,255,255,.22); }
+.star.on path { fill: var(--yellow); }
 
-/* Шапка игры */
-.top { display: grid; gap: 10px; margin-bottom: 16px; }
-.top-row { display: flex; align-items: center; gap: 10px; }
-.back { border: 0; background: none; padding: 6px 0; color: var(--accent); font-weight: 600; }
-.top-row .count { margin-left: auto; color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
-.top h2 { font-size: 24px; }
-.bar { height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
-.bar i { display: block; height: 100%; background: var(--accent); border-radius: 99px; transition: width .3s ease; }
-.hint { color: var(--muted); font-size: 15px; margin: 0 0 14px; }
-
-/* Общие плашки */
-.chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.chip {
-  padding: 9px 14px; border-radius: 99px; border: 1.5px solid var(--line); background: var(--surface);
-  font-weight: 600; font-size: 15px;
+/* Главная */
+.hello { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.hello .eyebrow { color: var(--muted); font-weight: 700; }
+.hello h1 { font: 800 30px/1.1 var(--f-display); letter-spacing: -.01em; }
+.round { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: var(--card); box-shadow: 0 4px 0 #120d38; flex: none; }
+.round:active { transform: translateY(3px); box-shadow: 0 1px 0 #120d38; }
+.total { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 99px; background: var(--card); font-weight: 800; }
+.total .star { width: 20px; height: 20px; }
+.lessons { display: grid; gap: 14px; }
+.lesson-card {
+  position: relative; overflow: hidden; display: grid; gap: 6px; text-align: left;
+  padding: 20px 20px 18px; min-height: 150px;
 }
-.chip.sel { border-color: var(--accent); background: var(--accent); color: var(--on-accent); }
-.chip.done { opacity: .35; pointer-events: none; text-decoration: line-through; }
+.lesson-card .subj { font-size: 13px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; opacity: .85; }
+.lesson-card h2 { font: 800 25px/1.12 var(--f-display); max-width: 80%; }
+.lesson-card .meta { display: flex; align-items: center; gap: 10px; font-weight: 700; opacity: .92; margin-top: 4px; }
+.lesson-card .art { position: absolute; right: -18px; bottom: -22px; width: 130px; height: 130px; opacity: .22; }
+.lesson-card .art svg { width: 100%; height: 100%; fill: none; stroke: #fff; stroke-width: 1.6; }
+.photo {
+  display: flex; align-items: center; gap: 14px; padding: 16px 18px; border-radius: 18px;
+  border: 2px dashed var(--line); color: var(--muted); text-align: left;
+}
+.photo b { display: block; color: var(--ink); font-size: 16px; }
+.photo .tag { margin-left: auto; padding: 4px 10px; border-radius: 99px; background: var(--card2); font-size: 12px; font-weight: 800; color: var(--yellow); white-space: nowrap; }
+
+/* Экран урока */
+.bar-top { display: flex; align-items: center; gap: 12px; }
+.bar-top .grow { flex: 1; min-width: 0; }
+.crumb { color: var(--muted); font-weight: 700; font-size: 14px; }
+.lesson-h1 { font: 800 30px/1.1 var(--f-display); }
+.lesson-sub { color: var(--muted); font-weight: 700; }
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.tile { display: grid; align-content: space-between; gap: 14px; min-height: 172px; padding: 16px; text-align: left; }
+.tile .ico { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; background: rgba(255,255,255,.22); }
+.tile .ico .i { width: 26px; height: 26px; }
+.tile .name { font: 700 17px/1.15 var(--f-display); }
+.tile .sub { font-size: 13.5px; font-weight: 700; opacity: .88; line-height: 1.3; margin-top: 4px; }
+.tile .stars .star path { fill: rgba(0,0,0,.18); }
+.tile .stars .star.on path { fill: #fff; }
+.tile.c-mint .stars .star.on path, .tile.c-yellow .stars .star.on path { fill: var(--dark-text); }
+
+/* Путь заучивания */
+.frag { display: grid; gap: 10px; padding: 16px 18px; border-radius: 18px; background: var(--card); }
+.frag .lbl { font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.frag .q { font: italic 500 17px/1.5 var(--f-verse); color: #fff; }
+.frag .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.frag .n { color: var(--yellow); font-weight: 800; }
+.path { display: grid; gap: 14px; position: relative; padding-block: 6px; }
+.path::before { content: ""; position: absolute; left: 34px; top: 30px; bottom: 30px; width: 6px; border-radius: 6px; background: repeating-linear-gradient(to bottom, var(--line) 0 12px, transparent 12px 20px); }
+.step { position: relative; display: grid; grid-template-columns: 74px 1fr; align-items: center; gap: 14px; text-align: left; }
+.step .node { width: 74px; height: 74px; border-radius: 50%; display: grid; place-items: center; }
+.step .node .i { width: 32px; height: 32px; }
+.step .txt { display: grid; gap: 2px; padding: 12px 14px; border-radius: 16px; background: var(--card); }
+.step .num { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.step .name { font: 700 17px/1.2 var(--f-display); }
+.step .sub { color: var(--muted); font-size: 14px; font-weight: 700; }
+
+/* Выбор отрывка */
+.page {
+  background: var(--page); color: var(--page-ink); border-radius: 20px; padding: 18px 14px;
+  font: 500 18px/1.5 var(--f-verse); box-shadow: 0 10px 30px -12px rgba(0,0,0,.6);
+}
+.page .gap { height: 14px; }
+.pl { display: grid; grid-template-columns: 30px 1fr; gap: 8px; width: 100%; text-align: left; padding: 3px 6px; border-radius: 8px; color: var(--page-ink); font: inherit; }
+.pl .no { font: 700 12px/2.1 var(--f-body); color: var(--page-muted); text-align: right; font-variant-numeric: tabular-nums; }
+.pl:hover { background: #f1eefc; }
+.pl.in { background: var(--mark); border-radius: 0; }
+.pl.first { border-radius: 8px 8px 0 0; font-weight: 600; }
+.pl.last { border-radius: 0 0 8px 8px; font-weight: 600; }
+.pl.first.last { border-radius: 8px; }
+.pl.solo { background: var(--mark); animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 4px rgba(255,210,63,.5); } }
+.dock {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+  padding: 12px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+  background: rgba(20,15,53,.94); border-top: 1px solid var(--line);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+.dock .in { max-width: 560px; margin: 0 auto; display: grid; gap: 10px; }
+.dock .say { text-align: center; font-weight: 800; }
+.dock .say span { color: var(--yellow); }
+.dock .row { display: flex; gap: 10px; }
+.dock .row .btn { flex: 1; }
+
+/* Игра: шапка */
+.gtop { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; }
+.prog { height: 14px; border-radius: 99px; background: var(--card); overflow: hidden; }
+.prog i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--mint), var(--sky)); transition: width .35s cubic-bezier(.2,.8,.2,1); box-shadow: inset 0 -3px 0 rgba(0,0,0,.15); }
+.score { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 99px; background: var(--card); font-weight: 900; font-variant-numeric: tabular-nums; }
+.score .star { width: 18px; height: 18px; }
+.score.bump { animation: bump .35s ease; }
+@keyframes bump { 40% { transform: scale(1.25); } }
+.gtitle { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.gtitle h2 { font: 800 22px/1.15 var(--f-display); }
+.combo { display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 99px; background: linear-gradient(90deg, var(--orange), var(--pink)); font-weight: 900; font-size: 14px; white-space: nowrap; }
+.combo svg { width: 16px; height: 16px; fill: #fff; }
+.combo.bump { animation: bump .35s ease; }
+.hint { color: var(--muted); font-weight: 700; margin: -6px 0 0; }
+
+@keyframes shake { 20% { transform: translateX(-6px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(4px); } }
+@keyframes pop { from { transform: scale(.6); opacity: 0; } 70% { transform: scale(1.06); } }
+.shake { animation: shake .4s ease; }
+.pop { animation: pop .35s cubic-bezier(.2,.8,.2,1) backwards; }
 
 /* Соедини */
-.deeds { display: grid; gap: 8px; margin-top: 16px; }
-.deed {
-  display: grid; gap: 4px; width: 100%; text-align: left; padding: 12px 14px;
-  border-radius: 12px; border: 1.5px solid var(--line); background: var(--surface); font-size: 15px;
-}
-.deed.sel { border-color: var(--accent); background: var(--accent-soft); }
-.deed.ok { border-color: var(--ok); background: var(--ok-soft); pointer-events: none; }
-.deed.bad { border-color: var(--bad); background: var(--bad-soft); animation: shake .35s; }
-.deed .who { font-weight: 700; color: var(--ok); font-size: 14px; }
+.names { display: flex; flex-wrap: wrap; gap: 10px; }
+.name-chip { padding: 11px 16px; font-weight: 800; font-size: 15.5px; }
+.name-chip.sel { --c: var(--yellow); --cd: var(--yellow-d); color: var(--dark-text); transform: translateY(-2px); }
+.deeds { display: grid; gap: 10px; }
+.deed { display: grid; gap: 4px; width: 100%; text-align: left; padding: 14px 16px; border-radius: 16px; background: var(--card); border: 2px solid var(--line); font-weight: 700; font-size: 15.5px; line-height: 1.35; }
+.deed.sel { border-color: var(--yellow); background: var(--card2); }
+.deed.ok { background: var(--mint); border-color: var(--mint); color: var(--dark-text); pointer-events: none; }
+.deed.bad { border-color: var(--bad); background: #4a1f4a; }
+.deed .who { font: 700 13px var(--f-display); }
 
 /* Мемори */
-.memo { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.mcard {
-  min-height: 108px; padding: 12px; border-radius: 12px; border: 1.5px solid var(--line);
-  background: var(--surface); display: grid; align-content: center; gap: 4px; text-align: center;
-  font-size: 14px; line-height: 1.3; transition: transform .2s ease, background .2s ease;
-}
-.mcard.back {
-  background: var(--accent);
-  background-image: radial-gradient(circle at 50% 50%, transparent 0 18px, rgba(255,255,255,.12) 19px 21px, transparent 22px),
-    repeating-linear-gradient(45deg, rgba(255,255,255,.07) 0 6px, transparent 6px 12px);
-  border-color: transparent; color: var(--on-accent); font: 400 26px var(--font-display);
-}
-.mcard.open { border-color: var(--accent); transform: scale(1.02); }
-.mcard.term .t { font-size: 17px; font-weight: 700; }
-.mcard .lbl { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
-.mcard.matched { border-color: var(--ok); background: var(--ok-soft); opacity: .75; }
-.mcard.miss { border-color: var(--bad); background: var(--bad-soft); }
+.memo { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; perspective: 900px; }
+.mc { min-height: 128px; border-radius: 18px; padding: 12px; display: grid; align-content: center; justify-items: center; gap: 6px; text-align: center; }
+.mc.back { color: #fff; }
+.mc.back .q { font: 800 34px/1 var(--f-display); opacity: .95; }
+.mc .lbl { font-size: 11px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; opacity: .8; }
+.mc.face { background: var(--page); color: var(--page-ink); box-shadow: 0 5px 0 #c9c3e8; font-weight: 700; font-size: 14.5px; line-height: 1.3; }
+.mc.face .lbl { color: var(--page-muted); }
+.mc.face.term .t { font: 700 17px/1.2 var(--f-display); }
+.mc.flip { animation: flip .35s ease backwards; }
+@keyframes flip { from { transform: rotateY(90deg); } }
+.mc.face.miss { box-shadow: 0 0 0 3px var(--bad), 0 5px 0 var(--bad-d); }
+.mc.face.done { background: var(--mint); color: var(--dark-text); box-shadow: 0 5px 0 var(--mint-d); }
+.mc.face.done .lbl { color: var(--dark-text); }
+.banner { padding: 12px 16px; border-radius: 14px; background: #4a1f4a; border: 2px solid var(--bad); font-weight: 800; }
 
 /* Лента времени */
-.current {
-  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 2;
-  padding: 14px 16px; margin-bottom: 14px; border-radius: var(--radius);
-  background: var(--accent); color: var(--on-accent); box-shadow: 0 8px 20px -12px rgba(20,30,70,.6);
-}
-.current .lbl { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; opacity: .8; }
-.current p { margin: 4px 0 0; font-size: 17px; font-weight: 600; }
-.tl { list-style: none; margin: 0; padding: 0; position: relative; display: grid; gap: 8px; }
-.tl::before { content: ""; position: absolute; left: 39px; top: 8px; bottom: 8px; width: 3px; background: var(--line); border-radius: 3px; }
-.tl li { display: grid; grid-template-columns: 82px 1fr; gap: 10px; align-items: center; min-height: 48px; }
-.year {
-  position: relative; z-index: 1; width: 82px; padding: 10px 0; border-radius: 10px;
-  border: 1.5px solid var(--line); background: var(--surface);
-  font-weight: 700; font-size: 17px; font-variant-numeric: tabular-nums;
-}
-.year:hover { border-color: var(--accent); }
-.year.ok { background: var(--ok); border-color: var(--ok); color: var(--surface); pointer-events: none; }
-.year.bad { background: var(--bad-soft); border-color: var(--bad); animation: shake .35s; }
-.tl .txt { font-size: 15px; min-width: 0; }
-.tl .txt.empty { height: 2px; border-bottom: 1.5px dashed var(--line); }
-@keyframes shake { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+.ask { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 8px); z-index: 3; padding: 16px 18px; border-radius: 20px; box-shadow: 0 6px 0 var(--pink-d), 0 18px 30px -12px rgba(0,0,0,.6); }
+.ask .lbl { font-size: 12px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; opacity: .85; }
+.ask p { margin: 4px 0 0; font: 700 18px/1.3 var(--f-display); }
+.tl { list-style: none; margin: 0; padding: 0; position: relative; display: grid; gap: 10px; }
+.tl::before { content: ""; position: absolute; left: 43px; top: 10px; bottom: 10px; width: 6px; border-radius: 6px; background: var(--card); }
+.tl li { display: grid; grid-template-columns: 92px 1fr; gap: 12px; align-items: center; min-height: 52px; }
+.yr { position: relative; z-index: 1; width: 92px; padding: 11px 0; font: 800 18px var(--f-display); font-variant-numeric: tabular-nums; }
+.yr.ok { --c: var(--mint); --cd: var(--mint-d); color: var(--dark-text); pointer-events: none; }
+.yr.bad { --c: var(--bad); --cd: var(--bad-d); }
+.tl .tx { font-weight: 700; font-size: 15.5px; line-height: 1.35; min-width: 0; }
+.tl .tx.empty { height: 3px; border-radius: 3px; background: repeating-linear-gradient(90deg, var(--line) 0 8px, transparent 8px 14px); }
 
 /* Карта */
-.mapbox { border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); background: var(--land); margin-bottom: 14px; }
+.mapbox { border-radius: 20px; overflow: hidden; background: #1b3a5e; box-shadow: 0 6px 0 #0f2440; }
 .mapbox svg { display: block; width: 100%; height: auto; }
-.m-land { fill: var(--land); }
-.m-river { fill: none; stroke: var(--water); stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; }
-.m-lake { fill: var(--water); }
-.m-cap { fill: var(--muted); font: 600 15px var(--font-body); }
-.m-scale { stroke: var(--muted); stroke-width: 2; fill: none; }
+.m-land { fill: #23506f; }
+.m-grid { stroke: rgba(255,255,255,.06); stroke-width: 1; }
+.m-river { fill: none; stroke: #7cc8ff; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; opacity: .9; }
+.m-lake { fill: #7cc8ff; }
+.m-cap { fill: #a9d8ff; font: italic 700 15px var(--f-body); }
+.m-scale { stroke: #a9d8ff; stroke-width: 2; fill: none; }
 .pt { cursor: pointer; }
 .pt .hit { fill: transparent; }
-.pt .dot { fill: var(--surface); stroke: var(--ink); stroke-width: 3; transition: r .15s ease; }
-.pt.sel .dot { fill: var(--accent); stroke: var(--accent); }
-.pt.ok .dot { fill: var(--ok); stroke: var(--ok); }
-.pt.bad .dot { fill: var(--bad); stroke: var(--bad); }
-.pt:hover .dot { stroke: var(--accent); }
-.pt text { fill: var(--ink); font: 700 19px var(--font-body); paint-order: stroke; stroke: var(--land); stroke-width: 5px; stroke-linejoin: round; pointer-events: none; }
-.question { padding: 14px 16px; border-radius: var(--radius); background: var(--accent); color: var(--on-accent); margin-bottom: 14px; font-size: 17px; font-weight: 600; }
-.question .lbl { display: block; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; opacity: .8; margin-bottom: 4px; }
+.pt .dot { fill: var(--yellow); stroke: #fff; stroke-width: 3.5; }
+.pt.sel .dot { fill: var(--pink); }
+.pt.ok .dot { fill: var(--mint); }
+.pt.bad .dot { fill: var(--bad); }
+.pt .halo { fill: none; stroke: var(--yellow); stroke-width: 3; opacity: 0; }
+.pt.sel .halo { opacity: 1; stroke: var(--pink); animation: halo 1s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes halo { from { transform: scale(.6); opacity: 1; } to { transform: scale(1.6); opacity: 0; } }
+.pt text { fill: #fff; font: 800 19px var(--f-body); paint-order: stroke; stroke: #163a55; stroke-width: 6px; stroke-linejoin: round; pointer-events: none; }
+
+/* Стих: тексты на «странице» */
+.verse { padding: 20px 18px; }
+.verse .ln { display: block; }
+.verse .gap { display: block; height: 12px; }
+.w-hid { display: inline; color: var(--violet-d); font: inherit; border-bottom: 3px solid var(--violet); border-radius: 2px; padding: 0 1px; }
+.w-hid .w-mute { color: #cfc8f2; letter-spacing: .04em; }
+.w-hid.peek { background: #ece6ff; color: var(--page-ink); }
+.dots { display: flex; gap: 6px; }
+.dots i { flex: 1; height: 10px; border-radius: 10px; background: var(--card); }
+.dots i.on { background: linear-gradient(90deg, var(--violet), var(--pink)); }
+.row2 { display: flex; gap: 12px; }
+.row2 .btn { flex: 1; }
+
+.built { min-height: 110px; padding: 18px; }
+.built .ctx { color: var(--page-muted); }
+.cursor { display: inline-block; width: 3px; height: 1.05em; background: var(--violet); vertical-align: -0.15em; margin-left: 2px; border-radius: 2px; animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.chips { display: flex; flex-wrap: wrap; gap: 10px; }
+.wchip { padding: 11px 16px; font: 600 18px var(--f-verse); }
+
+.prompt { padding: 18px; border-radius: 20px; box-shadow: 0 6px 0 var(--violet-d); background: var(--violet); }
+.prompt .lbl { font-size: 12px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; opacity: .85; }
+.prompt .v { font: 500 19px/1.5 var(--f-verse); margin-top: 6px; }
+.prompt .faint { opacity: .6; }
+.prompt .blank { display: inline-block; min-width: 4.5em; border-bottom: 3px solid var(--yellow); }
+.prompt b { color: var(--yellow); }
+.opts { display: grid; gap: 10px; }
+.opt { width: 100%; text-align: left; padding: 15px 18px; font: 500 18px/1.4 var(--f-verse); }
+.opt.ok { --c: var(--mint); --cd: var(--mint-d); color: var(--dark-text); }
+.opt.bad { --c: var(--bad); --cd: var(--bad-d); }
+
+.recite .ln.hidden { color: transparent; background: #ebe7fb; border-radius: 8px; margin: 7px 0; height: 1.15em; }
+.recite .ln.cur.hidden { background: repeating-linear-gradient(90deg, #d9d1ff 0 14px, #ebe7fb 14px 28px); animation: pulse 1.2s ease-in-out infinite; }
+.recite .ok-mark { color: var(--mint-d); font: 900 15px var(--f-body); }
+.recite .ln.miss { color: var(--bad-d); }
 
 /* Итог */
-.result { display: grid; gap: 16px; justify-items: center; text-align: center; padding-top: 24px; }
-.result .stars { display: flex; gap: 6px; }
-.result .star { width: 54px; height: 54px; }
-.result .star.on { animation: pop .45s ease backwards; }
-.result .star.on:nth-child(2) { animation-delay: .15s; }
-.result .star.on:nth-child(3) { animation-delay: .3s; }
-@keyframes pop { from { transform: scale(0); } 70% { transform: scale(1.2); } }
-.result h2 { font-size: 26px; }
-.result .stat { color: var(--muted); font-variant-numeric: tabular-nums; }
-.review { width: 100%; text-align: left; display: grid; gap: 8px; }
-.review h3 { margin: 8px 0 0; font-size: 15px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
-.review .item { padding: 12px 14px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); font-size: 15px; }
-.review .item b { display: block; color: var(--ok); }
-.actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; width: 100%; }
-.btn { padding: 13px 22px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--surface); font-weight: 600; }
-.btn.main { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.result { justify-items: center; text-align: center; padding-top: 18px; }
+.big-stars { display: flex; gap: 8px; }
+.big-stars .star { width: 66px; height: 66px; filter: drop-shadow(0 5px 0 rgba(0,0,0,.25)); }
+.big-stars .star.on { animation: starpop .5s cubic-bezier(.2,.8,.2,1) backwards; }
+.big-stars .star.on:nth-child(2) { animation-delay: .18s; }
+.big-stars .star.on:nth-child(3) { animation-delay: .36s; }
+@keyframes starpop { from { transform: scale(0) rotate(-40deg); } 70% { transform: scale(1.25) rotate(8deg); } }
+.result h2 { font: 800 26px/1.15 var(--f-display); }
+.result .pts { font: 800 44px/1 var(--f-display); color: var(--yellow); }
+.result .pts small { display: block; font: 700 14px var(--f-body); color: var(--muted); margin-top: 6px; }
+.result .stat { color: var(--muted); font-weight: 700; }
+.review { width: 100%; text-align: left; display: grid; gap: 10px; }
+.review h3 { font-size: 13px; font-weight: 900; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.review .item { padding: 14px 16px; border-radius: 16px; background: var(--card); font-weight: 700; }
+.review .item b { display: block; color: var(--mint); margin-top: 4px; }
+.review .item.verse-item { font: 500 17px/1.45 var(--f-verse); }
+.actions { display: grid; gap: 12px; width: 100%; }
 
 #toast {
-  position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 20px);
-  max-width: calc(100% - 32px); padding: 12px 18px; border-radius: 12px;
-  background: var(--ink); color: var(--bg); font-weight: 600; font-size: 15px;
-  opacity: 0; pointer-events: none; transition: opacity .2s ease, transform .2s ease; z-index: 10;
+  position: fixed; left: 50%; top: calc(16px + env(safe-area-inset-top, 0px)); transform: translate(-50%, -20px);
+  max-width: calc(100% - 32px); padding: 12px 18px; border-radius: 14px; background: var(--page); color: var(--page-ink);
+  font-weight: 800; opacity: 0; pointer-events: none; transition: opacity .2s ease, transform .2s ease; z-index: 20;
+  box-shadow: 0 10px 30px -10px rgba(0,0,0,.6);
 }
 #toast.show { opacity: 1; transform: translate(-50%, 0); }
+#fx { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 15; }
 
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation: none !important; transition: none !important; }
-}
+@media (max-width: 370px) { .tiles { grid-template-columns: 1fr; } .tile { min-height: 0; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>
 <div id="app"></div>
 <div id="toast" role="status" aria-live="polite"></div>
+<canvas id="fx" aria-hidden="true"></canvas>
 <script>
 /*
-  Материал параграфа. Сейчас он записан вручную.
-  Потом ровно такой же набор будет присылать нейросеть по фото страниц учебника:
-  деятели, термины, события с годами, точки на карте и вопросы к ним.
+  Уроки. Сейчас записаны вручную; потом такой же набор будет присылать нейросеть по фото учебника.
 */
-const LESSON = {
-  subject: 'История России',
-  grade: '7 класс',
+const HISTORY = {
+  id: 'smuta', kind: 'history', color: 'c-pink',
+  subject: 'История России · 7 класс',
   title: 'Смутное время',
   years: '1598–1613',
   persons: [
@@ -291,355 +397,776 @@ const LESSON = {
   },
 };
 
+const POEM = {
+  id: 'perchatka', kind: 'poem', color: 'c-violet',
+  subject: 'Литература · наизусть',
+  title: 'Перчатка',
+  author: 'Фридрих Шиллер',
+  translator: 'перевод В. А. Жуковского',
+  text: `Перед своим зверинцем,
+С баронами, с наследным принцем,
+Король Франциск сидел;
+С высокого балкона он глядел
+На поприще, сраженья ожидая;
+За королем, обворожая
+Цветущей прелестию взгляд,
+Придворных дам являлся пышный ряд.
+
+Король дал знак рукою —
+Со стуком растворилась дверь,
+И грозный зверь
+С огромной головою,
+Косматый лев
+Выходит;
+Кругом глаза угрюмо водит;
+И вот, все оглядев,
+Наморщил лоб с осанкой горделивой,
+Пошевелил густою гривой,
+И потянулся, и зевнул,
+И лег. Король опять рукой махнул —
+Затвор железной двери грянул,
+И смелый тигр из-за решетки прянул;
+Но видит льва, робеет и ревет,
+Себя хвостом по ребрам бьет,
+И крадется, косяся взглядом,
+И лижет морду языком,
+И, обошедши льва кругом,
+Рычит и с ним ложится рядом.
+И в третий раз король махнул рукой —
+Два барса дружною четой
+В один прыжок над тигром очутились;
+Но он удар им тяжкой лапой дал,
+А лев с рыканьем встал…
+Они смирились,
+Оскалив зубы, отошли,
+И зарычали, и легли.
+
+И гости ждут, чтоб битва началася.
+Вдруг женская с балкона сорвалася
+Перчатка… все глядят за ней…
+Она упала меж зверей.
+Тогда на рыцаря Делоржа с лицемерной
+И колкою улыбкою глядит
+Его красавица и говорит:
+«Когда меня, мой рыцарь верный,
+Ты любишь так, как говоришь,
+Ты мне перчатку возвратишь».
+
+Делорж, не отвечав ни слова,
+К зверям идет,
+Перчатку смело он берет
+И возвращается к собранью снова.
+У рыцарей и дам при дерзости такой
+От страха сердце помутилось;
+А витязь молодой,
+Как будто ничего с ним не случилось,
+Спокойно всходит на балкон;
+Рукоплесканьем встречен он;
+Его приветствуют красавицыны взгляды…
+Но, холодно приняв привет ее очей,
+В лицо перчатку ей
+Он бросил и сказал: «Не требую награды».`,
+};
+const LESSONS = [HISTORY, POEM];
+
+/* ---------- Значки ---------- */
+const IC = {
+  link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+  cards: '<rect x="3" y="7" width="11" height="14" rx="2"/><path d="M8 3h11a2 2 0 0 1 2 2v13"/>',
+  hourglass: '<path d="M6 3h12M6 21h12M8 3v3l4 6 4-6V3M8 21v-3l4-6 4 6v3"/>',
+  pin: '<path d="M12 21s-7-6.3-7-12a7 7 0 0 1 14 0c0 5.7-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/>',
+  eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  blocks: '<rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/><rect x="8" y="3" width="8" height="8" rx="1.5"/>',
+  next: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+  gap: '<path d="M4 7h5a2 2 0 1 1 4 0h5v5a2 2 0 1 1 0 4v4H4z"/>',
+  mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
+  camera: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+  back: '<path d="M15 5l-7 7 7 7"/>',
+  sound: '<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/>',
+  mute: '<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/>',
+  crown: '<path d="M3 8l4 4 5-7 5 7 4-4-2 11H5z"/>',
+  feather: '<path d="M20 4C10 4 5 10 5 19"/><path d="M20 4c0 8-5 12-12 12M9 12h6"/>',
+};
+const icon = (n) => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${IC[n]}</svg>`;
+const STAR = '<path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z"/>';
+const star = (on) => `<svg class="star${on ? ' on' : ''}" viewBox="0 0 24 24" aria-hidden="true">${STAR}</svg>`;
+const stars = (n) => `<span class="stars">${[1, 2, 3].map((i) => star(i <= n)).join('')}</span>`;
+const FLAME = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22c4 0 7-3 7-7 0-4-3-6-4-10-2 2-3 4-3 6-1-1-2-2-2-4-3 2-5 5-5 8 0 4 3 7 7 7z"/></svg>';
+
 /* ---------- Мелочи ---------- */
 const $app = document.getElementById('app');
 const $toast = document.getElementById('toast');
 const store = {
-  get(k) { try { return JSON.parse(localStorage.getItem('trener:' + k)); } catch (e) { return null; } },
-  set(k, v) { try { localStorage.setItem('trener:' + k, JSON.stringify(v)); } catch (e) { /* без памяти тоже работает */ } },
+  get(k) { try { return JSON.parse(localStorage.getItem('uchu:' + k)); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem('uchu:' + k, JSON.stringify(v)); } catch (e) { /* без памяти тоже работает */ } },
 };
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-function shuffle(a) {
-  a = [...a];
-  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
-  return a;
+function shuffle(a) { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function chunk(a, n) { const k = Math.ceil(a.length / n), size = Math.ceil(a.length / k), out = []; for (let i = 0; i < a.length; i += size) out.push(a.slice(i, i + size)); return out; }
+const plural = (n, one, few, many) => { const a = n % 10, b = n % 100; return a === 1 && b !== 11 ? one : a >= 2 && a <= 4 && (b < 12 || b > 14) ? few : many; };
+let toastTimer;
+function toast(msg) { $toast.textContent = msg; $toast.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => $toast.classList.remove('show'), 1700); }
+
+/* Звук: короткие сигналы, собранные прямо в браузере. Включается после первого нажатия. */
+let soundOn = store.get('sound') !== false;
+let actx = null;
+function sfx(type) {
+  if (!soundOn) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const notes = { ok: [660, 990], bad: [200, 150], win: [523, 659, 784, 1047], tap: [520] }[type];
+    notes.forEach((f, i) => {
+      const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime + i * 0.09;
+      o.type = type === 'bad' ? 'sawtooth' : 'triangle'; o.frequency.value = f;
+      const vol = type === 'bad' ? 0.05 : 0.14;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+      o.connect(g).connect(actx.destination); o.start(t); o.stop(t + 0.2);
+    });
+  } catch (e) { /* без звука */ }
 }
-function chunk(a, n) {
-  const k = Math.ceil(a.length / n), size = Math.ceil(a.length / k), out = [];
-  for (let i = 0; i < a.length; i += size) out.push(a.slice(i, i + size));
+function buzz() { try { navigator.vibrate && navigator.vibrate(60); } catch (e) { /* нет вибрации */ } }
+
+/* Конфетти */
+function confetti() {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const cv = document.getElementById('fx'), ctx = cv.getContext('2d');
+  const W = cv.width = innerWidth * devicePixelRatio, H = cv.height = innerHeight * devicePixelRatio;
+  const cols = ['#ffd23f', '#ff5d8f', '#2fe0a6', '#4cb8ff', '#8a6bff', '#ff9a3c'];
+  const ps = Array.from({ length: 140 }, () => ({
+    x: W / 2 + (Math.random() - .5) * W * .3, y: H * .35, vx: (Math.random() - .5) * 18 * devicePixelRatio,
+    vy: (-Math.random() * 16 - 6) * devicePixelRatio, s: (6 + Math.random() * 7) * devicePixelRatio,
+    r: Math.random() * 6, vr: (Math.random() - .5) * .4, c: cols[Math.floor(Math.random() * cols.length)],
+  }));
+  let t = 0;
+  (function frame() {
+    ctx.clearRect(0, 0, W, H);
+    ps.forEach((p) => {
+      p.vy += .45 * devicePixelRatio; p.vx *= .99; p.x += p.vx; p.y += p.vy; p.r += p.vr;
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.fillStyle = p.c; ctx.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2); ctx.restore();
+    });
+    if (++t < 160) requestAnimationFrame(frame); else ctx.clearRect(0, 0, W, H);
+  })();
+}
+
+/* ---------- Стихотворение: строки ---------- */
+const LINES = [];
+POEM.text.split(/\n\s*\n/).forEach((st, si) => st.split('\n').forEach((t) => LINES.push({ t: t.trim(), st: si })));
+LINES.forEach((l, i) => { l.i = i; });
+const WORD = /[А-Яа-яЁёA-Za-z]+(?:-[А-Яа-яЁё]+)*/g;
+function tokens(line) {
+  const out = []; let last = 0;
+  line.replace(WORD, (w, pos) => { if (pos > last) out.push({ s: line.slice(last, pos) }); out.push({ s: w, w: true }); last = pos + w.length; return w; });
+  if (last < line.length) out.push({ s: line.slice(last) });
   return out;
 }
-let toastTimer;
-function toast(msg) {
-  $toast.textContent = msg; $toast.classList.add('show');
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => $toast.classList.remove('show'), 1800);
+const wordsOf = (line) => line.match(WORD) || [];
+const norm = (w) => w.toLowerCase().replace(/ё/g, 'е');
+let range = store.get('range'); // {a, b} — номера первой и последней строки отрывка
+const selLines = () => (range ? LINES.slice(range.a, range.b + 1) : []);
+const rangeKey = () => (range ? range.a + '-' + range.b : '');
+function verseHtml(lines, renderLine) {
+  let html = '', prev = null;
+  lines.forEach((l) => { if (prev && l.st !== prev.st) html += '<span class="gap"></span>'; html += `<span class="ln">${renderLine(l)}</span>`; prev = l; });
+  return html;
 }
-const STAR = '<path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z"/>';
-const stars = (n) => [1, 2, 3].map((i) => `<svg class="star${i <= n ? ' on' : ''}" viewBox="0 0 24 24" aria-hidden="true">${STAR}</svg>`).join('');
-const plural = (n, one, few, many) => {
-  const m10 = n % 10, m100 = n % 100;
-  return m10 === 1 && m100 !== 11 ? one : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? few : many;
-};
 
-/* ---------- Игры ---------- */
-let game = null;
+/* ---------- Каталог игр ---------- */
+const HISTORY_GAMES = [
+  { id: 'match', name: 'Соедини', sub: 'Кто что сделал', icon: 'link', color: 'c-pink', make: makeMatch },
+  { id: 'memory', name: 'Мемори', sub: 'Термин и его значение', icon: 'cards', color: 'c-violet', make: makeMemory },
+  { id: 'timeline', name: 'Лента времени', sub: 'Событие и его год', icon: 'hourglass', color: 'c-orange', make: makeTimeline },
+  { id: 'map', name: 'Карта Смуты', sub: 'Где это было', icon: 'pin', color: 'c-mint', make: makeMap },
+];
+const POEM_GAMES = [
+  { id: 'fade', name: 'Исчезающий текст', sub: 'Читай вслух — слова прячутся', icon: 'eye', color: 'c-violet', make: makeFade },
+  { id: 'build', name: 'Собери строку', sub: 'Сложи слова по порядку', icon: 'blocks', color: 'c-sky', make: makeBuild },
+  { id: 'next', name: 'Что дальше?', sub: 'Выбери следующую строку', icon: 'next', color: 'c-orange', make: makeNext },
+  { id: 'gap', name: 'Пропущенное слово', sub: 'Какое слово выпало', icon: 'gap', color: 'c-pink', make: makeGap },
+  { id: 'recite', name: 'Расскажи наизусть', sub: 'Сам, с проверкой по строкам', icon: 'mic', color: 'c-mint', make: makeRecite },
+];
+const gamesOf = (L) => (L.kind === 'poem' ? POEM_GAMES : HISTORY_GAMES);
+const bestKey = (L, gid) => L.id + ':' + gid + (L.kind === 'poem' ? ':' + rangeKey() : '');
+const best = () => store.get('best') || {};
 
-// Общая основа: счёт верных и неверных, список того, на чём ошибся.
+/* ---------- Состояние экрана ---------- */
+const S = { screen: 'home', lesson: null, game: null, enter: true, pick: null };
+function go(screen, patch = {}) { Object.assign(S, patch, { screen, enter: true }); draw(); window.scrollTo(0, 0); }
+
+/* ---------- Основа игры ---------- */
 function base(total) {
   return {
-    total, right: 0, wrong: 0, missed: new Map(), flash: null, finished: false,
-    miss(key, q, right) { this.wrong++; if (!this.missed.has(key)) this.missed.set(key, { q, right }); },
-    stars() {
-      const first = (this.total - this.missed.size) / this.total;
-      return first >= 0.9 ? 3 : first >= 0.6 ? 2 : 1;
-    },
+    total, right: 0, wrong: 0, score: 0, combo: 0, missed: new Map(), finished: false, flash: null, just: null, bumped: false,
+    ok(id) { this.right++; this.combo++; this.score += 10 + (this.combo >= 3 ? 5 : 0); this.just = id; this.bumped = true; sfx('ok'); },
+    bad(key, q, right) { this.wrong++; this.combo = 0; if (key != null && !this.missed.has(key)) this.missed.set(key, { q, right }); sfx('bad'); buzz(); },
+    stars() { const f = (this.total - this.missed.size) / this.total; return f >= 0.9 ? 3 : f >= 0.6 ? 2 : 1; },
   };
 }
-function flash(id, cls, ms = 650) {
-  game.flash = { id, cls }; draw();
-  const g = game;
-  setTimeout(() => { if (game === g && g.flash && g.flash.id === id) { g.flash = null; draw(); } }, ms);
+function flash(id, ms = 520) {
+  const g = S.game; g.flash = id; draw();
+  setTimeout(() => { if (S.game === g && g.flash === id) { g.flash = null; draw(); } }, ms);
 }
+function later(fn, ms) { const g = S.game; setTimeout(() => { if (S.game === g && S.screen === 'game') fn(); }, ms); }
 function maybeFinish() {
-  if (game.done() < game.total) return;
-  const g = game;
-  setTimeout(() => {
-    if (game !== g) return;
+  const g = S.game;
+  if (g.done() < g.total || g.finishing) return;
+  g.finishing = true;
+  later(() => {
     g.finished = true;
-    const best = store.get('best') || {};
-    best[g.id] = Math.max(best[g.id] || 0, g.stars());
-    store.set('best', best);
-    draw();
-  }, 700);
+    const b = best(), k = bestKey(S.lesson, g.id);
+    b[k] = Math.max(b[k] || 0, g.stars()); store.set('best', b);
+    go('result');
+    sfx('win'); if (g.stars() >= 2) confetti();
+  }, 650);
 }
 
-const GAMES = [
-  { id: 'match', kind: 'Пары', name: 'Соедини', sub: 'Кто что сделал: 10 деятелей Смуты', make: makeMatch },
-  { id: 'memory', kind: 'Пары', name: 'Мемори', sub: 'Найди термин и его значение', make: makeMemory },
-  { id: 'timeline', kind: 'Порядок', name: 'Лента времени', sub: 'Расставь 9 событий по годам', make: makeTimeline },
-  { id: 'map', kind: 'Карта', name: 'Карта Смуты', sub: 'Подпиши города и найди, где что было', make: makeMap },
-];
-
-/* Соедини: деятель → что он сделал */
-function makeMatch() {
-  const g = base(LESSON.persons.length);
+/* ===== История ===== */
+function makeMatch(L) {
+  const g = base(L.persons.length);
   g.title = 'Соедини';
-  g.rounds = chunk(shuffle(LESSON.persons), 5);
-  g.r = 0; g.doneIds = new Set();
-  const setup = () => { const items = g.rounds[g.r]; g.left = shuffle(items); g.deeds = shuffle(items); g.sel = null; };
+  g.rounds = chunk(shuffle(L.persons), 5); g.r = 0; g.doneIds = new Set();
+  const setup = () => { const it = g.rounds[g.r]; g.left = shuffle(it); g.deeds = shuffle(it); g.sel = null; };
   setup();
   g.done = () => g.doneIds.size;
-  g.hint = () => `Нажми на имя, потом на то, что этот человек сделал. Раунд ${g.r + 1} из ${g.rounds.length}.`;
+  g.hint = () => `Нажми на имя, потом на то, что сделал этот человек. Раунд ${g.r + 1} из ${g.rounds.length}`;
   g.body = () => `
-    <div class="chips">${g.left.map((p) => `<button class="chip${g.doneIds.has(p.id) ? ' done' : ''}${g.sel && g.sel.side === 'l' && g.sel.id === p.id ? ' sel' : ''}" data-act="l" data-id="${p.id}">${esc(p.name)}</button>`).join('')}</div>
+    <div class="names">${g.left.filter((p) => !g.doneIds.has(p.id)).map((p) => `<button class="b3 c-violet name-chip${g.sel && g.sel.side === 'l' && g.sel.id === p.id ? ' sel' : ''}" data-act="l" data-id="${p.id}">${esc(p.name)}</button>`).join('')}</div>
     <div class="deeds">${g.deeds.map((p) => {
-      const ok = g.doneIds.has(p.id), bad = g.flash && g.flash.id === p.id;
-      const sel = g.sel && g.sel.side === 'r' && g.sel.id === p.id;
-      return `<button class="deed${ok ? ' ok' : ''}${sel ? ' sel' : ''}${bad ? ' bad' : ''}" data-act="r" data-id="${p.id}">${ok ? `<span class="who">${esc(p.name)}</span>` : ''}${esc(p.text)}</button>`;
+      const ok = g.doneIds.has(p.id), bad = g.flash === p.id, sel = g.sel && g.sel.side === 'r' && g.sel.id === p.id;
+      return `<button class="deed${ok ? ' ok' : ''}${sel ? ' sel' : ''}${bad ? ' bad shake' : ''}${g.just === p.id ? ' pop' : ''}" data-act="r" data-id="${p.id}">${ok ? `<span class="who">${esc(p.name)}</span>` : ''}${esc(p.text)}</button>`;
     }).join('')}</div>`;
   g.on = (side, id) => {
     if (g.doneIds.has(id)) return;
-    if (!g.sel || g.sel.side === side) { g.sel = { side, id }; return draw(); }
+    if (!g.sel || g.sel.side === side) { g.sel = { side, id }; sfx('tap'); return draw(); }
     const name = side === 'l' ? id : g.sel.id, deed = side === 'r' ? id : g.sel.id;
     g.sel = null;
     if (name === deed) {
-      g.right++; g.doneIds.add(name);
-      if (g.rounds[g.r].every((p) => g.doneIds.has(p.id)) && g.r < g.rounds.length - 1) {
-        draw(); setTimeout(() => { if (game === g) { g.r++; setup(); draw(); } }, 600); return;
-      }
-      draw(); maybeFinish();
+      g.ok(name); g.doneIds.add(name); draw();
+      if (g.rounds[g.r].every((p) => g.doneIds.has(p.id)) && g.r < g.rounds.length - 1) { later(() => { g.r++; setup(); g.just = null; toast('Раунд ' + (g.r + 1)); draw(); }, 700); return; }
+      maybeFinish();
     } else {
-      const p = LESSON.persons.find((x) => x.id === name);
-      g.miss(name, p.name, p.text);
-      flash(deed, 'bad');
+      const p = L.persons.find((x) => x.id === name);
+      g.bad(name, p.name, p.text); flash(deed);
     }
   };
-  g.review = () => [...g.missed.values()];
   return g;
 }
 
-/* Мемори: термин ↔ значение */
-function makeMemory() {
-  const g = base(LESSON.terms.length);
+function makeMemory(L) {
+  const g = base(L.terms.length);
   g.title = 'Мемори';
-  g.rounds = chunk(shuffle(LESSON.terms), 4);
-  g.r = 0; g.pairs = 0; g.open = []; g.lock = false;
-  const setup = () => {
-    g.cards = shuffle(g.rounds[g.r].flatMap((t) => [
-      { pid: t.id, type: 'term', text: t.term }, { pid: t.id, type: 'def', text: t.text },
-    ]));
-    g.open = [];
-  };
+  g.rounds = chunk(shuffle(L.terms), 4); g.r = 0; g.pairs = 0; g.open = []; g.stuck = false;
+  const setup = () => { g.cards = shuffle(g.rounds[g.r].flatMap((t) => [{ pid: t.id, type: 'term', text: t.term }, { pid: t.id, type: 'def', text: t.text }])); g.open = []; g.stuck = false; };
   setup();
   g.done = () => g.pairs;
-  g.hint = () => `Открывай по две карточки и ищи пару: термин и его значение. Раунд ${g.r + 1} из ${g.rounds.length}.`;
-  g.body = () => `<div class="memo">${g.cards.map((c, i) => {
-    const shown = c.matched || g.open.includes(i);
-    if (!shown) return `<button class="mcard back" data-act="card" data-id="${i}" aria-label="Закрытая карточка">?</button>`;
-    const miss = g.lock && g.open.includes(i);
-    return `<button class="mcard ${c.type}${c.matched ? ' matched' : ' open'}${miss ? ' miss' : ''}" data-act="card" data-id="${i}">
-      <span class="lbl">${c.type === 'term' ? 'термин' : 'значение'}</span><span class="t">${esc(c.text)}</span></button>`;
-  }).join('')}</div>`;
+  g.hint = () => g.stuck
+    ? ''
+    : `Фиолетовые карточки — термины, голубые — значения. Найди пару. Раунд ${g.r + 1} из ${g.rounds.length}`;
+  g.body = () => `
+    ${g.stuck ? '<div class="banner pop">Не пара. Прочитай обе карточки и нажми на любую, чтобы играть дальше</div>' : ''}
+    <div class="memo">${g.cards.map((c, i) => {
+      const shown = c.matched || g.open.includes(i);
+      if (!shown) {
+        return `<button class="mc back b3 ${c.type === 'term' ? 'c-violet' : 'c-sky'}" data-act="card" data-id="${i}" aria-label="${c.type === 'term' ? 'Закрытый термин' : 'Закрытое значение'}">
+          <span class="lbl">${c.type === 'term' ? 'термин' : 'значение'}</span><span class="q">?</span></button>`;
+      }
+      const cls = c.matched ? ' done' : g.stuck ? ' miss' : '';
+      return `<button class="mc face ${c.type}${cls}${g.just === i ? ' flip' : ''}" data-act="card" data-id="${i}">
+        <span class="lbl">${c.matched ? '✓ ' : ''}${c.type === 'term' ? 'термин' : 'значение'}</span><span class="t">${esc(c.text)}</span></button>`;
+    }).join('')}</div>`;
   g.on = (act, id) => {
-    const i = +id, c = g.cards[i];
-    if (g.lock || c.matched || g.open.includes(i)) return;
-    g.open.push(i);
-    if (g.open.length < 2) return draw();
+    const i = +id;
+    if (g.stuck) {
+      // Неверная пара висит открытой, пока ребёнок сам не нажмёт: можно спокойно прочитать.
+      const was = g.open; g.open = []; g.stuck = false; g.just = null;
+      if (was.includes(i) || g.cards[i].matched) return draw();
+    }
+    const c = g.cards[i];
+    if (c.matched || g.open.includes(i)) return;
+    g.open.push(i); g.just = i;
+    if (g.open.length < 2) { sfx('tap'); return draw(); }
     const [a, b] = g.open.map((k) => g.cards[k]);
     if (a.pid === b.pid) {
-      a.matched = b.matched = true; g.open = []; g.right++; g.pairs++;
-      if (g.cards.every((x) => x.matched) && g.r < g.rounds.length - 1) {
-        draw(); setTimeout(() => { if (game === g) { g.r++; setup(); draw(); } }, 700); return;
-      }
-      draw(); maybeFinish();
+      a.matched = b.matched = true; g.open = []; g.pairs++; g.ok(i); draw();
+      if (g.cards.every((x) => x.matched) && g.r < g.rounds.length - 1) { later(() => { g.r++; setup(); g.just = null; toast('Раунд ' + (g.r + 1)); draw(); }, 1200); return; }
+      maybeFinish();
     } else {
-      g.wrong++; g.lock = true; draw();
-      setTimeout(() => { if (game === g) { g.open = []; g.lock = false; draw(); } }, 1400);
+      g.stuck = true; g.bad(null); draw();
     }
   };
-  // В мемори промахи неизбежны: считаем их относительно числа пар.
   g.stars = () => { const k = g.wrong / g.total; return k <= 1 ? 3 : k <= 2 ? 2 : 1; };
   g.stat = () => `Пар: ${g.total} · промахов: ${g.wrong}`;
-  g.review = () => LESSON.terms.map((t) => ({ q: t.term.replace('­', ''), right: t.text }));
+  g.review = () => L.terms.map((t) => ({ q: t.term.replace('­', ''), right: t.text }));
   g.reviewTitle = 'Все термины параграфа';
   return g;
 }
 
-/* Лента времени: событие → год */
-function makeTimeline() {
-  const g = base(LESSON.events.length);
+function makeTimeline(L) {
+  const g = base(L.events.length);
   g.title = 'Лента времени';
-  g.queue = shuffle(LESSON.events);
-  g.placed = new Set();
+  g.queue = shuffle(L.events); g.placed = new Set();
   g.done = () => g.placed.size;
-  g.hint = () => 'Нажми на год, когда это случилось.';
+  g.hint = () => 'Нажми на год, когда это случилось';
   g.body = () => {
     const cur = g.queue[0];
-    const years = [...LESSON.events].sort((a, b) => a.year - b.year);
-    return `
-      ${cur ? `<div class="current"><div class="lbl">Когда это было?</div><p>${esc(cur.text)}</p></div>` : ''}
-      <ol class="tl">${years.map((e) => {
-        const ok = g.placed.has(e.id), bad = g.flash && g.flash.id === e.id;
-        return `<li><button class="year${ok ? ' ok' : ''}${bad ? ' bad' : ''}" data-act="year" data-id="${e.id}">${e.year}</button>
-          <div class="txt${ok ? '' : ' empty'}">${ok ? esc(e.text) : ''}</div></li>`;
+    const ys = [...L.events].sort((a, b) => a.year - b.year);
+    return `${cur ? `<div class="ask b3 c-pink" style="cursor:default"><div class="lbl">Когда это было?</div><p class="${g.just !== 'ask' ? 'pop' : ''}">${esc(cur.text)}</p></div>` : ''}
+      <ol class="tl">${ys.map((e) => {
+        const ok = g.placed.has(e.id), bad = g.flash === e.id;
+        return `<li><button class="b3 c-card yr${ok ? ' ok' : ''}${bad ? ' bad shake' : ''}" data-act="year" data-id="${e.id}">${e.year}</button>
+          <div class="tx${ok ? '' : ' empty'}${g.just === e.id ? ' pop' : ''}">${ok ? esc(e.text) : ''}</div></li>`;
       }).join('')}</ol>`;
   };
   g.on = (act, id) => {
     const cur = g.queue[0];
     if (!cur || g.placed.has(id)) return;
-    if (id === cur.id) {
-      g.right++; g.placed.add(id); g.queue.shift(); draw(); maybeFinish();
-    } else {
-      g.miss(cur.id, cur.text, String(cur.year));
-      flash(id, 'bad');
-    }
+    if (id === cur.id) { g.ok(id); g.placed.add(id); g.queue.shift(); draw(); maybeFinish(); }
+    else { g.just = 'ask'; g.bad(cur.id, cur.text, String(cur.year)); flash(id); }
   };
-  g.review = () => [...g.missed.values()];
   return g;
 }
 
-/* Карта: сначала подписать города, потом найти, где что было */
 const MAP_W = 640, MAP_H = 360, K = 62;
 const proj = (lon, lat) => [Math.round((lon - 27.5) * 0.56 * K), Math.round((59.2 - lat) * K)];
-
-function mapSvg(g, labeled) {
-  const M = LESSON.map;
+function mapSvg(L, g, labeled) {
+  const M = L.map;
   const rivers = M.rivers.map((r) => `<polyline class="m-river" points="${r.map((p) => proj(...p).join(',')).join(' ')}"/>`).join('');
-  const [lx, ly] = proj(31.3, 58.25);
-  const km100 = Math.round(K * 100 / 111);
+  const grid = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((k) => `<line class="m-grid" x1="${k * 70}" y1="0" x2="${k * 70}" y2="${MAP_H}"/><line class="m-grid" x1="0" y1="${k * 70}" x2="${MAP_W}" y2="${k * 70}"/>`).join('');
+  const [lx, ly] = proj(31.3, 58.25), km100 = Math.round(K * 100 / 111);
+  const cap = (lon, lat, dy, t) => { const [x, y] = proj(lon, lat); return `<text class="m-cap" x="${x}" y="${y + dy}">${t}</text>`; };
   const pts = M.points.map((p) => {
     const [x, y] = proj(p.lon, p.lat);
-    const cls = g.flash && g.flash.id === p.id ? g.flash.cls : g.sel === p.id ? 'sel' : labeled(p.id) && g.phase === 'label' ? 'ok' : '';
+    const cls = g.flash === p.id ? 'bad' : g.okFlash === p.id ? 'ok' : g.sel === p.id ? 'sel' : labeled(p.id) && g.phase === 'label' ? 'ok' : '';
     const label = labeled(p.id) ? `<text x="${x + p.dx}" y="${y + p.dy}" text-anchor="${p.anchor}">${esc(p.name)}</text>` : '';
     return `<g class="pt ${cls}" data-act="pt" data-id="${p.id}" role="button" tabindex="0" aria-label="${labeled(p.id) ? esc(p.name) : 'Точка на карте'}">
-      <circle class="hit" cx="${x}" cy="${y}" r="22"/><circle class="dot" cx="${x}" cy="${y}" r="${cls ? 11 : 9}"/>${label}</g>`;
+      <circle class="hit" cx="${x}" cy="${y}" r="24"/><circle class="halo" cx="${x}" cy="${y}" r="14"/><circle class="dot" cx="${x}" cy="${y}" r="${cls ? 12 : 10}"/>${label}</g>`;
   }).join('');
   return `<div class="mapbox"><svg viewBox="0 0 ${MAP_W} ${MAP_H}" role="img" aria-label="Схема: Русское государство в начале XVII века">
-    <rect class="m-land" width="${MAP_W}" height="${MAP_H}"/>
-    <ellipse class="m-lake" cx="${lx}" cy="${ly}" rx="16" ry="10"/>
-    ${rivers}
-    <text class="m-cap" x="${proj(41.6, 57.6)[0]}" y="${proj(41.6, 57.6)[1] + 30}">р. Волга</text>
-    <text class="m-cap" x="${proj(39.9, 54.4)[0]}" y="${proj(39.9, 54.4)[1] + 8}">р. Ока</text>
-    <text class="m-cap" x="${proj(28.2, 53.8)[0]}" y="${proj(28.2, 53.8)[1] + 6}">р. Днепр</text>
+    <rect class="m-land" width="${MAP_W}" height="${MAP_H}"/>${grid}
+    <ellipse class="m-lake" cx="${lx}" cy="${ly}" rx="16" ry="10"/>${rivers}
+    ${cap(41.6, 57.6, 30, 'р. Волга')}${cap(39.9, 54.4, 8, 'р. Ока')}${cap(28.2, 53.8, 6, 'р. Днепр')}
     <g transform="translate(${MAP_W - 130} ${MAP_H - 22})"><path class="m-scale" d="M0 -6V0H${km100}V-6"/><text class="m-cap" x="${km100 + 8}" y="4">100 км</text></g>
-    ${pts}
-  </svg></div>`;
+    ${pts}</svg></div>`;
 }
-
-function makeMap() {
-  const M = LESSON.map;
+function makeMap(L) {
+  const M = L.map;
   const g = base(M.points.length + M.questions.length);
   g.title = 'Карта Смуты';
-  g.phase = 'label';
-  g.named = new Set();
-  g.chips = shuffle(M.points);
-  g.sel = null; g.chip = null;
+  g.phase = 'label'; g.named = new Set(); g.chips = shuffle(M.points); g.sel = null; g.chip = null;
   g.qs = shuffle(M.questions); g.qi = 0;
   g.done = () => g.named.size + g.qi;
-  g.hint = () => g.phase === 'label'
-    ? 'Выбери название и нажми на точку, где этот город.'
-    : 'Нажми на место, о котором говорится в вопросе.';
+  g.hint = () => (g.phase === 'label' ? 'Выбери название и нажми на точку, где этот город' : 'Нажми на место, о котором говорится');
+  const name = (id) => M.points.find((p) => p.id === id).name;
   g.body = () => {
     if (g.phase === 'label') {
-      return mapSvg(g, (id) => g.named.has(id)) + `<div class="chips">${g.chips.map((p) =>
-        `<button class="chip${g.named.has(p.id) ? ' done' : ''}${g.chip === p.id ? ' sel' : ''}" data-act="chip" data-id="${p.id}">${esc(p.name)}</button>`).join('')}</div>`;
+      return mapSvg(L, g, (id) => g.named.has(id)) + `<div class="names">${g.chips.filter((p) => !g.named.has(p.id)).map((p) =>
+        `<button class="b3 c-mint name-chip${g.chip === p.id ? ' sel' : ''}" data-act="chip" data-id="${p.id}">${esc(p.name)}</button>`).join('')}</div>`;
     }
     const q = g.qs[g.qi];
-    return (q ? `<div class="question"><span class="lbl">Где это было? ${g.qi + 1} из ${g.qs.length}</span>${esc(q.q)}</div>` : '')
-      + mapSvg(g, () => true);
-  };
-  const name = (id) => M.points.find((p) => p.id === id).name;
-  const tryLabel = () => {
-    if (!g.chip || !g.sel) return draw();
-    const chip = g.chip, pt = g.sel;
-    g.chip = null; g.sel = null;
-    if (chip === pt) {
-      g.right++; g.named.add(pt); draw();
-      if (g.named.size === M.points.length) {
-        setTimeout(() => { if (game === g) { g.phase = 'where'; toast('Все города подписаны. Теперь вопросы'); draw(); } }, 700);
-      }
-    } else {
-      g.miss('l:' + chip, `Где ${name(chip)}?`, 'Отметь на схеме ещё раз');
-      flash(pt, 'bad');
-    }
+    return (q ? `<div class="ask b3 c-pink" style="cursor:default"><div class="lbl">Где это было? ${g.qi + 1} из ${g.qs.length}</div><p class="pop">${esc(q.q)}</p></div>` : '') + mapSvg(L, g, () => true);
   };
   g.on = (act, id) => {
     if (g.phase === 'label') {
       if (g.named.has(id)) return;
       if (act === 'chip') g.chip = g.chip === id ? null : id;
       if (act === 'pt') g.sel = g.sel === id ? null : id;
-      if (!g.chip && g.sel) { toast('Теперь выбери название'); }
-      return tryLabel();
+      if (!g.chip || !g.sel) { sfx('tap'); if (!g.chip && g.sel) toast('Теперь выбери название'); return draw(); }
+      const chip = g.chip, pt = g.sel; g.chip = null; g.sel = null;
+      if (chip === pt) {
+        g.ok(pt); g.named.add(pt); draw();
+        if (g.named.size === M.points.length) later(() => { g.phase = 'where'; toast('Все города на месте! Теперь вопросы'); draw(); }, 700);
+      } else { g.bad('l:' + chip, 'Где находится ' + name(chip) + '?', 'Подпиши карту ещё раз'); flash(pt); }
+      return;
     }
     const q = g.qs[g.qi];
     if (!q || act !== 'pt') return;
     if (id === q.point) {
-      g.right++; g.qi++; toast(name(id) + ' — верно'); flash(id, 'ok', 700); maybeFinish();
+      g.ok(id); g.qi++; g.okFlash = id; toast(name(id) + ' — верно!'); draw();
+      later(() => { g.okFlash = null; draw(); }, 700); maybeFinish();
+    } else { g.bad('q:' + q.point, q.q, name(q.point)); flash(id); }
+  };
+  return g;
+}
+
+/* ===== Стих ===== */
+function makeFade() {
+  const g = base(5);
+  g.title = 'Исчезающий текст';
+  g.lines = selLines(); g.level = 0; g.peek = new Set(); g.peeks = 0; g.rank = {};
+  g.lines.forEach((l) => { let k = 0; tokens(l.t).forEach((t) => { if (t.w) g.rank[l.i + ':' + k++] = Math.random(); }); });
+  g.done = () => g.level;
+  g.hint = () => [
+    'Прочитай отрывок вслух два раза. Потом нажми «Спрятать слова»',
+    'Читай вслух, пропуски говори по памяти. Забыл — нажми на пропуск',
+    'Спрятана половина. Читай вслух!',
+    'Спрятаны почти все слова. Получится!',
+    'Остались первые буквы. Читай целиком',
+    'Только первое слово строки. Рассказал? Жми «Готово»',
+  ][g.level];
+  const hide = (key, first) => (g.level === 0 ? false : g.level === 5 ? !first : g.level === 4 ? true : g.rank[key] < g.level * 0.25);
+  g.body = () => {
+    const html = verseHtml(g.lines, (l) => {
+      let k = 0;
+      return tokens(l.t).map((t) => {
+        if (!t.w) return esc(t.s);
+        const key = l.i + ':' + k, first = k === 0; k++;
+        if (!hide(key, first)) return esc(t.s);
+        if (g.peek.has(key)) return `<button class="w-hid peek" data-act="peek" data-id="${key}">${esc(t.s)}</button>`;
+        const shown = g.level === 5 ? '' : t.s[0];
+        return `<button class="w-hid" data-act="peek" data-id="${key}" aria-label="Подсказка">${esc(shown)}<span class="w-mute">${'_'.repeat(Math.max(2, Math.round((t.s.length - shown.length) * 0.8)))}</span></button>`;
+      }).join('');
+    });
+    return `<div class="page verse">${html}</div>
+      <div class="dots">${[1, 2, 3, 4, 5].map((n) => `<i class="${n <= g.level ? 'on' : ''}"></i>`).join('')}</div>
+      <div class="row2">
+        <button class="b3 c-card btn" data-act="less" ${g.level === 0 ? 'disabled' : ''}>Показать</button>
+        ${g.level < 5 ? '<button class="b3 c-violet btn" data-act="more">Спрятать слова</button>' : '<button class="b3 c-mint btn" data-act="fin">Готово</button>'}
+      </div>`;
+  };
+  g.on = (act, id) => {
+    if (act === 'peek') { if (g.peek.has(id)) g.peek.delete(id); else { g.peek.add(id); g.peeks++; } sfx('tap'); return draw(); }
+    if (act === 'more') { g.level++; g.peek.clear(); g.score += 10; g.bumped = true; sfx('ok'); return draw(); }
+    if (act === 'less') { g.level--; g.peek.clear(); return draw(); }
+    if (act === 'fin') { g.level = 5; g.right = 5; maybeFinish(); }
+  };
+  g.stars = () => (g.peeks <= 2 ? 3 : g.peeks <= 6 ? 2 : 1);
+  g.stat = () => (g.peeks ? `Подсмотрел ${g.peeks} ${plural(g.peeks, 'раз', 'раза', 'раз')}` : 'Ни разу не подсмотрел!');
+  g.review = () => [];
+  return g;
+}
+
+function makeBuild() {
+  const lines = selLines(), units = [];
+  let cur = [];
+  lines.forEach((l, k) => {
+    cur.push(l);
+    const n = cur.reduce((s, x) => s + wordsOf(x.t).length, 0);
+    const nextSame = lines[k + 1] && lines[k + 1].st === l.st;
+    if (n >= 4 || !nextSame) { units.push(cur); cur = []; }
+  });
+  if (cur.length) units.push(cur);
+  const g = base(units.length);
+  g.title = 'Собери строку';
+  g.units = units; g.u = 0;
+  const setup = () => { g.words = g.units[g.u].flatMap((l) => wordsOf(l.t)); g.pos = 0; g.chips = shuffle(g.words.map((w) => ({ w }))); g.used = new Set(); };
+  setup();
+  g.done = () => g.u;
+  g.hint = () => 'Нажимай на слова по порядку. Знаки препинания встанут сами';
+  g.body = () => {
+    const unit = g.units[g.u], prev = g.u > 0 ? g.units[g.u - 1] : [];
+    let left = g.pos;
+    const built = unit.map((l) => {
+      let s = '';
+      for (const t of tokens(l.t)) { if (t.w) { if (left <= 0) break; left--; s += esc(t.s); } else if (s) s += esc(t.s); }
+      return s;
+    });
+    let at = 0; built.forEach((s, k) => { if (s) at = k; });
+    const html = prev.map((l) => `<span class="ln ctx">${esc(l.t)}</span>`).join('')
+      + built.map((s, k) => `<span class="ln">${s}${k === at ? '<span class="cursor"></span>' : ''}</span>`).join('');
+    return `<div class="page built">${html}</div>
+      <div class="chips">${g.chips.map((c, j) => g.used.has(j) ? '' : `<button class="b3 c-sky wchip${g.flash === 'c' + j ? ' shake' : ''}" data-act="chip" data-id="${j}" ${g.flash === 'c' + j ? 'style="--c:var(--bad);--cd:var(--bad-d)"' : ''}>${esc(c.w)}</button>`).join('')}</div>`;
+  };
+  g.on = (act, id) => {
+    const j = +id, c = g.chips[j];
+    if (g.pos >= g.words.length || g.used.has(j)) return;
+    if (norm(c.w) === norm(g.words[g.pos])) {
+      g.used.add(j); g.pos++;
+      if (g.pos === g.words.length) {
+        g.ok(null); draw();
+        if (g.u < g.units.length - 1) later(() => { g.u++; setup(); draw(); }, 650); else { g.u++; maybeFinish(); }
+        return;
+      }
+      sfx('tap'); draw();
     } else {
-      g.miss('q:' + q.point, q.q, name(q.point));
-      flash(id, 'bad');
+      g.bad('u' + g.u, g.units[g.u].map((l) => l.t).join('\n'), '');
+      flash('c' + j);
     }
   };
-  g.review = () => [...g.missed.values()];
+  return g;
+}
+
+function makeNext() {
+  const lines = selLines(), tasks = [];
+  lines.forEach((l, k) => { if (k < lines.length - 1) tasks.push({ prev: l, next: lines[k + 1], before: lines[k - 1] }); });
+  const g = base(Math.max(tasks.length, 1));
+  g.title = 'Что дальше?';
+  g.tasks = tasks; g.t = 0;
+  const setup = () => {
+    const { prev, next } = g.tasks[g.t];
+    const pool = LINES.filter((l) => l.i !== next.i && l.i !== prev.i && wordsOf(l.t).length > 1)
+      .sort((a, b) => Math.abs(a.i - next.i) - Math.abs(b.i - next.i)).slice(0, 6);
+    g.opts = shuffle([next, ...shuffle(pool).slice(0, 2)]); g.okShown = false;
+  };
+  if (tasks.length) setup();
+  g.done = () => g.t;
+  g.hint = () => 'Какая строка идёт дальше?';
+  g.body = () => {
+    if (!g.tasks.length) return '<p>Выбери отрывок хотя бы из двух строк.</p>';
+    const { prev, next, before } = g.tasks[g.t];
+    return `<div class="prompt"><div class="lbl">${g.t + 1} из ${g.tasks.length}</div>
+        <div class="v">${before ? `<span class="faint">${esc(before.t)}</span><br>` : ''}${esc(prev.t)}<br>…</div></div>
+      <div class="opts">${g.opts.map((o) => {
+        const cls = g.okShown && o.i === next.i ? ' ok pop' : g.flash === 'o' + o.i ? ' bad shake' : '';
+        return `<button class="b3 c-card opt${cls}" data-act="opt" data-id="${o.i}">${esc(o.t)}</button>`;
+      }).join('')}</div>`;
+  };
+  g.on = (act, id) => {
+    if (g.okShown || g.t >= g.tasks.length) return;
+    const { prev, next } = g.tasks[g.t];
+    if (+id === next.i) {
+      g.ok(null); g.okShown = true; draw();
+      later(() => { g.t++; if (g.t < g.tasks.length) { setup(); draw(); } else maybeFinish(); }, 650);
+    } else { g.bad('n' + next.i, prev.t + '\n' + next.t, ''); flash('o' + id); }
+  };
+  return g;
+}
+
+function makeGap() {
+  const lines = selLines().filter((l) => wordsOf(l.t).some((w) => w.length >= 4));
+  const all = [...new Set(LINES.flatMap((l) => wordsOf(l.t)).filter((w) => w.length >= 4))];
+  const g = base(Math.max(lines.length, 1));
+  g.title = 'Пропущенное слово';
+  g.items = shuffle(lines).map((l) => {
+    const target = wordsOf(l.t).reduce((a, b) => (b.length > a.length ? b : a));
+    const others = shuffle(all.filter((w) => norm(w) !== norm(target) && Math.abs(w.length - target.length) <= 3)).slice(0, 3);
+    return { l, target, opts: shuffle([target, ...others]) };
+  });
+  g.k = 0; g.okShown = false;
+  g.done = () => g.k;
+  g.hint = () => 'Какое слово выпало из строки?';
+  g.body = () => {
+    if (!g.items.length) return '<p>В отрывке нет подходящих строк.</p>';
+    const it = g.items[g.k];
+    let rep = false;
+    const line = tokens(it.l.t).map((t) => {
+      if (t.w && !rep && t.s === it.target) { rep = true; return g.okShown ? `<b class="pop" style="display:inline-block">${esc(t.s)}</b>` : '<span class="blank">&nbsp;</span>'; }
+      return esc(t.s);
+    }).join('');
+    const prev = LINES[it.l.i - 1] && LINES[it.l.i - 1].st === it.l.st ? LINES[it.l.i - 1].t : '';
+    return `<div class="prompt"><div class="lbl">${g.k + 1} из ${g.items.length}</div>
+        <div class="v">${prev ? `<span class="faint">${esc(prev)}</span><br>` : ''}${line}</div></div>
+      <div class="opts">${it.opts.map((w, j) => {
+        const cls = g.okShown && w === it.target ? ' ok' : g.flash === 'w' + j ? ' bad shake' : '';
+        return `<button class="b3 c-card opt${cls}" data-act="opt" data-id="${j}">${esc(w.toLowerCase())}</button>`;
+      }).join('')}</div>`;
+  };
+  g.on = (act, id) => {
+    if (g.okShown || g.k >= g.items.length) return;
+    const it = g.items[g.k];
+    if (it.opts[+id] === it.target) {
+      g.ok(null); g.okShown = true; draw();
+      later(() => { g.okShown = false; g.k++; if (g.k < g.items.length) draw(); else maybeFinish(); }, 750);
+    } else { g.bad('g' + it.l.i, it.l.t, it.target.toLowerCase()); flash('w' + id); }
+  };
+  return g;
+}
+
+function makeRecite() {
+  const lines = selLines();
+  const g = base(lines.length);
+  g.title = 'Расскажи наизусть';
+  g.lines = lines; g.k = 0; g.state = {}; g.open = false;
+  g.done = () => g.k;
+  g.hint = () => (g.open ? 'Ты сказал так же? Отметь честно' : 'Скажи следующую строку вслух, потом открой и проверь себя');
+  g.body = () => {
+    const html = verseHtml(g.lines, (l) => {
+      const k = g.lines.indexOf(l), st = g.state[l.i];
+      if (k < g.k) return st === 'miss' ? `<span class="ln miss" style="display:inline">${esc(l.t)}</span>` : `${esc(l.t)} <span class="ok-mark">✓</span>`;
+      if (k === g.k && g.open) return `<span class="pop" style="display:inline-block">${esc(l.t)}</span>`;
+      return `<span class="ln hidden${k === g.k ? ' cur' : ''}" aria-label="Скрытая строка">${esc(l.t)}</span>`;
+    });
+    return `<div class="page verse recite">${html}</div>
+      <div class="row2">${g.open
+        ? '<button class="b3 c-pink btn" data-act="miss">Ошибся</button><button class="b3 c-mint btn" data-act="ok">Сказал верно</button>'
+        : '<button class="b3 c-violet btn" data-act="open">Открыть строку</button>'}</div>`;
+  };
+  g.on = (act) => {
+    if (g.k >= g.lines.length) return;
+    if (act === 'open') { g.open = true; sfx('tap'); return draw(); }
+    const l = g.lines[g.k];
+    if (act === 'ok') { g.ok(null); g.state[l.i] = 'ok'; }
+    if (act === 'miss') { g.bad('r' + l.i, l.t, ''); g.state[l.i] = 'miss'; }
+    g.k++; g.open = false; draw(); maybeFinish();
+  };
+  g.head = () => { const n = g.stars(); return n === 3 ? 'Ты выучил отрывок!' : n === 2 ? 'Почти! Повтори строки с ошибками' : 'Пройди ещё раз «Исчезающий текст»'; };
+  g.stat = () => { const n = g.total - g.missed.size; return `Без ошибок: ${n} ${plural(n, 'строка', 'строки', 'строк')} из ${g.total}`; };
   return g;
 }
 
 /* ---------- Экраны ---------- */
-function home() {
-  const best = store.get('best') || {};
-  $app.innerHTML = `
-    <header class="lesson">
-      <div class="eyebrow">${esc(LESSON.subject)} · ${esc(LESSON.grade)}</div>
-      <h1>${esc(LESSON.title)}</h1>
-      <div class="years">${esc(LESSON.years)}</div>
-    </header>
-    <section class="demo">
-      <p>Это пример на одном параграфе. Потом здесь будет кнопка, которая соберёт такие же игры по фото страниц вашего учебника.</p>
-      <button class="photo-btn" disabled>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
-        Сфотографировать параграф · скоро
-      </button>
-    </section>
-    <div class="games">${GAMES.map((x) => `
-      <button class="game-card" data-act="play" data-id="${x.id}">
-        <span class="kind">${x.kind}</span>
-        <span class="name">${x.name}</span>
-        <span class="best" aria-label="Лучший результат: ${best[x.id] || 0} из 3">${stars(best[x.id] || 0)}</span>
-        <span class="sub">${x.sub}</span>
-      </button>`).join('')}
+function soundBtn() { return `<button class="round" data-act="sound" aria-label="${soundOn ? 'Выключить звук' : 'Включить звук'}">${icon(soundOn ? 'sound' : 'mute')}</button>`; }
+function lessonStars(L) { const b = best(); return gamesOf(L).reduce((s, x) => s + (b[bestKey(L, x.id)] || 0), 0); }
+
+function vHome() {
+  const total = LESSONS.reduce((s, L) => s + lessonStars(L), 0);
+  return `<div class="screen">
+    <div class="hello">
+      <div><div class="eyebrow">Привет!</div><h1>Что учим сегодня?</h1></div>
+      ${soundBtn()}
     </div>
-    <p class="foot">Звёзды за лучший результат хранятся только на этом устройстве.</p>`;
+    <div><span class="total">${star(true)} ${total} ${plural(total, 'звезда', 'звезды', 'звёзд')}</span></div>
+    <div class="lessons">
+      <button class="b3 c-pink lesson-card" data-act="lesson" data-id="smuta">
+        <span class="subj">${esc(HISTORY.subject)}</span>
+        <h2>${esc(HISTORY.title)}</h2>
+        <span class="meta">${HISTORY.years} · 4 игры · ${stars(Math.min(3, Math.round(lessonStars(HISTORY) / 4)))}</span>
+        <span class="art"><svg viewBox="0 0 24 24">${IC.crown}</svg></span>
+      </button>
+      <button class="b3 c-violet lesson-card" data-act="lesson" data-id="perchatka">
+        <span class="subj">${esc(POEM.subject)}</span>
+        <h2>${esc(POEM.title)}</h2>
+        <span class="meta">${esc(POEM.author)} · 5 шагов</span>
+        <span class="art"><svg viewBox="0 0 24 24">${IC.feather}</svg></span>
+      </button>
+    </div>
+    <div class="photo">${icon('camera')}<div><b>Сфотографировать параграф</b>Игры соберутся по твоему учебнику</div><span class="tag">скоро</span></div>
+  </div>`;
 }
 
-function result() {
-  const g = game, n = g.stars();
-  const head = n === 3 ? 'Отлично, ты это знаешь!' : n === 2 ? 'Хорошо! Повтори ошибки и сыграй ещё раз' : 'Сыграй ещё раз — во второй раз будет легче';
-  const first = g.total - g.missed.size;
-  const stat = g.stat ? g.stat() : `С первого раза: ${first} из ${g.total} · ${g.wrong} ${plural(g.wrong, 'ошибка', 'ошибки', 'ошибок')}`;
-  const items = g.review();
-  $app.innerHTML = `
-    <div class="result">
-      <div class="stars">${stars(n)}</div>
-      <h2>${head}</h2>
-      <div class="stat">${stat}</div>
-      ${items.length ? `<div class="review"><h3>${g.reviewTitle || 'Над чем поработать'}</h3>
-        ${items.map((m) => `<div class="item">${esc(m.q)}<b>${esc(m.right)}</b></div>`).join('')}</div>` : ''}
-      <div class="actions">
-        <button class="btn main" data-act="play" data-id="${g.id}">Ещё раз</button>
-        <button class="btn" data-act="home">Все игры</button>
-      </div>
+function vLesson() {
+  const L = S.lesson, b = best();
+  const top = `<div class="bar-top"><button class="round" data-act="home" aria-label="На главную">${icon('back')}</button>
+    <div class="grow"><div class="crumb">${esc(L.subject)}</div></div>${soundBtn()}</div>`;
+  if (L.kind === 'history') {
+    return `<div class="screen">${top}
+      <div><h1 class="lesson-h1">${esc(L.title)}</h1><div class="lesson-sub">${L.years}</div></div>
+      <div class="tiles">${HISTORY_GAMES.map((x) => `
+        <button class="b3 ${x.color} tile" data-act="play" data-id="${x.id}">
+          <span class="ico">${icon(x.icon)}</span>
+          <span><span class="name">${x.name}</span><span class="sub" style="display:block">${x.sub}</span></span>
+          ${stars(b[bestKey(L, x.id)] || 0)}
+        </button>`).join('')}</div>
     </div>`;
+  }
+  const lines = selLines();
+  return `<div class="screen">${top}
+    <div><h1 class="lesson-h1">${esc(L.title)}</h1><div class="lesson-sub">${esc(L.author)}, ${esc(L.translator)}</div></div>
+    <div class="frag">
+      <div class="lbl">Мой отрывок</div>
+      <div class="q">${esc(lines[0].t)}<br>…<br>${esc(lines[lines.length - 1].t)}</div>
+      <div class="row"><span class="n">${lines.length} ${plural(lines.length, 'строка', 'строки', 'строк')}</span>
+        <button class="b3 c-card btn" style="padding:10px 16px;font-size:15px" data-act="pick">Изменить</button></div>
+    </div>
+    <div class="path">${POEM_GAMES.map((x, k) => `
+      <button class="step" data-act="play" data-id="${x.id}">
+        <span class="node b3 ${x.color}">${icon(x.icon)}</span>
+        <span class="txt"><span class="num">Шаг ${k + 1} ${stars(b[bestKey(L, x.id)] || 0)}</span><span class="name">${x.name}</span><span class="sub">${x.sub}</span></span>
+      </button>`).join('')}</div>
+  </div>`;
+}
+
+function vPick() {
+  const p = S.pick;
+  const lo = p.a == null ? -1 : p.b == null ? p.a : Math.min(p.a, p.b), hi = p.a == null ? -1 : p.b == null ? p.a : Math.max(p.a, p.b);
+  let html = '', prev = null;
+  LINES.forEach((l) => {
+    if (prev && l.st !== prev.st) html += '<div class="gap"></div>';
+    const inR = l.i >= lo && l.i <= hi;
+    const cls = p.b == null && l.i === p.a ? ' solo' : inR ? ' in' + (l.i === lo ? ' first' : '') + (l.i === hi ? ' last' : '') : '';
+    html += `<button class="pl${cls}" data-act="line" data-id="${l.i}"><span class="no">${l.i + 1}</span><span>${esc(l.t)}</span></button>`;
+    prev = l;
+  });
+  const n = lo < 0 ? 0 : hi - lo + 1;
+  const say = p.a == null ? 'Нажми на <span>первую</span> строку отрывка'
+    : p.b == null ? 'Теперь нажми на <span>последнюю</span> строку'
+    : `Отрывок: <span>${n} ${plural(n, 'строка', 'строки', 'строк')}</span>`;
+  return `<div class="screen">
+    <div class="bar-top"><button class="round" data-act="${range ? 'lesson-back' : 'home'}" aria-label="Назад">${icon('back')}</button>
+      <div class="grow"><div class="crumb">${esc(POEM.title)}</div><div style="font:800 20px var(--f-display)">Какой отрывок учим?</div></div></div>
+    <div class="page">${html}</div>
+  </div>
+  <div class="dock"><div class="in">
+    <div class="say">${say}</div>
+    <div class="row">
+      <button class="b3 c-card btn" data-act="all">Всё стихотворение</button>
+      <button class="b3 c-yellow btn" data-act="pick-done" ${p.a == null ? 'disabled' : ''}>Учить!</button>
+    </div>
+  </div></div>`;
+}
+
+function vGame() {
+  const g = S.game, pct = Math.round(g.done() / g.total * 100);
+  const hint = g.hint();
+  const html = `<div class="screen">
+    <div class="gtop">
+      <button class="round" data-act="lesson-back" aria-label="Выйти из игры">${icon('back')}</button>
+      <div class="prog" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${pct}%"></i></div>
+      <span class="score${g.bumped ? ' bump' : ''}">${star(true)}${g.score}</span>
+    </div>
+    <div class="gtitle"><h2>${g.title}</h2>${g.combo >= 2 ? `<span class="combo${g.bumped ? ' bump' : ''}">${FLAME}Серия ×${g.combo}</span>` : ''}</div>
+    ${hint ? `<p class="hint">${hint}</p>` : ''}
+    ${g.body()}
+  </div>`;
+  g.bumped = false;
+  return html;
+}
+
+function vResult() {
+  const g = S.game, n = g.stars(), L = S.lesson;
+  const head = g.head ? g.head() : n === 3 ? 'Супер! Ты это знаешь' : n === 2 ? 'Хорошо! Повтори ошибки' : 'Ещё раз — и будет лучше';
+  const stat = g.stat ? g.stat() : `С первого раза: ${g.total - g.missed.size} из ${g.total} · ${g.wrong} ${plural(g.wrong, 'ошибка', 'ошибки', 'ошибок')}`;
+  const items = g.review ? g.review() : [...g.missed.values()];
+  const list = gamesOf(L), idx = list.findIndex((x) => x.id === g.id), nx = list[idx + 1];
+  const verse = L.kind === 'poem';
+  return `<div class="screen result">
+    <div class="big-stars">${[1, 2, 3].map((i) => star(i <= n)).join('')}</div>
+    <h2>${head}</h2>
+    <div class="pts">${g.score}<small>очков</small></div>
+    <div class="stat">${stat}</div>
+    ${items.length ? `<div class="review"><h3>${g.reviewTitle || (verse ? 'Трудные места' : 'Над чем поработать')}</h3>${items.map((m) =>
+      `<div class="item${verse ? ' verse-item' : ''}">${esc(m.q).replace(/\n/g, '<br>')}${m.right ? `<b>${esc(m.right)}</b>` : ''}</div>`).join('')}</div>` : ''}
+    <div class="actions">
+      ${nx ? `<button class="b3 c-yellow btn" data-act="play" data-id="${nx.id}">Дальше: ${nx.name}</button>` : ''}
+      <button class="b3 ${nx ? 'c-card' : 'c-yellow'} btn" data-act="play" data-id="${g.id}">Ещё раз</button>
+      <button class="b3 c-card btn" data-act="lesson-back">${verse ? 'К шагам' : 'Все игры'}</button>
+    </div>
+  </div>`;
 }
 
 function draw() {
-  if (!game) return home();
-  if (game.finished) return result();
-  const pct = Math.round(game.done() / game.total * 100);
-  $app.innerHTML = `
-    <div class="top">
-      <div class="top-row"><button class="back" data-act="home">← Все игры</button>
-        <span class="count">${game.done()} из ${game.total}</span></div>
-      <h2>${game.title}</h2>
-      <div class="bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${pct}%"></i></div>
-    </div>
-    <p class="hint">${game.hint()}</p>
-    ${game.body()}`;
+  const v = { home: vHome, lesson: vLesson, pick: vPick, game: vGame, result: vResult }[S.screen];
+  $app.innerHTML = v();
+  $app.classList.toggle('enter', S.enter);
+  S.enter = false;
 }
 
-function act(el) {
+/* ---------- Нажатия ---------- */
+$app.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-act]');
+  if (!el || el.disabled) return;
   const a = el.dataset.act, id = el.dataset.id;
-  if (a === 'home') { game = null; draw(); window.scrollTo(0, 0); return; }
-  if (a === 'play') {
-    const def = GAMES.find((x) => x.id === id);
-    game = def.make(); game.id = id; draw(); window.scrollTo(0, 0); return;
+  switch (a) {
+    case 'home': return go('home', { lesson: null, game: null });
+    case 'sound': soundOn = !soundOn; store.set('sound', soundOn); if (soundOn) sfx('ok'); return draw();
+    case 'lesson': {
+      const L = LESSONS.find((x) => x.id === id);
+      if (L.kind === 'poem' && !range) return go('pick', { lesson: L, pick: { a: null, b: null } });
+      return go('lesson', { lesson: L });
+    }
+    case 'lesson-back': return go('lesson', { game: null });
+    case 'pick': return go('pick', { pick: { a: range.a, b: range.b } });
+    case 'line': {
+      const p = S.pick, i = +id;
+      if (p.a == null || p.b != null) { p.a = i; p.b = null; } else { p.b = i; }
+      sfx('tap'); return draw();
+    }
+    case 'all': S.pick = { a: 0, b: LINES.length - 1 }; sfx('tap'); return draw();
+    case 'pick-done': {
+      const p = S.pick, b = p.b == null ? p.a : p.b;
+      range = { a: Math.min(p.a, b), b: Math.max(p.a, b) }; store.set('range', range);
+      return go('lesson');
+    }
+    case 'play': {
+      const x = gamesOf(S.lesson).find((q) => q.id === id);
+      const g = x.make(S.lesson); g.id = id;
+      return go('game', { game: g });
+    }
+    default: if (S.game && S.screen === 'game' && !S.game.finished) S.game.on(a, id);
   }
-  if (game && !game.finished) game.on(a, id);
-}
-$app.addEventListener('click', (e) => { const el = e.target.closest('[data-act]'); if (el) act(el); });
+});
 $app.addEventListener('keydown', (e) => {
   if (e.key !== 'Enter' && e.key !== ' ') return;
   const el = e.target.closest('g[data-act]');
-  if (el) { e.preventDefault(); act(el); }
+  if (el) { e.preventDefault(); el.dispatchEvent(new MouseEvent('click', { bubbles: true })); }
 });
 
 draw();
