@@ -806,13 +806,19 @@ function makeFade() {
   g.body = () => {
     const html = verseHtml(g.lines, (l) => {
       let k = 0;
-      return tokens(l.t).map((t) => {
-        if (!t.w) return esc(t.s);
+      const parts = tokens(l.t).map((t) => {
+        if (!t.w) return { s: t.s };
         const key = l.i + ':' + k, first = k === 0; k++;
-        if (!hide(key, first)) return esc(t.s);
-        if (g.peek.has(key)) return `<button class="w-hid peek" data-act="peek" data-id="${key}">${esc(t.s)}</button>`;
+        if (!hide(key, first)) return { h: esc(t.s) };
+        if (g.peek.has(key)) return { h: `<button class="w-hid peek" data-act="peek" data-id="${key}">${esc(t.s)}</button>` };
         const shown = g.level === 5 ? '' : t.s[0];
-        return `<button class="w-hid" data-act="peek" data-id="${key}" aria-label="Подсказка">${esc(shown)}<span class="w-mute">${'_'.repeat(Math.max(2, Math.round((t.s.length - shown.length) * 0.8)))}</span></button>`;
+        return { h: `<button class="w-hid" data-act="peek" data-id="${key}" aria-label="Подсказка">${esc(shown)}<span class="w-mute">${'_'.repeat(Math.max(2, Math.round((t.s.length - shown.length) * 0.6)))}</span></button>` };
+      });
+      // Знак препинания сразу после слова не должен уезжать на новую строку.
+      return parts.map((p, n) => {
+        if (p.h == null) { const prev = parts[n - 1]; return esc(prev && prev.h != null ? p.s.replace(/^[^\s]*/, '') : p.s); }
+        const nx = parts[n + 1], punct = nx && nx.h == null ? (nx.s.match(/^[^\s]*/) || [''])[0] : '';
+        return punct ? `<span style="white-space:nowrap">${p.h}${esc(punct)}</span>` : p.h;
       }).join('');
     });
     return `<div class="page verse">${html}</div>
