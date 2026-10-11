@@ -286,6 +286,42 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
 .recite .ok-mark { color: var(--mint-d); font: 900 15px var(--f-body); }
 .recite .ln.miss { color: var(--bad-d); }
 
+/* План по дням */
+.today { display: grid; gap: 12px; padding: 18px; border-radius: 22px; background: linear-gradient(135deg, #2f2680, #4a2a8a); box-shadow: 0 6px 0 #120d38; }
+.today .top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.today .lbl { font-size: 12px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; color: var(--yellow); }
+.today h2 { font: 800 21px/1.2 var(--f-display); }
+.today .sub { color: var(--muted); font-weight: 700; }
+.ring { width: 54px; height: 54px; flex: none; }
+.ring circle { fill: none; stroke-width: 6; }
+.ring .bgc { stroke: rgba(255,255,255,.15); }
+.ring .fgc { stroke: var(--mint); stroke-linecap: round; transform: rotate(-90deg); transform-origin: center; }
+.ring text { fill: #fff; font: 900 14px var(--f-body); }
+.tasks { display: grid; gap: 8px; }
+.task { display: grid; grid-template-columns: 40px 1fr auto; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 10px 12px; border-radius: 16px; background: var(--card); }
+.task .ti { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; }
+.task .ti .i { width: 22px; height: 22px; }
+.task .tn { font-weight: 800; line-height: 1.25; }
+.task .ts { color: var(--muted); font-size: 13.5px; font-weight: 700; }
+.task .tick { width: 30px; height: 30px; border-radius: 50%; border: 3px solid var(--line); display: grid; place-items: center; font-weight: 900; }
+.task.done { opacity: .75; }
+.task.done .tick { background: var(--mint); border-color: var(--mint); color: var(--dark-text); }
+.days { display: grid; gap: 14px; }
+.day { display: grid; gap: 10px; padding: 14px; border-radius: 20px; background: rgba(255,255,255,.04); border: 2px solid var(--line); }
+.day.now { border-color: var(--yellow); background: rgba(255,210,63,.07); }
+.day.past { opacity: .7; }
+.day .dh { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.day .dh b { font: 700 16px var(--f-display); }
+.day .dh span { color: var(--muted); font-weight: 800; font-size: 13px; }
+.quick { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.quick .btn { padding: 14px 10px; font-size: 15px; }
+.quick .btn.sel { --c: var(--yellow); --cd: var(--yellow-d); color: var(--dark-text); }
+.datein { width: 100%; padding: 14px 16px; border-radius: 16px; border: 2px solid var(--line); background: var(--card); color: #fff; font: 800 17px var(--f-body); }
+.plan-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 16px; border-radius: 18px; background: var(--card); }
+.plan-row .t { font-weight: 800; }
+.plan-row .t small { display: block; color: var(--muted); font-weight: 700; font-size: 13px; }
+.link { color: var(--muted); font-weight: 800; text-decoration: underline; text-underline-offset: 3px; justify-self: center; padding: 6px; }
+
 /* Кадры к строфам */
 .scene { border-radius: 20px; overflow: hidden; background: #9fd3f5; box-shadow: 0 6px 0 #0d0a2a; }
 .scene svg { display: block; width: 100%; height: auto; }
@@ -643,8 +679,10 @@ function tokens(line) {
 const wordsOf = (line) => line.match(WORD) || [];
 const norm = (w) => w.toLowerCase().replace(/ё/g, 'е');
 let range = store.get('range'); // {a, b} — номера первой и последней строки отрывка
-const selLines = () => (range ? LINES.slice(range.a, range.b + 1) : []);
-const rangeKey = () => (range ? range.a + '-' + range.b : '');
+let taskRange = null; // отрывок задания из плана, пока оно открыто
+const curRange = () => taskRange || range;
+const selLines = () => { const r = curRange(); return r ? LINES.slice(r.a, r.b + 1) : []; };
+const rangeKey = () => { const r = curRange(); return r ? r.a + '-' + r.b : ''; };
 function verseHtml(lines, renderLine) {
   let html = '', prev = null;
   lines.forEach((l) => { if (prev && l.st !== prev.st) html += '<span class="gap"></span>'; html += `<span class="ln">${renderLine(l)}</span>`; prev = l; });
@@ -674,6 +712,86 @@ const best = () => store.get('best') || {};
 const S = { screen: 'home', lesson: null, game: null, enter: true, pick: null };
 function go(screen, patch = {}) { Object.assign(S, patch, { screen, enter: true }); draw(); window.scrollTo(0, 0); }
 
+/* ---------- План по дням: «к какому дню выучить» ---------- */
+const DAY = 864e5;
+const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const fromYmd = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+const todayYmd = () => ymd(new Date());
+const addDays = (s, n) => ymd(new Date(fromYmd(s).getTime() + n * DAY + 3600e3));
+const daysBetween = (a, b) => Math.round((fromYmd(b) - fromYmd(a)) / DAY);
+function dayLabel(s) {
+  const d = daysBetween(todayYmd(), s);
+  const long = fromYmd(s).toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
+  return d === 0 ? 'Сегодня' : d === 1 ? 'Завтра' : d === -1 ? 'Вчера' : long[0].toUpperCase() + long.slice(1);
+}
+const shortDate = (s) => fromYmd(s).toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'long' });
+let plan = store.get('plan');       // { due, a, b, days: [{ date, tasks: [{ id, game, a, b, kind }] }] }
+let doneTasks = store.get('done') || {};
+const linesTxt = (a, b) => (a === b ? `строка ${a + 1}` : `строки ${a + 1}–${b + 1}`);
+
+function makePlan(due) {
+  const r = range, start = todayYmd();
+  const n = Math.max(1, daysBetween(start, due));           // дней до сдачи (сам день сдачи не считаем)
+  // Порции — кадры стиха внутри отрывка; маленькие склеиваем, чтобы в порции было хотя бы 4 строки.
+  const parts = [];
+  SCENES.filter((x) => x.b >= r.a && x.a <= r.b).forEach((x) => {
+    const p = { a: Math.max(x.a, r.a), b: Math.min(x.b, r.b) }, last = parts[parts.length - 1];
+    if (last && last.b - last.a + 1 < 4) last.b = p.b; else parts.push(p);
+  });
+  const learnDays = n >= 2 ? n - 1 : 1;
+  const per = Math.ceil(parts.length / learnDays);
+  const days = [];
+  let learned = null;
+  const T = (date, game, a, b, kind) => ({ id: `${date}:${game}:${a}-${b}`, game, a, b, kind });
+  for (let k = 0; k < learnDays; k++) {
+    const date = addDays(start, k), bucket = parts.slice(k * per, (k + 1) * per), tasks = [];
+    if (bucket.length) {
+      const a = bucket[0].a, b = bucket[bucket.length - 1].b;
+      tasks.push(T(date, 'frames', a, b, 'new'), T(date, 'fade', a, b, 'new'), T(date, 'build', a, b, 'new'));
+      if (learned) tasks.push(T(date, 'next', r.a, b, 'join'));
+      learned = { a: r.a, b };
+    } else if (learned) {
+      tasks.push(T(date, 'fade', learned.a, learned.b, 'repeat'), T(date, 'next', learned.a, learned.b, 'repeat'));
+    }
+    days.push({ date, tasks });
+  }
+  const finalDay = n >= 2 ? { date: addDays(start, n - 1), tasks: [] } : days[0];
+  finalDay.tasks.push(T(finalDay.date, 'gap', r.a, r.b, 'final'), T(finalDay.date, 'recite', r.a, r.b, 'final'));
+  if (n >= 2) days.push(finalDay);
+  plan = { due, a: r.a, b: r.b, days };
+  store.set('plan', plan);
+}
+function todayPlan() {
+  if (!plan) return null;
+  const t = todayYmd();
+  if (daysBetween(t, plan.due) <= 0) {
+    // День сдачи (или позже): одно задание — рассказать целиком.
+    return { date: t, due: true, tasks: [{ id: `${t}:recite:${plan.a}-${plan.b}`, game: 'recite', a: plan.a, b: plan.b, kind: 'final' }] };
+  }
+  // Невыполненное с прошлых дней переносим на сегодня.
+  const past = plan.days.filter((d) => d.date < t).flatMap((d) => d.tasks).filter((x) => !doneTasks[x.id]);
+  const now = plan.days.find((d) => d.date === t);
+  return { date: t, tasks: [...past, ...(now ? now.tasks : [])] };
+}
+const taskName = (x) => POEM_GAMES.find((g) => g.id === x.game);
+const kindTxt = { new: 'новое', join: 'соединяем', repeat: 'повторение', final: 'всё целиком' };
+function taskHtml(x) {
+  const gm = taskName(x), done = !!doneTasks[x.id];
+  return `<button class="task${done ? ' done' : ''}" data-act="task" data-id="${x.id}">
+    <span class="ti b3 ${gm.color}">${icon(gm.icon)}</span>
+    <span><span class="tn" style="display:block">${gm.name}</span><span class="ts">${linesTxt(x.a, x.b)} · ${kindTxt[x.kind]}</span></span>
+    <span class="tick">${done ? '✓' : ''}</span></button>`;
+}
+function ring(done, total) {
+  const C = 2 * Math.PI * 22, f = total ? done / total : 0;
+  return `<svg class="ring" viewBox="0 0 54 54" aria-label="Сделано ${done} из ${total}"><circle class="bgc" cx="27" cy="27" r="22"/>
+    <circle class="fgc" cx="27" cy="27" r="22" stroke-dasharray="${C * f} ${C}"/><text x="27" y="32" text-anchor="middle">${done}/${total}</text></svg>`;
+}
+function findTask(id) {
+  const tp = todayPlan();
+  return (tp && tp.tasks.find((x) => x.id === id)) || (plan && plan.days.flatMap((d) => d.tasks).find((x) => x.id === id));
+}
+
 /* ---------- Основа игры ---------- */
 function base(total) {
   return {
@@ -696,6 +814,7 @@ function maybeFinish() {
     g.finished = true;
     const b = best(), k = bestKey(S.lesson, g.id);
     b[k] = Math.max(b[k] || 0, g.stars()); store.set('best', b);
+    if (S.task) { doneTasks[S.task.id] = true; store.set('done', doneTasks); }
     go('result');
     sfx('win'); if (g.stars() >= 2) confetti();
   }, 650);
@@ -872,7 +991,7 @@ function makeMap(L) {
 /* ===== Стих ===== */
 /* Картинки к строфам: посмотреть → вспомнить по картинке → разложить кадры по порядку. */
 function makeFrames() {
-  const r = range || { a: 0, b: LINES.length - 1 };
+  const r = curRange() || { a: 0, b: LINES.length - 1 };
   const sc = SCENES.filter((x) => x.b >= r.a && x.a <= r.b)
     .map((x) => ({ ...x, lines: LINES.slice(Math.max(x.a, r.a), Math.min(x.b, r.b) + 1), pic: x.svg() }));
   const withOrder = sc.length >= 3;
@@ -1148,6 +1267,19 @@ function makeRecite() {
 function soundBtn() { return `<button class="round" data-act="sound" aria-label="${soundOn ? 'Выключить звук' : 'Включить звук'}">${icon(soundOn ? 'sound' : 'mute')}</button>`; }
 function lessonStars(L) { const b = best(); return gamesOf(L).reduce((s, x) => s + (b[bestKey(L, x.id)] || 0), 0); }
 
+function todayCard() {
+  const tp = todayPlan();
+  if (!tp) return '';
+  const done = tp.tasks.filter((x) => doneTasks[x.id]).length;
+  const head = tp.due ? 'Сегодня рассказываешь!' : done === tp.tasks.length ? 'На сегодня всё сделано!' : 'Задание на сегодня';
+  const sub = tp.due ? 'Повтори один раз целиком — и вперёд' : `Сдавать: ${shortDate(plan.due)} · ${linesTxt(plan.a, plan.b)}`;
+  return `<div class="today">
+    <div class="top"><div><div class="lbl">${head}</div><h2>«${esc(POEM.title)}»</h2><div class="sub">${sub}</div></div>${ring(done, tp.tasks.length)}</div>
+    <div class="tasks">${tp.tasks.map(taskHtml).join('')}</div>
+    <button class="link" data-act="plan">Весь план</button>
+  </div>`;
+}
+
 function vHome() {
   const total = LESSONS.reduce((s, L) => s + lessonStars(L), 0);
   return `<div class="screen">
@@ -1156,6 +1288,7 @@ function vHome() {
       ${soundBtn()}
     </div>
     <div><span class="total">${star(true)} ${total} ${plural(total, 'звезда', 'звезды', 'звёзд')}</span></div>
+    ${todayCard()}
     <div class="lessons">
       <button class="b3 c-pink lesson-card" data-act="lesson" data-id="smuta">
         <span class="subj">${esc(HISTORY.subject)}</span>
@@ -1198,6 +1331,8 @@ function vLesson() {
       <div class="row"><span class="n">${lines.length} ${plural(lines.length, 'строка', 'строки', 'строк')}</span>
         <button class="b3 c-card btn" style="padding:10px 16px;font-size:15px" data-act="pick">Изменить</button></div>
     </div>
+    ${plan ? `<button class="plan-row" data-act="plan"><span class="t">План до ${esc(shortDate(plan.due))}<small>${linesTxt(plan.a, plan.b)} · по дням</small></span>${icon('next')}</button>`
+      : `<button class="b3 c-yellow btn" data-act="due">Когда рассказывать? Составить план</button>`}
     <div class="path">${POEM_GAMES.map((x, k) => `
       <button class="step" data-act="play" data-id="${x.id}">
         <span class="node b3 ${x.color}">${icon(x.icon)}</span>
@@ -1235,6 +1370,39 @@ function vPick() {
   </div></div>`;
 }
 
+function vDue() {
+  const t = todayYmd(), sel = S.due;
+  const opts = [[1, 'Завтра'], [2, 'Послезавтра'], [3, 'Через 3 дня'], [7, 'Через неделю']];
+  const lines = selLines();
+  return `<div class="screen">
+    <div class="bar-top"><button class="round" data-act="lesson-back" aria-label="Назад">${icon('back')}</button>
+      <div class="grow"><div class="crumb">${esc(POEM.title)} · ${linesTxt(range.a, range.b)}</div><div style="font:800 20px var(--f-display)">Когда рассказывать?</div></div></div>
+    <p class="hint" style="margin:0">Выбери день — приложение разложит отрывок по дням: каждый день немного нового и повторение.</p>
+    <div class="quick">${opts.map(([n, txt]) => { const d = addDays(t, n); return `<button class="b3 c-card btn${sel === d ? ' sel' : ''}" data-act="due-pick" data-id="${d}">${txt}<br><small style="font-weight:700;opacity:.8">${shortDate(d)}</small></button>`; }).join('')}</div>
+    <label class="crumb" for="due-date">Или выбери дату</label>
+    <input class="datein" id="due-date" type="date" min="${addDays(t, 1)}" value="${sel || ''}">
+    <button class="b3 c-yellow btn" data-act="due-done" ${sel ? '' : 'disabled'}>Составить план${sel ? ` на ${daysBetween(t, sel)} ${plural(daysBetween(t, sel), 'день', 'дня', 'дней')}` : ''}</button>
+    <div class="crumb" style="text-align:center">${lines.length} ${plural(lines.length, 'строка', 'строки', 'строк')}</div>
+  </div>`;
+}
+
+function vPlan() {
+  const t = todayYmd();
+  const all = plan.days.flatMap((d) => d.tasks), done = all.filter((x) => doneTasks[x.id]).length;
+  return `<div class="screen">
+    <div class="bar-top"><button class="round" data-act="${S.planFrom === 'home' ? 'home' : 'lesson-back'}" aria-label="Назад">${icon('back')}</button>
+      <div class="grow"><div class="crumb">«${esc(POEM.title)}» · ${linesTxt(plan.a, plan.b)}</div><div style="font:800 20px var(--f-display)">План до ${esc(shortDate(plan.due))}</div></div>${ring(done, all.length)}</div>
+    <div class="days">${plan.days.map((d) => `
+      <div class="day${d.date === t ? ' now' : d.date < t ? ' past' : ''}">
+        <div class="dh"><b>${dayLabel(d.date)}</b><span>${d.tasks.filter((x) => doneTasks[x.id]).length} из ${d.tasks.length}</span></div>
+        <div class="tasks">${d.tasks.map(taskHtml).join('')}</div>
+      </div>`).join('')}
+      <div class="day"><div class="dh"><b>${dayLabel(plan.due)}</b><span>сдаёшь</span></div><div class="sub" style="color:var(--muted);font-weight:700">Утром расскажи один раз целиком — и в школу.</div></div>
+    </div>
+    <button class="link" data-act="plan-del">Удалить план</button>
+  </div>`;
+}
+
 function vGame() {
   const g = S.game, pct = Math.round(g.done() / g.total * 100);
   const hint = g.hint();
@@ -1257,8 +1425,9 @@ function vResult() {
   const head = g.head ? g.head() : n === 3 ? 'Супер! Ты это знаешь' : n === 2 ? 'Хорошо! Повтори ошибки' : 'Ещё раз — и будет лучше';
   const stat = g.stat ? g.stat() : `С первого раза: ${g.total - g.missed.size} из ${g.total} · ${g.wrong} ${plural(g.wrong, 'ошибка', 'ошибки', 'ошибок')}`;
   const items = g.review ? g.review() : [...g.missed.values()];
-  const list = gamesOf(L), idx = list.findIndex((x) => x.id === g.id), nx = list[idx + 1];
+  const list = gamesOf(L), idx = list.findIndex((x) => x.id === g.id), nx = S.task ? null : list[idx + 1];
   const verse = L.kind === 'poem';
+  const tp = S.task ? todayPlan() : null, nextTask = tp && tp.tasks.find((x) => !doneTasks[x.id]);
   return `<div class="screen result">
     <div class="big-stars">${[1, 2, 3].map((i) => star(i <= n)).join('')}</div>
     <h2>${head}</h2>
@@ -1267,15 +1436,17 @@ function vResult() {
     ${items.length ? `<div class="review"><h3>${g.reviewTitle || (verse ? 'Трудные места' : 'Над чем поработать')}</h3>${items.map((m) =>
       `<div class="item${verse ? ' verse-item' : ''}">${esc(m.q).replace(/\n/g, '<br>')}${m.right ? `<b>${esc(m.right)}</b>` : ''}</div>`).join('')}</div>` : ''}
     <div class="actions">
+      ${S.task ? (nextTask ? `<button class="b3 c-yellow btn" data-act="task" data-id="${nextTask.id}">Дальше: ${taskName(nextTask).name}</button>`
+        : '<button class="b3 c-mint btn" data-act="home">На сегодня всё! На главную</button>') : ''}
       ${nx ? `<button class="b3 c-yellow btn" data-act="play" data-id="${nx.id}">Дальше: ${nx.name}</button>` : ''}
-      <button class="b3 ${nx ? 'c-card' : 'c-yellow'} btn" data-act="play" data-id="${g.id}">Ещё раз</button>
-      <button class="b3 c-card btn" data-act="lesson-back">${verse ? 'К шагам' : 'Все игры'}</button>
+      <button class="b3 ${nx || S.task ? 'c-card' : 'c-yellow'} btn" data-act="play" data-id="${g.id}">Ещё раз</button>
+      <button class="b3 c-card btn" data-act="${S.task ? 'plan' : 'lesson-back'}">${S.task ? 'Весь план' : verse ? 'К шагам' : 'Все игры'}</button>
     </div>
   </div>`;
 }
 
 function draw() {
-  const v = { home: vHome, lesson: vLesson, pick: vPick, game: vGame, result: vResult }[S.screen];
+  const v = { home: vHome, lesson: vLesson, pick: vPick, game: vGame, result: vResult, due: vDue, plan: vPlan }[S.screen];
   $app.innerHTML = v();
   $app.classList.toggle('enter', S.enter);
   S.enter = false;
@@ -1287,14 +1458,31 @@ $app.addEventListener('click', (e) => {
   if (!el || el.disabled) return;
   const a = el.dataset.act, id = el.dataset.id;
   switch (a) {
-    case 'home': return go('home', { lesson: null, game: null });
+    case 'home': taskRange = null; return go('home', { lesson: null, game: null, task: null });
     case 'sound': soundOn = !soundOn; store.set('sound', soundOn); if (soundOn) sfx('ok'); return draw();
     case 'lesson': {
       const L = LESSONS.find((x) => x.id === id);
       if (L.kind === 'poem' && !range) return go('pick', { lesson: L, pick: { a: null, b: null } });
       return go('lesson', { lesson: L });
     }
-    case 'lesson-back': return go('lesson', { game: null });
+    case 'lesson-back':
+      if (S.task) { taskRange = null; return go('plan', { game: null, task: null }); }
+      return go('lesson', { game: null, lesson: S.lesson || POEM });
+    case 'due': return go('due', { due: null });
+    case 'due-pick': S.due = id; sfx('tap'); return draw();
+    case 'due-done': makePlan(S.due); S.planFrom = 'lesson'; sfx('win'); toast('План готов!'); return go('plan', { lesson: POEM });
+    case 'plan':
+      if (S.screen === 'home' || S.screen === 'lesson') S.planFrom = S.screen;
+      taskRange = null; return go('plan', { lesson: POEM, game: null, task: null });
+    case 'plan-del':
+      if (!S.confirmDel) { S.confirmDel = true; toast('Нажми ещё раз, чтобы удалить план'); setTimeout(() => { S.confirmDel = false; }, 2500); return; }
+      S.confirmDel = false; plan = null; store.set('plan', null); return go('lesson', { lesson: POEM });
+    case 'task': {
+      const x = findTask(id); if (!x) return;
+      taskRange = { a: x.a, b: x.b };
+      const gm = POEM_GAMES.find((q) => q.id === x.game), g = gm.make(POEM); g.id = x.game;
+      return go('game', { lesson: POEM, game: g, task: x });
+    }
     case 'pick': return go('pick', { pick: { a: range.a, b: range.b } });
     case 'line': {
       const p = S.pick, i = +id;
@@ -1308,12 +1496,16 @@ $app.addEventListener('click', (e) => {
       return go('lesson');
     }
     case 'play': {
+      if (!S.task) taskRange = null;
       const x = gamesOf(S.lesson).find((q) => q.id === id);
       const g = x.make(S.lesson); g.id = id;
       return go('game', { game: g });
     }
     default: if (S.game && S.screen === 'game' && !S.game.finished) S.game.on(a, id);
   }
+});
+$app.addEventListener('change', (e) => {
+  if (e.target.id === 'due-date' && e.target.value) { S.due = e.target.value; draw(); }
 });
 $app.addEventListener('keydown', (e) => {
   if (e.key !== 'Enter' && e.key !== ' ') return;
