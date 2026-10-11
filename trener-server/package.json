@@ -1,0 +1,10 @@
+{
+  "name": "uchu-igraya-server",
+  "private": true,
+  "version": "0.1.0",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --test test.js"
+  }
+}
