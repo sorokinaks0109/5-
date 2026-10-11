@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Учу играя</title>
+<title>МурМемо</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Nunito:wght@500;600;700;800;900&family=Lora:ital,wght@0,500;0,600;1,500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800;900&family=Lora:ital,wght@0,500;0,600;1,500&display=swap">
 <style>
 /* Макет: тёмная «игровая» сцена, яркие объёмные кнопки-плитки, одна колонка под телефон.
    Тема одна (тёмная) — так задумано, на любом фоне выглядит одинаково. */
@@ -369,6 +369,118 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
 #toast.show { opacity: 1; transform: translate(-50%, 0); }
 #fx { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 15; }
 
+
+/* ===== Стиль А «Тёплый»: кремовый фон, оранжевый и тёмно-синий, как на логотипе МурМемо ===== */
+:root {
+  --bg: #fbf4ea; --card: #ffffff; --card2: #fff8ef; --line: #eedfca; --shadow: #efdcc3;
+  --ink: #1b2a4a; --muted: #8a7e70; --navy: #1b2a4a; --navy-d: #0f1a33;
+  --page: #ffffff; --page-ink: #1b2a4a; --page-muted: #9a8f82; --mark: #ffe08a;
+  --orange: #f58a1f; --orange-d: #c9650a; --dark-text: #1b2a4a;
+  --f-display: "Nunito", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: light;
+}
+body { background: var(--bg); color: var(--ink); }
+button:focus-visible, [tabindex]:focus-visible { outline-color: var(--orange); }
+.round { background: #fff; color: var(--ink); box-shadow: 0 3px 0 var(--shadow); }
+.round:active { box-shadow: 0 1px 0 var(--shadow); }
+.c-card { --c: #fff; --cd: var(--shadow); color: var(--ink); }
+.star path { fill: #e9dccb; }
+.total { background: #fff; box-shadow: 0 3px 0 var(--shadow); }
+.lesson-h1, .gtitle h2, .result h2 { font-weight: 900; }
+.frag, .step .txt, .plan-row, .review .item, .task, .strip span { background: #fff; box-shadow: 0 3px 0 var(--shadow); }
+.frag .q { color: var(--ink); }
+.frag .n { color: var(--orange-d); }
+.page { box-shadow: 0 4px 0 var(--shadow); }
+.pl:hover { background: #fff3e3; }
+.dock { background: rgba(251,244,234,.96); }
+.dock .say span { color: var(--orange-d); }
+.prog, .dots i, .tl::before { background: #f0e4d3; }
+.score { background: #fff; box-shadow: 0 3px 0 var(--shadow); }
+.deed { background: #fff; border-color: var(--line); }
+.deed.sel { border-color: var(--orange); background: #fff8ef; }
+.deed.bad { background: #ffe9ea; }
+.mc.face { box-shadow: 0 5px 0 var(--shadow); }
+.banner { display: flex; align-items: center; gap: 12px; background: #fff; color: var(--ink); }
+.banner img { width: 54px; height: auto; flex: none; }
+.ask { box-shadow: 0 6px 0 var(--pink-d), 0 14px 24px -14px rgba(120,60,20,.35); }
+.today { background: var(--navy); color: #fff; box-shadow: 0 6px 0 var(--navy-d); }
+.today .lbl { color: #ffb36b; }
+.today .sub { color: #c9d1e4; }
+.today .task { background: rgba(255,255,255,.08); box-shadow: none; color: #fff; }
+.today .task .ts { color: #c9d1e4; }
+.today .link { color: #c9d1e4; }
+.today-cat { width: 92px; height: auto; flex: none; }
+.ring .bgc { stroke: #f0e4d3; }
+.ring text { fill: var(--ink); }
+.today .ring .bgc { stroke: rgba(255,255,255,.18); }
+.today .ring text { fill: #fff; }
+.task .tick { border-color: #d9cbb6; }
+.day { background: #fff; border-color: var(--line); }
+.day.now { border-color: var(--orange); background: #fff8ef; }
+.quick .btn.sel { --c: var(--orange); --cd: var(--orange-d); color: #fff; }
+.datein { background: #fff; color: var(--ink); border-color: var(--line); }
+.scene, .thumb { box-shadow: 0 5px 0 var(--shadow); }
+.result .pts { color: var(--orange); }
+.review .item b { color: var(--mint-d); }
+#toast { background: var(--navy); color: #fff; }
+
+/* Кот */
+.cat { display: block; user-select: none; -webkit-user-drag: none; transform-origin: 50% 92%; animation: breathe 3.2s ease-in-out infinite; }
+@keyframes breathe { 50% { transform: scale(1.025) translateY(-1px); } }
+.cat.jump { animation: jump .7s cubic-bezier(.3,.6,.4,1); }
+@keyframes jump { 15% { transform: scale(1.06,.92); } 45% { transform: translateY(-22%) scale(.96,1.05); } 70% { transform: translateY(0) scale(1.05,.94); } 100% { transform: none; } }
+.cat.jump-in { animation: jumpin .8s cubic-bezier(.2,.9,.3,1.3) backwards; }
+@keyframes jumpin { from { transform: translateY(40%) scale(.5); opacity: 0; } }
+.catbtn { display: block; }
+
+/* Главная */
+.home-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.home-top .r { display: flex; align-items: center; gap: 10px; }
+.logo { font: 900 26px/1 var(--f-display); letter-spacing: -.01em; }
+.logo b { color: var(--orange); font-weight: 900; }
+.logo span { color: var(--navy); }
+.hero { display: grid; grid-template-columns: 1fr 128px; align-items: end; gap: 6px; padding: 16px 6px 0 18px; border-radius: 26px; background: #fff; box-shadow: 0 4px 0 var(--shadow); overflow: hidden; }
+.hero .hi { color: var(--muted); font-weight: 800; font-size: 15px; }
+.hero h1 { margin: 2px 0 10px; font: 900 25px/1.1 var(--f-display); }
+.hero .bubble { margin-bottom: 16px; padding: 10px 12px; border-radius: 16px 16px 16px 4px; background: #fff3e3; font-weight: 800; font-size: 14px; line-height: 1.3; }
+.hero .cat { width: 128px; height: auto; }
+.photo-btn { display: grid; grid-template-columns: 76px 1fr; align-items: center; gap: 12px; width: 100%; padding: 10px 16px 10px 10px; border-radius: 22px; background: var(--orange); color: #fff; text-align: left; box-shadow: 0 6px 0 var(--orange-d); }
+.photo-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--orange-d); }
+.photo-btn img { width: 76px; height: auto; background: #fff7ec; border-radius: 16px; padding: 4px; }
+.photo-btn b { display: block; font-size: 18px; font-weight: 900; line-height: 1.2; }
+.photo-btn small { display: block; font-weight: 700; opacity: .9; margin-top: 2px; }
+.h3 { font-size: 13px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-top: 2px; }
+.subj { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.s { display: grid; gap: 4px; padding: 0 0 14px; border-radius: 22px; background: #fff; box-shadow: 0 4px 0 var(--shadow); text-align: left; overflow: hidden; }
+.s:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--shadow); }
+.s .pic { display: grid; place-items: end center; height: 118px; padding-top: 8px; margin-bottom: 6px; }
+.s .pic img { height: 110px; width: auto; }
+.s b { font-size: 17px; font-weight: 900; padding-inline: 14px; }
+.s small { color: var(--muted); font-weight: 800; font-size: 13px; padding-inline: 14px; }
+.s .stars { padding-inline: 14px; }
+.s.soon { opacity: .9; }
+.s.soon b::after { content: " · скоро"; font-size: 12px; color: var(--orange-d); font-weight: 800; }
+
+/* Урок, выбор отрывка, план */
+.lesson-head { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 10px; }
+.lesson-head .cat { width: 104px; height: auto; }
+.mini-cat { width: 64px; height: auto; flex: none; }
+.card-pic { display: block; width: 100%; max-width: 260px; justify-self: center; border-radius: 22px; box-shadow: 0 4px 0 var(--shadow); }
+.res-cat .cat { width: 170px; height: auto; margin-inline: auto; }
+
+/* Кот-подсказчик в играх */
+#buddy { position: fixed; left: 12px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); z-index: 12; display: flex; align-items: flex-end; gap: 8px; pointer-events: none; transform: translateY(150%); visibility: hidden; transition: transform .35s cubic-bezier(.2,.9,.3,1.2), visibility 0s .35s; }
+#buddy.show { transform: none; visibility: visible; transition: transform .35s cubic-bezier(.2,.9,.3,1.2); }
+#buddy img { width: 96px; height: auto; filter: drop-shadow(0 4px 6px rgba(120,60,20,.25)); }
+#buddy span { margin-bottom: 70px; padding: 10px 14px; border-radius: 16px 16px 16px 4px; background: #fff; color: var(--ink); font-weight: 900; box-shadow: 0 4px 0 var(--shadow); max-width: 200px; }
+
+/* Заставка */
+#splash { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; align-content: center; gap: 10px; background: var(--bg); transition: opacity .4s ease; cursor: pointer; }
+#splash.out { opacity: 0; pointer-events: none; }
+#splash img { width: 210px; height: auto; }
+#splash .logo { font-size: 38px; }
+#splash .tag { color: var(--muted); font-weight: 800; }
+
 @media (max-width: 370px) { .tiles { grid-template-columns: 1fr; } .tile { min-height: 0; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
@@ -377,6 +489,8 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
 <div id="app"></div>
 <div id="toast" role="status" aria-live="polite"></div>
 <canvas id="fx" aria-hidden="true"></canvas>
+<div id="buddy" aria-live="polite"></div>
+<div id="splash" role="img" aria-label="МурМемо"><img src="img/cat-hello-a.webp" alt="" width="210"><div class="logo"><b>Мур</b><span>Мемо</span></div><div class="tag">Сфоткал — запомнил</div></div>
 <script>
 /*
   Уроки. Сейчас записаны вручную; потом такой же набор будет присылать нейросеть по фото учебника.
@@ -604,6 +718,8 @@ const IC = {
   image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/>',
   feather: '<path d="M20 4C10 4 5 10 5 19"/><path d="M20 4c0 8-5 12-12 12M9 12h6"/>',
 };
+const CAT = (n) => `img/cat-${n}.webp`;
+const catImg = (n, cls = '') => `<img class="cat ${cls}" src="${CAT(n)}" alt="" draggable="false">`;
 const icon = (n) => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${IC[n]}</svg>`;
 const STAR = '<path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z"/>';
 const star = (on) => `<svg class="star${on ? ' on' : ''}" viewBox="0 0 24 24" aria-hidden="true">${STAR}</svg>`;
@@ -641,6 +757,15 @@ function sfx(type) {
     });
   } catch (e) { /* без звука */ }
 }
+let buddyTimer = 0, buddyLast = 0;
+function buddy(pose, text) {
+  const el = document.getElementById('buddy');
+  el.innerHTML = `<img src="${CAT(pose)}" alt=""><span>${esc(text)}</span>`;
+  el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+  clearTimeout(buddyTimer); buddyTimer = setTimeout(() => el.classList.remove('show'), 1800);
+  buddyLast = Date.now();
+}
+const hideBuddy = () => { clearTimeout(buddyTimer); document.getElementById('buddy').classList.remove('show'); };
 function buzz() { try { navigator.vibrate && navigator.vibrate(60); } catch (e) { /* нет вибрации */ } }
 
 /* Конфетти */
@@ -710,7 +835,7 @@ const best = () => store.get('best') || {};
 
 /* ---------- Состояние экрана ---------- */
 const S = { screen: 'home', lesson: null, game: null, enter: true, pick: null };
-function go(screen, patch = {}) { Object.assign(S, patch, { screen, enter: true }); draw(); window.scrollTo(0, 0); }
+function go(screen, patch = {}) { hideBuddy(); Object.assign(S, patch, { screen, enter: true }); draw(); window.scrollTo(0, 0); }
 
 /* ---------- План по дням: «к какому дню выучить» ---------- */
 const DAY = 864e5;
@@ -796,8 +921,14 @@ function findTask(id) {
 function base(total) {
   return {
     total, right: 0, wrong: 0, score: 0, combo: 0, missed: new Map(), finished: false, flash: null, just: null, bumped: false,
-    ok(id) { this.right++; this.combo++; this.score += 10 + (this.combo >= 3 ? 5 : 0); this.just = id; this.bumped = true; sfx('ok'); },
-    bad(key, q, right) { this.wrong++; this.combo = 0; if (key != null && !this.missed.has(key)) this.missed.set(key, { q, right }); sfx('bad'); buzz(); },
+    ok(id) {
+      this.right++; this.combo++; this.score += 10 + (this.combo >= 3 ? 5 : 0); this.just = id; this.bumped = true; sfx('ok');
+      if ([3, 5, 8, 12, 20].includes(this.combo)) buddy('happy', `Серия ${this.combo}! Так держать`);
+    },
+    bad(key, q, right) {
+      this.wrong++; this.combo = 0; if (key != null && !this.missed.has(key)) this.missed.set(key, { q, right }); sfx('bad'); buzz();
+      if (Date.now() - buddyLast > 7000) buddy('oops', ['Ничего, попробуй ещё', 'Почти! Ещё разок', 'Ошибка — шаг к успеху'][this.wrong % 3]);
+    },
     stars() { const f = (this.total - this.missed.size) / this.total; return f >= 0.9 ? 3 : f >= 0.6 ? 2 : 1; },
   };
 }
@@ -863,7 +994,7 @@ function makeMemory(L) {
     ? ''
     : `Фиолетовые карточки — термины, голубые — значения. Найди пару. Раунд ${g.r + 1} из ${g.rounds.length}`;
   g.body = () => `
-    ${g.stuck ? '<div class="banner pop">Не пара. Прочитай обе карточки и нажми на любую, чтобы играть дальше</div>' : ''}
+    ${g.stuck ? `<div class="banner pop"><img src="${CAT('think')}" alt=""><span>Не пара. Прочитай обе карточки и нажми на любую, чтобы играть дальше</span></div>` : ''}
     <div class="memo">${g.cards.map((c, i) => {
       const shown = c.matched || g.open.includes(i);
       if (!shown) {
@@ -1274,7 +1405,7 @@ function todayCard() {
   const head = tp.due ? 'Сегодня рассказываешь!' : done === tp.tasks.length ? 'На сегодня всё сделано!' : 'Задание на сегодня';
   const sub = tp.due ? 'Повтори один раз целиком — и вперёд' : `Сдавать: ${shortDate(plan.due)} · ${linesTxt(plan.a, plan.b)}`;
   return `<div class="today">
-    <div class="top"><div><div class="lbl">${head}</div><h2>«${esc(POEM.title)}»</h2><div class="sub">${sub}</div></div>${ring(done, tp.tasks.length)}</div>
+    <div class="top"><div><div class="lbl">${head}</div><h2>«${esc(POEM.title)}»</h2><div class="sub">${sub}</div></div>${!tp.due && done === tp.tasks.length ? `<img class="today-cat" src="${CAT('sleep')}" alt="">` : ring(done, tp.tasks.length)}</div>
     <div class="tasks">${tp.tasks.map(taskHtml).join('')}</div>
     <button class="link" data-act="plan">Весь план</button>
   </div>`;
@@ -1282,28 +1413,24 @@ function todayCard() {
 
 function vHome() {
   const total = LESSONS.reduce((s, L) => s + lessonStars(L), 0);
+  const subj = (act, id, pic, bg, name, sub, extra = '') => `<button class="s${act === 'soon' ? ' soon' : ''}" data-act="${act}" data-id="${id}">
+    <span class="pic" style="background:${bg}"><img src="${CAT(pic)}" alt=""></span><b>${name}</b><small>${sub}</small>${extra}</button>`;
   return `<div class="screen">
-    <div class="hello">
-      <div><div class="eyebrow">Привет!</div><h1>Что учим сегодня?</h1></div>
-      ${soundBtn()}
+    <div class="home-top"><div class="logo"><b>Мур</b><span>Мемо</span></div>
+      <div class="r"><span class="total">${star(true)} ${total}</span>${soundBtn()}</div></div>
+    <div class="hero">
+      <div><div class="hi">Привет!</div><h1>Что задали сегодня?</h1><div class="bubble">Сфоткай страницу — я сделаю из неё игру</div></div>
+      <button class="catbtn" data-act="pet" aria-label="Погладить кота">${catImg('book')}</button>
     </div>
-    <div><span class="total">${star(true)} ${total} ${plural(total, 'звезда', 'звезды', 'звёзд')}</span></div>
     ${todayCard()}
-    <div class="lessons">
-      <button class="b3 c-pink lesson-card" data-act="lesson" data-id="smuta">
-        <span class="subj">${esc(HISTORY.subject)}</span>
-        <h2>${esc(HISTORY.title)}</h2>
-        <span class="meta">${HISTORY.years} · 4 игры · ${stars(Math.min(3, Math.round(lessonStars(HISTORY) / 4)))}</span>
-        <span class="art"><svg viewBox="0 0 24 24">${IC.crown}</svg></span>
-      </button>
-      <button class="b3 c-violet lesson-card" data-act="lesson" data-id="perchatka">
-        <span class="subj">${esc(POEM.subject)}</span>
-        <h2>${esc(POEM.title)}</h2>
-        <span class="meta">${esc(POEM.author)} · 6 шагов</span>
-        <span class="art"><svg viewBox="0 0 24 24">${IC.feather}</svg></span>
-      </button>
+    <button class="photo-btn" data-act="soon"><img src="${CAT('camera')}" alt=""><span><b>Сфотографировать, что задали</b><small>Скоро: игры по фото твоего учебника</small></span></button>
+    <div class="h3">Мои предметы</div>
+    <div class="subj">
+      ${subj('lesson', 'smuta', 'history', '#ffe6e9', 'История', 'Смутное время', stars(Math.min(3, Math.round(lessonStars(HISTORY) / 4))))}
+      ${subj('lesson', 'perchatka', 'literature', '#eee8ff', 'Литература', '«Перчатка»', stars(Math.min(3, Math.round(lessonStars(POEM) / 6))))}
+      ${subj('soon', '', 'geography', '#dff5ea', 'География', 'Сфоткай параграф')}
+      ${subj('soon', '', 'biology', '#e2f1ff', 'Биология', 'Сфоткай параграф')}
     </div>
-    <div class="photo">${icon('camera')}<div><b>Сфотографировать параграф</b>Игры соберутся по твоему учебнику</div><span class="tag">скоро</span></div>
   </div>`;
 }
 
@@ -1313,7 +1440,7 @@ function vLesson() {
     <div class="grow"><div class="crumb">${esc(L.subject)}</div></div>${soundBtn()}</div>`;
   if (L.kind === 'history') {
     return `<div class="screen">${top}
-      <div><h1 class="lesson-h1">${esc(L.title)}</h1><div class="lesson-sub">${L.years}</div></div>
+      <div class="lesson-head"><div><h1 class="lesson-h1">${esc(L.title)}</h1><div class="lesson-sub">${L.years}</div></div>${catImg('history')}</div>
       <div class="tiles">${HISTORY_GAMES.map((x) => `
         <button class="b3 ${x.color} tile" data-act="play" data-id="${x.id}">
           <span class="ico">${icon(x.icon)}</span>
@@ -1324,7 +1451,7 @@ function vLesson() {
   }
   const lines = selLines();
   return `<div class="screen">${top}
-    <div><h1 class="lesson-h1">${esc(L.title)}</h1><div class="lesson-sub">${esc(L.author)}, ${esc(L.translator)}</div></div>
+    <div class="lesson-head"><div><h1 class="lesson-h1">${esc(L.title)}</h1><div class="lesson-sub">${esc(L.author)}, ${esc(L.translator)}</div></div>${catImg('literature')}</div>
     <div class="frag">
       <div class="lbl">Мой отрывок</div>
       <div class="q">${esc(lines[0].t)}<br>…<br>${esc(lines[lines.length - 1].t)}</div>
@@ -1358,7 +1485,7 @@ function vPick() {
     : `Отрывок: <span>${n} ${plural(n, 'строка', 'строки', 'строк')}</span>`;
   return `<div class="screen">
     <div class="bar-top"><button class="round" data-act="${range ? 'lesson-back' : 'home'}" aria-label="Назад">${icon('back')}</button>
-      <div class="grow"><div class="crumb">${esc(POEM.title)}</div><div style="font:800 20px var(--f-display)">Какой отрывок учим?</div></div></div>
+      <div class="grow"><div class="crumb">${esc(POEM.title)}</div><div style="font:900 20px var(--f-display)">Какой отрывок учим?</div></div><img class="mini-cat" src="${CAT('point')}" alt=""></div>
     <div class="page">${html}</div>
   </div>
   <div class="dock"><div class="in">
@@ -1377,7 +1504,8 @@ function vDue() {
   return `<div class="screen">
     <div class="bar-top"><button class="round" data-act="lesson-back" aria-label="Назад">${icon('back')}</button>
       <div class="grow"><div class="crumb">${esc(POEM.title)} · ${linesTxt(range.a, range.b)}</div><div style="font:800 20px var(--f-display)">Когда рассказывать?</div></div></div>
-    <p class="hint" style="margin:0">Выбери день — приложение разложит отрывок по дням: каждый день немного нового и повторение.</p>
+    <img class="card-pic" src="${CAT('test')}" alt="">
+    <p class="hint" style="margin:0">Выбери день — я разложу отрывок по дням: каждый день немного нового и повторение.</p>
     <div class="quick">${opts.map(([n, txt]) => { const d = addDays(t, n); return `<button class="b3 c-card btn${sel === d ? ' sel' : ''}" data-act="due-pick" data-id="${d}">${txt}<br><small style="font-weight:700;opacity:.8">${shortDate(d)}</small></button>`; }).join('')}</div>
     <label class="crumb" for="due-date">Или выбери дату</label>
     <input class="datein" id="due-date" type="date" min="${addDays(t, 1)}" value="${sel || ''}">
@@ -1429,6 +1557,7 @@ function vResult() {
   const verse = L.kind === 'poem';
   const tp = S.task ? todayPlan() : null, nextTask = tp && tp.tasks.find((x) => !doneTasks[x.id]);
   return `<div class="screen result">
+    <div class="res-cat">${catImg(n === 3 ? 'trophy' : n === 2 ? 'happy' : 'oops', 'jump-in')}</div>
     <div class="big-stars">${[1, 2, 3].map((i) => star(i <= n)).join('')}</div>
     <h2>${head}</h2>
     <div class="pts">${g.score}<small>очков</small></div>
@@ -1459,6 +1588,8 @@ $app.addEventListener('click', (e) => {
   const a = el.dataset.act, id = el.dataset.id;
   switch (a) {
     case 'home': taskRange = null; return go('home', { lesson: null, game: null, task: null });
+    case 'pet': { const c = el.querySelector('.cat'); c.classList.remove('jump'); void c.offsetWidth; c.classList.add('jump'); sfx('ok'); return; }
+    case 'soon': toast('Скоро: подключаем распознавание фото'); return;
     case 'sound': soundOn = !soundOn; store.set('sound', soundOn); if (soundOn) sfx('ok'); return draw();
     case 'lesson': {
       const L = LESSONS.find((x) => x.id === id);
@@ -1512,6 +1643,18 @@ $app.addEventListener('keydown', (e) => {
   const el = e.target.closest('g[data-act]');
   if (el) { e.preventDefault(); el.dispatchEvent(new MouseEvent('click', { bubbles: true })); }
 });
+
+// Заставка: кот машет лапой (два кадра по очереди), потом исчезает сам или по нажатию.
+(function splash() {
+  const el = document.getElementById('splash');
+  const img = el.querySelector('img');
+  new Image().src = CAT('hello-b');
+  let k = 0;
+  const t = setInterval(() => { img.src = CAT(++k % 2 ? 'hello-b' : 'hello-a'); }, 340);
+  const hide = () => { clearInterval(t); el.classList.add('out'); setTimeout(() => el.remove(), 450); };
+  el.addEventListener('click', hide);
+  setTimeout(hide, 2300);
+})();
 
 draw();
 </script>
