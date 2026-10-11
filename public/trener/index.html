@@ -465,6 +465,10 @@ button:focus-visible, [tabindex]:focus-visible { outline-color: var(--orange); }
 .lesson-head { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 10px; }
 .lesson-head .cat { width: 104px; height: auto; }
 .mini-cat { width: 64px; height: auto; flex: none; }
+.mini-cat.flip { transform: scaleX(-1); }
+.shelf-empty { display: grid; grid-template-columns: 70px 1fr; align-items: center; gap: 12px; padding: 14px; border-radius: 20px; border: 2px dashed var(--line); color: var(--muted); font-weight: 800; }
+.shelf-empty img { width: 70px; height: auto; }
+.shelf-note { color: var(--muted); font-weight: 700; font-size: 13.5px; text-align: center; }
 .card-pic { display: block; width: 100%; max-width: 260px; justify-self: center; border-radius: 22px; box-shadow: 0 4px 0 var(--shadow); }
 .res-cat .cat { width: 170px; height: auto; margin-inline: auto; }
 
@@ -1411,10 +1415,27 @@ function todayCard() {
   </div>`;
 }
 
+/* Предметы на полке. Предмет появляется, когда по нему есть хотя бы один урок (в приложении — после первого фото).
+   pic — поза кота; если своей картинки нет, берётся кот с книгой. */
+const SUBJECTS = {
+  history:    { name: 'История',     pic: 'history',    bg: '#ffe6e9' },
+  literature: { name: 'Литература',  pic: 'literature', bg: '#eee8ff' },
+  geography:  { name: 'География',   pic: 'geography',  bg: '#dff5ea' },
+  biology:    { name: 'Биология',    pic: 'biology',    bg: '#e2f1ff' },
+  math:       { name: 'Математика',  pic: 'book',       bg: '#fff0d6' },
+  russian:    { name: 'Русский язык', pic: 'book',      bg: '#ffe9dc' },
+  english:    { name: 'Английский',  pic: 'book',       bg: '#e3eeff' },
+  social:     { name: 'Обществознание', pic: 'book',    bg: '#f1ebe2' },
+  physics:    { name: 'Физика',      pic: 'book',       bg: '#e6f4f1' },
+  chemistry:  { name: 'Химия',       pic: 'book',       bg: '#f5e8ff' },
+};
+const SHELF = [
+  { subject: 'history', lesson: 'smuta', sub: 'Смутное время', L: HISTORY, games: 4 },
+  { subject: 'literature', lesson: 'perchatka', sub: '«Перчатка»', L: POEM, games: 6 },
+];
+
 function vHome() {
   const total = LESSONS.reduce((s, L) => s + lessonStars(L), 0);
-  const subj = (act, id, pic, bg, name, sub, extra = '') => `<button class="s${act === 'soon' ? ' soon' : ''}" data-act="${act}" data-id="${id}">
-    <span class="pic" style="background:${bg}"><img src="${CAT(pic)}" alt=""></span><b>${name}</b><small>${sub}</small>${extra}</button>`;
   return `<div class="screen">
     <div class="home-top"><div class="logo"><b>Мур</b><span>Мемо</span></div>
       <div class="r"><span class="total">${star(true)} ${total}</span>${soundBtn()}</div></div>
@@ -1425,12 +1446,10 @@ function vHome() {
     ${todayCard()}
     <button class="photo-btn" data-act="soon"><img src="${CAT('camera')}" alt=""><span><b>Сфотографировать, что задали</b><small>Скоро: игры по фото твоего учебника</small></span></button>
     <div class="h3">Мои предметы</div>
-    <div class="subj">
-      ${subj('lesson', 'smuta', 'history', '#ffe6e9', 'История', 'Смутное время', stars(Math.min(3, Math.round(lessonStars(HISTORY) / 4))))}
-      ${subj('lesson', 'perchatka', 'literature', '#eee8ff', 'Литература', '«Перчатка»', stars(Math.min(3, Math.round(lessonStars(POEM) / 6))))}
-      ${subj('soon', '', 'geography', '#dff5ea', 'География', 'Сфоткай параграф')}
-      ${subj('soon', '', 'biology', '#e2f1ff', 'Биология', 'Сфоткай параграф')}
-    </div>
+    ${SHELF.length ? `<div class="subj">${SHELF.map((x) => { const sj = SUBJECTS[x.subject]; return `<button class="s" data-act="lesson" data-id="${x.lesson}">
+      <span class="pic" style="background:${sj.bg}"><img src="${CAT(sj.pic)}" alt=""></span><b>${sj.name}</b><small>${x.sub}</small>${stars(Math.min(3, Math.round(lessonStars(x.L) / x.games)))}</button>`; }).join('')}</div>
+      <div class="shelf-note">Новый предмет появится сам, когда сфотографируешь страницу</div>`
+      : `<div class="shelf-empty"><img src="${CAT('sit')}" alt=""><span>Здесь появятся предметы, которые ты учишь. Сфоткай первую страницу!</span></div>`}
   </div>`;
 }
 
@@ -1485,7 +1504,7 @@ function vPick() {
     : `Отрывок: <span>${n} ${plural(n, 'строка', 'строки', 'строк')}</span>`;
   return `<div class="screen">
     <div class="bar-top"><button class="round" data-act="${range ? 'lesson-back' : 'home'}" aria-label="Назад">${icon('back')}</button>
-      <div class="grow"><div class="crumb">${esc(POEM.title)}</div><div style="font:900 20px var(--f-display)">Какой отрывок учим?</div></div><img class="mini-cat" src="${CAT('point')}" alt=""></div>
+      <div class="grow"><div class="crumb">${esc(POEM.title)}</div><div style="font:900 20px var(--f-display)">Какой отрывок учим?</div></div><img class="mini-cat flip" src="${CAT('point')}" alt=""></div>
     <div class="page">${html}</div>
   </div>
   <div class="dock"><div class="in">
