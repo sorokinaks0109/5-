@@ -185,6 +185,7 @@
   .zone .zt { font-weight: 800; font-size: 17px; display: flex; gap: 8px; align-items: center; color: var(--zc, var(--blue)); }
   .zone .zt .ic { font-size: 24px; }
   .zone .empty { font-size: 14px; color: var(--muted); margin-top: 6px; }
+  .zone .zd { font-size: 13px; color: var(--muted); margin-top: 2px; line-height: 1.3; }
   .zone:hover, .zone.over { border-style: solid; border-color: var(--zc, var(--blue)); background: #fff; transform: scale(1.02); }
   .zone.wrongflash { border-color: var(--red); background: var(--red-soft); animation: shake .4s; }
   .zone.okflash { border-color: var(--green); background: var(--green-soft); }
@@ -520,61 +521,60 @@ var WHY = [
   }
 ];
 
-/* Игра «Рыбья кость» (диаграмма Исикавы). a: на какие кости можно положить карточку ("none": не причина). */
+/* Игра «Рыбья кость» (диаграмма Исикавы рабочей группы). a: правильная кость ("none": не причина), e: почему именно сюда. */
 var FISH = {
-  problem: "Не разработана инструкция по охране труда при использовании мойки высокого давления",
+  problem: "Количество дней на выгрузке (сут./вагон)",
   cats: [
-    { k: "people",  t: "Персонал",         ic: "👷", col: "#1a6fe0" },
-    { k: "equip",   t: "Оборудование",     ic: "⚙️", col: "#0f8f8f" },
-    { k: "mat",     t: "Материалы",        ic: "📦", col: "#c26b00" },
-    { k: "method",  t: "Методы",           ic: "📋", col: "#6d3fd6" },
-    { k: "measure", t: "Измерения",        ic: "📏", col: "#139a52" },
-    { k: "env",     t: "Окружающая среда", ic: "🌦️", col: "#d9304f" }
+    { k: "people",  t: "Персонал",         ic: "👷", col: "#1a6fe0", d: "люди: оформление документов, графики работы, дисциплина" },
+    { k: "equip",   t: "Оборудование",     ic: "⚙️", col: "#0f8f8f", d: "техника, склад, локомотив" },
+    { k: "mat",     t: "Материалы",        ic: "📦", col: "#c26b00", d: "сам груз, вагоны, оснастка под груз" },
+    { k: "method",  t: "Методы",           ic: "📋", col: "#6d3fd6", d: "планирование, порядок и правила работы" },
+    { k: "measure", t: "Измерения",        ic: "📏", col: "#139a52", d: "данные, учёт, фиксация простоев" },
+    { k: "env",     t: "Окружающая среда", ic: "🌦️", col: "#d9304f", d: "погода, снег, актировка" }
   ],
   cards: [
-    { t: "Руководитель склада не знал, что на мойку нужна отдельная инструкция", a: ["people"],
-      e: "Знания и опыт людей: косточка «Персонал».", hint: "Речь о знаниях конкретного человека.",
-      mainWhy: "Следующий руководитель тоже может не знать. Почему процесс вообще зависит от того, знает ли он?" },
-    { t: "Специалист по ОТ один на 6 складов, до мойки руки не дошли", a: ["people"],
-      e: "Нехватка людей и загрузка: «Персонал».", hint: "Речь о людях и их загрузке.",
-      mainWhy: "Даже при загрузке специалист сделал бы инструкцию, если бы узнал о мойке вовремя. А узнать ему было неоткуда." },
-    { t: "Мойку оформили как хозинвентарь, и в реестр оборудования она не попала", a: ["equip", "method"],
-      e: "Про само оборудование и то, как его учли.", hint: "Речь о самом оборудовании и о том, как его оформили.",
-      mainWhy: "Близко! Но если бы при вводе была обязательная проверка инструкции, мойку поймали бы, как её ни оформи." },
-    { t: "В паспорте мойки нет раздела о безопасной работе на русском языке", a: ["equip", "mat"],
-      e: "Документация производителя относится к оборудованию.", hint: "Это свойство самого оборудования и его документов." },
-    { t: "Нет типового образца инструкции для моечного оборудования", a: ["mat", "method"],
-      e: "Исходные материалы, из которых делают инструкцию.", hint: "Чего-то не хватает на входе для работы. Какая это группа?" },
-    { t: "Для моющей химии нет паспортов безопасности", a: ["mat"],
-      e: "Химия относится к расходным материалам. Без паспорта не описать риски в инструкции.", hint: "Речь о расходных веществах." },
-    { t: "В порядке ввода нового оборудования нет шага «проверить, есть ли инструкция по ОТ»", a: ["method"], root: true,
-      e: "Порядки, регламенты, процедуры: «Методы».", hint: "Речь о регламенте, о порядке работы.",
-      mainWhy: "Из-за этого пробела и незнание руководителя, и оформление «хозинвентарём» привели к проблеме. Закроем пробел, и не повторится ни с мойкой, ни с другим оборудованием." },
-    { t: "Перечень инструкций по ОТ пересматривают раз в 3 года", a: ["method", "measure"],
-      e: "Как устроен процесс пересмотра: «Методы».", hint: "Речь о том, как устроен процесс.",
-      mainWhy: "Даже при ежегодном пересмотре мойка могла год работать без инструкции. Нужен шаг при вводе, а не чаще пересматривать." },
-    { t: "Чек-лист АПК проверяет инструкции только по старому перечню", a: ["measure"],
-      e: "Проверки и контроль: «Измерения».", hint: "Речь о проверке, о контроле.",
-      mainWhy: "Проверка нашла бы пробел позже. Лучше, чтобы пробела не было с самого начала." },
-    { t: "Нет учёта: какое оборудование стоит на складе и кто им пользуется", a: ["measure", "method"],
-      e: "Учёт и данные: «Измерения».", hint: "Речь об учёте, о данных." },
-    { t: "Мойкой работают на улице и зимой, риски разные, непонятно, что писать", a: ["env"],
-      e: "Условия, в которых идёт работа: «Окружающая среда».", hint: "Речь об условиях работы." },
-    { t: "Мойкой пользуются и свои работники, и подрядчики клининга", a: ["env", "people"],
-      e: "Обстановка вокруг работы: «Окружающая среда».", hint: "Кто вокруг работает и в каких условиях?" },
-    { t: "Инструкции по ОТ на мойку нет", a: ["none"],
-      e: "Это сама проблема, а не её причина. Голова рыбы уже занята 🙂" },
-    { t: "Специалист по ОТ безответственный", a: ["none"],
-      e: "Поиск виноватого. Спросите лучше: что мешало ему сделать инструкцию?" },
-    { t: "Так сложилось исторически", a: ["none"],
-      e: "Пустые слова. С «историей» ничего не сделать завтра." }
-  ],
-  krd: [
-    { t: "Разработать и утвердить инструкцию по ОТ для мойки высокого давления до 15.11", why: "Это коррекция: нужна обязательно и в первую очередь, но со следующим новым оборудованием всё повторится." },
-    { t: "Усилить контроль за наличием инструкций по охране труда", why: "Ошибка №1: общие слова, нечего проверить." },
-    { t: "Направить руководителя склада на обучение по охране труда", why: "Это только одна косточка, «Персонал». Порядок ввода не изменится, и следующий руководитель снова может не знать." },
-    { t: "До 01.12 добавить в порядок ввода оборудования обязательное согласование со специалистом по ОТ: без утверждённой инструкции оборудование в работу не выдаётся. Отв.: главный инженер", ok: true,
-      why: "Бьёт в главную причину: пробел в порядке ввода закрыт. Конкретно, есть срок и ответственный." }
+    { t: "Отсутствие перевозочных документов замедляет сдачу вагонов на станцию", a: "people",
+      e: "Документы оформляют люди. Пока бумаги не готовы, вагон на станцию не сдать." },
+    { t: "Графики работы участников процесса влияют на оборот вагонов за смену", a: "people",
+      e: "Речь о том, когда и сколько работают люди: смены и графики сотрудников." },
+    { t: "Низкая дисциплина заполнения документации (журналы, заявки, отчёты)", a: "people",
+      e: "Дисциплина зависит от людей: журналы, заявки и отчёты заполняют сотрудники." },
+    { t: "Неисправность техники приводит к ожиданию разгрузки", a: "equip",
+      e: "Сломанная погрузочная техника: это оборудование." },
+    { t: "Ограниченные складские мощности, пропускная способность", a: "equip",
+      e: "Склад, его площади и пропускная способность относятся к оборудованию и инфраструктуре." },
+    { t: "Наличие локомотива влияет на скорость подачи вагонов", a: "equip",
+      e: "Локомотив это техника: нет локомотива, и вагоны ждут подачи." },
+    { t: "Вид МТР влияет на длительность выгрузки", a: "mat",
+      e: "Сам груз и есть материал: трубы выгружать дольше, чем коробки." },
+    { t: "Ограниченное количество спецоборудования", a: "mat",
+      e: "Здесь спецоборудование это оснастка под конкретный груз: захваты, траверсы, стропы. Рабочая группа отнесла её к материалам, а к «Оборудованию» технику, склад и локомотив." },
+    { t: "Вагоны с остатками груза, элементов крепления увеличивают время зачистки", a: "mat",
+      e: "Остатки груза и крепёж в вагоне: это материалы, с которыми приходится возиться." },
+    { t: "Неравномерные поставки в течение года создают пиковые нагрузки", a: "method",
+      e: "Это про то, как спланированы поставки: порядок и планирование работы." },
+    { t: "Неформализованное планирование загрузки постов", a: "method",
+      e: "Нет порядка планирования: классический пример «Методов»." },
+    { t: "Выгрузка зависит от возможности единовременного размещения на местах выгрузки", a: "method",
+      e: "Это про то, как организована выгрузка и размещение груза: порядок работы." },
+    { t: "Приоритет на выгрузку отдаётся АТС", a: "method",
+      e: "Кого разгружать первым: это правило работы, то есть метод." },
+    { t: "Нет автоматической интеграции данных о процессе из смежных систем", a: "measure",
+      e: "Речь о данных: как они собираются и передаются между системами." },
+    { t: "Нет единого формата для фиксации причин простоев", a: "measure",
+      e: "Как фиксируем и учитываем простои: это измерения." },
+    { t: "Отсутствие обратной связи по качеству данных (формальное заполнение)", a: "measure",
+      e: "Качество данных и учёта относится к измерениям." },
+    { t: "Метеоусловия влияют на продолжительность разгрузки", a: "env",
+      e: "Погода: классическая окружающая среда." },
+    { t: "Актировка приводит к приостановке работ на терминале", a: "env",
+      e: "Актировка это остановка работ из-за мороза или непогоды, значит, окружающая среда." },
+    { t: "Зачистка подъездных путей от снега увеличивает время на маневровые операции", a: "env",
+      e: "Снег на путях: снова погода, окружающая среда." },
+    { t: "Вагоны стоят на выгрузке слишком долго", a: "none",
+      e: "Это сама проблема, голова рыбы, а не её причина." },
+    { t: "Кладовщики работают медленно, потому что не хотят", a: "none",
+      e: "Поиск виноватого без фактов. Лучше спросить, что им мешает работать быстрее." }
   ]
 };
 
@@ -668,7 +668,7 @@ function home() {
   stopTimer(); keyHandler = null; hideToast(); window.onresize = null;
   var games = [
     { id: "sort", n: 1, emo: "🔧🎯", c: "#1a6fe0", t: "Коррекция или КРД?", d: "Разложите мероприятия по трём корзинам: исправляет нарушение, устраняет причину или бьёт мимо.", time: "5 минут · 17 карточек" },
-    { id: "fish", n: 2, emo: "🐟", c: "#e08a00", t: "Рыбья кость", d: "Перетащите причины на кости диаграммы Исикавы, найдите главную и выберите КРД.", time: "7 минут · 15 причин" },
+    { id: "fish", n: 2, emo: "🐟", c: "#e08a00", t: "Рыбья кость", d: "Разложите причины простоя вагонов на выгрузке по костям диаграммы Исикавы.", time: "7 минут · 21 карточка" },
     { id: "why", n: 3, emo: "🌳", c: "#139a52", t: "Дойди до корня", d: "Пройдите «5 почему» на реальном случае, проверьте цепочку через «поэтому» и выберите КРД.", time: "5–7 минут · 2 кейса" },
     { id: "pick", n: 4, emo: "✍️", c: "#6d3fd6", t: "Выбери лучшее КРД", d: "В каждом случае четыре мероприятия. Найдите то, которое устранит причину и которое можно проверить через месяц.", time: "5 минут · 6 случаев" }
   ];
@@ -702,28 +702,26 @@ function start(id) {
 /* ---------- Игра «Рыбья кость» ---------- */
 function runFish() {
   streak = 0;
-  var F = FISH, cats = {}, placed = {}, fresh = null, score = 0, firstTry = true, phase = "place", mistakes = [];
+  var F = FISH, cats = {}, placed = {}, fresh = null, score = 0, mistakes = [], busy = false, last = null;
   F.cats.forEach(function (c) { cats[c.k] = c; placed[c.k] = []; });
   var deck = shuffle(F.cards.map(function (c, i) { return i; }));
-  var pos = 0, mainIdx = -1;
-  var total = F.cards.length + 2;
+  var pos = 0, total = F.cards.length;
   startTimer();
 
   function zoneHtml(c, where, col) {
     var list = placed[c.k];
     var s = '<div class="zone ' + where + '" data-zone="' + c.k + '" style="--zc:' + c.col + ';grid-column:' + col + '">' +
-      '<div class="zt"><span class="ic">' + c.ic + '</span>' + esc(c.t) + '</div>';
-    if (!list.length) s += '<div class="empty">' + (phase === "place" ? "перетащите сюда" : "") + '</div>';
+      '<div class="zt"><span class="ic">' + c.ic + '</span>' + esc(c.t) + '</div><div class="zd">' + esc(c.d) + '</div>';
     s += '<div class="chips">';
     list.forEach(function (ci) {
-      s += '<button class="chip' + (ci === fresh ? " new" : "") + (ci === mainIdx ? " main" : "") + '" data-ci="' + ci + '">' + esc(F.cards[ci].t) + '</button>';
+      s += '<div class="chip' + (ci === fresh ? " new" : "") + '">' + esc(F.cards[ci].t) + '</div>';
     });
     return s + '</div></div>';
   }
 
   function fishHtml() {
     var top = F.cats.slice(0, 3), bot = F.cats.slice(3);
-    var s = '<div class="fish' + (phase === "main" ? " picking" : "") + '" id="fish"><svg class="skel" id="skel"></svg>';
+    var s = '<div class="fish" id="fish"><svg class="skel" id="skel"></svg>';
     top.forEach(function (c, k) { s += zoneHtml(c, "ztop", k + 2); });
     s += '<div class="spine" id="spine"></div>';
     s += '<div class="head" id="head"><small>Проблема</small>' + esc(F.problem) + '</div>';
@@ -732,18 +730,18 @@ function runFish() {
   }
 
   function draw() {
-    var html = header("🐟 Рыбья кость", phase === "place" ? pos : F.cards.length + (phase === "main" ? 0 : 1), total, score, "Шаг");
-    if (phase === "place") {
+    var html = header("🐟 Рыбья кость", pos, total, score, "Карточка");
+    if (pos < total) {
       var card = F.cards[deck[pos]];
-      html += '<div class="fishhint"><div class="fcard" id="fcard"><span class="grip">⠿</span><span>' + esc(card.t) + '</span></div>' +
-        '<button class="trash" data-zone="none" id="trash"><span class="ic">🗑️</span>Не причина<small>симптом, «кто», пустые слова</small></button></div>';
-    } else if (phase === "main") {
-      html += '<div class="q">Какая причина главная? Нажмите на неё на диаграмме</div>' +
-        '<p class="muted" style="margin-top:4px">Ищите ту, что стоит за многими другими: если её убрать, проблема не повторится и с другим оборудованием.</p>';
+      html += '<p class="muted" style="margin:0 0 10px">Диаграмма рабочей группы: почему вагоны долго стоят на выгрузке. Положите каждую причину на свою кость. Подсказка, что относится к кости, написана прямо на ней.</p>' +
+        '<div class="fishhint"><div class="fcard" id="fcard"><span class="grip">⠿</span><span>' + esc(card.t) + '</span></div>' +
+        '<button class="trash" data-zone="none" id="trash"><span class="ic">🗑️</span>Не причина<small>сама проблема или «кто виноват»</small></button></div>';
     }
+    if (last) html += '<div class="fb ' + (last.ok ? "ok" : "bad") + '" style="margin:0 0 14px"><b class="h">' + esc(last.title) + '</b>' +
+      '<span class="muted">«' + esc(last.card) + '»</span><br>' + esc(last.text) + '</div>';
     html += fishHtml();
-    if (phase === "place") html += '<div class="fishlegend">Перетащите карточку на нужную кость или просто нажмите на кость. Осталось карточек: <b>' + (F.cards.length - pos) + '</b></div>';
-    if (phase === "krd") html += krdHtml();
+    if (pos < total) html += '<div class="fishlegend">Перетащите карточку на нужную кость или просто нажмите на кость. Осталось карточек: <b>' + (total - pos) + '</b></div>';
+    else html += '<div class="fb ok"><b class="h">Рыба собрана! 🐟</b>Все причины на своих костях.</div><div class="next"><button class="btn" id="nx">Итоги →</button></div>';
     h(html);
     fresh = null;
     drawBones();
@@ -769,77 +767,42 @@ function runFish() {
     svg.innerHTML = s;
   }
 
+  // Одна попытка на карточку. Ошибка: показываем правильную кость, объясняем и сами кладём карточку туда.
   function place(zk, zoneEl) {
-    if (phase !== "place") return;
-    var ci = deck[pos], card = F.cards[ci], ok = card.a.indexOf(zk) >= 0;
+    if (busy || pos >= total) return;
+    var ci = deck[pos], card = F.cards[ci], ok = card.a === zk;
+    var right = card.a === "none" ? "Не причина" : cats[card.a].t;
     hit(ok, zoneEl);
-    if (!ok) {
-      if (firstTry) mistakes.push(card);
-      firstTry = false;
-      var fc = document.getElementById("fcard");
-      if (fc) { fc.classList.remove("bad"); void fc.offsetWidth; fc.classList.add("bad"); }
-      if (zoneEl) { zoneEl.classList.remove("wrongflash"); void zoneEl.offsetWidth; zoneEl.classList.add("wrongflash"); }
-      toast(false, "Не сюда. Попробуйте ещё раз", zk === "none" ? "Это настоящая причина, ей место на одной из костей." : card.hint || "Подумайте, к какой группе факторов это относится.");
+    if (ok) {
+      score++;
+      last = { ok: true, title: card.a === "none" ? "Верно, это не причина" : "Верно! «" + right + "»", card: card.t, text: card.e };
+      advance(ci);
       return;
     }
-    if (firstTry) score++;
-    firstTry = true;
-    var also = card.a.length > 1 ? " Подойдёт и «" + card.a.filter(function (k) { return k !== zk; }).map(function (k) { return cats[k] ? cats[k].t : "не причина"; }).join("», «") + "»." : "";
-    toast(true, zk === "none" ? "Верно, это не причина" : "Верно!", card.e + also);
-    if (zk !== "none") { placed[zk].push(ci); fresh = ci; }
-    pos++;
-    if (pos >= deck.length) { phase = "main"; firstTry = true; setTimeout(function () { toast(true, "Рыба собрана! 🐟", "Теперь выберите главную причину: нажмите на неё на диаграмме."); }, 600); }
-    draw();
+    mistakes.push(card);
+    busy = true;
+    var fc = document.getElementById("fcard");
+    if (fc) { fc.classList.remove("bad"); void fc.offsetWidth; fc.classList.add("bad"); }
+    if (zoneEl) { zoneEl.classList.remove("wrongflash"); void zoneEl.offsetWidth; zoneEl.classList.add("wrongflash"); }
+    var target = app.querySelector('[data-zone="' + card.a + '"]');
+    if (target) target.classList.add("okflash");
+    last = { ok: false, title: "Не туда. Правильно: «" + right + "»", card: card.t, text: card.e };
+    setTimeout(function () { busy = false; advance(ci); }, 900);
   }
 
-  function pickMain(ci, el) {
+  function advance(ci) {
     var card = F.cards[ci];
-    if (card.root) {
-      if (firstTry) score++;
-      hit(true, el);
-      mainIdx = ci; phase = "krd"; firstTry = true;
-      hideToast();
-      draw();
-      document.querySelector(".fb.ok").scrollIntoView({ behavior: "smooth", block: "start" });
-    } else {
-      firstTry = false; hit(false);
-      el.classList.remove("nope"); void el.offsetWidth; el.classList.add("nope");
-      toast(false, "Влияет, но это не главное", card.mainWhy || "Если убрать только это, проблема повторится с другим оборудованием. Ищите причину, которая стоит за многими другими.");
-    }
-  }
-
-  function krdHtml() {
-    var s = '<div class="fb ok"><b class="h">Да, главная причина именно эта!</b>' + esc(F.cards[mainIdx].mainWhy) + '</div>' +
-      '<div class="q" id="krdq" style="margin-top:22px">Какое мероприятие будет настоящим КРД для главной причины?</div><div class="list">';
-    shuffle(F.krd).forEach(function (o) { s += '<button class="opt" data-i="' + F.krd.indexOf(o) + '">' + esc(o.t) + '</button>'; });
-    return s + '</div><div id="fb"></div>';
+    if (card.a !== "none") { placed[card.a].push(ci); fresh = ci; }
+    pos++;
+    draw();
   }
 
   function bind() {
     Array.prototype.forEach.call(app.querySelectorAll("[data-zone]"), function (z) {
-      z.addEventListener("click", function () { if (phase === "place") place(z.getAttribute("data-zone"), z); });
+      z.addEventListener("click", function () { place(z.getAttribute("data-zone"), z); });
     });
-    if (phase === "main") {
-      Array.prototype.forEach.call(app.querySelectorAll(".chip"), function (c) {
-        c.onclick = function (ev) { ev.stopPropagation(); pickMain(+c.getAttribute("data-ci"), c); };
-      });
-    }
-    if (phase === "krd") {
-      Array.prototype.forEach.call(app.querySelectorAll(".opt"), function (btn) {
-        btn.onclick = function () {
-          var o = F.krd[+btn.getAttribute("data-i")];
-          btn.disabled = true;
-          btn.innerHTML = esc(o.t) + '<span class="why">' + esc(o.why) + '</span>';
-          hit(!!o.ok, btn);
-          if (!o.ok) { btn.classList.add("wrong"); firstTry = false; return; }
-          btn.classList.add("right");
-          if (firstTry) score++;
-          Array.prototype.forEach.call(app.querySelectorAll(".opt"), function (b) { b.disabled = true; });
-          document.getElementById("fb").innerHTML = '<div class="next"><button class="btn" id="nx">Итоги →</button></div>';
-          document.getElementById("nx").onclick = finish;
-        };
-      });
-    }
+    var nx = document.getElementById("nx");
+    if (nx) nx.onclick = finish;
     var fc = document.getElementById("fcard");
     if (fc) dragify(fc);
   }
@@ -859,6 +822,9 @@ function runFish() {
           fc.style.opacity = ".35";
         }
         ghost.style.left = (ev.clientX - 30) + "px"; ghost.style.top = (ev.clientY - 30) + "px";
+        // у края экрана страница сама прокручивается, чтобы дотянуться до нижних костей
+        if (ev.clientY > window.innerHeight - 70) window.scrollBy(0, 18);
+        else if (ev.clientY < 70) window.scrollBy(0, -18);
         var el = document.elementFromPoint(ev.clientX, ev.clientY);
         var z = el && el.closest ? el.closest("[data-zone]") : null;
         if (over && over !== z) over.classList.remove("over");
@@ -878,10 +844,10 @@ function runFish() {
     results.fish = score + "/" + total + " · " + r.t;
     saveResults(); window.onresize = null; hideToast();
     renderFinal("Рыбья кость", score, total, ms, r, [
-      "Сначала точно сформулируйте проблему. Это голова рыбы.",
-      "Раскладывайте по косточкам только причины. Симптомы, «кто виноват» и «так сложилось» отправляйте в корзину.",
-      "Одна причина может подходить к двум косточкам, это нормально, главное не потерять её.",
-      "Главная причина та, за которой стоят многие другие. Её проверяем «5 почему» и на неё пишем КРД."
+      "Голова рыбы: проблема, которую можно измерить. Здесь это количество суток на выгрузку одного вагона.",
+      "У каждой кости своя группа причин. Договоритесь в группе, что к какой кости относите, и держитесь этого.",
+      "Сама проблема и «кто виноват» не причины, им на диаграмме не место.",
+      "Это потенциальные причины. Дальше по данным выбирают главные, проверяют их «5 почему» и на них пишут КРД."
     ], mistakes, runFish);
   }
 
