@@ -92,7 +92,7 @@
   // ---------- показатели и мероприятия УПЦ ----------
   function kpiHead(k) {
     const val = (l, v) => (v ? '<span><b>' + l + ':</b> ' + esc(v.length > 90 ? v.slice(0, 90) + '…' : v) + '</span>' : '');
-    return '<div class="kpi-head"><div class="kpi-name">' + esc(M().shortKpi(k.name)) + (k.top3 ? ' <span class="badge s-work">ТОП-3</span>' : '') + '</div>' +
+    return '<div class="kpi-head"><div class="kpi-name">' + esc(M().shortKpi(k.name)) + (k.top3 ? ' <span class="badge s-work">ТОП-3</span>' : '') + (k.type ? ' <span class="muted small">' + esc(k.type) + '</span>' : '') + '</div>' +
       '<div class="kpi-vals">' + val('Цель', k.goal) + val('Напряжённая', k.stretch) + val('Факт', k.fact) + val('Прогноз', k.forecast) +
       (k.grade ? '<span><b>Оценка прогноза:</b> ' + esc(k.grade) + '</span>' : '') + (k.unit ? '<span class="muted">' + esc(k.unit) + '</span>' : '') +
       '<span class="muted">Лидер: ' + esc(k.leader) + '</span></div></div>';

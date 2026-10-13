@@ -83,7 +83,13 @@
       text: 'Выполнили ' + done + ' из ' + parts.length + '\n' + parts.map((x) => x.fio + ': ' + statusLabel(x.flag) + (x.text ? ' — ' + x.text : '')).join('\n'),
     };
   }
-  function eventStatus(reg, data, ev) { return ev.speaker ? stOf(data, ev.speaker, 'events', ev.id) : { flag: (ev.manual && ev.manual.flag) || '', text: (ev.manual && ev.manual.text) || '' }; }
+  // prev — статус, который был у мероприятия до смены «Заполняет»: виден, пока новый человек не заполнит своё
+  function eventStatus(reg, data, ev) {
+    if (!ev.speaker) return { flag: (ev.manual && ev.manual.flag) || '', text: (ev.manual && ev.manual.text) || '' };
+    const s = stOf(data, ev.speaker, 'events', ev.id);
+    const own = data[ev.speaker] && data[ev.speaker].data && data[ev.speaker].data.events && data[ev.speaker].data.events[ev.id];
+    return !own && ev.prev ? { flag: ev.prev.flag || '', text: ev.prev.text || '' } : s;
+  }
   function respName(reg, m) {
     const rs = respsOf(m);
     if (!rs.length) return m.respText || '—';
@@ -189,19 +195,25 @@
     throw new Error('В файле не нашлась таблица карты УПЦ (нужны колонки «Идентификатор» и «Показатель»).');
   }
   const KPI_FIELDS = ['name', 'goal', 'stretch', 'fact', 'forecast', 'grade', 'team', 'leader', 'unit', 'type', 'top3'];
+  const teamKey = (t) => String(t || '').split(',').map((x) => norm(x)).filter(Boolean).sort().join('|');
   function diffCard(reg, card) {
     const old = new Map(reg.kpis.map((k) => [k.id, k]));
     const neu = new Map(card.kpis.map((k) => [k.id, k]));
     const added = card.kpis.filter((k) => !old.has(k.id));
-    const removed = reg.kpis.filter((k) => !neu.has(k.id)).map((k) => ({ ...k, eventCount: reg.events.filter((e) => e.kpi === k.id).length }));
+    // показатели, добавленные вручную, карта не трогает
+    const removed = reg.kpis.filter((k) => !k.manual && !neu.has(k.id)).map((k) => ({ ...k, eventCount: reg.events.filter((e) => e.kpi === k.id).length }));
+    const cardNames = new Set(card.kpis.map((k) => norm(shortKpi(k.name))));
+    const manualDup = reg.kpis.filter((k) => k.manual && cardNames.has(norm(shortKpi(k.name))));
     const changed = [];
     for (const k of card.kpis) {
       const o = old.get(k.id);
       if (!o) continue;
-      const f = KPI_FIELDS.filter((x) => String(o[x] || '') !== String(k[x] || ''));
+      // состав команды сравниваем без учёта порядка фамилий — выгрузка его перемешивает
+      const same = (x) => x === 'team' ? teamKey(o.team) === teamKey(k.team) : String(o[x] || '') === String(k[x] || '');
+      const f = KPI_FIELDS.filter((x) => !same(x));
       if (f.length) changed.push({ id: k.id, name: k.name, fields: f, leaderChanged: f.includes('leader'), old: o, neu: k });
     }
-    return { added, removed, changed, date: card.date };
+    return { added, removed, changed, manualDup, date: card.date };
   }
   function defaultReporter(reg, kpi) {
     const p = personByName(reg, kpi.leader);
@@ -210,11 +222,12 @@
   function applyCard(reg, card) {
     const d = diffCard(reg, card);
     const keep = new Map(reg.kpis.map((k) => [k.id, k]));
+    const ids0 = new Set(card.kpis.map((k) => k.id));
     reg.kpis = card.kpis.map((k) => {
       const o = keep.get(k.id);
       const reporter = o && !d.changed.some((c) => c.id === k.id && c.leaderChanged) ? o.reporter : defaultReporter(reg, k);
       return { ...k, reporter: reporter === undefined ? null : reporter };
-    });
+    }).concat(reg.kpis.filter((k) => k.manual && !ids0.has(k.id)));
     const ids = new Set(reg.kpis.map((k) => k.id));
     reg.events = reg.events.filter((e) => ids.has(e.kpi));
     reg.settings.cardDate = card.date || todayISO();

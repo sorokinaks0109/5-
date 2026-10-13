@@ -182,23 +182,52 @@
     const peopleOpts = (sel) => '<option value="">— помощник —</option>' + S.reg.people.map((p) => '<option value="' + esc(p.id) + '"' + (sel === p.id ? ' selected' : '') + '>' + esc(p.fio) + '</option>').join('');
     let h = '<div class="panel"><div class="row between"><div><h2>Показатели УПЦ</h2><div class="muted small">Карта от ' + esc(Model.fmtISO(S.reg.settings.cardDate) || '—') +
       '. «Отчитывается» — кто отвечает за показатель целиком (обычно лидер команды или его руководитель первой линейки). «Заполняет» — кто ведёт статус конкретного мероприятия.</div></div>' +
-      '<label class="button">Загрузить новую карту УПЦ (xlsx)<input type="file" id="cardFile" accept=".xlsx" hidden></label></div></div>';
+      '<span class="row"><button data-act="kpiNew">+ Показатель вручную</button><label class="button">Загрузить новую карту УПЦ (xlsx)<input type="file" id="cardFile" accept=".xlsx" hidden></label></span></div>' +
+      '<div class="muted small" style="margin-top:6px">Новая карта не стирает заполненное: статусы и комментарии руководителей привязаны к коду показателя и мероприятию. Уходят только показатели, которых нет в новой карте, — перед применением список видно. ' +
+      'Мероприятие можно перенести на другой показатель — список «Перенести» в строке мероприятия, статус сохранится.</div></div>';
+    if (S.kpiForm) h += kpiForm();
     if (S.cardDiff) h += cardDiffPanel();
     const unassigned = S.reg.kpis.filter((k) => !k.reporter).length;
     if (unassigned) h += '<div class="msg warn">Показателей без отчитывающегося: ' + unassigned + '. Назначьте руководителя в списке «Отчитывается».</div>';
     h += '<div class="filters"><select id="upcPerson"><option value="">Все руководители</option>' + S.reg.people.map((p) => '<option value="' + esc(p.id) + '"' + (S.upcPerson === p.id ? ' selected' : '') + '>' + esc(p.fio) + '</option>').join('') + '</select><button data-act="print">Печать</button></div>';
     h += View.upcOverview(S.reg, S.data, today(), {
       person: S.upcPerson,
-      editor: (k, evs) => '<div class="row small no-print">Отчитывается: <select data-kpi-rep="' + esc(k.id) + '">' + peopleOpts(k.reporter).replace('— помощник —', '— не назначен —') + '</select></div>' +
+      editor: (k, evs) => '<div class="row small no-print">Отчитывается: <select data-kpi-rep="' + esc(k.id) + '">' + peopleOpts(k.reporter).replace('— помощник —', '— не назначен —') + '</select>' +
+        (k.manual ? '<span class="badge s-none">добавлен вручную</span><button class="mini" data-kpiedit="' + esc(k.id) + '">Изменить</button><button class="mini danger" data-kpidel="' + esc(k.id) + '">Удалить показатель</button>' : '') + '</div>' +
         '<table class="grid"><thead><tr><th>Мероприятие</th><th class="c-resp">Исполнители</th><th class="c-due">Срок</th><th class="c-resp">Заполняет</th><th class="c-st">Статус</th><th>Пояснение</th><th class="c-act no-print"></th></tr></thead><tbody>' +
         evs.map((e) => '<tr><td>' + View.ta('data-ev="' + esc(e.id) + '|text"', e.text) + '</td><td><input data-ev="' + esc(e.id) + '|executors" value="' + esc(e.executors) + '"></td>' +
           '<td><input data-ev="' + esc(e.id) + '|due" value="' + esc(Model.fmtISO(e.due)) + '"></td><td><select data-ev="' + esc(e.id) + '|speaker">' + peopleOpts(e.speaker) + '</select></td>' +
           (e.speaker ? '<td>' + View.badge(e.st.flag) + '</td><td class="small">' + esc(e.st.text) + '</td>'
             : '<td>' + View.statusSelect('', e.st.flag, 'data-ev="' + esc(e.id) + '|mflag"') + '</td><td>' + View.ta('data-ev="' + esc(e.id) + '|mtext"', e.st.text) + '</td>') +
-          '<td class="no-print"><button class="mini danger" data-evdel="' + esc(e.id) + '">✕</button></td></tr>').join('') +
+          '<td class="no-print"><select class="ev-move" data-ev="' + esc(e.id) + '|kpi" title="Перенести мероприятие на другой показатель"><option value="">Перенести…</option>' +
+          S.reg.kpis.filter((x) => x.id !== k.id).map((x) => '<option value="' + esc(x.id) + '">' + esc(Model.shortKpi(x.name).slice(0, 60)) + '</option>').join('') + '</select>' +
+          '<button class="mini danger" data-evdel="' + esc(e.id) + '">✕</button></td></tr>').join('') +
         '</tbody></table><button class="mini no-print" data-evadd="' + esc(k.id) + '">+ мероприятие</button>',
     });
     return h;
+  }
+  // ---------- показатель вручную (пока его нет в выгрузке карты) ----------
+  function kpiForm() {
+    const k = S.kpiForm.id ? S.reg.kpis.find((x) => x.id === S.kpiForm.id) : { name: '', type: 'БИ', leader: '', goal: '', fact: '', forecast: '', reporter: '' };
+    const inp = (id, label, v, wide) => '<label' + (wide ? ' class="wide"' : '') + '>' + label + '<input id="' + id + '" value="' + esc(v || '') + '"></label>';
+    return '<div class="panel form"><h2>' + (S.kpiForm.id ? 'Изменить показатель' : 'Новый показатель вручную') + '</h2>' +
+      '<p class="muted small">Например, бизнес-инициатива, которую уже выделили, а в выгрузке карты её ещё нет. Когда она появится в карте, перенесите мероприятия на показатель из карты, а этот удалите.</p>' +
+      '<div class="form-grid">' + inp('k_name', 'Название', k.name, true) +
+      '<label>Тип<select id="k_type">' + ['БИ', 'ФОП', 'другое'].map((t) => '<option' + (k.type === t ? ' selected' : '') + '>' + t + '</option>').join('') + '</select></label>' +
+      inp('k_leader', 'Лидер (ФИО)', k.leader) +
+      '<label>Отчитывается<select id="k_rep"><option value="">— по лидеру —</option>' + S.reg.people.map((p) => '<option value="' + esc(p.id) + '"' + (k.reporter === p.id ? ' selected' : '') + '>' + esc(p.fio) + '</option>').join('') + '</select></label>' +
+      inp('k_goal', 'Цель', k.goal) + inp('k_fact', 'Факт', k.fact) + inp('k_forecast', 'Прогноз', k.forecast) + '</div>' +
+      '<div class="row"><button class="primary" data-act="kpiSave">Сохранить</button><button data-act="kpiCancel">Отмена</button></div></div>';
+  }
+  async function kpiSave() {
+    const name = $('#k_name').value.trim();
+    if (!name) { View.toast('Впишите название показателя', 'bad'); return; }
+    const k = S.kpiForm.id ? S.reg.kpis.find((x) => x.id === S.kpiForm.id) : { id: Model.uid('R'), manual: true, top3: false, stretch: '', grade: '', team: '', unit: '' };
+    Object.assign(k, { name, type: $('#k_type').value, leader: $('#k_leader').value.trim(), goal: $('#k_goal').value.trim(), fact: $('#k_fact').value.trim(), forecast: $('#k_forecast').value.trim() });
+    k.reporter = $('#k_rep').value || Model.defaultReporter(S.reg, k) || null;
+    if (!S.kpiForm.id) S.reg.kpis.push(k);
+    S.kpiForm = null;
+    if (await saveReg('Показатель сохранён')) render();
   }
   function cardDiffPanel() {
     const d = S.cardDiff;
@@ -206,7 +235,9 @@
     return '<div class="panel"><h2>Что изменится по новой карте от ' + esc(Model.fmtISO(d.date) || '—') + '</h2>' +
       '<h3 class="sec">Новые показатели</h3>' + li(d.added, (k) => '<li>' + esc(Model.shortKpi(k.name)) + ' — лидер ' + esc(k.leader) + '</li>') +
       '<h3 class="sec">Уйдут из отчётов (их нет в карте)</h3>' + li(d.removed, (k) => '<li>' + esc(Model.shortKpi(k.name)) + (k.eventCount ? ' — и ' + k.eventCount + ' мероприятий' : '') + '</li>') +
+      (d.manualDup && d.manualDup.length ? '<div class="msg warn">Есть в карте и уже добавлены вручную: ' + d.manualDup.map((k) => esc(Model.shortKpi(k.name))).join(', ') + '. После применения перенесите мероприятия на показатель из карты и удалите ручной.</div>' : '') +
       '<h3 class="sec">Изменятся</h3>' + li(d.changed, (c) => '<li>' + esc(Model.shortKpi(c.name)) + ': ' + c.fields.map((f) => ({ fact: 'факт', forecast: 'прогноз', grade: 'оценка', goal: 'цель', stretch: 'напр. цель', team: 'команда', leader: '<b>лидер: ' + esc(c.neu.leader) + '</b> — отчитывающийся будет переназначен', unit: 'ед.', type: 'тип', name: 'название', top3: 'ТОП-3' }[f] || f)).join(', ') + '</li>') +
+      '<p class="muted small">Статусы, пояснения и комментарии руководителей по остающимся показателям сохранятся.</p>' +
       '<div class="row"><button class="primary" data-act="cardApply">Применить</button><button data-act="cardCancel">Отмена</button></div></div>';
   }
   async function loadCard(file) {
@@ -228,10 +259,17 @@
     const [id, f] = key.split('|');
     const e = S.reg.events.find((x) => x.id === id);
     if (f === 'mflag' || f === 'mtext') { e.manual = { ...(e.manual || {}), [f === 'mflag' ? 'flag' : 'text']: value }; }
-    else e[f] = f === 'due' ? Model.parseDue(value) : f === 'speaker' ? value || null : value;
+    else if (f === 'kpi') { if (!value) return; const to = S.reg.kpis.find((x) => x.id === value); e.kpi = value; View.toast('Мероприятие перенесено в «' + Model.shortKpi(to.name) + '». Статус сохранён.', 'ok'); }
+    else if (f === 'speaker') {
+      // статус прежнего «Заполняет» остаётся виден, пока новый человек не заполнит своё
+      const st = Model.eventStatus(S.reg, S.data, e);
+      if (st.flag || st.text) e.prev = { flag: st.flag, text: st.text };
+      e.speaker = value || null;
+      if (!e.speaker) e.manual = e.manual || { flag: st.flag, text: st.text };
+    } else e[f] = f === 'due' ? Model.parseDue(value) : value;
     clearTimeout(evTimer);
-    evTimer = setTimeout(() => saveReg('Сохранено'), f === 'speaker' || f === 'mflag' ? 0 : 800);
-    if (f === 'speaker') setTimeout(render, 50);
+    evTimer = setTimeout(() => saveReg(f === 'kpi' ? '' : 'Сохранено'), f === 'speaker' || f === 'mflag' || f === 'kpi' ? 0 : 800);
+    if (f === 'speaker' || f === 'kpi') setTimeout(render, 50);
   }
 
   // ---------- свод и письма ----------
@@ -401,10 +439,18 @@
   // ---------- события ----------
   function people() { return S.reg.people.filter((p) => p.onMeeting !== false).concat(S.reg.people.filter((p) => p.onMeeting === false)); }
   document.addEventListener('click', async (e) => {
-    const b = e.target.closest('[data-tab],[data-act],[data-mailtest],[data-person-idx],[data-mf],[data-meetf],[data-memo],[data-evdel],[data-evadd],[data-pmove],.who .card');
+    const b = e.target.closest('[data-tab],[data-act],[data-mailtest],[data-kpiedit],[data-kpidel],[data-person-idx],[data-mf],[data-meetf],[data-memo],[data-evdel],[data-evadd],[data-pmove],.who .card');
     if (!b) return;
     if (b.dataset.tab) { S.tab = b.dataset.tab; render(); return; }
     if (b.dataset.meetf !== undefined) { S.meetFilter = b.dataset.meetf; render(); return; }
+    if (b.dataset.kpiedit) { S.kpiForm = { id: b.dataset.kpiedit }; render(); window.scrollTo(0, 0); return; }
+    if (b.dataset.kpidel) {
+      const k = S.reg.kpis.find((x) => x.id === b.dataset.kpidel);
+      const n = S.reg.events.filter((x) => x.kpi === k.id).length;
+      if (!confirm('Удалить показатель «' + Model.shortKpi(k.name) + '»' + (n ? ' и его мероприятия (' + n + ')? Чтобы сохранить мероприятия, сначала перенесите их на другой показатель.' : '?'))) return;
+      S.reg.kpis = S.reg.kpis.filter((x) => x.id !== k.id); S.reg.events = S.reg.events.filter((x) => x.kpi !== k.id);
+      if (await saveReg('Показатель удалён')) render(); return;
+    }
     if (b.dataset.mailtest) { const to = S.reg.settings.directorEmail || ''; View.mail(S.reg.settings, to ? [to] : [], 'Проверка ссылки — не отправлять', 'Это проверка: открылось ли новое письмо с адресом и темой.', b.dataset.mailtest); return; }
     if (b.classList.contains('card') && b.dataset.person) { S.person = people().findIndex((p) => p.id === b.dataset.person); S.tab = 'meeting'; render(); return; }
     if (b.dataset.personIdx) { S.person = +b.dataset.personIdx; render(); return; }
@@ -448,6 +494,9 @@
     else if (a === 'respNone') { $$('.f_resp').forEach((x) => { x.checked = false; }); }
     else if (a === 'sendDirector') sendDirector();
     else if (a === 'sendMemo') sendMemo();
+    else if (a === 'kpiNew') { S.kpiForm = {}; render(); }
+    else if (a === 'kpiSave') kpiSave();
+    else if (a === 'kpiCancel') { S.kpiForm = null; render(); }
     else if (a === 'openMail') { if (S.letter) View.mail(S.reg.settings, S.letter.to, S.letter.subject, S.letter.body); }
     else if (a === 'mobileCopy') { await View.saveFile(await Base.mobileFile(S.dir, S.reg, S.data), mobileName(), 'text/html', '.html', 'Страница'); }
     else if (a === 'memoSave') memoSave();

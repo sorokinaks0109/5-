@@ -327,6 +327,45 @@ if (card2) {
   reg = json(files, 'реестр.json');
   check(!reg.kpis.some((k) => k.id === 'F0161012') && !reg.events.some((e) => e.kpi === 'F0161012'), 'удалённый показатель убран вместе с мероприятиями');
 }
+// показатель вручную, новая карта от 13.10 (ПКАЗС выделена в БИ), перенос мероприятия со статусом
+{
+  await page.click('[data-act=kpiNew]');
+  await page.fill('#k_name', 'Ручной показатель для проверки');
+  await page.fill('#k_leader', 'Мещеряков Алексей Валериевич');
+  await page.click('[data-act=kpiSave]');
+  await page.waitForTimeout(200);
+  let r = json(await DUMP(page), 'реестр.json');
+  const man = r.kpis.find((k) => k.manual);
+  check(man && man.reporter === 'Мещеряков', 'показатель добавлен вручную, отчитывается лидер — Мещеряков');
+  const card3 = process.env.CARD3;
+  if (card3) {
+    await page.evaluate(() => { window.Otchet.S.data['Дрыков'].data.events['У-077'] = { flag: 'work', text: 'Две ПКАЗС введены' }; });
+    await page.setInputFiles('#cardFile', card3);
+    await page.waitForSelector('text=Что изменится');
+    const d = await page.locator('.panel:has-text("Что изменится")').textContent();
+    check(/ПКАЗС/.test(d) && !/Ручной показатель/.test(d.split('Уйдут')[1].split('Изменятся')[0]), 'новая карта 13.10: ПКАЗС — новый показатель, ручной не уходит');
+    await page.click('[data-act=cardApply]');
+    await page.waitForTimeout(300);
+    r = json(await DUMP(page), 'реестр.json');
+    const pk = r.kpis.find((k) => k.id === 'B0168827');
+    check(pk && pk.reporter === 'Суходолов' && r.kpis.some((k) => k.manual) && r.events.some((e) => e.id === 'У-077'), 'после карты: ПКАЗС у Суходолова, ручной показатель и мероприятия на месте');
+    await page.locator('select[data-ev="У-077|kpi"]').selectOption('B0168827');
+    await page.waitForTimeout(400);
+    r = json(await DUMP(page), 'реестр.json');
+    check(r.events.find((e) => e.id === 'У-077').kpi === 'B0168827', 'мероприятие ПКАЗС перенесено на новый показатель');
+    const st = await page.evaluate(() => Model.eventStatus(window.Otchet.S.reg, window.Otchet.S.data, window.Otchet.S.reg.events.find((e) => e.id === 'У-077')));
+    check(st.text === 'Две ПКАЗС введены', 'после переноса статус и пояснение сохранились');
+    await page.locator('select[data-ev="У-077|speaker"]').selectOption('Суходолов');
+    await page.waitForTimeout(400);
+    const st2 = await page.evaluate(() => Model.eventStatus(window.Otchet.S.reg, window.Otchet.S.data, window.Otchet.S.reg.events.find((e) => e.id === 'У-077')));
+    check(st2.text === 'Две ПКАЗС введены', 'сменили «Заполняет» на Суходолова — прежний статус виден, пока он не заполнит своё');
+    files = await DUMP(page);
+  }
+  await page.locator('[data-kpidel]').first().click();
+  await page.waitForTimeout(300);
+  check(!json(await DUMP(page), 'реестр.json').kpis.some((k) => k.manual), 'ручной показатель удаляется');
+  files = await DUMP(page);
+}
 await page.click('[data-tab=out]');
 // вкладка письма открывается сразу по нажатию, адрес подставляется, когда файл готов
 await page.evaluate(() => { window.open = (u) => { window.__openCalls = (window.__openCalls || 0) + 1; if (window.__openCalls === 1) window.__firstOpen = u || ''; if (u) window.__opened = u; return { closed: false, document: { write() {} }, location: { set href(v) { window.__opened = v; } } }; }; });
