@@ -790,6 +790,33 @@ await page.close();
   await pa.waitForFunction(() => window.__planOut, null, { timeout: 30000 });
   const xl = await pa.evaluate(async () => { const wb = new ExcelJS.Workbook(); await wb.xlsx.load(window.__planOut); const ws = wb.worksheets[0]; const t = []; ws.eachRow((r) => t.push(r.values.slice(1).map((v) => String(v || '')).join(' | '))); return t; });
   check(xl.some((x) => /План мероприятий .* на 2027г/.test(x)) && xl.some((x) => x.startsWith('Блок ФОП')) && xl.some((x) => x.startsWith('Блок БИ')) && xl.some((x) => x.includes('цифровой склад')) && xl.some((x) => x.includes('беспилотная доставка')), 'выгрузка в форму Приложения 3: заголовок, блоки, правки лидера, предложенная БИ (' + xl.length + ' строк)');
+  // участник «только план и УПЦ»: не мешает первой линейке
+  await pa.click('[data-tab=settings]');
+  const li = await pa.evaluate(() => window.Otchet.S.reg.people.findIndex((p) => p.id === 'Лазар'));
+  await pa.selectOption('[data-pp="' + li + '|onMeeting"]', 'extra');
+  await pa.waitForTimeout(300);
+  await pa.click('[data-tab=who]');
+  check(!(await pa.locator('.who').innerText()).includes('Лазар'), 'участник «только план и УПЦ» не виден в «Кто обновил»');
+  await pa.click('[data-tab=meeting]');
+  check(!(await pa.locator('.people-bar').innerText()).includes('Лазар'), 'и его нет в очереди докладов на совещании');
+  files = await DUMP(pa);
+  {
+    const pl = await open('Страницы руководителей/Отчёт — Лазар.html');
+    await MOUNT(pl, files);
+    const h2 = await pl.locator('main .panel h2').allInnerTexts();
+    check(!h2.some((x) => /Поручения|РОС|проекты|Приложения/i.test(x)) && h2.some((x) => /УПЦ/.test(x)) && h2.some((x) => /Проект на 2027/.test(x)) && !(await pl.locator('#reportDate').count()), 'у него на странице только УПЦ и проект плана, без даты отчёта: ' + h2.join(' | '));
+    await pl.locator('textarea[data-k^="events|"]').first().fill('Работа идёт по графику');
+    await pl.click('[data-act=save]');
+    await pl.waitForTimeout(300);
+    check((await pl.locator('#toast').innerText()).includes('Сохранено'), 'сохраняет без даты «Отчёт актуален на»');
+    files = await DUMP(pl);
+    await pl.close();
+  }
+  await MOUNT(pa, files);
+  await pa.click('[data-tab=settings]');
+  await pa.selectOption('[data-pp="' + li + '|onMeeting"]', '0');
+  await pa.waitForTimeout(300);
+  await pa.click('[data-tab=plan]');
   await pa.selectOption('#plan_on', '0');
   await pa.click('[data-act=planCfg]');
   await pa.waitForTimeout(300);

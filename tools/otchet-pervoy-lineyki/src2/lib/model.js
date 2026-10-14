@@ -39,6 +39,8 @@
 
   // ---------- люди ----------
   function personById(reg, id) { return reg.people.find((p) => p.id === id) || null; }
+  // Кто ведёт еженедельный отчёт (без участников «только план и УПЦ»), в порядке докладов: сначала участники совещания
+  function reportPeople(reg) { const r = reg.people.filter((p) => !p.extra); return r.filter((p) => p.onMeeting !== false).concat(r.filter((p) => p.onMeeting === false)); }
   // Ищем человека по «Мещеряков А.В.», «А.В. Мещеряков» или «Мещеряков Алексей Валериевич»
   function personByName(reg, name) {
     const n = norm(name);
@@ -260,7 +262,7 @@
       ws.views = [{ state: 'frozen', ySplit: 1 }];
       return ws;
     };
-    const views = reg.people.map((p) => personView(reg, data, p.id, today));
+    const views = reportPeople(reg).map((p) => personView(reg, data, p.id, today));
     sheet('Кто обновил', ['Руководитель', 'Отчёт актуален на', 'Поручений', 'Выполнено', 'В работе', 'Не выполнено', 'Неактуально', 'Без статуса', 'Срок прошёл'],
       [24, 16, 11, 11, 11, 13, 13, 12, 12],
       views.map((v) => ({ vals: [v.person.fio, v.reportDate ? fmtISO(v.reportDate) : 'не заполнен', v.counts.total, v.counts.done, v.counts.work, v.counts.fail, v.counts.na, v.counts.none, v.counts.overdue] })));
@@ -395,7 +397,7 @@
 
   root.Model = {
     STATUSES, NO_STATUS, statusLabel, isFinal, ISO, todayISO, fmtISO, parseDue, isOverdue, fmtDateTime, uid, norm, surname,
-    personById, personByName, inTeam, shortKpi, memoStatus, eventStatus, respName, personView, countFlags, freshness,
+    personById, reportPeople, personByName, inTeam, shortKpi, memoStatus, eventStatus, respName, personView, countFlags, freshness,
     respsOf, isResp, combineFlags, coNotes, mergeReport, sameVersion, stOf, sections, avrReq, avrqKey, avrqText, avrqProgress, planOn, planFinal, planProgress,
     cellText, parseCard, diffCard, applyCard, defaultReporter, buildSummary, summaryText,
   };

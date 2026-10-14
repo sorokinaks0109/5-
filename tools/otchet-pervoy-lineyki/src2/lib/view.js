@@ -355,7 +355,7 @@
 
   // ---------- кто обновил ----------
   function whoCards(reg, data, today) {
-    return '<div class="who">' + reg.people.map((p) => {
+    return '<div class="who">' + reg.people.filter((p) => !p.extra).map((p) => {
       const v = M().personView(reg, data, p.id, today);
       const c = v.counts;
       return '<div class="card fr-' + v.fresh + '" data-person="' + esc(p.id) + '"><div class="name">' + esc(p.fio) + (p.onMeeting === false ? ' <span class="muted small">(не на совещании)</span>' : '') + (p.fileMode ? ' <span class="muted small">· через файл</span>' : '') + '</div>' +

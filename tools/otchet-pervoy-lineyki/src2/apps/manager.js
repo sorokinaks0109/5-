@@ -68,6 +68,13 @@
       return;
     }
     const pv = viewData();
+    // участник «только план и УПЦ»: без еженедельного отчёта, только его мероприятия УПЦ и проект плана на год
+    if (isExtra()) {
+      const v = Model.personView(S.reg, viewData(), S.me, today());
+      main.innerHTML = sentPanel() + headBar() + avrBanner() + planBanner() + (v.kpiOwn.length || v.kpiOther.length ? upcSec() : '') + planSec() +
+        (!(v.kpiOwn.length || v.kpiOther.length) && !Model.planOn(S.reg) ? '<div class="panel muted">Сейчас заполнять нечего. Когда помощник попросит — здесь появятся ваши мероприятия.</div>' : '');
+      View.autoGrow(main); updateSaveState(); return;
+    }
     main.innerHTML = sentPanel() + headBar() + avrBanner() + planBanner() + filterBar() + (S.preview
       ? '<div class="panel preview">' + View.personReport(S.reg, pv, S.me, today(), { filter: S.filter }) + '</div>'
       : memoSec() + (T().ros ? freeSec('ros', T().ros) : '') + (T().proj ? freeSec('proj', T().proj) : '') + upcSec() + attSec() + planSec());
@@ -175,9 +182,16 @@
       '<li>Всё. Помощник увидит отчёт, когда откроет свою страницу. Если перетащить не получается — отправьте файл помощнику по почте.</li></ol>' +
       '<button data-act="sentOk">Понятно</button></div>';
   }
+  const isExtra = () => !!(Model.personById(S.reg, S.me) || {}).extra;
   function headBar() {
     const last = S.reg.settings.lastMeeting;
     const need = !S.draft.reportDate;
+    if (isExtra()) {
+      return '<div class="panel sticky head-bar"><span class="muted small">Ваши мероприятия УПЦ и проект плана на год. ' +
+        (S.embedded && !S.dir ? '«Сохранить» сохранит файл — положите его в папку «Входящие».' : '') + '</span><span class="spacer"></span><span id="saveState" class="small"></span>' +
+        (S.embedded && !S.dir ? '<button data-act="linkFolder">' + (conn.saved ? 'Сохранять в папку «' + esc(conn.saved.name) + '»' : 'Сохранять сразу в папку') + '</button>' : '') +
+        '<button class="primary" data-act="save">Сохранить</button></div>';
+    }
     return '<div class="panel sticky head-bar">' +
       '<label class="req ' + (need ? 'empty' : '') + '">Отчёт актуален на <input type="date" id="reportDate" value="' + esc(S.draft.reportDate || '') + '" max="' + today() + '"></label>' +
       '<span class="muted small">' + (last ? 'Последнее совещание: ' + Model.fmtISO(last) + '. ' : '') + (S.prevDate ? 'Прошлый раз указано: ' + Model.fmtISO(S.prevDate) : 'Отчёт ещё не заполнялся') +
@@ -244,7 +258,7 @@
 
   function upcSec() {
     const v = Model.personView(S.reg, viewData(), S.me, today());
-    let h = '<div class="panel" id="upcSec"><h2>' + esc(T().upc) + '</h2>';
+    let h = '<div class="panel" id="upcSec"><h2>' + esc(isExtra() ? T().upcPlain : T().upc) + '</h2>';
     if (!v.kpiOwn.length && !v.kpiOther.length) h += '<div class="muted">Показателей, по которым вы отчитываетесь, нет.</div>';
     for (const k of v.kpiOwn) {
       h += '<div class="kpi">' + View.kpiHead(k) + '<div class="muted small">Вы отчитываетесь по показателю целиком.</div>' +
@@ -311,7 +325,7 @@
   }
 
   async function save() {
-    if (!S.draft.reportDate) {
+    if (!S.draft.reportDate && !isExtra()) {
       View.toast('Укажите дату «Отчёт актуален на» — без неё помощник не поймёт, что отчёт обновлён.', 'bad');
       $('#reportDate').focus();
       return;

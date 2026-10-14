@@ -67,7 +67,7 @@
     h += '<h2>Поручения на контроле</h2>' + tiles(all, 'на контроле');
     h += '<h2>Просрочено и не выполнено: ' + bad.length + '</h2>' + (bad.length ? bad.map((m) => card(m, '<div class="meta">Отв.: ' + esc(M().respName(reg, m)) + '</div>')).join('') : '<div class="muted">Нет</div>');
     h += '<h2>По руководителям</h2>';
-    const people = reg.people.filter((p) => p.onMeeting !== false).concat(reg.people.filter((p) => p.onMeeting === false));
+    const people = M().reportPeople(reg);
     for (const p of people) {
       const v = M().personView(reg, data, p.id, today);
       const c = v.counts;

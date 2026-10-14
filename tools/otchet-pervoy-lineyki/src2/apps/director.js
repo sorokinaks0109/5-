@@ -9,7 +9,7 @@
   const conn = Base.connector({ mode: 'read', render: () => render(), onDir: async (dir) => { S.dir = dir; await load(); } });
 
   async function load() { const all = await Base.loadAll(S.dir); S.reg = all.reg; S.data = all.data; render(); }
-  const people = () => S.reg.people.filter((p) => p.onMeeting !== false).concat(S.reg.people.filter((p) => p.onMeeting === false));
+  const people = () => Model.reportPeople(S.reg);
 
   function render() {
     $('#tabs').innerHTML = S.reg ? TABS.map(([k, t]) => '<button data-tab="' + k + '" class="' + (S.tab === k ? 'active' : '') + '">' + t + '</button>').join('') : '';

@@ -88,7 +88,7 @@
 
   function whoTab() {
     const st = S.reg.settings;
-    const stale = S.reg.people.filter((p) => Model.personView(S.reg, S.data, p.id, today()).fresh !== 'fresh');
+    const stale = Model.reportPeople(S.reg).filter((p) => Model.personView(S.reg, S.data, p.id, today()).fresh !== 'fresh');
     return '<div class="panel"><div class="row between"><div><h2>Кто обновил отчёт</h2><div class="muted small">Зелёный — руководитель указал дату актуальности позже последнего совещания. ' +
       'Дату ставит сам руководитель, поэтому ваши действия на неё не влияют.</div></div>' +
       '<div class="row"><label class="small">Последнее совещание <input type="date" id="lastMeeting" value="' + esc(st.lastMeeting || '') + '"></label>' +
@@ -110,7 +110,7 @@
   }
 
   function meetingTab() {
-    const people = S.reg.people.filter((p) => p.onMeeting !== false).concat(S.reg.people.filter((p) => p.onMeeting === false));
+    const people = Model.reportPeople(S.reg);
     if (S.person >= people.length) S.person = 0;
     const p = people[S.person];
     return '<div class="people-bar">' + people.map((x, i) => '<button class="chip ' + (i === S.person ? 'active' : '') + '" data-person-idx="' + i + '">' + esc(x.fio) + '</button>').join('') +
@@ -129,10 +129,10 @@
       '<label class="wide">Поручение' + View.ta('id="f_text"', e.text) + '</label>' +
       '<div class="wide"><div class="small muted">Ответственные — можно нескольких: у каждого будет свой статус, у поручения — общий итог «выполнили N из M» ' +
       '<button type="button" class="mini" data-act="respAll">Все на совещании</button> <button type="button" class="mini" data-act="respNone">Снять всех</button></div>' +
-      '<div class="checks">' + S.reg.people.map((p) => '<label class="chk"><input type="checkbox" class="f_resp" value="' + esc(p.id) + '"' + (rs.includes(p.id) ? ' checked' : '') + '>' + esc(p.fio) + '</label>').join('') + '</div>' +
+      '<div class="checks">' + S.reg.people.filter((p) => !p.extra || rs.includes(p.id)).map((p) => '<label class="chk"><input type="checkbox" class="f_resp" value="' + esc(p.id) + '"' + (rs.includes(p.id) ? ' checked' : '') + '>' + esc(p.fio) + '</label>').join('') + '</div>' +
       '<input id="f_respText" placeholder="Если ответственного нет в списке — впишите ФИО" value="' + esc(rs.length ? '' : e.respText || '') + '" style="margin-top:6px;min-width:320px"></div>' +
       '<label>Срок<input id="f_due" placeholder="дд.мм.гггг или «постоянно»" value="' + esc(Model.fmtISO(e.due)) + '"></label>' +
-      '<div class="wide"><div class="small muted">Соисполнители</div><div class="checks">' + S.reg.people.map((p) => '<label class="chk"><input type="checkbox" class="f_co" value="' + esc(p.id) + '"' + ((e.co || []).includes(p.id) ? ' checked' : '') + '>' + esc(p.fio) + '</label>').join('') + '</div></div></div>' +
+      '<div class="wide"><div class="small muted">Соисполнители</div><div class="checks">' + S.reg.people.filter((p) => !p.extra || (e.co || []).includes(p.id)).map((p) => '<label class="chk"><input type="checkbox" class="f_co" value="' + esc(p.id) + '"' + ((e.co || []).includes(p.id) ? ' checked' : '') + '>' + esc(p.fio) + '</label>').join('') + '</div></div></div>' +
       '<div class="row"><button class="primary" data-act="memoSave">' + (S.edit && S.edit.id ? 'Сохранить изменения' : 'Добавить поручение') + '</button>' + (S.edit ? '<button data-act="memoCancel">Отмена</button>' : '') + '</div></div>';
   }
   function memoTab() {
@@ -719,10 +719,10 @@
   // ---------- настройки ----------
   function settingsTab() {
     const st = S.reg.settings;
-    return '<div class="panel"><h2>Руководители</h2><p class="muted small">Порядок строк — порядок докладов. «На совещании: нет» — человек заполняет отчёт, но в очереди докладов идёт в конце. ' +
+    return '<div class="panel"><h2>Руководители</h2><p class="muted small">Порядок строк — порядок докладов. «На совещании: нет» — человек заполняет отчёт, но в очереди докладов идёт в конце. «Нет — только план и УПЦ» — для лидеров команд не из первой линейки: у них в отчёте только мероприятия УПЦ и проект плана на год, на совещании, в «Кто обновил» и у директора их нет. ' +
       '«Имя файла» — фамилия в имени личной страницы «Отчёт — Фамилия.html». «Страница» — «с данными» для тех, у кого Windows, и для отчётов, которые заполняют люди на разных системах: страница сама получает поручения; на Windows отчёт сохраняется файлом в «Входящие», на Astra — кнопкой «Сохранять сразу в папку».</p><table class="grid"><thead><tr><th>ФИО (как в поручениях)</th><th>Полное ФИО (как в карте УПЦ)</th><th class="c-resp">Имя файла</th><th>Почта</th><th class="c-st">На совещании</th><th class="c-st">Страница</th><th class="c-act"></th></tr></thead><tbody>' +
       S.reg.people.map((p, i) => '<tr><td><input data-pp="' + i + '|fio" value="' + esc(p.fio) + '"></td><td><input data-pp="' + i + '|full" value="' + esc(p.full || '') + '"></td><td>' + esc(p.slug) + '</td>' +
-        '<td><input data-pp="' + i + '|email" value="' + esc(p.email || '') + '"></td><td><select data-pp="' + i + '|onMeeting"><option value="1">да</option><option value="0"' + (p.onMeeting === false ? ' selected' : '') + '>нет</option></select></td>' +
+        '<td><input data-pp="' + i + '|email" value="' + esc(p.email || '') + '"></td><td><select data-pp="' + i + '|onMeeting"><option value="1">да</option><option value="0"' + (p.onMeeting === false && !p.extra ? ' selected' : '') + '>нет</option><option value="extra"' + (p.extra ? ' selected' : '') + '>нет — только план и УПЦ</option></select></td>' +
         '<td><select data-pp="' + i + '|fileMode"><option value="0">обычная (Astra)</option><option value="1"' + (p.fileMode ? ' selected' : '') + '>с данными (Windows / смешанно)</option></select></td>' +
         '<td class="c-act"><button class="mini" data-pmove="up|' + i + '">↑</button><button class="mini" data-pmove="down|' + i + '">↓</button><button class="mini danger" data-pmove="del|' + i + '">✕</button></td></tr>').join('') +
       '</tbody></table><div class="row" style="margin-top:8px"><input id="newFio" placeholder="Фамилия И.О."><button data-act="addPerson">Добавить руководителя</button></div>' +
@@ -761,7 +761,8 @@
   async function settingsEdit(key, value) {
     const [i, f] = key.split('|');
     const p = S.reg.people[+i];
-    p[f] = f === 'onMeeting' || f === 'fileMode' ? value === '1' : value;
+    if (f === 'onMeeting') { p.onMeeting = value === '1'; if (value === 'extra') p.extra = true; else delete p.extra; }
+    else p[f] = f === 'fileMode' ? value === '1' : value;
     await saveReg();
   }
 
@@ -794,7 +795,7 @@
   }
 
   // ---------- события ----------
-  function people() { return S.reg.people.filter((p) => p.onMeeting !== false).concat(S.reg.people.filter((p) => p.onMeeting === false)); }
+  function people() { return Model.reportPeople(S.reg); }
   document.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-tab],[data-act],[data-mailtest],[data-kpiedit],[data-kpidel],[data-avrf],[data-avr-src],[data-avr-excl],[data-pkdel],[data-pedel],[data-peadd],[data-person-idx],[data-mf],[data-meetf],[data-memo],[data-evdel],[data-evadd],[data-pmove],.who .card');
     if (!b) return;
@@ -847,7 +848,7 @@
     else if (a === 'unlock') { const h = await Base.sha($('#pass').value); if (h === S.reg.settings.passHash) { try { sessionStorage.setItem('otchet.unlocked', h); } catch (x) { /* */ } S.locked = false; render(); } else View.toast('Неверный пароль', 'bad'); }
     else if (a === 'meetingToday') { S.reg.settings.lastMeeting = today(); if (await saveReg('Отмечено: совещание прошло сегодня. Отчёты станут «не обновлён», пока руководители не поставят новую дату.')) render(); }
     else if (a === 'remind') {
-      const stale = S.reg.people.filter((p) => Model.personView(S.reg, S.data, p.id, today()).fresh !== 'fresh');
+      const stale = Model.reportPeople(S.reg).filter((p) => Model.personView(S.reg, S.data, p.id, today()).fresh !== 'fresh');
       const to = stale.map((p) => p.email).filter(Boolean);
       const noMail = stale.filter((p) => !p.email).map((p) => p.fio);
       if (noMail.length) View.toast('Нет почты у: ' + noMail.join(', ') + '. Добавьте в «Настройках».', 'bad');
