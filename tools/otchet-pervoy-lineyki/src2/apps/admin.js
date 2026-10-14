@@ -270,8 +270,8 @@
       render(); window.scrollTo(0, 0);
     } catch (e) { View.toast('Файл не прочитался: ' + e.message, 'bad'); }
   }
-  // Что можно перенести в отчёт: в файле статус есть, в отчёте — пусто
-  const avrPushable = () => S.avr.rows.filter((r) => r.eventId && r.file && !r.rep && r.how !== 'cancelled');
+  // Что перенести в отчёт: итоговый текст строки («Впишется в файл») отличается от статуса в отчёте
+  const avrPushable = () => S.avr.rows.filter((r) => r.eventId && r.how !== 'cancelled' && r.out.trim() && !same(r.out, r.rep));
   function avrPanel() {
     const A = S.avr; const I = A.info;
     const n = (h) => A.rows.filter((r) => r.how === h).length;
@@ -295,8 +295,9 @@
       chip('same', 'Совпадают', st('same')) + chip('none', 'Пусто везде', st('none')) + '</div>' +
       '<div class="msg ' + (n('') ? 'warn' : 'ok') + '">Найдено в отчёте: ' + (n('auto') + n('saved') + n('manual')) + (n('similar') ? ', похожих (проверьте): ' + n('similar') : '') +
       (n('cancelled') ? ', отменено по примечанию: ' + n('cancelled') : '') + (n('nokpi') ? ', показателя нет в карте УПЦ: ' + n('nokpi') : '') + (n('') ? ', не найдено: ' + n('') : '') + '.</div>' +
-      (push.length ? '<div class="msg ok row between"><span>В файле статус есть, а в отчёте первой линейки пусто: <b>' + push.length + '</b>. Перенести их в отчёт — руководители увидят этот статус у себя и не будут заполнять заново.</span>' +
-        '<button class="primary" data-act="avrPush">Перенести в отчёт (' + push.length + ')</button></div>' : '') +
+      (push.length ? '<div class="msg ok row between"><span>Отличается от отчёта первой линейки: <b>' + push.length + '</b> строк. «Перенести в отчёт» — то, что стоит в колонке «Впишется в файл», станет статусом у руководителей ' +
+        '(и там, где было пусто, и там, где вы выбрали «из файла» или поправили текст). Руководитель увидит его у себя заполненным и сможет поправить.</span>' +
+        '<button class="primary" data-act="avrPush">Перенести в отчёт (' + push.length + ')</button></div>' : '<div class="msg ok">Статусы в отчёте первой линейки совпадают с тем, что впишется в файл.</div>') +
       '<table class="grid avr"><thead><tr><th class="c-no">№</th><th>Мероприятие в плане</th><th>Мероприятие в отчёте</th><th>Впишется в файл</th><th class="c-no">Вып.</th></tr></thead><tbody>';
     let kpi = null;
     const tags = { similar: '<span class="badge s-none">похоже — проверьте</span>', '': '<span class="badge s-fail">не найдено</span>', cancelled: '<span class="badge s-na">отменено</span>', nokpi: '<span class="badge s-na">показателя нет в карте</span>', manual: '<span class="badge s-work">выбрано</span>' };
@@ -340,11 +341,14 @@
   // руководитель видит его у себя заполненным и при следующем сохранении он становится его собственным.
   async function avrPush() {
     const list = avrPushable();
-    if (!confirm('Перенести в отчёт первой линейки статусы из файла по ' + list.length + ' мероприятиям? Там, где руководитель уже что-то заполнил, ничего не изменится.')) return;
+    if (!confirm('Перенести в отчёт первой линейки статусы по ' + list.length + ' мероприятиям — так, как они стоят в колонке «Впишется в файл»?')) return;
+    const at = Date.now();
     for (const r of list) {
       const e = S.reg.events.find((x) => x.id === r.eventId);
-      const st = { flag: flagFromText(r.file, r.fileDone), text: r.file };
-      if (e.speaker) e.prev = st; else e.manual = st;
+      const flag = flagFromText(r.out, r.done);
+      // «Выполнено. Текст» → статус «выполнено» и пояснение «Текст»
+      const text = r.out.trim().replace(/^(в работе|выполнено|не выполнено|неактуально)\s*[.:—-]?\s*/i, '') || r.out.trim();
+      if (e.speaker) e.override = { flag, text, at }; else e.manual = { flag, text };
     }
     if (await saveReg('Перенесено в отчёт: ' + list.length + '. Руководители увидят статусы у себя.')) { S.avr.rows.forEach(avrPrepare); render(); }
   }

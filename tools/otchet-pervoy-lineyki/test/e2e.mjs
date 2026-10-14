@@ -383,12 +383,24 @@ if (process.env.AVR) {
   const ti = await page.evaluate(() => window.Otchet.S.avr.rows.findIndex((r) => /Участие в тендерных процедурах/.test(r.text)));
   check(await page.evaluate((i) => window.Otchet.S.avr.rows[i].src, ti) === 'file', 'АВР: по умолчанию остаётся текст из файла');
   await page.click('[data-avr-src="report|' + ti + '"]');
-  // перенос статусов из файла в отчёт, где в отчёте пусто
-  const pi = await page.evaluate(() => { const r = window.Otchet.S.avr.rows.find((x) => x.eventId && x.file && !x.rep && x.how !== 'cancelled'); return r ? r.eventId : ''; });
+  // перенос в отчёт: и где в отчёте пусто, и где расходилось, а выбрано «из файла»
+  const ids = await page.evaluate(() => { const R = window.Otchet.S.avr.rows; const a = R.find((x) => x.eventId && x.file && !x.rep && x.how !== 'cancelled'); const d = R.find((x) => x.eventId && x.state === 'diff' && x.src === 'file' && !/тендерных/.test(x.text)); return { empty: a && a.eventId, diff: d && d.eventId }; });
   await page.click('[data-act=avrPush]');
-  await page.waitForTimeout(400);
-  const pushed = await page.evaluate((id) => { const S = window.Otchet.S; const e = S.reg.events.find((x) => x.id === id); return { st: Model.eventStatus(S.reg, S.data, e), file: S.avr.rows.find((x) => x.eventId === id).file }; }, pi);
-  check(pi && pushed.st.text === pushed.file, 'АВР: статус из файла перенесён в отчёт, где у руководителя было пусто');
+  await page.waitForTimeout(500);
+  const pushed = await page.evaluate((ids) => { const S = window.Otchet.S; const r = (id) => S.avr.rows.find((x) => x.eventId === id); return [ids.empty, ids.diff].map((id) => ({ state: r(id).state, rep: r(id).rep, file: r(id).file })); }, ids);
+  check(ids.empty && pushed[0].state === 'same' && pushed[0].rep, 'АВР: статус из файла перенесён в отчёт, где у руководителя было пусто');
+  check(ids.diff && pushed[1].state === 'same', 'АВР: где расходилось и выбрано «из файла» — в отчёте теперь текст из файла');
+  const tenderRep = await page.evaluate((i) => window.Otchet.S.avr.rows[i].rep, ti);
+  check(tenderRep === 'Выполнено. Участвовали в 4 тендерах', 'АВР: где выбрано «из отчёта», отчёт не меняется');
+  {
+    const info = await page.evaluate((id) => { const e = window.Otchet.S.reg.events.find((x) => x.id === id); return { sp: e.speaker, slug: (window.Otchet.S.reg.people.find((p) => p.id === e.speaker) || {}).slug, text: e.override && e.override.text }; }, ids.diff);
+    const fz = await DUMP(page);
+    const mp = await open('Страницы руководителей/Отчёт — ' + info.slug + '.html');
+    await MOUNT(mp, fz);
+    const v = await mp.locator('textarea[data-k="events|' + ids.diff + '|text"]').inputValue();
+    check(info.text && v === info.text, 'АВР: руководитель (' + info.slug + ') видит перенесённый статус у себя в отчёте');
+    await mp.close();
+  }
   await page.click('[data-act=avrSave]');
   await page.waitForFunction(() => window.__avrOut, null, { timeout: 60000 });
   const r = await page.evaluate(async () => {

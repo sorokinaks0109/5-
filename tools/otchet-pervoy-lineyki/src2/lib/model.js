@@ -84,10 +84,13 @@
     };
   }
   // prev — статус, который был у мероприятия до смены «Заполняет»: виден, пока новый человек не заполнит своё
+  // override — статус, который помощник перенёс из квартального плана: действует, пока руководитель не сохранит отчёт позже
   function eventStatus(reg, data, ev) {
     if (!ev.speaker) return { flag: (ev.manual && ev.manual.flag) || '', text: (ev.manual && ev.manual.text) || '' };
+    const d = data[ev.speaker] && data[ev.speaker].data;
+    if (ev.override && !(d && d.savedAt > ev.override.at)) return { flag: ev.override.flag || '', text: ev.override.text || '' };
     const s = stOf(data, ev.speaker, 'events', ev.id);
-    const own = data[ev.speaker] && data[ev.speaker].data && data[ev.speaker].data.events && data[ev.speaker].data.events[ev.id];
+    const own = d && d.events && d.events[ev.id];
     const empty = !own || (!own.flag && !String(own.text || '').trim());
     return empty && ev.prev ? { flag: ev.prev.flag || '', text: ev.prev.text || '' } : s;
   }
