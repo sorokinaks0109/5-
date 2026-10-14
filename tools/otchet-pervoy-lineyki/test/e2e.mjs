@@ -372,6 +372,7 @@ if (process.env.AVR) {
     window.Otchet.S.data['Мещеряков'].data.events = { ...(window.Otchet.S.data['Мещеряков'].data.events || {}), 'У-005': { flag: 'done', text: 'Участвовали в 4 тендерах' } };
     window.showSaveFilePicker = async (o) => ({ name: o.suggestedName, async createWritable() { const parts = []; return { async write(x) { parts.push(x); }, async close() { window.__avrOut = new Uint8Array(await new Blob(parts).arrayBuffer()); } }; } });
   });
+  await page.click('[data-tab=avr]');
   await page.setInputFiles('#avrFile', process.env.AVR);
   await page.waitForSelector('table.avr', { timeout: 60000 });
   const msg = await page.locator('.panel:has(table.avr) .msg').first().innerText();
@@ -421,6 +422,18 @@ if (process.env.AVR) {
     return out;
   }, orig);
   check(changed.length === 1 && changed[0] === r.sheet, 'АВР: в файле изменён только лист «Восточная сибирь» (' + changed.join(', ') + ')');
+  check(await page.evaluate(async () => { try { const d = await (await window.__root.getDirectoryHandle('Своды')).getFileHandle('avr — заполнено.xlsx'); return !!d; } catch (e) { return false; } }), 'АВР: заполненный файл лёг в папку «Своды»');
+  // ушли на другую вкладку и вернулись — всё на месте; «перезагрузили» страницу — продолжаем с сохранённого
+  await page.click('[data-tab=who]'); await page.click('[data-tab=avr]');
+  check(await page.locator('table.avr').isVisible(), 'АВР: после перехода на другую вкладку план на месте');
+  await page.click('[data-avr-src="file|' + ti + '"]');
+  await page.waitForTimeout(900);
+  await page.evaluate(async () => { window.Otchet.S.avr = null; await window.Otchet.load(); });
+  await page.click('[data-tab=avr]');
+  check((await page.locator('main').innerText()).includes('Продолжить'), 'АВР: после перезагрузки видно «Продолжить» с сохранённым файлом');
+  await page.click('[data-act=avrResume]');
+  await page.waitForSelector('table.avr', { timeout: 60000 });
+  check(await page.evaluate((i) => window.Otchet.S.avr.rows[i].src, ti) === 'file', 'АВР: выбор по строкам восстановился');
   await page.click('[data-act=avrClose]');
   files = await DUMP(page);
 }

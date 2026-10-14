@@ -8,7 +8,7 @@
     memoFilter: '', memoPerson: '', edit: null, cardDiff: null, card: null, upcPerson: '', log: [], meetFilter: '', sentFile: '',
   };
   const today = () => Model.todayISO();
-  const TABS = [['who', 'Кто обновил'], ['meeting', 'Совещание'], ['memo', 'Поручения'], ['upc', 'УПЦ'], ['out', 'Свод и письма'], ['settings', 'Настройки'], ['help', 'Как пользоваться']];
+  const TABS = [['who', 'Кто обновил'], ['meeting', 'Совещание'], ['memo', 'Поручения'], ['upc', 'УПЦ'], ['avr', 'План АВР'], ['out', 'Свод и письма'], ['settings', 'Настройки'], ['help', 'Как пользоваться']];
 
   const conn = Base.connector({ mode: 'readwrite', render: () => render(), onDir: async (dir) => { S.dir = dir; await load(); } });
 
@@ -24,6 +24,7 @@
         if (r.total) { S.log.push(...r.log); View.toast('Из «Входящих» принято отчётов: ' + r.accepted + (r.accepted < r.total ? ' (файлов было ' + r.total + ')' : ''), 'ok'); }
       } catch (e) { S.log.push('«Входящие» не обработаны: ' + e.message); }
     }
+    try { S.avrSaved = (await Store.readJSON(S.dir, [Store.DATA, 'АВР', 'работа.json'])).data; } catch (e) { S.avrSaved = null; }
     render();
     snapshotSoon();
   }
@@ -79,7 +80,7 @@
       setTimeout(() => $('#pass') && $('#pass').focus(), 0);
       return;
     }
-    const views = { who: whoTab, meeting: meetingTab, memo: memoTab, upc: upcTab, out: outTab, settings: settingsTab, help: helpTab };
+    const views = { who: whoTab, meeting: meetingTab, memo: memoTab, upc: upcTab, avr: avrTab, out: outTab, settings: settingsTab, help: helpTab };
     main.innerHTML = views[S.tab]();
     if (S.tab === 'meeting') View.hydrateAttachments(main, S.dir, S.reg);
     View.autoGrow(main);
@@ -192,10 +193,9 @@
     const peopleOpts = (sel) => '<option value="">— помощник —</option>' + S.reg.people.map((p) => '<option value="' + esc(p.id) + '"' + (sel === p.id ? ' selected' : '') + '>' + esc(p.fio) + '</option>').join('');
     let h = '<div class="panel"><div class="row between"><div><h2>Показатели УПЦ</h2><div class="muted small">Карта от ' + esc(Model.fmtISO(S.reg.settings.cardDate) || '—') +
       '. «Отчитывается» — кто отвечает за показатель целиком (обычно лидер команды или его руководитель первой линейки). «Заполняет» — кто ведёт статус конкретного мероприятия.</div></div>' +
-      '<span class="row"><label class="button">Заполнить план мероприятий (АВР)…<input type="file" id="avrFile" accept=".xlsx" hidden></label><button data-act="kpiNew">+ Показатель вручную</button><label class="button">Загрузить новую карту УПЦ (xlsx)<input type="file" id="cardFile" accept=".xlsx" hidden></label></span></div>' +
+      '<span class="row"><button data-tab="avr">План мероприятий (АВР) →</button><button data-act="kpiNew">+ Показатель вручную</button><label class="button">Загрузить новую карту УПЦ (xlsx)<input type="file" id="cardFile" accept=".xlsx" hidden></label></span></div>' +
       '<div class="muted small" style="margin-top:6px">Новая карта не стирает заполненное: статусы и комментарии руководителей привязаны к коду показателя и мероприятию. Уходят только показатели, которых нет в новой карте, — перед применением список видно. ' +
       'Мероприятие можно перенести на другой показатель — список «Перенести» в строке мероприятия, статус сохранится.</div></div>';
-    if (S.avr) return h + avrPanel();
     if (S.kpiForm) h += kpiForm();
     if (S.cardDiff) h += cardDiffPanel();
     const unassigned = S.reg.kpis.filter((k) => !k.reporter).length;
@@ -256,19 +256,65 @@
     else { row.src = file ? 'file' : rep.rep ? 'report' : ''; row.out = file || rep.rep; row.done = fileDone || (!file && rep.repDone); }
     return row;
   }
+  // Разобрать файл; saved — сохранённая работа (выбор по строкам), чтобы продолжить с того же места
+  async function avrOpen(name, bytes, saved) {
+    const book = await Avr.open(bytes);
+    const sheet = book.sheets.find((x) => /восточн\S*\s+сибир/i.test(x.name));
+    if (!sheet) throw new Error('В файле нет листа «Дивизион "Восточная сибирь"»');
+    const info = await Avr.readSheet(book, sheet);
+    const statusCol = saved && info.statusCols.some((c) => c.col === saved.statusCol) ? saved.statusCol : info.statusCols[info.statusCols.length - 1].col;
+    S.avr = { name, book, sheet, info, statusCol, filter: '', rows: Avr.matchItems(S.reg, info.items, S.reg.settings.avrMap) };
+    const ch = (saved && saved.choices) || {};
+    for (const r of S.avr.rows) {
+      const c = ch[r.key];
+      if (c) { if (c.how === 'manual') Object.assign(r, { eventId: c.eventId || '', how: 'manual' }); r.src = c.src || ''; if (c.src === 'edit') r.out = c.out || ''; }
+      avrPrepare(r);
+      if (c && c.done !== undefined) r.done = c.done;
+    }
+  }
   async function avrLoad(file) {
     try {
       View.toast('Читаю файл…');
       const bytes = new Uint8Array(await file.arrayBuffer());
-      const book = await Avr.open(bytes);
-      const sheet = book.sheets.find((x) => /восточн\S*\s+сибир/i.test(x.name));
-      if (!sheet) throw new Error('В файле нет листа «Дивизион "Восточная сибирь"»');
-      const info = await Avr.readSheet(book, sheet);
-      const statusCol = info.statusCols[info.statusCols.length - 1].col;
-      S.avr = { name: file.name, book, sheet, info, statusCol, filter: '', rows: Avr.matchItems(S.reg, info.items, S.reg.settings.avrMap) };
-      S.avr.rows.forEach(avrPrepare);
+      await avrOpen(file.name, bytes, null);
+      // файл и выбор сохраняем в общей папке — можно закрыть страницу и продолжить потом
+      try { await Store.writeBytes(S.dir, [Store.DATA, 'АВР', 'план.xlsx'], bytes); } catch (e) { S.log.push('Файл плана не сохранился в папку: ' + e.message); }
+      await avrPersist(true);
       render(); window.scrollTo(0, 0);
     } catch (e) { View.toast('Файл не прочитался: ' + e.message, 'bad'); }
+  }
+  async function avrResume() {
+    try {
+      S.avrBusy = true; render();
+      const { bytes } = await Store.readBytes(S.dir, [Store.DATA, 'АВР', 'план.xlsx']);
+      await avrOpen(S.avrSaved.file, bytes, S.avrSaved);
+    } catch (e) { View.toast('Не получилось открыть сохранённый план: ' + e.message, 'bad'); }
+    S.avrBusy = false; render();
+  }
+  let avrTimer = null;
+  async function avrPersist(now) {
+    if (!S.avr) return;
+    const run = async () => {
+      const choices = {};
+      for (const r of S.avr.rows) if (r.how === 'manual' || r.src || r.done !== undefined) choices[r.key] = { src: r.src, out: r.src === 'edit' ? r.out : undefined, done: r.done, how: r.how === 'manual' ? 'manual' : undefined, eventId: r.how === 'manual' ? r.eventId : undefined };
+      S.avrSaved = { file: S.avr.name, statusCol: S.avr.statusCol, at: Date.now(), choices, savedFile: (S.avrSaved && S.avrSaved.file === S.avr.name && S.avrSaved.savedFile) || '' };
+      try { await Store.writeJSON(S.dir, [Store.DATA, 'АВР', 'работа.json'], S.avrSaved); } catch (e) { /* без сохранения тоже работает */ }
+    };
+    clearTimeout(avrTimer);
+    if (now) await run(); else avrTimer = setTimeout(run, 700);
+  }
+  function avrTab() {
+    if (S.avr) return avrPanel();
+    if (S.avrBusy) return '<div class="panel empty-state"><h2>Открываю сохранённый план…</h2></div>';
+    const sv = S.avrSaved;
+    return '<div class="panel"><h2>План мероприятий по достижению целевых показателей (АВР)</h2>' +
+      (sv ? '<div class="msg ok row between"><span>В работе файл <b>' + esc(sv.file) + '</b> — сохранён ' + esc(Model.fmtDateTime(sv.at)) + '. Ваш выбор по строкам сохранён.' +
+        (sv.savedFile ? ' Последний заполненный файл: <b>' + esc(sv.savedFile) + '</b>.' : '') + '</span><button class="primary" data-act="avrResume">Продолжить</button></div>' : '') +
+      '<ol class="help"><li>Загрузите квартальный файл плана (с новой колонкой «Статус … кв.»).</li>' +
+      '<li>Сверьте строки: что в файле, что в отчёте первой линейки. Где расходится — выберите «из файла» или «из отчёта», или поправьте текст. Всё сохраняется само, можно закрыть страницу и продолжить потом.</li>' +
+      '<li>«Перенести в отчёт» — ваш итоговый текст станет статусом у руководителей.</li>' +
+      '<li>«Сохранить заполненный файл» — готовый файл ляжет в папку «Своды» и в окно «Сохранить как». Его и отправляете.</li></ol>' +
+      '<div class="row"><label class="button' + (sv ? '' : ' primary') + '">' + (sv ? 'Загрузить другой файл…' : 'Загрузить квартальный файл…') + '<input type="file" id="avrFile" accept=".xlsx" hidden></label></div></div>';
   }
   // Что перенести в отчёт: итоговый текст строки («Впишется в файл») отличается от статуса в отчёте
   const avrPushable = () => S.avr.rows.filter((r) => r.eventId && r.how !== 'cancelled' && r.out.trim() && !same(r.out, r.rep));
@@ -285,7 +331,9 @@
     };
     const chip = (k, t, c) => '<button class="chip ' + (A.filter === k ? 'active' : '') + '" data-avrf="' + k + '">' + t + ' · ' + c + '</button>';
     const push = avrPushable();
-    let h = '<div class="panel"><div class="row between"><h2>План мероприятий (АВР): ' + esc(A.name) + '</h2><span class="row"><button class="primary" data-act="avrSave">Сохранить заполненный файл</button><button data-act="avrClose">Закрыть</button></span></div>' +
+    let h = '<div class="panel"><div class="row between"><h2>План мероприятий (АВР): ' + esc(A.name) + '</h2><span class="row"><button class="primary" data-act="avrSave">Сохранить заполненный файл</button><button data-act="avrClose">Свернуть</button></span></div>' +
+      '<div class="muted small">Ваш выбор сохраняется сам — можно уйти на другую вкладку или закрыть страницу и потом продолжить здесь же.' +
+      (S.avrSaved && S.avrSaved.savedFile ? ' Последний заполненный файл: <b>' + esc(S.avrSaved.savedFile) + '</b>.' : '') + '</div>' +
       '<p class="muted small">Лист «' + esc(A.sheet.name) + '». Сверка: что стоит в файле в колонке «' + esc(col) + '» и что — в отчёте первой линейки. ' +
       '<b>Заполненное в файле остаётся</b>, из отчёта подставляется только в пустые ячейки. Где расходится — выберите в строке «из файла» или «из отчёта», или поправьте текст. В файле меняются только колонка статуса и «выполнено» на этом листе.</p>' +
       '<div class="row"><label class="small">Колонка статуса <select id="avrCol">' + I.statusCols.map((c) => '<option value="' + c.col + '"' + (c.col === A.statusCol ? ' selected' : '') + '>' + esc(c.title) + ' (колонка ' + Avr.colName(c.col) + ')</option>').join('') + '</select></label>' +
@@ -326,9 +374,13 @@
     if (!cells.length) { View.toast('Менять в файле нечего: всё уже совпадает', 'ok'); return; }
     try {
       const { bytes, skipped } = await Avr.write(A.book, A.sheet, A.info, cells);
-      const name = A.name.replace(/\.xlsx$/i, '') + ' — заполнено.xlsx';
+      const name = A.name.replace(/\.xlsx$/i, '').replace(/ — заполнено$/, '') + ' — заполнено.xlsx';
+      let inFolder = false;
+      if (!S.demo) { try { await Store.writeBytes(S.dir, ['Своды', name], bytes); inFolder = true; } catch (e) { S.log.push('В «Своды» не записалось: ' + e.message); } }
       const res = await View.saveFile(bytes, name, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', '.xlsx', 'Excel');
-      if (!res.ok) return;
+      if (!res.ok && !inFolder) return;
+      if (inFolder) { S.avrSaved = { ...(S.avrSaved || {}), savedFile: 'Своды/' + name }; await avrPersist(true); }
+      if (!res.ok) res.name = 'Своды/' + name;
       // запоминаем, что выбрали вручную, — в следующем квартале подставится само
       const map = { ...(S.reg.settings.avrMap || {}) };
       for (const r of A.rows) if (r.how === 'manual') map[r.key] = r.eventId;
@@ -598,7 +650,7 @@
       '<li><b>Соисполнители</b> пишут свой комментарий по поручению в своём отчёте — он виден у ответственного и на совещании.</li>' +
       '<li><b>Раз в месяц</b>: «УПЦ» → «Загрузить новую карту УПЦ». Сборщик покажет, что добавится, уйдёт и изменится.</li>' +
       '<li><b>В начале месяца после квартала</b>: «Настройки» → «Запрос итогов за квартал» → включите, укажите квартал и срок. Руководители увидят запрос у себя и заполнят «Итог за квартал» у своих мероприятий; кто сколько заполнил — на вкладке «Кто обновил». После сбора выключите.</li>' +
-      '<li><b>Раз в квартал</b>: «УПЦ» → «Заполнить план мероприятий (АВР)…» → выберите квартальный файл. Статусы и пояснения подставятся из отчёта в новую колонку «Статус … кв.», в «выполнено» — 1 у выполненных. Проверьте, поправьте, «Сохранить заполненный файл». Что сопоставили вручную, запоминается на следующий квартал.</li></ol>' +
+      '<li><b>Раз в квартал</b>: вкладка «План АВР» → загрузите квартальный файл. Статусы и пояснения подставятся из отчёта в новую колонку «Статус … кв.», в «выполнено» — 1 у выполненных. Проверьте, поправьте, «Сохранить заполненный файл». Что сопоставили вручную, запоминается на следующий квартал.</li></ol>' +
       '<h3>Статусы</h3><p>Везде одни и те же: ' + Model.STATUSES.map((s) => View.badge(s.key)).join(' ') + ' и ' + View.badge('') + '. ' +
       'Если срок прошёл, а статус не «выполнено» и не «неактуально», дата подсвечивается красным.</p>' +
       '<h3>Защита</h3><p>Пароль на странице помощника — от случайного входа. Надёжно защищают права на сетевую папку, их настраивает ИТ за несколько минут: ' +
@@ -614,7 +666,7 @@
     if (b.dataset.tab) { S.tab = b.dataset.tab; render(); return; }
     if (b.dataset.meetf !== undefined) { S.meetFilter = b.dataset.meetf; render(); return; }
     if (b.dataset.avrf !== undefined) { S.avr.filter = b.dataset.avrf; render(); return; }
-    if (b.dataset.avrSrc) { const [src, i] = b.dataset.avrSrc.split('|'); const r = S.avr.rows[+i]; r.src = src; avrPrepare(r); render(); return; }
+    if (b.dataset.avrSrc) { const [src, i] = b.dataset.avrSrc.split('|'); const r = S.avr.rows[+i]; r.src = src; avrPrepare(r); avrPersist(); render(); return; }
     if (b.dataset.kpiedit) { S.kpiForm = { id: b.dataset.kpiedit }; render(); window.scrollTo(0, 0); return; }
     if (b.dataset.kpidel) {
       const k = S.reg.kpis.find((x) => x.id === b.dataset.kpidel);
@@ -683,9 +735,10 @@
     }
     else if (a === 'kpiNew') { S.kpiForm = {}; render(); }
     else if (a === 'avrSave') avrSave();
-    else if (a === 'avrClose') { S.avr = null; render(); }
+    else if (a === 'avrClose') { await avrPersist(true); S.avr = null; render(); }
+    else if (a === 'avrResume') avrResume();
     else if (a === 'avrPush') avrPush();
-    else if (a === 'avrAllFile' || a === 'avrAllRep') { S.avr.rows.forEach((r) => { if (r.file && r.rep && !same(r.file, r.rep)) { r.src = a === 'avrAllFile' ? 'file' : 'report'; avrPrepare(r); } }); render(); }
+    else if (a === 'avrAllFile' || a === 'avrAllRep') { S.avr.rows.forEach((r) => { if (r.file && r.rep && !same(r.file, r.rep)) { r.src = a === 'avrAllFile' ? 'file' : 'report'; avrPrepare(r); } }); avrPersist(); render(); }
     else if (a === 'kpiSave') kpiSave();
     else if (a === 'kpiCancel') { S.kpiForm = null; render(); }
     else if (a === 'openMail') { if (S.letter) View.mail(S.reg.settings, S.letter.to, S.letter.subject, S.letter.body); }
@@ -724,13 +777,13 @@
     if (t.id === 'dirEmail') { S.reg.settings.directorEmail = t.value.trim(); saveReg('Почта сохранена'); }
     if (t.id === 'cardFile' && t.files[0]) loadCard(t.files[0]);
     if (t.id === 'avrFile' && t.files[0]) avrLoad(t.files[0]);
-    if (t.id === 'avrCol') { S.avr.statusCol = +t.value; S.avr.rows.forEach((r) => { if (r.src !== 'edit') r.src = ''; avrPrepare(r); }); render(); }
-    if (t.dataset.avrDone) S.avr.rows[+t.dataset.avrDone].done = t.checked;
+    if (t.id === 'avrCol') { S.avr.statusCol = +t.value; S.avr.rows.forEach((r) => { if (r.src !== 'edit') r.src = ''; avrPrepare(r); }); avrPersist(); render(); }
+    if (t.dataset.avrDone) { S.avr.rows[+t.dataset.avrDone].done = t.checked; avrPersist(); }
     if (t.dataset.avrEv) {
       const r = S.avr.rows[+t.dataset.avrEv]; const ev = S.reg.events.find((x) => x.id === t.value);
       Object.assign(r, { eventId: t.value, how: 'manual', src: '' }); avrPrepare(r);
       if (!ev) r.rep = '';
-      render();
+      avrPersist(); render();
     }
     if (t.id === 'importFiles' && t.files.length) importFiles(t.files);
     if (t.dataset.kpiRep) { S.reg.kpis.find((k) => k.id === t.dataset.kpiRep).reporter = t.value || null; if (await saveReg('Назначено')) render(); }
@@ -739,7 +792,7 @@
   });
   document.addEventListener('input', (e) => {
     if (e.target.dataset.ev && e.target.tagName !== 'SELECT') evEdit(e.target.dataset.ev, e.target.value);
-    if (e.target.dataset.avrText) Object.assign(S.avr.rows[+e.target.dataset.avrText], { out: e.target.value, src: 'edit' });
+    if (e.target.dataset.avrText) { Object.assign(S.avr.rows[+e.target.dataset.avrText], { out: e.target.value, src: 'edit' }); avrPersist(); }
   });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && e.target.id === 'pass') $('[data-act=unlock]').click();
