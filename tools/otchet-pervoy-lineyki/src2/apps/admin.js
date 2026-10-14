@@ -251,13 +251,15 @@
       '<div class="row"><label class="small">Куда писать статус <select id="avrCol">' + I.statusCols.map((c) => '<option value="' + c.col + '"' + (c.col === A.statusCol ? ' selected' : '') + '>' + esc(c.title) + ' (колонка ' + Avr.colName(c.col) + ')</option>').join('') + '</select></label>' +
       '<span class="small">«выполнено» — колонка ' + (avrDoneCol() ? Avr.colName(avrDoneCol()) : '<b>не найдена</b>') + '</span></div>' +
       '<div class="msg ' + (n('') ? 'warn' : 'ok') + '">Строк в плане: ' + A.rows.length + '. Найдено в отчёте: ' + (n('auto') + n('saved')) + (n('similar') ? ', похожих (проверьте): ' + n('similar') : '') +
-      (n('manual') ? ', выбрано вручную: ' + n('manual') : '') + (n('') ? ', не найдено: ' + n('') + ' — выберите мероприятие в списке или впишите текст сами' : '') + '. Будет заполнено строк: ' + filled + '.</div>' +
+      (n('manual') ? ', выбрано вручную: ' + n('manual') : '') + (n('cancelled') ? ', отменено по примечанию: ' + n('cancelled') : '') +
+      (n('nokpi') ? ', показателя нет в карте УПЦ (вероятно, исключён): ' + n('nokpi') : '') +
+      (n('') ? ', не найдено: ' + n('') + ' — выберите мероприятие в списке, впишите текст сами или добавьте мероприятие во вкладке «УПЦ»' : '') + '. Будет заполнено строк: ' + filled + '.</div>' +
       '<table class="grid avr"><thead><tr><th class="c-no">№</th><th>Мероприятие в плане</th><th>Мероприятие в отчёте</th><th>Что впишется в «' + esc((I.statusCols.find((c) => c.col === A.statusCol) || {}).title || '') + '»</th><th class="c-no">Вып.</th></tr></thead><tbody>';
     let kpi = null;
     A.rows.forEach((r, i) => {
       if (r.kpi !== kpi) { kpi = r.kpi; h += '<tr class="sub"><td colspan="5">' + esc(Model.shortKpi(kpi) || '—') + '</td></tr>'; }
-      const tag = { similar: '<span class="badge s-none">похоже — проверьте</span>', '': '<span class="badge s-fail">не найдено</span>', manual: '<span class="badge s-work">выбрано</span>', saved: '', auto: '' }[r.how] || '';
-      h += '<tr class="avr-' + (r.how || 'none') + '"><td class="c-no">' + esc(r.num) + '</td><td class="small">' + esc(r.text) + (prevText(r) ? '<div class="muted small">сейчас в файле: ' + esc(prevText(r).slice(0, 160)) + '</div>' : '') + '</td>' +
+      const tag = { similar: '<span class="badge s-none">похоже — проверьте</span>', '': '<span class="badge s-fail">не найдено</span>', cancelled: '<span class="badge s-na">отменено</span>', nokpi: '<span class="badge s-na">показателя нет в карте</span>', manual: '<span class="badge s-work">выбрано</span>', saved: '', auto: '' }[r.how] || '';
+      h += '<tr class="avr-' + (r.how || 'none') + '"><td class="c-no">' + esc(r.num) + '</td><td class="small">' + esc(r.text) + (r.note ? '<div class="muted small">примечание: ' + esc(r.note.slice(0, 160)) + '</div>' : '') + (prevText(r) ? '<div class="muted small">сейчас в файле: ' + esc(prevText(r).slice(0, 160)) + '</div>' : '') + '</td>' +
         '<td><select data-avr-ev="' + i + '">' + evOpts(r) + '</select> ' + tag + '</td>' +
         '<td>' + View.ta('data-avr-text="' + i + '"', r.out) + '</td><td class="c-no"><input type="checkbox" data-avr-done="' + i + '"' + (r.done ? ' checked' : '') + '></td></tr>';
     });

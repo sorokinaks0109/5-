@@ -376,7 +376,7 @@ if (process.env.AVR) {
   await page.waitForSelector('table.avr', { timeout: 60000 });
   const msg = await page.locator('.panel:has(table.avr) .msg').innerText();
   const found = +(msg.match(/Найдено в отчёте: (\d+)/) || [0, 0])[1];
-  check(found >= 100, 'АВР: мероприятия плана найдены в отчёте автоматически: ' + found + ' из 136');
+  check(found >= 105 && /отменено по примечанию: 11/.test(msg), 'АВР: найдено автоматически ' + found + ' из 135, отменённые по примечаниям отмечены');
   await page.click('[data-act=avrSave]');
   await page.waitForFunction(() => window.__avrOut, null, { timeout: 60000 });
   const r = await page.evaluate(async () => {

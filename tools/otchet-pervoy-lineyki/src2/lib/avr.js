@@ -10,6 +10,8 @@
   const colName = (n) => { let s = ''; while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; };
   const refParts = (ref) => { const m = /^([A-Z]+)(\d+)$/.exec(ref); return { col: colNum(m[1]), row: +m[2] }; };
   const norm = (s) => String(s || '').toLowerCase().replace(/ё/g, 'е').replace(/[^0-9a-zа-я]/g, '');
+  // текст без номера в начале («1. Проведена…» = «Проведена…») и без хвоста «срок: …»
+  const core = (s) => norm(String(s || '').trim().replace(/^\d+[.)]\s*/, '').replace(/,?\s*срок\s*:?.*$/is, ''));
   const words = (s) => new Set(String(s || '').toLowerCase().replace(/ё/g, 'е').split(/[^0-9a-zа-я]+/).filter((w) => w.length > 3));
   const kpiKey = (name) => norm(M().shortKpi(String(name || '').replace(/(ГПН-ГПН_Снаб-)+/g, '')));
 
@@ -58,6 +60,7 @@
     const textCol = col(/^мероприятие$/i)[0];
     const statusCols = col(/статус/i).map((c) => ({ col: c, title: hc[c] }));
     const doneCols = col(/^выполнено$/i);
+    const noteCol = col(/примечани/i)[0];
     if (!statusCols.length) throw new Error('На листе «' + sheet.name + '» нет колонки «Статус … кв.»');
     const items = []; let kpi = '';
     for (const [n, cells] of grid) {
@@ -65,7 +68,10 @@
       const text = cells[textCol];
       const first = cells[1] || '';
       if (!text) { if (/снаб|гпн/i.test(first) || (first && !/^блок/i.test(first) && first.length > 12)) kpi = first; continue; }
-      items.push({ row: n, num: first, text, kpi });
+      if (!first && /^(директор|начальник|руководитель|заместитель)\s/i.test(text)) continue; // подпись под таблицей
+      const note = noteCol ? cells[noteCol] || '' : '';
+      // «Цель отменена…», «Показатель исключён…» — строку не заполняем
+      items.push({ row: n, num: first, text, kpi, note, cancelled: /^\s*(цель отменена|мероприятие отменено|показатель исключ)/i.test(note) });
     }
     return { doc, head, textCol, statusCols, doneCols, items, grid };
   }
@@ -80,23 +86,24 @@
       const key = kpiKey(it.kpi) + '|' + norm(it.text).slice(0, 80);
       let k = byKpi.get(kpiKey(it.kpi)) || reg.kpis.find((x) => kpiKey(x.name) && kpiKey(it.kpi) && (kpiKey(x.name).includes(kpiKey(it.kpi)) || kpiKey(it.kpi).includes(kpiKey(x.name)))) || null;
       const res = { ...it, key, kpiId: k ? k.id : '', eventId: '', how: '' };
+      if (it.cancelled) return { ...res, how: 'cancelled' };
       if (saved[key] && reg.events.some((e) => e.id === saved[key])) return { ...res, eventId: saved[key], how: 'saved' };
       if (saved[key] === '') return { ...res, how: 'skip' };
-      const t = norm(it.text);
+      const t = core(it.text);
       const pool = k ? evOf(k.id) : [];
-      let e = pool.find((x) => norm(x.text) === t) || pool.find((x) => norm(x.text).slice(0, 50) === t.slice(0, 50) && t.length >= 20) ||
-        reg.events.find((x) => norm(x.text) === t);
+      let e = pool.find((x) => core(x.text) === t) || pool.find((x) => core(x.text).slice(0, 50) === t.slice(0, 50) && t.length >= 20) ||
+        reg.events.find((x) => core(x.text) === t && t.length >= 20);
       if (e) return { ...res, eventId: e.id, kpiId: res.kpiId || e.kpi, how: 'auto' };
       // похожий текст (больше половины значимых слов совпадает) — помечаем «проверьте»
       const w = words(it.text); let best = null, score = 0;
-      for (const x of (pool.length ? pool : reg.events)) {
+      for (const x of pool) { // похожие ищем только внутри своего показателя
         const xw = words(x.text); if (!w.size || !xw.size) continue;
         let common = 0; for (const a of w) if (xw.has(a)) common++;
         const s = common / Math.max(w.size, xw.size);
         if (s > score) { score = s; best = x; }
       }
       if (best && score >= 0.5) return { ...res, eventId: best.id, kpiId: res.kpiId || best.kpi, how: 'similar' };
-      return res;
+      return { ...res, how: k ? '' : 'nokpi' };
     });
   }
 
