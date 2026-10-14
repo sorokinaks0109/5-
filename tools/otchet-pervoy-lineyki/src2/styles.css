@@ -226,3 +226,6 @@ table.grid.avr tr.st-diff td:nth-child(4) { background: #fff4f2; }
 .avrq { margin-top: 8px; padding: 6px 8px; background: var(--none-bg); border-radius: 8px; }
 .avrq textarea { background: #fff; }
 .avr-banner { line-height: 1.5; }
+.avr-excl { margin-top: 6px; color: var(--na); }
+details.avr-missing { margin-top: 14px; background: var(--work-bg); border-radius: 8px; padding: 8px 12px; }
+details.avr-missing summary { cursor: pointer; }

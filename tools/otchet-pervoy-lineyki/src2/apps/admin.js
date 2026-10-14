@@ -263,11 +263,19 @@
     if (!sheet) throw new Error('В файле нет листа «Дивизион "Восточная сибирь"»');
     const info = await Avr.readSheet(book, sheet);
     const statusCol = saved && info.statusCols.some((c) => c.col === saved.statusCol) ? saved.statusCol : info.statusCols[info.statusCols.length - 1].col;
-    S.avr = { name, book, sheet, info, statusCol, filter: '', rows: Avr.matchItems(S.reg, info.items, S.reg.settings.avrMap) };
+    S.avr = { name, book, sheet, info, statusCol, filter: '', rows: Avr.matchItems(S.reg, info.items, S.reg.settings.avrMap, S.reg.settings.avrExcluded) };
     const ch = (saved && saved.choices) || {};
+    // учимся на файле: строки, где в «Примечаниях» уже написано «Цель отменена…», запоминаем на следующие кварталы
+    const learned = { ...(S.reg.settings.avrExcluded || {}) }; let fresh = 0;
+    for (const r of S.avr.rows) if (r.how === 'cancelled' && !r.learned && r.note && learned[r.key] !== r.note.trim()) { learned[r.key] = r.note.trim(); fresh++; }
+    if (fresh) { S.reg.settings.avrExcluded = learned; saveReg('Запомнила исключённые мероприятия из примечаний файла: ' + fresh + '. В следующем квартале они отметятся сами.'); }
     for (const r of S.avr.rows) {
       const c = ch[r.key];
-      if (c) { if (c.how === 'manual') Object.assign(r, { eventId: c.eventId || '', how: 'manual' }); r.src = c.src || ''; if (c.src === 'edit') r.out = c.out || ''; }
+      if (c) {
+        if (c.how === 'manual') Object.assign(r, { eventId: c.eventId || '', how: 'manual' });
+        if (c.exclude !== undefined) { r.exclude = c.exclude; if (c.exclude) r.how = 'cancelled'; else if (r.how === 'cancelled' && r.learned) { r.how = ''; r.learned = false; } }
+        r.src = c.src || ''; if (c.src === 'edit') r.out = c.out || '';
+      }
       avrPrepare(r);
       if (c && c.done !== undefined) r.done = c.done;
     }
@@ -296,7 +304,7 @@
     if (!S.avr) return;
     const run = async () => {
       const choices = {};
-      for (const r of S.avr.rows) if (r.how === 'manual' || r.src || r.done !== undefined) choices[r.key] = { src: r.src, out: r.src === 'edit' ? r.out : undefined, done: r.done, how: r.how === 'manual' ? 'manual' : undefined, eventId: r.how === 'manual' ? r.eventId : undefined };
+      for (const r of S.avr.rows) choices[r.key] = { src: r.src, out: r.src === 'edit' ? r.out : undefined, done: r.done, how: r.how === 'manual' ? 'manual' : undefined, eventId: r.how === 'manual' ? r.eventId : undefined, exclude: r.exclude !== undefined ? r.exclude : undefined };
       S.avrSaved = { file: S.avr.name, statusCol: S.avr.statusCol, at: Date.now(), choices, savedFile: (S.avrSaved && S.avrSaved.file === S.avr.name && S.avrSaved.savedFile) || '' };
       try { await Store.writeJSON(S.dir, [Store.DATA, 'АВР', 'работа.json'], S.avrSaved); } catch (e) { /* без сохранения тоже работает */ }
     };
@@ -342,13 +350,22 @@
       '<div class="filters">' + chip('', 'Все', A.rows.length) + chip('diff', 'Расходятся', st('diff')) + chip('fileonly', 'Есть только в файле', st('fileonly')) + chip('reponly', 'Есть только в отчёте', st('reponly')) +
       chip('same', 'Совпадают', st('same')) + chip('none', 'Пусто везде', st('none')) + '</div>' +
       '<div class="msg ' + (n('') ? 'warn' : 'ok') + '">Найдено в отчёте: ' + (n('auto') + n('saved') + n('manual')) + (n('similar') ? ', похожих (проверьте): ' + n('similar') : '') +
-      (n('cancelled') ? ', отменено по примечанию: ' + n('cancelled') : '') + (n('nokpi') ? ', показателя нет в карте УПЦ: ' + n('nokpi') : '') + (n('') ? ', не найдено: ' + n('') : '') + '.</div>' +
+      (n('cancelled') ? ', исключено (отменено): ' + n('cancelled') : '') + (n('nokpi') ? ', показателя нет в карте УПЦ: ' + n('nokpi') : '') + (n('') ? ', не найдено: ' + n('') : '') + '.</div>' +
       (push.length ? '<div class="msg ok row between"><span>Отличается от отчёта первой линейки: <b>' + push.length + '</b> строк. «Перенести в отчёт» — то, что стоит в колонке «Впишется в файл», станет статусом у руководителей ' +
         '(и там, где было пусто, и там, где вы выбрали «из файла» или поправили текст). Руководитель увидит его у себя заполненным и сможет поправить.</span>' +
         '<button class="primary" data-act="avrPush">Перенести в отчёт (' + push.length + ')</button></div>' : '<div class="msg ok">Статусы в отчёте первой линейки совпадают с тем, что впишется в файл.</div>') +
       '<table class="grid avr"><thead><tr><th class="c-no">№</th><th>Мероприятие в плане</th><th>Мероприятие в отчёте</th><th>Впишется в файл</th><th class="c-no">Вып.</th></tr></thead><tbody>';
     let kpi = null;
     const tags = { similar: '<span class="badge s-none">похоже — проверьте</span>', '': '<span class="badge s-fail">не найдено</span>', cancelled: '<span class="badge s-na">отменено</span>', nokpi: '<span class="badge s-na">показателя нет в карте</span>', manual: '<span class="badge s-work">выбрано</span>' };
+    const exclBtn = (r, i) => {
+      if (r.how === 'cancelled' && !r.exclude) return ''; // уже отмечено в самом файле
+      if (r.exclude) return '<div class="avr-excl small">Исключено' + (r.learned ? ' (запомнено с прошлого раза)' : '') + ': в «Примечания» впишется «' + esc(r.exclude) + '» <button class="mini" data-avr-excl="' + i + '">вернуть</button></div>';
+      if (r.how === '' || r.how === 'nokpi' || r.how === 'similar') return '<div><button class="mini" data-avr-excl="' + i + '">Отметить «исключено»</button></div>';
+      return '';
+    };
+    // мероприятия отчёта, которых нет в шаблоне плана (новые после корректировки УПЦ)
+    const usedEv = new Set(A.rows.map((r) => r.eventId).filter(Boolean));
+    const missing = S.reg.events.filter((e) => !usedEv.has(e.id));
     const stTag = { diff: '<span class="badge s-fail">расходится</span>', fileonly: '<span class="badge s-work">только в файле</span>', reponly: '<span class="badge s-done">только в отчёте</span>' };
     A.rows.forEach((r, i) => {
       if (A.filter && r.state !== A.filter) return;
@@ -356,18 +373,26 @@
       const both = r.file && r.rep && !same(r.file, r.rep);
       h += '<tr class="avr-' + (r.how || 'none') + ' st-' + r.state + '"><td class="c-no">' + esc(r.num) + '</td><td class="small">' + esc(r.text) +
         (r.note ? '<div class="muted small">примечание: ' + esc(r.note.slice(0, 160)) + '</div>' : '') + '</td>' +
-        '<td><select data-avr-ev="' + i + '">' + evOpts(r) + '</select> ' + (tags[r.how] || '') + ' ' + (stTag[r.state] || '') +
+        '<td><select data-avr-ev="' + i + '">' + evOpts(r) + '</select> ' + (tags[r.how] || '') + ' ' + (stTag[r.state] || '') + exclBtn(r, i) +
         (both ? '<div class="avr-cmp"><div><b>В файле:</b> ' + esc(r.file.slice(0, 300)) + '</div><div><b>В отчёте:</b> ' + esc(r.rep.slice(0, 300)) + '</div></div>' : '') + '</td>' +
         '<td>' + View.ta('data-avr-text="' + i + '"', r.out) +
         (both ? '<div class="row small"><button class="mini' + (r.src === 'file' ? ' primary' : '') + '" data-avr-src="file|' + i + '">из файла</button><button class="mini' + (r.src === 'report' ? ' primary' : '') + '" data-avr-src="report|' + i + '">из отчёта</button>' + (r.src === 'edit' ? '<span class="muted">поправлено вручную</span>' : '') + '</div>' : '') +
         '</td><td class="c-no"><input type="checkbox" data-avr-done="' + i + '"' + (r.done ? ' checked' : '') + '></td></tr>';
     });
-    return h + '</tbody></table></div>';
+    h += '</tbody></table>';
+    if (missing.length) {
+      const byK = new Map(); for (const e of missing) { const k = S.reg.kpis.find((x) => x.id === e.kpi); const n = k ? Model.shortKpi(k.name) : '—'; (byK.get(n) || byK.set(n, []).get(n)).push(e); }
+      h += '<details class="avr-missing"><summary>Есть в отчёте, нет в шаблоне плана: <b>' + missing.length + '</b> — новые мероприятия после корректировки УПЦ. Их нужно дописать в файл вручную</summary>' +
+        Array.from(byK).map(([k, list]) => '<div class="small" style="margin-top:6px"><b>' + esc(k) + '</b><ul>' + list.map((e) => '<li>' + esc(e.text.slice(0, 200)) + ' — <i>' + esc(avrText(e).rep || 'без статуса') + '</i></li>').join('') + '</ul></div>').join('') + '</details>';
+    }
+    return h + '</div>';
   }
   async function avrSave() {
     const A = S.avr; const done = avrDoneCol();
     const cells = [];
     for (const r of A.rows) {
+      if (r.exclude && A.info.noteCol && (r.note || '').trim() !== r.exclude) cells.push({ row: r.row, col: A.info.noteCol, text: r.exclude });
+      if (r.how === 'cancelled') continue;
       if (r.out.trim() && r.out.trim() !== r.file) cells.push({ row: r.row, col: A.statusCol, text: r.out.trim() });
       if (r.done && !r.fileDone && done) cells.push({ row: r.row, col: done, num: 1 });
     }
@@ -385,6 +410,10 @@
       const map = { ...(S.reg.settings.avrMap || {}) };
       for (const r of A.rows) if (r.how === 'manual') map[r.key] = r.eventId;
       S.reg.settings.avrMap = map;
+      // исключённые строки запоминаем на следующие кварталы, снятые — забываем
+      const ex = { ...(S.reg.settings.avrExcluded || {}) };
+      for (const r of A.rows) { if (r.exclude) ex[r.key] = r.exclude; else if (r.exclude === '' ) delete ex[r.key]; }
+      S.reg.settings.avrExcluded = ex;
       await saveReg('Файл сохранён: ' + res.name + ', изменено ячеек: ' + cells.length + (skipped.length ? '. Ячейки с формулами не тронуты: ' + skipped.join(', ') : ''));
       S.log.push('План мероприятий (АВР) заполнен: ' + res.name + ', изменено ячеек: ' + cells.length);
     } catch (e) { View.toast('Не получилось записать файл: ' + e.message, 'bad'); }
@@ -661,11 +690,17 @@
   // ---------- события ----------
   function people() { return S.reg.people.filter((p) => p.onMeeting !== false).concat(S.reg.people.filter((p) => p.onMeeting === false)); }
   document.addEventListener('click', async (e) => {
-    const b = e.target.closest('[data-tab],[data-act],[data-mailtest],[data-kpiedit],[data-kpidel],[data-avrf],[data-avr-src],[data-person-idx],[data-mf],[data-meetf],[data-memo],[data-evdel],[data-evadd],[data-pmove],.who .card');
+    const b = e.target.closest('[data-tab],[data-act],[data-mailtest],[data-kpiedit],[data-kpidel],[data-avrf],[data-avr-src],[data-avr-excl],[data-person-idx],[data-mf],[data-meetf],[data-memo],[data-evdel],[data-evadd],[data-pmove],.who .card');
     if (!b) return;
     if (b.dataset.tab) { S.tab = b.dataset.tab; render(); return; }
     if (b.dataset.meetf !== undefined) { S.meetFilter = b.dataset.meetf; render(); return; }
     if (b.dataset.avrf !== undefined) { S.avr.filter = b.dataset.avrf; render(); return; }
+    if (b.dataset.avrExcl !== undefined) {
+      const r = S.avr.rows[+b.dataset.avrExcl];
+      if (r.exclude) { r.exclude = ''; r.how = r.eventId ? 'manual' : ''; r.learned = false; }
+      else { r.exclude = r.kpiId ? 'Цель отменена' : 'Цель отменена. Показатель исключён из карты УПЦ'; r.how = 'cancelled'; }
+      avrPrepare(r); avrPersist(); render(); return;
+    }
     if (b.dataset.avrSrc) { const [src, i] = b.dataset.avrSrc.split('|'); const r = S.avr.rows[+i]; r.src = src; avrPrepare(r); avrPersist(); render(); return; }
     if (b.dataset.kpiedit) { S.kpiForm = { id: b.dataset.kpiedit }; render(); window.scrollTo(0, 0); return; }
     if (b.dataset.kpidel) {

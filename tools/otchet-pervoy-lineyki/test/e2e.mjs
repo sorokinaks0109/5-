@@ -377,7 +377,18 @@ if (process.env.AVR) {
   await page.waitForSelector('table.avr', { timeout: 60000 });
   const msg = await page.locator('.panel:has(table.avr) .msg').first().innerText();
   const found = +(msg.match(/Найдено в отчёте: (\d+)/) || [0, 0])[1];
-  check(found >= 105 && /отменено по примечанию: 11/.test(msg), 'АВР: найдено автоматически ' + found + ' из 135, отменённые по примечаниям отмечены');
+  check(found >= 105 && /исключено \(отменено\): 11/.test(msg), 'АВР: найдено автоматически ' + found + ' из 135, отменённые по примечаниям отмечены');
+  // исключённые по примечаниям запомнены: в следующем квартале старый шаблон без примечаний отметится сам
+  await page.waitForTimeout(400);
+  const learn = await page.evaluate(() => {
+    const S = window.Otchet.S; const ex = S.reg.settings.avrExcluded || {};
+    const items = S.avr.info.items.map((it) => ({ ...it, note: '', cancelled: false }));
+    const m = Avr.matchItems(S.reg, items, S.reg.settings.avrMap, ex);
+    return { learned: Object.keys(ex).length, auto: m.filter((r) => r.how === 'cancelled' && r.learned).length, nokpi: m.filter((r) => r.how === 'nokpi' && r.exclude).length };
+  });
+  check(learn.learned === 11 && learn.auto === 11, 'АВР: исключённые из примечаний запомнены и в новом шаблоне без примечаний отмечаются сами (' + JSON.stringify(learn) + ')');
+  check(learn.nokpi >= 5, 'АВР: строки показателей, которых нет в карте УПЦ, предлагаются к исключению');
+  check(await page.locator('details.avr-missing').count() === 1, 'АВР: виден список мероприятий отчёта, которых нет в шаблоне');
   const st = await page.evaluate(() => { const c = {}; for (const r of window.Otchet.S.avr.rows) c[r.state] = (c[r.state] || 0) + 1; return c; });
   check(st.diff >= 1 && st.fileonly >= 1, 'АВР: видно, где статус в файле и в отчёте расходится (' + JSON.stringify(st) + ')');
   // по умолчанию заполненное в файле остаётся; у тендеров берём из отчёта кнопкой «из отчёта»

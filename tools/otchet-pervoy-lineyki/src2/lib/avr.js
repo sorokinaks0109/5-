@@ -73,12 +73,13 @@
       // «Цель отменена…», «Показатель исключён…» — строку не заполняем
       items.push({ row: n, num: first, text, kpi, note, cancelled: /^\s*(цель отменена|мероприятие отменено|показатель исключ)/i.test(note) });
     }
-    return { doc, head, textCol, statusCols, doneCols, items, grid };
+    return { doc, head, textCol, statusCols, doneCols, noteCol, items, grid };
   }
 
   // Сопоставление строки плана с мероприятием отчёта: сохранённая связь → тот же показатель и текст → похожий текст.
-  function matchItems(reg, items, saved) {
-    saved = saved || {};
+  // excluded — строки, которые помощник раньше отметил исключёнными: { ключ: текст примечания }
+  function matchItems(reg, items, saved, excluded) {
+    saved = saved || {}; excluded = excluded || {};
     const byKpi = new Map();
     for (const k of reg.kpis) byKpi.set(kpiKey(k.name), k);
     const evOf = (kid) => reg.events.filter((e) => e.kpi === kid);
@@ -87,6 +88,7 @@
       let k = byKpi.get(kpiKey(it.kpi)) || reg.kpis.find((x) => kpiKey(x.name) && kpiKey(it.kpi) && (kpiKey(x.name).includes(kpiKey(it.kpi)) || kpiKey(it.kpi).includes(kpiKey(x.name)))) || null;
       const res = { ...it, key, kpiId: k ? k.id : '', eventId: '', how: '' };
       if (it.cancelled) return { ...res, how: 'cancelled' };
+      if (excluded[key]) return { ...res, how: 'cancelled', exclude: excluded[key], learned: true };
       if (saved[key] && reg.events.some((e) => e.id === saved[key])) return { ...res, eventId: saved[key], how: 'saved' };
       if (saved[key] === '') return { ...res, how: 'skip' };
       const t = core(it.text);
@@ -103,7 +105,7 @@
         if (s > score) { score = s; best = x; }
       }
       if (best && score >= 0.5) return { ...res, eventId: best.id, kpiId: res.kpiId || best.kpi, how: 'similar' };
-      return { ...res, how: k ? '' : 'nokpi' };
+      return k ? res : { ...res, how: 'nokpi', exclude: 'Цель отменена. Показатель исключён из карты УПЦ' };
     });
   }
 
