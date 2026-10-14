@@ -374,9 +374,21 @@ if (process.env.AVR) {
   });
   await page.setInputFiles('#avrFile', process.env.AVR);
   await page.waitForSelector('table.avr', { timeout: 60000 });
-  const msg = await page.locator('.panel:has(table.avr) .msg').innerText();
+  const msg = await page.locator('.panel:has(table.avr) .msg').first().innerText();
   const found = +(msg.match(/Найдено в отчёте: (\d+)/) || [0, 0])[1];
   check(found >= 105 && /отменено по примечанию: 11/.test(msg), 'АВР: найдено автоматически ' + found + ' из 135, отменённые по примечаниям отмечены');
+  const st = await page.evaluate(() => { const c = {}; for (const r of window.Otchet.S.avr.rows) c[r.state] = (c[r.state] || 0) + 1; return c; });
+  check(st.diff >= 1 && st.fileonly >= 1, 'АВР: видно, где статус в файле и в отчёте расходится (' + JSON.stringify(st) + ')');
+  // по умолчанию заполненное в файле остаётся; у тендеров берём из отчёта кнопкой «из отчёта»
+  const ti = await page.evaluate(() => window.Otchet.S.avr.rows.findIndex((r) => /Участие в тендерных процедурах/.test(r.text)));
+  check(await page.evaluate((i) => window.Otchet.S.avr.rows[i].src, ti) === 'file', 'АВР: по умолчанию остаётся текст из файла');
+  await page.click('[data-avr-src="report|' + ti + '"]');
+  // перенос статусов из файла в отчёт, где в отчёте пусто
+  const pi = await page.evaluate(() => { const r = window.Otchet.S.avr.rows.find((x) => x.eventId && x.file && !x.rep && x.how !== 'cancelled'); return r ? r.eventId : ''; });
+  await page.click('[data-act=avrPush]');
+  await page.waitForTimeout(400);
+  const pushed = await page.evaluate((id) => { const S = window.Otchet.S; const e = S.reg.events.find((x) => x.id === id); return { st: Model.eventStatus(S.reg, S.data, e), file: S.avr.rows.find((x) => x.eventId === id).file }; }, pi);
+  check(pi && pushed.st.text === pushed.file, 'АВР: статус из файла перенесён в отчёт, где у руководителя было пусто');
   await page.click('[data-act=avrSave]');
   await page.waitForFunction(() => window.__avrOut, null, { timeout: 60000 });
   const r = await page.evaluate(async () => {

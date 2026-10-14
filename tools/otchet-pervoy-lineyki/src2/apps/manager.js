@@ -44,7 +44,10 @@
     S.prevDate = own.reportDate || '';
     if (Model.freshness(S.reg, own) !== 'fresh') S.draft.reportDate = '';
     // мероприятие передали мне от другого человека — начинаю с его статуса и пояснения
-    for (const ev of S.reg.events) if (ev.speaker === S.me && ev.prev && !S.draft.events[ev.id]) S.draft.events[ev.id] = { flag: ev.prev.flag || '', text: ev.prev.text || '' };
+    for (const ev of S.reg.events) {
+      const cur = S.draft.events[ev.id];
+      if (ev.speaker === S.me && ev.prev && (!cur || (!cur.flag && !String(cur.text || '').trim()))) S.draft.events[ev.id] = { flag: ev.prev.flag || '', text: ev.prev.text || '' };
+    }
     S.dirty = false;
   }
 

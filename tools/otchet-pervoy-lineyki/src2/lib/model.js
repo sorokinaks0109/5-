@@ -88,7 +88,8 @@
     if (!ev.speaker) return { flag: (ev.manual && ev.manual.flag) || '', text: (ev.manual && ev.manual.text) || '' };
     const s = stOf(data, ev.speaker, 'events', ev.id);
     const own = data[ev.speaker] && data[ev.speaker].data && data[ev.speaker].data.events && data[ev.speaker].data.events[ev.id];
-    return !own && ev.prev ? { flag: ev.prev.flag || '', text: ev.prev.text || '' } : s;
+    const empty = !own || (!own.flag && !String(own.text || '').trim());
+    return empty && ev.prev ? { flag: ev.prev.flag || '', text: ev.prev.text || '' } : s;
   }
   function respName(reg, m) {
     const rs = respsOf(m);

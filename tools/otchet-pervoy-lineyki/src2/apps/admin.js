@@ -207,14 +207,43 @@
     });
     return h;
   }
-  // ---------- план мероприятий (АВР): статусы из отчёта в квартальный файл ----------
+  // ---------- план мероприятий (АВР): сверка статусов файла и отчёта, запись в файл и перенос в отчёт ----------
   function avrText(ev) {
     const st = Model.eventStatus(S.reg, S.data, ev);
     const label = st.flag ? Model.statusLabel(st.flag) : '';
     const cap = label ? label[0].toUpperCase() + label.slice(1) : '';
     const text = (st.text || '').trim();
-    if (!text) return { out: cap, done: st.flag === 'done' };
-    return { out: cap && !text.toLowerCase().startsWith(label) ? cap + '. ' + text : text, done: st.flag === 'done' };
+    if (!text) return { rep: cap, repDone: st.flag === 'done', repFlag: st.flag };
+    return { rep: cap && !text.toLowerCase().startsWith(label) ? cap + '. ' + text : text, repDone: st.flag === 'done', repFlag: st.flag };
+  }
+  // Статус по тексту из файла: «Выполнено…», «В работе…», «Выполняется на постоянной основе» и т. п.
+  function flagFromText(t, done) {
+    if (done) return 'done';
+    const x = String(t || '').trim().toLowerCase();
+    if (/^не выполн/.test(x)) return 'fail';
+    if (/^(неактуальн|цель отменена|отменен)/.test(x)) return 'na';
+    if (/^выполнено/.test(x)) return 'done';
+    if (x) return 'work';
+    return '';
+  }
+  const avrDoneCol = () => { const d = S.avr.info.doneCols; return d.find((c) => c > S.avr.statusCol) || d[d.length - 1] || 0; };
+  // «В работе. Текст» и «Текст» — одно и то же: слово статуса в начале не считаем расхождением
+  const bare = (t) => Avr.norm(String(t || '').trim().replace(/^(в работе|выполнено|не выполнено|неактуально|без статуса)\s*[.:—-]?\s*/i, ''));
+  const same = (a, b) => Avr.norm(a) === Avr.norm(b) || (bare(a) && bare(a) === bare(b));
+  // Для каждой строки: что в файле, что в отчёте, что запишем. По умолчанию заполненное в файле остаётся,
+  // из отчёта подставляется только в пустые ячейки.
+  function avrPrepare(row) {
+    const A = S.avr; const g = A.info.grid.get(row.row) || {};
+    const ev = S.reg.events.find((e) => e.id === row.eventId);
+    const rep = ev && row.how !== 'cancelled' ? avrText(ev) : { rep: '', repDone: false, repFlag: '' };
+    const file = (g[A.statusCol] || '').trim();
+    const fileDone = String(g[avrDoneCol()] || '').trim() === '1';
+    const state = !file && !rep.rep ? 'none' : !rep.rep ? 'fileonly' : !file ? 'reponly' : same(file, rep.rep) ? 'same' : 'diff';
+    Object.assign(row, rep, { file, fileDone, state });
+    if (row.src === 'report' && rep.rep) { row.out = rep.rep; row.done = rep.repDone || fileDone; }
+    else if (row.src === 'edit') { /* оставляем, что вписали руками */ }
+    else { row.src = file ? 'file' : rep.rep ? 'report' : ''; row.out = file || rep.rep; row.done = fileDone || (!file && rep.repDone); }
+    return row;
   }
   async function avrLoad(file) {
     try {
@@ -224,44 +253,54 @@
       const sheet = book.sheets.find((x) => /восточн\S*\s+сибир/i.test(x.name));
       if (!sheet) throw new Error('В файле нет листа «Дивизион "Восточная сибирь"»');
       const info = await Avr.readSheet(book, sheet);
-      const rows = Avr.matchItems(S.reg, info.items, S.reg.settings.avrMap).map((r) => {
-        const ev = S.reg.events.find((e) => e.id === r.eventId);
-        return { ...r, ...(ev ? avrText(ev) : { out: '', done: false }) };
-      });
       const statusCol = info.statusCols[info.statusCols.length - 1].col;
-      S.avr = { name: file.name, book, sheet, info, rows, statusCol };
+      S.avr = { name: file.name, book, sheet, info, statusCol, filter: '', rows: Avr.matchItems(S.reg, info.items, S.reg.settings.avrMap) };
+      S.avr.rows.forEach(avrPrepare);
       render(); window.scrollTo(0, 0);
     } catch (e) { View.toast('Файл не прочитался: ' + e.message, 'bad'); }
   }
-  const avrDoneCol = () => { const d = S.avr.info.doneCols; return d.find((c) => c > S.avr.statusCol) || d[d.length - 1] || 0; };
+  // Что можно перенести в отчёт: в файле статус есть, в отчёте — пусто
+  const avrPushable = () => S.avr.rows.filter((r) => r.eventId && r.file && !r.rep && r.how !== 'cancelled');
   function avrPanel() {
     const A = S.avr; const I = A.info;
     const n = (h) => A.rows.filter((r) => r.how === h).length;
-    const filled = A.rows.filter((r) => r.out.trim()).length;
-    const prevText = (r) => (I.grid.get(r.row) || {})[A.statusCol] || '';
+    const st = (x) => A.rows.filter((r) => r.state === x).length;
+    const col = (I.statusCols.find((c) => c.col === A.statusCol) || {}).title || '';
     const evOpts = (r) => {
       const own = S.reg.events.filter((e) => e.kpi === r.kpiId);
       const list = own.length ? own : S.reg.events;
-      return '<option value="">— не из отчёта —</option>' + list.map((e) => '<option value="' + esc(e.id) + '"' + (e.id === r.eventId ? ' selected' : '') + '>' + esc(e.text.slice(0, 110)) + '</option>').join('') +
+      return '<option value="">— нет в отчёте —</option>' + list.map((e) => '<option value="' + esc(e.id) + '"' + (e.id === r.eventId ? ' selected' : '') + '>' + esc(e.text.slice(0, 110)) + '</option>').join('') +
         (r.eventId && !list.some((e) => e.id === r.eventId) ? '<option value="' + esc(r.eventId) + '" selected>' + esc((S.reg.events.find((e) => e.id === r.eventId) || {}).text || '') + '</option>' : '');
     };
+    const chip = (k, t, c) => '<button class="chip ' + (A.filter === k ? 'active' : '') + '" data-avrf="' + k + '">' + t + ' · ' + c + '</button>';
+    const push = avrPushable();
     let h = '<div class="panel"><div class="row between"><h2>План мероприятий (АВР): ' + esc(A.name) + '</h2><span class="row"><button class="primary" data-act="avrSave">Сохранить заполненный файл</button><button data-act="avrClose">Закрыть</button></span></div>' +
-      '<p class="muted small">Лист «' + esc(A.sheet.name) + '». Статусы и пояснения взяты из отчёта. Проверьте и при необходимости поправьте текст прямо здесь. ' +
-      'В файле поменяются только колонка статуса и «выполнено» на этом листе, всё остальное останется как было.</p>' +
-      '<div class="row"><label class="small">Куда писать статус <select id="avrCol">' + I.statusCols.map((c) => '<option value="' + c.col + '"' + (c.col === A.statusCol ? ' selected' : '') + '>' + esc(c.title) + ' (колонка ' + Avr.colName(c.col) + ')</option>').join('') + '</select></label>' +
-      '<span class="small">«выполнено» — колонка ' + (avrDoneCol() ? Avr.colName(avrDoneCol()) : '<b>не найдена</b>') + '</span></div>' +
-      '<div class="msg ' + (n('') ? 'warn' : 'ok') + '">Строк в плане: ' + A.rows.length + '. Найдено в отчёте: ' + (n('auto') + n('saved')) + (n('similar') ? ', похожих (проверьте): ' + n('similar') : '') +
-      (n('manual') ? ', выбрано вручную: ' + n('manual') : '') + (n('cancelled') ? ', отменено по примечанию: ' + n('cancelled') : '') +
-      (n('nokpi') ? ', показателя нет в карте УПЦ (вероятно, исключён): ' + n('nokpi') : '') +
-      (n('') ? ', не найдено: ' + n('') + ' — выберите мероприятие в списке, впишите текст сами или добавьте мероприятие во вкладке «УПЦ»' : '') + '. Будет заполнено строк: ' + filled + '.</div>' +
-      '<table class="grid avr"><thead><tr><th class="c-no">№</th><th>Мероприятие в плане</th><th>Мероприятие в отчёте</th><th>Что впишется в «' + esc((I.statusCols.find((c) => c.col === A.statusCol) || {}).title || '') + '»</th><th class="c-no">Вып.</th></tr></thead><tbody>';
+      '<p class="muted small">Лист «' + esc(A.sheet.name) + '». Сверка: что стоит в файле в колонке «' + esc(col) + '» и что — в отчёте первой линейки. ' +
+      '<b>Заполненное в файле остаётся</b>, из отчёта подставляется только в пустые ячейки. Где расходится — выберите в строке «из файла» или «из отчёта», или поправьте текст. В файле меняются только колонка статуса и «выполнено» на этом листе.</p>' +
+      '<div class="row"><label class="small">Колонка статуса <select id="avrCol">' + I.statusCols.map((c) => '<option value="' + c.col + '"' + (c.col === A.statusCol ? ' selected' : '') + '>' + esc(c.title) + ' (колонка ' + Avr.colName(c.col) + ')</option>').join('') + '</select></label>' +
+      '<span class="small">«выполнено» — колонка ' + (avrDoneCol() ? Avr.colName(avrDoneCol()) : '<b>не найдена</b>') + '</span>' +
+      '<span class="spacer"></span><button class="mini" data-act="avrAllFile">Везде оставить из файла</button><button class="mini" data-act="avrAllRep">Везде взять из отчёта</button></div>' +
+      '<div class="filters">' + chip('', 'Все', A.rows.length) + chip('diff', 'Расходятся', st('diff')) + chip('fileonly', 'Есть только в файле', st('fileonly')) + chip('reponly', 'Есть только в отчёте', st('reponly')) +
+      chip('same', 'Совпадают', st('same')) + chip('none', 'Пусто везде', st('none')) + '</div>' +
+      '<div class="msg ' + (n('') ? 'warn' : 'ok') + '">Найдено в отчёте: ' + (n('auto') + n('saved') + n('manual')) + (n('similar') ? ', похожих (проверьте): ' + n('similar') : '') +
+      (n('cancelled') ? ', отменено по примечанию: ' + n('cancelled') : '') + (n('nokpi') ? ', показателя нет в карте УПЦ: ' + n('nokpi') : '') + (n('') ? ', не найдено: ' + n('') : '') + '.</div>' +
+      (push.length ? '<div class="msg ok row between"><span>В файле статус есть, а в отчёте первой линейки пусто: <b>' + push.length + '</b>. Перенести их в отчёт — руководители увидят этот статус у себя и не будут заполнять заново.</span>' +
+        '<button class="primary" data-act="avrPush">Перенести в отчёт (' + push.length + ')</button></div>' : '') +
+      '<table class="grid avr"><thead><tr><th class="c-no">№</th><th>Мероприятие в плане</th><th>Мероприятие в отчёте</th><th>Впишется в файл</th><th class="c-no">Вып.</th></tr></thead><tbody>';
     let kpi = null;
+    const tags = { similar: '<span class="badge s-none">похоже — проверьте</span>', '': '<span class="badge s-fail">не найдено</span>', cancelled: '<span class="badge s-na">отменено</span>', nokpi: '<span class="badge s-na">показателя нет в карте</span>', manual: '<span class="badge s-work">выбрано</span>' };
+    const stTag = { diff: '<span class="badge s-fail">расходится</span>', fileonly: '<span class="badge s-work">только в файле</span>', reponly: '<span class="badge s-done">только в отчёте</span>' };
     A.rows.forEach((r, i) => {
+      if (A.filter && r.state !== A.filter) return;
       if (r.kpi !== kpi) { kpi = r.kpi; h += '<tr class="sub"><td colspan="5">' + esc(Model.shortKpi(kpi) || '—') + '</td></tr>'; }
-      const tag = { similar: '<span class="badge s-none">похоже — проверьте</span>', '': '<span class="badge s-fail">не найдено</span>', cancelled: '<span class="badge s-na">отменено</span>', nokpi: '<span class="badge s-na">показателя нет в карте</span>', manual: '<span class="badge s-work">выбрано</span>', saved: '', auto: '' }[r.how] || '';
-      h += '<tr class="avr-' + (r.how || 'none') + '"><td class="c-no">' + esc(r.num) + '</td><td class="small">' + esc(r.text) + (r.note ? '<div class="muted small">примечание: ' + esc(r.note.slice(0, 160)) + '</div>' : '') + (prevText(r) ? '<div class="muted small">сейчас в файле: ' + esc(prevText(r).slice(0, 160)) + '</div>' : '') + '</td>' +
-        '<td><select data-avr-ev="' + i + '">' + evOpts(r) + '</select> ' + tag + '</td>' +
-        '<td>' + View.ta('data-avr-text="' + i + '"', r.out) + '</td><td class="c-no"><input type="checkbox" data-avr-done="' + i + '"' + (r.done ? ' checked' : '') + '></td></tr>';
+      const both = r.file && r.rep && !same(r.file, r.rep);
+      h += '<tr class="avr-' + (r.how || 'none') + ' st-' + r.state + '"><td class="c-no">' + esc(r.num) + '</td><td class="small">' + esc(r.text) +
+        (r.note ? '<div class="muted small">примечание: ' + esc(r.note.slice(0, 160)) + '</div>' : '') + '</td>' +
+        '<td><select data-avr-ev="' + i + '">' + evOpts(r) + '</select> ' + (tags[r.how] || '') + ' ' + (stTag[r.state] || '') +
+        (both ? '<div class="avr-cmp"><div><b>В файле:</b> ' + esc(r.file.slice(0, 300)) + '</div><div><b>В отчёте:</b> ' + esc(r.rep.slice(0, 300)) + '</div></div>' : '') + '</td>' +
+        '<td>' + View.ta('data-avr-text="' + i + '"', r.out) +
+        (both ? '<div class="row small"><button class="mini' + (r.src === 'file' ? ' primary' : '') + '" data-avr-src="file|' + i + '">из файла</button><button class="mini' + (r.src === 'report' ? ' primary' : '') + '" data-avr-src="report|' + i + '">из отчёта</button>' + (r.src === 'edit' ? '<span class="muted">поправлено вручную</span>' : '') + '</div>' : '') +
+        '</td><td class="c-no"><input type="checkbox" data-avr-done="' + i + '"' + (r.done ? ' checked' : '') + '></td></tr>';
     });
     return h + '</tbody></table></div>';
   }
@@ -269,9 +308,10 @@
     const A = S.avr; const done = avrDoneCol();
     const cells = [];
     for (const r of A.rows) {
-      if (r.out.trim()) cells.push({ row: r.row, col: A.statusCol, text: r.out.trim() });
-      if (r.done && done) cells.push({ row: r.row, col: done, num: 1 });
+      if (r.out.trim() && r.out.trim() !== r.file) cells.push({ row: r.row, col: A.statusCol, text: r.out.trim() });
+      if (r.done && !r.fileDone && done) cells.push({ row: r.row, col: done, num: 1 });
     }
+    if (!cells.length) { View.toast('Менять в файле нечего: всё уже совпадает', 'ok'); return; }
     try {
       const { bytes, skipped } = await Avr.write(A.book, A.sheet, A.info, cells);
       const name = A.name.replace(/\.xlsx$/i, '') + ' — заполнено.xlsx';
@@ -281,9 +321,21 @@
       const map = { ...(S.reg.settings.avrMap || {}) };
       for (const r of A.rows) if (r.how === 'manual') map[r.key] = r.eventId;
       S.reg.settings.avrMap = map;
-      await saveReg('Файл сохранён: ' + res.name + (skipped.length ? '. Ячейки с формулами не тронуты: ' + skipped.join(', ') : ''));
-      S.log.push('План мероприятий (АВР) заполнен: ' + res.name + ', строк: ' + cells.length);
+      await saveReg('Файл сохранён: ' + res.name + ', изменено ячеек: ' + cells.length + (skipped.length ? '. Ячейки с формулами не тронуты: ' + skipped.join(', ') : ''));
+      S.log.push('План мероприятий (АВР) заполнен: ' + res.name + ', изменено ячеек: ' + cells.length);
     } catch (e) { View.toast('Не получилось записать файл: ' + e.message, 'bad'); }
+  }
+  // Статус из файла — в отчёт первой линейки. Свой отчёт руководителя не трогаем: статус встаёт как стартовый,
+  // руководитель видит его у себя заполненным и при следующем сохранении он становится его собственным.
+  async function avrPush() {
+    const list = avrPushable();
+    if (!confirm('Перенести в отчёт первой линейки статусы из файла по ' + list.length + ' мероприятиям? Там, где руководитель уже что-то заполнил, ничего не изменится.')) return;
+    for (const r of list) {
+      const e = S.reg.events.find((x) => x.id === r.eventId);
+      const st = { flag: flagFromText(r.file, r.fileDone), text: r.file };
+      if (e.speaker) e.prev = st; else e.manual = st;
+    }
+    if (await saveReg('Перенесено в отчёт: ' + list.length + '. Руководители увидят статусы у себя.')) { S.avr.rows.forEach(avrPrepare); render(); }
   }
 
   // ---------- показатель вручную (пока его нет в выгрузке карты) ----------
@@ -520,10 +572,12 @@
   // ---------- события ----------
   function people() { return S.reg.people.filter((p) => p.onMeeting !== false).concat(S.reg.people.filter((p) => p.onMeeting === false)); }
   document.addEventListener('click', async (e) => {
-    const b = e.target.closest('[data-tab],[data-act],[data-mailtest],[data-kpiedit],[data-kpidel],[data-person-idx],[data-mf],[data-meetf],[data-memo],[data-evdel],[data-evadd],[data-pmove],.who .card');
+    const b = e.target.closest('[data-tab],[data-act],[data-mailtest],[data-kpiedit],[data-kpidel],[data-avrf],[data-avr-src],[data-person-idx],[data-mf],[data-meetf],[data-memo],[data-evdel],[data-evadd],[data-pmove],.who .card');
     if (!b) return;
     if (b.dataset.tab) { S.tab = b.dataset.tab; render(); return; }
     if (b.dataset.meetf !== undefined) { S.meetFilter = b.dataset.meetf; render(); return; }
+    if (b.dataset.avrf !== undefined) { S.avr.filter = b.dataset.avrf; render(); return; }
+    if (b.dataset.avrSrc) { const [src, i] = b.dataset.avrSrc.split('|'); const r = S.avr.rows[+i]; r.src = src; avrPrepare(r); render(); return; }
     if (b.dataset.kpiedit) { S.kpiForm = { id: b.dataset.kpiedit }; render(); window.scrollTo(0, 0); return; }
     if (b.dataset.kpidel) {
       const k = S.reg.kpis.find((x) => x.id === b.dataset.kpidel);
@@ -578,6 +632,8 @@
     else if (a === 'kpiNew') { S.kpiForm = {}; render(); }
     else if (a === 'avrSave') avrSave();
     else if (a === 'avrClose') { S.avr = null; render(); }
+    else if (a === 'avrPush') avrPush();
+    else if (a === 'avrAllFile' || a === 'avrAllRep') { S.avr.rows.forEach((r) => { if (r.file && r.rep && !same(r.file, r.rep)) { r.src = a === 'avrAllFile' ? 'file' : 'report'; avrPrepare(r); } }); render(); }
     else if (a === 'kpiSave') kpiSave();
     else if (a === 'kpiCancel') { S.kpiForm = null; render(); }
     else if (a === 'openMail') { if (S.letter) View.mail(S.reg.settings, S.letter.to, S.letter.subject, S.letter.body); }
@@ -610,11 +666,12 @@
     if (t.id === 'dirEmail') { S.reg.settings.directorEmail = t.value.trim(); saveReg('Почта сохранена'); }
     if (t.id === 'cardFile' && t.files[0]) loadCard(t.files[0]);
     if (t.id === 'avrFile' && t.files[0]) avrLoad(t.files[0]);
-    if (t.id === 'avrCol') { S.avr.statusCol = +t.value; render(); }
+    if (t.id === 'avrCol') { S.avr.statusCol = +t.value; S.avr.rows.forEach((r) => { if (r.src !== 'edit') r.src = ''; avrPrepare(r); }); render(); }
     if (t.dataset.avrDone) S.avr.rows[+t.dataset.avrDone].done = t.checked;
     if (t.dataset.avrEv) {
       const r = S.avr.rows[+t.dataset.avrEv]; const ev = S.reg.events.find((x) => x.id === t.value);
-      Object.assign(r, { eventId: t.value, how: 'manual' }, ev ? avrText(ev) : { out: '', done: false });
+      Object.assign(r, { eventId: t.value, how: 'manual', src: '' }); avrPrepare(r);
+      if (!ev) r.rep = '';
       render();
     }
     if (t.id === 'importFiles' && t.files.length) importFiles(t.files);
@@ -624,7 +681,7 @@
   });
   document.addEventListener('input', (e) => {
     if (e.target.dataset.ev && e.target.tagName !== 'SELECT') evEdit(e.target.dataset.ev, e.target.value);
-    if (e.target.dataset.avrText) S.avr.rows[+e.target.dataset.avrText].out = e.target.value;
+    if (e.target.dataset.avrText) Object.assign(S.avr.rows[+e.target.dataset.avrText], { out: e.target.value, src: 'edit' });
   });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && e.target.id === 'pass') $('[data-act=unlock]').click();
