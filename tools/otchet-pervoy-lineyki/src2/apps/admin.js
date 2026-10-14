@@ -1,4 +1,4 @@
-/* global ExcelJS, Store, Model, View, Base */
+/* global ExcelJS, Store, Model, View, Base, Avr */
 // Страница помощника: реестр поручений, УПЦ, совещание, свод, письма, настройки.
 (function () {
   'use strict';
@@ -182,9 +182,10 @@
     const peopleOpts = (sel) => '<option value="">— помощник —</option>' + S.reg.people.map((p) => '<option value="' + esc(p.id) + '"' + (sel === p.id ? ' selected' : '') + '>' + esc(p.fio) + '</option>').join('');
     let h = '<div class="panel"><div class="row between"><div><h2>Показатели УПЦ</h2><div class="muted small">Карта от ' + esc(Model.fmtISO(S.reg.settings.cardDate) || '—') +
       '. «Отчитывается» — кто отвечает за показатель целиком (обычно лидер команды или его руководитель первой линейки). «Заполняет» — кто ведёт статус конкретного мероприятия.</div></div>' +
-      '<span class="row"><button data-act="kpiNew">+ Показатель вручную</button><label class="button">Загрузить новую карту УПЦ (xlsx)<input type="file" id="cardFile" accept=".xlsx" hidden></label></span></div>' +
+      '<span class="row"><label class="button">Заполнить план мероприятий (АВР)…<input type="file" id="avrFile" accept=".xlsx" hidden></label><button data-act="kpiNew">+ Показатель вручную</button><label class="button">Загрузить новую карту УПЦ (xlsx)<input type="file" id="cardFile" accept=".xlsx" hidden></label></span></div>' +
       '<div class="muted small" style="margin-top:6px">Новая карта не стирает заполненное: статусы и комментарии руководителей привязаны к коду показателя и мероприятию. Уходят только показатели, которых нет в новой карте, — перед применением список видно. ' +
       'Мероприятие можно перенести на другой показатель — список «Перенести» в строке мероприятия, статус сохранится.</div></div>';
+    if (S.avr) return h + avrPanel();
     if (S.kpiForm) h += kpiForm();
     if (S.cardDiff) h += cardDiffPanel();
     const unassigned = S.reg.kpis.filter((k) => !k.reporter).length;
@@ -206,6 +207,83 @@
     });
     return h;
   }
+  // ---------- план мероприятий (АВР): статусы из отчёта в квартальный файл ----------
+  function avrText(ev) {
+    const st = Model.eventStatus(S.reg, S.data, ev);
+    const label = st.flag ? Model.statusLabel(st.flag) : '';
+    const cap = label ? label[0].toUpperCase() + label.slice(1) : '';
+    const text = (st.text || '').trim();
+    if (!text) return { out: cap, done: st.flag === 'done' };
+    return { out: cap && !text.toLowerCase().startsWith(label) ? cap + '. ' + text : text, done: st.flag === 'done' };
+  }
+  async function avrLoad(file) {
+    try {
+      View.toast('Читаю файл…');
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const book = await Avr.open(bytes);
+      const sheet = book.sheets.find((x) => /восточн\S*\s+сибир/i.test(x.name));
+      if (!sheet) throw new Error('В файле нет листа «Дивизион "Восточная сибирь"»');
+      const info = await Avr.readSheet(book, sheet);
+      const rows = Avr.matchItems(S.reg, info.items, S.reg.settings.avrMap).map((r) => {
+        const ev = S.reg.events.find((e) => e.id === r.eventId);
+        return { ...r, ...(ev ? avrText(ev) : { out: '', done: false }) };
+      });
+      const statusCol = info.statusCols[info.statusCols.length - 1].col;
+      S.avr = { name: file.name, book, sheet, info, rows, statusCol };
+      render(); window.scrollTo(0, 0);
+    } catch (e) { View.toast('Файл не прочитался: ' + e.message, 'bad'); }
+  }
+  const avrDoneCol = () => { const d = S.avr.info.doneCols; return d.find((c) => c > S.avr.statusCol) || d[d.length - 1] || 0; };
+  function avrPanel() {
+    const A = S.avr; const I = A.info;
+    const n = (h) => A.rows.filter((r) => r.how === h).length;
+    const filled = A.rows.filter((r) => r.out.trim()).length;
+    const prevText = (r) => (I.grid.get(r.row) || {})[A.statusCol] || '';
+    const evOpts = (r) => {
+      const own = S.reg.events.filter((e) => e.kpi === r.kpiId);
+      const list = own.length ? own : S.reg.events;
+      return '<option value="">— не из отчёта —</option>' + list.map((e) => '<option value="' + esc(e.id) + '"' + (e.id === r.eventId ? ' selected' : '') + '>' + esc(e.text.slice(0, 110)) + '</option>').join('') +
+        (r.eventId && !list.some((e) => e.id === r.eventId) ? '<option value="' + esc(r.eventId) + '" selected>' + esc((S.reg.events.find((e) => e.id === r.eventId) || {}).text || '') + '</option>' : '');
+    };
+    let h = '<div class="panel"><div class="row between"><h2>План мероприятий (АВР): ' + esc(A.name) + '</h2><span class="row"><button class="primary" data-act="avrSave">Сохранить заполненный файл</button><button data-act="avrClose">Закрыть</button></span></div>' +
+      '<p class="muted small">Лист «' + esc(A.sheet.name) + '». Статусы и пояснения взяты из отчёта. Проверьте и при необходимости поправьте текст прямо здесь. ' +
+      'В файле поменяются только колонка статуса и «выполнено» на этом листе, всё остальное останется как было.</p>' +
+      '<div class="row"><label class="small">Куда писать статус <select id="avrCol">' + I.statusCols.map((c) => '<option value="' + c.col + '"' + (c.col === A.statusCol ? ' selected' : '') + '>' + esc(c.title) + ' (колонка ' + Avr.colName(c.col) + ')</option>').join('') + '</select></label>' +
+      '<span class="small">«выполнено» — колонка ' + (avrDoneCol() ? Avr.colName(avrDoneCol()) : '<b>не найдена</b>') + '</span></div>' +
+      '<div class="msg ' + (n('') ? 'warn' : 'ok') + '">Строк в плане: ' + A.rows.length + '. Найдено в отчёте: ' + (n('auto') + n('saved')) + (n('similar') ? ', похожих (проверьте): ' + n('similar') : '') +
+      (n('manual') ? ', выбрано вручную: ' + n('manual') : '') + (n('') ? ', не найдено: ' + n('') + ' — выберите мероприятие в списке или впишите текст сами' : '') + '. Будет заполнено строк: ' + filled + '.</div>' +
+      '<table class="grid avr"><thead><tr><th class="c-no">№</th><th>Мероприятие в плане</th><th>Мероприятие в отчёте</th><th>Что впишется в «' + esc((I.statusCols.find((c) => c.col === A.statusCol) || {}).title || '') + '»</th><th class="c-no">Вып.</th></tr></thead><tbody>';
+    let kpi = null;
+    A.rows.forEach((r, i) => {
+      if (r.kpi !== kpi) { kpi = r.kpi; h += '<tr class="sub"><td colspan="5">' + esc(Model.shortKpi(kpi) || '—') + '</td></tr>'; }
+      const tag = { similar: '<span class="badge s-none">похоже — проверьте</span>', '': '<span class="badge s-fail">не найдено</span>', manual: '<span class="badge s-work">выбрано</span>', saved: '', auto: '' }[r.how] || '';
+      h += '<tr class="avr-' + (r.how || 'none') + '"><td class="c-no">' + esc(r.num) + '</td><td class="small">' + esc(r.text) + (prevText(r) ? '<div class="muted small">сейчас в файле: ' + esc(prevText(r).slice(0, 160)) + '</div>' : '') + '</td>' +
+        '<td><select data-avr-ev="' + i + '">' + evOpts(r) + '</select> ' + tag + '</td>' +
+        '<td>' + View.ta('data-avr-text="' + i + '"', r.out) + '</td><td class="c-no"><input type="checkbox" data-avr-done="' + i + '"' + (r.done ? ' checked' : '') + '></td></tr>';
+    });
+    return h + '</tbody></table></div>';
+  }
+  async function avrSave() {
+    const A = S.avr; const done = avrDoneCol();
+    const cells = [];
+    for (const r of A.rows) {
+      if (r.out.trim()) cells.push({ row: r.row, col: A.statusCol, text: r.out.trim() });
+      if (r.done && done) cells.push({ row: r.row, col: done, num: 1 });
+    }
+    try {
+      const { bytes, skipped } = await Avr.write(A.book, A.sheet, A.info, cells);
+      const name = A.name.replace(/\.xlsx$/i, '') + ' — заполнено.xlsx';
+      const res = await View.saveFile(bytes, name, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', '.xlsx', 'Excel');
+      if (!res.ok) return;
+      // запоминаем, что выбрали вручную, — в следующем квартале подставится само
+      const map = { ...(S.reg.settings.avrMap || {}) };
+      for (const r of A.rows) if (r.how === 'manual') map[r.key] = r.eventId;
+      S.reg.settings.avrMap = map;
+      await saveReg('Файл сохранён: ' + res.name + (skipped.length ? '. Ячейки с формулами не тронуты: ' + skipped.join(', ') : ''));
+      S.log.push('План мероприятий (АВР) заполнен: ' + res.name + ', строк: ' + cells.length);
+    } catch (e) { View.toast('Не получилось записать файл: ' + e.message, 'bad'); }
+  }
+
   // ---------- показатель вручную (пока его нет в выгрузке карты) ----------
   function kpiForm() {
     const k = S.kpiForm.id ? S.reg.kpis.find((x) => x.id === S.kpiForm.id) : { name: '', type: 'БИ', leader: '', goal: '', fact: '', forecast: '', reporter: '' };
@@ -495,6 +573,8 @@
     else if (a === 'sendDirector') sendDirector();
     else if (a === 'sendMemo') sendMemo();
     else if (a === 'kpiNew') { S.kpiForm = {}; render(); }
+    else if (a === 'avrSave') avrSave();
+    else if (a === 'avrClose') { S.avr = null; render(); }
     else if (a === 'kpiSave') kpiSave();
     else if (a === 'kpiCancel') { S.kpiForm = null; render(); }
     else if (a === 'openMail') { if (S.letter) View.mail(S.reg.settings, S.letter.to, S.letter.subject, S.letter.body); }
@@ -526,12 +606,23 @@
     if (t.id === 'lastMeeting') { S.reg.settings.lastMeeting = t.value; if (await saveReg('Дата совещания сохранена')) render(); }
     if (t.id === 'dirEmail') { S.reg.settings.directorEmail = t.value.trim(); saveReg('Почта сохранена'); }
     if (t.id === 'cardFile' && t.files[0]) loadCard(t.files[0]);
+    if (t.id === 'avrFile' && t.files[0]) avrLoad(t.files[0]);
+    if (t.id === 'avrCol') { S.avr.statusCol = +t.value; render(); }
+    if (t.dataset.avrDone) S.avr.rows[+t.dataset.avrDone].done = t.checked;
+    if (t.dataset.avrEv) {
+      const r = S.avr.rows[+t.dataset.avrEv]; const ev = S.reg.events.find((x) => x.id === t.value);
+      Object.assign(r, { eventId: t.value, how: 'manual' }, ev ? avrText(ev) : { out: '', done: false });
+      render();
+    }
     if (t.id === 'importFiles' && t.files.length) importFiles(t.files);
     if (t.dataset.kpiRep) { S.reg.kpis.find((k) => k.id === t.dataset.kpiRep).reporter = t.value || null; if (await saveReg('Назначено')) render(); }
     if (t.dataset.ev && (t.tagName === 'SELECT')) evEdit(t.dataset.ev, t.value);
     if (t.dataset.pp) settingsEdit(t.dataset.pp, t.value);
   });
-  document.addEventListener('input', (e) => { if (e.target.dataset.ev && e.target.tagName !== 'SELECT') evEdit(e.target.dataset.ev, e.target.value); });
+  document.addEventListener('input', (e) => {
+    if (e.target.dataset.ev && e.target.tagName !== 'SELECT') evEdit(e.target.dataset.ev, e.target.value);
+    if (e.target.dataset.avrText) S.avr.rows[+e.target.dataset.avrText].out = e.target.value;
+  });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && e.target.id === 'pass') $('[data-act=unlock]').click();
     if (S.tab !== 'meeting' || /INPUT|SELECT|TEXTAREA/.test(e.target.tagName) || !S.reg) return;

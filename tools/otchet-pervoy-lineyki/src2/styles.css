@@ -217,3 +217,5 @@ iframe.att-pdf { width: 100%; height: 80vh; min-height: 480px; border: 1px solid
 #letterBox .lb-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 14px; }
 #letterBox .lb-row > span { color: var(--muted); width: 44px; }
 @media print { #letterBox { display: none !important; } }
+table.grid.avr td:nth-child(2) { width: 30%; } table.grid.avr td:nth-child(3) select { width: 100%; max-width: 100%; font-size: 13px; }
+table.grid.avr tr.avr-none td { background: #fff8f7; } table.grid.avr tr.avr-similar td { background: #fffbea; }

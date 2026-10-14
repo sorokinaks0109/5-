@@ -366,6 +366,40 @@ if (card2) {
   check(!json(await DUMP(page), 'реестр.json').kpis.some((k) => k.manual), 'ручной показатель удаляется');
   files = await DUMP(page);
 }
+// план мероприятий (АВР): статусы из отчёта в квартальный файл, остальной файл не меняется
+if (process.env.AVR) {
+  await page.evaluate(() => {
+    window.Otchet.S.data['Мещеряков'].data.events = { ...(window.Otchet.S.data['Мещеряков'].data.events || {}), 'У-005': { flag: 'done', text: 'Участвовали в 4 тендерах' } };
+    window.showSaveFilePicker = async (o) => ({ name: o.suggestedName, async createWritable() { const parts = []; return { async write(x) { parts.push(x); }, async close() { window.__avrOut = new Uint8Array(await new Blob(parts).arrayBuffer()); } }; } });
+  });
+  await page.setInputFiles('#avrFile', process.env.AVR);
+  await page.waitForSelector('table.avr', { timeout: 60000 });
+  const msg = await page.locator('.panel:has(table.avr) .msg').innerText();
+  const found = +(msg.match(/Найдено в отчёте: (\d+)/) || [0, 0])[1];
+  check(found >= 100, 'АВР: мероприятия плана найдены в отчёте автоматически: ' + found + ' из 136');
+  await page.click('[data-act=avrSave]');
+  await page.waitForFunction(() => window.__avrOut, null, { timeout: 60000 });
+  const r = await page.evaluate(async () => {
+    const book = await Avr.open(window.__avrOut);
+    const sheet = book.sheets.find((x) => /восточн/i.test(x.name));
+    const info = await Avr.readSheet(book, sheet);
+    const row = info.items.find((x) => /Участие в тендерных процедурах/.test(x.text));
+    const g = info.grid.get(row.row);
+    return { g: g[info.statusCols[0].col], done: g[info.doneCols[0]], sheet: sheet.path };
+  });
+  check(r.g === 'Выполнено. Участвовали в 4 тендерах' && r.done === '1', 'АВР: статус и «выполнено» вписаны в файл');
+  const orig = fs.readFileSync(process.env.AVR).toString('base64');
+  const changed = await page.evaluate(async (b64) => {
+    const a = await JSZip.loadAsync(Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))); const b = await JSZip.loadAsync(window.__avrOut);
+    const out = []; const na = Object.keys(a.files), nb = Object.keys(b.files);
+    if (na.join() !== nb.join()) out.push('состав файла');
+    for (const n of na) { if (a.files[n].dir) continue; const x = await a.file(n).async('base64'); const y = b.file(n) ? await b.file(n).async('base64') : ''; if (x !== y) out.push(n); }
+    return out;
+  }, orig);
+  check(changed.length === 1 && changed[0] === r.sheet, 'АВР: в файле изменён только лист «Восточная сибирь» (' + changed.join(', ') + ')');
+  await page.click('[data-act=avrClose]');
+  files = await DUMP(page);
+}
 await page.click('[data-tab=out]');
 // вкладка письма открывается сразу по нажатию, адрес подставляется, когда файл готов
 await page.evaluate(() => { window.open = (u) => { window.__openCalls = (window.__openCalls || 0) + 1; if (window.__openCalls === 1) window.__firstOpen = u || ''; if (u) window.__opened = u; return { closed: false, document: { write() {} }, location: { set href(v) { window.__opened = v; } } }; }; });

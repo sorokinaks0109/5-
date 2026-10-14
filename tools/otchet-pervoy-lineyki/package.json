@@ -9,6 +9,7 @@
   "devDependencies": {
     "exceljs": "4.4.0",
     "mammoth": "1.8.0",
+    "jszip": "3.10.2",
     "playwright": "^1.55.0"
   }
 }

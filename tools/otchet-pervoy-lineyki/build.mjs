@@ -11,8 +11,8 @@ const out = process.argv[2] || path.join(here, 'build', 'Отчёт первой
 const read = (p) => fs.readFileSync(path.join(here, 'src2', p), 'utf8');
 const safe = (js) => js.replace(/<\/script/gi, '<\\/script');
 // ExcelJS — таблицы Excel, mammoth — документы Word во вложениях
-const exceljs = safe(fs.readFileSync(require.resolve('exceljs/dist/exceljs.min.js'), 'utf8') + '\n' + fs.readFileSync(require.resolve('mammoth/mammoth.browser.min.js'), 'utf8'));
-const libs = ['lib/store.js', 'lib/model.js', 'lib/view.js', 'lib/mobile.js', 'lib/base.js'].map(read).map(safe).join('\n');
+const exceljs = safe(fs.readFileSync(require.resolve('exceljs/dist/exceljs.min.js'), 'utf8') + '\n' + fs.readFileSync(require.resolve('mammoth/mammoth.browser.min.js'), 'utf8') + '\n' + fs.readFileSync(require.resolve('jszip/dist/jszip.min.js'), 'utf8'));
+const libs = ['lib/store.js', 'lib/model.js', 'lib/view.js', 'lib/mobile.js', 'lib/avr.js', 'lib/base.js'].map(read).map(safe).join('\n');
 
 function page(app, title, header) {
   return read('template.html')
