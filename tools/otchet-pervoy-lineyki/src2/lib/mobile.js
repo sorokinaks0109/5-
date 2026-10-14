@@ -77,7 +77,9 @@
         (c.none ? '<span class="badge s-none">без статуса ' + c.none + '</span> ' : '') + (c.overdue ? '<span class="late">срок прошёл: ' + c.overdue + '</span>' : '') + '</div></summary><div class="in">';
       h += '<h3>Поручения</h3>' + (v.memo.length ? v.memo.map((m) => card(m, m.all && m.all.progress ? '<div class="meta">Поручено ' + m.all.progress.total + ' · выполнили ' + m.all.progress.done + '</div>' : '')).join('') : '<div class="muted small">Открытых нет</div>');
       if (v.co.length) h += '<h3>Соисполнитель</h3>' + v.co.map((m) => card(m, '<div class="meta">Отв.: ' + esc(M().respName(reg, m)) + '</div>')).join('');
-      h += '<h3>РОС</h3>' + free(v.ros) + '<h3>Текущие проекты</h3>' + free(v.proj);
+      const T = M().sections(reg);
+      if (T.ros) h += '<h3>' + esc(T.rosPlain) + '</h3>' + free(v.ros);
+      if (T.proj) h += '<h3>' + esc(T.projPlain) + '</h3>' + free(v.proj);
       if (v.kpiOwn.length || v.kpiOther.length) {
         h += '<h3>Показатели УПЦ</h3>';
         for (const k of v.kpiOwn) h += '<div class="kpi">' + kpiHead(k) + (k.comment ? '<div class="notes">' + esc(k.comment) + '</div>' : '') + events(k.events) + '</div>';

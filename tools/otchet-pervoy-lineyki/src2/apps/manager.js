@@ -66,19 +66,30 @@
       return;
     }
     const pv = viewData();
-    main.innerHTML = sentPanel() + headBar() + filterBar() + (S.preview
+    main.innerHTML = sentPanel() + headBar() + avrBanner() + filterBar() + (S.preview
       ? '<div class="panel preview">' + View.personReport(S.reg, pv, S.me, today(), { filter: S.filter }) + '</div>'
-      : memoSec() + freeSec('ros', '2. РОС') + freeSec('proj', '3. Текущие проекты') + upcSec() + attSec());
+      : memoSec() + (T().ros ? freeSec('ros', T().ros) : '') + (T().proj ? freeSec('proj', T().proj) : '') + upcSec() + attSec());
     if (S.preview) View.hydrateAttachments(main, S.dir, S.reg, { [S.me]: S.pendingAtt });
     View.autoGrow(main);
     updateSaveState();
+  }
+  const T = () => Model.sections(S.reg);
+  // Запрос помощника: итоги за квартал для АВР — плашка сверху и поле у каждого своего мероприятия УПЦ
+  function avrBanner() {
+    const r = Model.avrReq(S.reg); if (!r) return '';
+    const p = Model.avrqProgress(S.reg, viewData(), S.me);
+    if (!p || !p.total) return '';
+    const left = p.total - p.done;
+    return '<div class="panel msg ' + (left ? 'warn' : 'ok') + ' avr-banner"><b>Нужно заполнить итоги за ' + esc(r.period) + ' для отчёта анализа высшего руководства' + (r.due ? ' до ' + esc(Model.fmtISO(r.due)) : '') + '.</b> ' +
+      esc(r.text || '') + '<br>Заполнено: <b>' + p.done + ' из ' + p.total + '</b>. Поле «Итог за ' + esc(r.period) + '» — у каждого вашего мероприятия в разделе «' + esc(T().upcPlain) + '». ' +
+      (left ? '<button class="mini" data-act="toUpc">Перейти к мероприятиям</button>' : 'Спасибо!') + '</div>';
   }
   // Фильтр по статусу: поручения, РОС, проекты, мероприятия
   const pass = (flag, d) => View.flagPass(S.filter, flag, d, today());
   function filterBar() {
     const v = Model.personView(S.reg, viewData(), S.me, today());
     const items = [...v.memo.map((m) => ({ flag: m.st.flag, due: m.due })), ...v.co.map((m) => ({ flag: m.st.flag, due: m.due })),
-      ...S.draft.ros.concat(S.draft.proj).filter((r) => r.kind !== 'head').map((r) => ({ flag: r.flag, due: r.due })),
+      ...(T().ros ? S.draft.ros : []).concat(T().proj ? S.draft.proj : []).filter((r) => r.kind !== 'head').map((r) => ({ flag: r.flag, due: r.due })),
       ...[].concat(...v.kpiOwn.map((k) => k.events.filter((e) => e.mine)), ...v.kpiOther.map((k) => k.events)).map((e) => ({ flag: e.st.flag, due: e.due }))];
     return '<div class="panel filter-bar"><span class="muted small">Показать:</span>' + View.filterChips(S.filter, 'data-flt', View.filterCounts(items, today())) + '</div>';
   }
@@ -118,7 +129,7 @@
 
   function memoSec() {
     const v = Model.personView(S.reg, viewData(), S.me, today());
-    let h = '<div class="panel"><h2>1. Поручения</h2>';
+    let h = '<div class="panel"><h2>' + esc(T().memo) + '</h2>';
     if (!v.memo.length) h += '<div class="muted">Открытых поручений нет</div>';
     const memo = v.memo.filter((m) => pass(getSt('memo', m.id).flag, m.due));
     if (v.memo.length && !memo.length) h += '<div class="muted small">Под фильтр ничего не попало</div>';
@@ -163,7 +174,7 @@
 
   function upcSec() {
     const v = Model.personView(S.reg, viewData(), S.me, today());
-    let h = '<div class="panel"><h2>4. Показатели УПЦ</h2>';
+    let h = '<div class="panel" id="upcSec"><h2>' + esc(T().upc) + '</h2>';
     if (!v.kpiOwn.length && !v.kpiOther.length) h += '<div class="muted">Показателей, по которым вы отчитываетесь, нет.</div>';
     for (const k of v.kpiOwn) {
       h += '<div class="kpi">' + View.kpiHead(k) + '<div class="muted small">Вы отчитываетесь по показателю целиком.</div>' +
@@ -186,18 +197,22 @@
       return '<div class="edit-item ro"><div class="ei-text">' + esc(e.text) + '<div class="muted small">Заполняет: ' + esc(sp ? sp.fio : 'помощник') + ' · срок: ' + View.due(e.due, e.st.flag, today()) + '</div></div>' +
         '<div class="fill">' + View.badge(e.st.flag) + ' <span class="small">' + esc(e.st.text) + '</span></div></div>';
     }
+    const r = Model.avrReq(S.reg);
+    const q = r ? '<div class="avrq"><div class="small"><b>Итог за ' + esc(r.period) + '</b> <span class="muted">для отчёта анализа высшего руководства — что сделано за квартал, с цифрами</span></div>' +
+      View.ta('data-k="avrq|' + esc(e.id) + '"', (S.draft.avrq || {})[Model.avrqKey(r.period, e.id)] || '', 'Итог за ' + r.period) + '</div>' : '';
     return '<div class="edit-item"><div class="ei-text">' + esc(e.text) + '<div class="muted small">' + (e.executors ? 'Исп.: ' + esc(e.executors) + ' · ' : '') + 'срок: ' + View.due(e.due, getSt('events', e.id).flag, today()) + '</div></div>' +
-      stRow('events', e.id, getSt('events', e.id)) + '</div>';
+      '<div>' + stRow('events', e.id, getSt('events', e.id)) + q + '</div></div>';
   }
 
   function attSec() {
     const list = S.draft.attachments || [];
-    return '<div class="panel"><h2>5. Приложения</h2><p class="muted small">Excel (таблица покажется под докладом), картинки (покажутся в докладе), PDF, Word, PowerPoint — любой файл до 20 МБ. ' +
+    return '<div class="panel"><h2>' + (T().att ? (Object.values(T()).filter((x) => x && /^\d+\./.test(x)).length + 1) + '. ' : '') + esc(T().att) + '</h2><p class="muted small">Excel (таблица покажется под докладом), картинки (покажутся в докладе), PDF, Word, PowerPoint — любой файл до 20 МБ. ' +
       'Каждую неделю загружайте обновлённый файл с тем же именем — он заменит старый.</p>' +
       (list.length ? '<table class="grid"><tbody>' + list.map((a, i) => '<tr><td>' + View.fileIcon(a.file) + ' ' + esc(a.name) + '</td><td class="muted small">загружено ' + esc(Model.fmtISO(a.added)) + '</td><td class="c-act"><button class="mini danger" data-att="del|' + i + '">Удалить</button></td></tr>').join('') + '</tbody></table>' : '<div class="muted small">Вложений нет</div>') +
       '<div class="row" style="margin-top:8px"><label class="button">+ Загрузить файл<input type="file" id="attFile" hidden></label></div></div>';
   }
 
+  function updateBanner() { const el = $('.avr-banner'); if (el) el.outerHTML = avrBanner(); }
   function updateSaveState() {
     const el = $('#saveState');
     if (!el) return;
@@ -213,6 +228,7 @@
     const [kind, id, field] = key.split('|');
     if (kind === 'kpi') { S.draft.kpi = S.draft.kpi || {}; S.draft.kpi[id] = value; }
     else if (kind === 'coNotes') { S.draft.coNotes = S.draft.coNotes || {}; S.draft.coNotes[id] = value; }
+    else if (kind === 'avrq') { const r = Model.avrReq(S.reg); S.draft.avrq = S.draft.avrq || {}; S.draft.avrq[Model.avrqKey(r.period, id)] = value; updateBanner(); }
     else if (kind === 'memo' || kind === 'events') {
       S.draft[kind] = S.draft[kind] || {};
       S.draft[kind][id] = { ...getSt(kind, id), [field]: value };
@@ -348,6 +364,7 @@
     else if (a === 'demo') { S.demo = true; S.me = 'p1'; S.dir = await Base.demoFolder(); await load(); }
     else if (a === 'save') save();
     else if (a === 'print') printMine();
+    else if (a === 'toUpc') { const el = document.getElementById('upcSec'); if (S.preview) { S.preview = false; render(); } if (document.getElementById('upcSec')) document.getElementById('upcSec').scrollIntoView({ behavior: 'smooth' }); else if (el) el.scrollIntoView(); }
     else if (a === 'linkFolder') { if (conn.saved) { await conn.grant(); if (!S.dir) conn.pick(); } else conn.pick(); }
     else if (a === 'sentOk') { S.sent = null; render(); }
     else if (a === 'preview') { S.preview = !S.preview; render(); window.scrollTo(0, 0); }

@@ -301,6 +301,38 @@
     return lines.join('\n');
   }
 
+  // ---------- разделы отчёта: помощник переименовывает и скрывает РОС и «Текущие проекты» ----------
+  const SECTION_DEFAULT = { memo: 'Поручения', ros: 'РОС', proj: 'Текущие проекты', upc: 'Показатели УПЦ', att: 'Приложения' };
+  // { memo: '1. Поручения', ros: '2. РОС' | null (скрыт), … } — номера идут подряд по видимым разделам
+  function sections(reg) {
+    const cfg = (reg.settings && reg.settings.sections) || {};
+    const out = {}; let n = 0;
+    for (const k of Object.keys(SECTION_DEFAULT)) {
+      const c = cfg[k] || {};
+      if (c.hidden) { out[k] = null; continue; }
+      const title = (c.title || '').trim() || SECTION_DEFAULT[k];
+      out[k] = k === 'att' ? title : (++n) + '. ' + title;
+      out[k + 'Plain'] = title;
+    }
+    return out;
+  }
+  // ---------- запрос итогов за квартал для АВР ----------
+  // settings.avrReq = { on, period: '4 кв. 2026', due: 'ГГГГ-ММ-ДД', text }; итог руководителя — data.avrq['период|мероприятие']
+  function avrReq(reg) { const r = reg.settings && reg.settings.avrReq; return r && r.on && (r.period || '').trim() ? r : null; }
+  const avrqKey = (period, evId) => String(period).trim() + '|' + evId;
+  function avrqText(reg, data, ev, period) {
+    period = period || (avrReq(reg) || {}).period;
+    if (!period || !ev.speaker) return '';
+    const d = data[ev.speaker] && data[ev.speaker].data;
+    return String((d && d.avrq && d.avrq[avrqKey(period, ev.id)]) || '').trim();
+  }
+  // Сколько своих мероприятий у руководителя и по скольким он написал итог за квартал
+  function avrqProgress(reg, data, pid) {
+    const r = avrReq(reg); if (!r) return null;
+    const evs = reg.events.filter((e) => e.speaker === pid);
+    return { total: evs.length, done: evs.filter((e) => avrqText(reg, data, e, r.period)).length };
+  }
+
   // ---------- слияние правок: один отчёт заполняют несколько человек ----------
   // base — версия, с которой человек начал; mine — что он сохраняет; theirs — что сейчас лежит в папке.
   // Берём из mine только то, что он сам поменял относительно base; остальное — из theirs.
@@ -319,7 +351,7 @@
         }
       }
     }
-    for (const f of ['kpi', 'coNotes']) {
+    for (const f of ['kpi', 'coNotes', 'avrq']) {
       const b = base[f] || {}, m = mine[f] || {};
       out[f] = { ...(theirs[f] || {}) };
       for (const id of new Set([...Object.keys(b), ...Object.keys(m)])) if (J(b[id]) !== J(m[id])) out[f][id] = m[id];
@@ -344,7 +376,7 @@
   root.Model = {
     STATUSES, NO_STATUS, statusLabel, isFinal, ISO, todayISO, fmtISO, parseDue, isOverdue, fmtDateTime, uid, norm, surname,
     personById, personByName, inTeam, shortKpi, memoStatus, eventStatus, respName, personView, countFlags, freshness,
-    respsOf, isResp, combineFlags, coNotes, mergeReport, sameVersion, stOf,
+    respsOf, isResp, combineFlags, coNotes, mergeReport, sameVersion, stOf, sections, avrReq, avrqKey, avrqText, avrqProgress,
     cellText, parseCard, diffCard, applyCard, defaultReporter, buildSummary, summaryText,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

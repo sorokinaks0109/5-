@@ -95,7 +95,17 @@
       '<div class="msg ' + (stale.length ? 'bad' : 'ok') + '" style="margin-top:10px">' + (stale.length ? 'Не обновили: ' + stale.map((p) => esc(p.fio)).join(', ') : 'Все обновили отчёт') + '</div>' +
       '<div class="row">' + (stale.length ? '<button data-act="remind">Написать напоминание не обновившим</button>' : '') +
       '<label class="button">Загрузить отчёты из файлов (присланные по почте)<input type="file" id="importFiles" multiple hidden></label></div>' +
-      '<div class="muted small">Отчёты из папки «Входящие» забираются сами, когда вы открываете эту страницу или нажимаете «Обновить».</div></div>' + View.whoCards(S.reg, S.data, today());
+      '<div class="muted small">Отчёты из папки «Входящие» забираются сами, когда вы открываете эту страницу или нажимаете «Обновить».</div></div>' + avrReqPanel() + View.whoCards(S.reg, S.data, today());
+  }
+  // Ход запроса итогов за квартал (АВР): кто сколько заполнил
+  function avrReqPanel() {
+    const r = Model.avrReq(S.reg); if (!r) return '';
+    const rows = S.reg.people.map((p) => ({ p, g: Model.avrqProgress(S.reg, S.data, p.id) })).filter((x) => x.g && x.g.total);
+    const left = rows.filter((x) => x.g.done < x.g.total);
+    return '<div class="panel"><div class="row between"><h2>Итоги за ' + esc(r.period) + ' для АВР' + (r.due ? ' — срок ' + esc(Model.fmtISO(r.due)) : '') + '</h2>' +
+      (left.length ? '<button data-act="remindAvr">Напомнить не заполнившим</button>' : '') + '</div><div class="nums">' +
+      rows.map((x) => '<span class="badge ' + (x.g.done >= x.g.total ? 's-done' : x.g.done ? 's-work' : 's-fail') + '">' + esc(x.p.fio) + ': ' + x.g.done + ' из ' + x.g.total + '</span>').join('') +
+      '</div><div class="muted small" style="margin-top:6px">Запрос включается и выключается в «Настройках». Заполненные итоги подставляются в «Заполнить план мероприятий (АВР)» вместо еженедельных пояснений.</div></div>';
   }
 
   function meetingTab() {
@@ -212,7 +222,8 @@
     const st = Model.eventStatus(S.reg, S.data, ev);
     const label = st.flag ? Model.statusLabel(st.flag) : '';
     const cap = label ? label[0].toUpperCase() + label.slice(1) : '';
-    const text = (st.text || '').trim();
+    // итог за квартал из запроса помощника важнее еженедельного пояснения
+    const text = Model.avrqText(S.reg, S.data, ev, (S.reg.settings.avrReq || {}).period) || (st.text || '').trim();
     if (!text) return { rep: cap, repDone: st.flag === 'done', repFlag: st.flag };
     return { rep: cap && !text.toLowerCase().startsWith(label) ? cap + '. ' + text : text, repDone: st.flag === 'done', repFlag: st.flag };
   }
@@ -526,6 +537,7 @@
         '<td class="c-act"><button class="mini" data-pmove="up|' + i + '">↑</button><button class="mini" data-pmove="down|' + i + '">↓</button><button class="mini danger" data-pmove="del|' + i + '">✕</button></td></tr>').join('') +
       '</tbody></table><div class="row" style="margin-top:8px"><input id="newFio" placeholder="Фамилия И.О."><button data-act="addPerson">Добавить руководителя</button></div>' +
       '<p class="muted small">Новому руководителю скопируйте любую страницу из папки «Страницы руководителей» и переименуйте в «Отчёт — Фамилия.html».</p></div>' +
+      sectionsPanel() + avrReqSettings() +
       '<div class="panel"><h2>Почта</h2><p class="muted small">Как открывать письма (напоминания, директору). Ссылка на новое письмо в OWA зависит от версии почтового сервера. ' +
       'Нажмите по очереди кнопки «Проверить»: какая откроет <b>новое письмо с заполненными адресом и темой</b> — тот способ и выберите. Если ни одна — оставьте первый способ: почта откроется, а текст письма будет скопирован, останется вставить Ctrl+V.</p>' +
       '<div class="row"><label class="small">Открывать письма <select id="mailVia">' + View.MAIL_MODES.map(([k, t]) => '<option value="' + k + '"' + (View.mailMode(st) === k ? ' selected' : '') + '>' + esc(t) + '</option>').join('') + '</select></label>' +
@@ -535,6 +547,26 @@
       '<div class="panel"><h2>Пароль помощника</h2><p class="muted small">Пароль защищает страницу помощника от случайного входа. Настоящая защита реестра — права на папку «Данные» (см. «Как пользоваться»).</p>' +
       '<div class="row"><input type="password" id="newPass" placeholder="' + (st.passHash ? 'Новый пароль' : 'Пароль') + '"><button data-act="setPass">' + (st.passHash ? 'Сменить пароль' : 'Установить пароль') + '</button>' +
       (st.passHash ? '<button data-act="clearPass">Убрать пароль</button>' : '') + '</div></div>';
+  }
+  function sectionsPanel() {
+    const cfg = S.reg.settings.sections || {};
+    const row = (k, def) => { const c = cfg[k] || {}; return '<tr><td>' + esc(def) + '</td><td><input data-sec-title="' + k + '" value="' + esc(c.title || '') + '" placeholder="' + esc(def) + '"></td>' +
+      '<td><select data-sec-hidden="' + k + '"><option value="0">показывать</option><option value="1"' + (c.hidden ? ' selected' : '') + '>скрыть</option></select></td></tr>'; };
+    return '<div class="panel"><h2>Разделы отчёта руководителя</h2><p class="muted small">Название раздела можно поменять, раздел — скрыть. Скрытый раздел пропадает у руководителей, на совещании и у директора, ' +
+      'но то, что в нём было заполнено, не удаляется: вернёте «показывать» — всё на месте. Номера разделов пересчитываются сами.</p>' +
+      '<table class="grid" style="max-width:760px"><thead><tr><th>Раздел</th><th>Название в отчёте</th><th class="c-st">Показывать</th></tr></thead><tbody>' +
+      row('ros', 'РОС') + row('proj', 'Текущие проекты') + '</tbody></table></div>';
+  }
+  function avrReqSettings() {
+    const r = S.reg.settings.avrReq || {};
+    const def = 'Прошу по каждому своему мероприятию УПЦ написать итог за квартал: что выполнено, с цифрами и датами. Эти итоги пойдут в план мероприятий для анализа высшего руководства.';
+    return '<div class="panel"><h2>Запрос итогов за квартал (АВР)</h2><p class="muted small">Включите в начале месяца после квартала. У руководителей вверху отчёта появится напоминание, ' +
+      'а у каждого их мероприятия УПЦ — поле «Итог за квартал». Ход заполнения — на вкладке «Кто обновил». После сбора выключите.</p>' +
+      '<div class="form-grid"><label>Запрос<select id="avr_on"><option value="0">выключен</option><option value="1"' + (r.on ? ' selected' : '') + '>включён</option></select></label>' +
+      '<label>Квартал<input id="avr_period" value="' + esc(r.period || '') + '" placeholder="4 кв. 2026"></label>' +
+      '<label>Заполнить до<input type="date" id="avr_due" value="' + esc(r.due || '') + '"></label>' +
+      '<label class="wide">Текст для руководителей' + View.ta('id="avr_text"', r.text || def) + '</label></div>' +
+      '<div class="row"><button class="primary" data-act="avrReqSave">Сохранить запрос</button></div></div>';
   }
   async function settingsEdit(key, value) {
     const [i, f] = key.split('|');
@@ -561,6 +593,7 @@
       '<li><b>Поручение нескольким</b>: отметьте нескольких ответственных (или «Все на совещании»). У каждого свой статус, у поручения — «выполнили N из M». Снимается, когда выполнили все (или вручную).</li>' +
       '<li><b>Соисполнители</b> пишут свой комментарий по поручению в своём отчёте — он виден у ответственного и на совещании.</li>' +
       '<li><b>Раз в месяц</b>: «УПЦ» → «Загрузить новую карту УПЦ». Сборщик покажет, что добавится, уйдёт и изменится.</li>' +
+      '<li><b>В начале месяца после квартала</b>: «Настройки» → «Запрос итогов за квартал» → включите, укажите квартал и срок. Руководители увидят запрос у себя и заполнят «Итог за квартал» у своих мероприятий; кто сколько заполнил — на вкладке «Кто обновил». После сбора выключите.</li>' +
       '<li><b>Раз в квартал</b>: «УПЦ» → «Заполнить план мероприятий (АВР)…» → выберите квартальный файл. Статусы и пояснения подставятся из отчёта в новую колонку «Статус … кв.», в «выполнено» — 1 у выполненных. Проверьте, поправьте, «Сохранить заполненный файл». Что сопоставили вручную, запоминается на следующий квартал.</li></ol>' +
       '<h3>Статусы</h3><p>Везде одни и те же: ' + Model.STATUSES.map((s) => View.badge(s.key)).join(' ') + ' и ' + View.badge('') + '. ' +
       'Если срок прошёл, а статус не «выполнено» и не «неактуально», дата подсвечивается красным.</p>' +
@@ -629,6 +662,21 @@
     else if (a === 'respNone') { $$('.f_resp').forEach((x) => { x.checked = false; }); }
     else if (a === 'sendDirector') sendDirector();
     else if (a === 'sendMemo') sendMemo();
+    else if (a === 'avrReqSave') {
+      const period = $('#avr_period').value.trim(); const on = $('#avr_on').value === '1';
+      if (on && !period) { View.toast('Укажите квартал, например «4 кв. 2026»', 'bad'); return; }
+      S.reg.settings.avrReq = { on, period, due: $('#avr_due').value, text: $('#avr_text').value.trim() };
+      if (await saveReg(on ? 'Запрос включён: руководители увидят его в своих отчётах' : 'Запрос выключен')) render();
+    }
+    else if (a === 'remindAvr') {
+      const r = Model.avrReq(S.reg);
+      const left = S.reg.people.filter((p) => { const g = Model.avrqProgress(S.reg, S.data, p.id); return g && g.total && g.done < g.total; });
+      const to = left.map((p) => p.email).filter(Boolean);
+      const noMail = left.filter((p) => !p.email).map((p) => p.fio);
+      if (noMail.length) View.toast('Нет почты у: ' + noMail.join(', ') + '. Добавьте в «Настройках».', 'bad');
+      View.mail(S.reg.settings, to, 'Итоги за ' + r.period + ' для отчёта анализа высшего руководства',
+        'Коллеги, добрый день!\n\nПрошу заполнить в отчёте первой линейки итоги за ' + r.period + ' по своим мероприятиям УПЦ (поле «Итог за ' + r.period + '»)' + (r.due ? ' до ' + Model.fmtISO(r.due) : '') + ' и нажать «Сохранить».\n\nСпасибо!');
+    }
     else if (a === 'kpiNew') { S.kpiForm = {}; render(); }
     else if (a === 'avrSave') avrSave();
     else if (a === 'avrClose') { S.avr = null; render(); }
@@ -659,6 +707,12 @@
   document.addEventListener('change', async (e) => {
     const t = e.target;
     if (t.id === 'mailVia') { S.reg.settings.mailMode = t.value; saveReg('Сохранено'); }
+    if (t.dataset.secTitle !== undefined || t.dataset.secHidden !== undefined) {
+      const k = t.dataset.secTitle || t.dataset.secHidden; const cfg = S.reg.settings.sections = S.reg.settings.sections || {};
+      cfg[k] = { ...(cfg[k] || {}) };
+      if (t.dataset.secTitle !== undefined) cfg[k].title = t.value.trim(); else cfg[k].hidden = t.value === '1';
+      if (await saveReg('Разделы отчёта сохранены — у руководителей изменится при следующем открытии')) render();
+    }
     if (t.id === 'owaUrl') { S.reg.settings.owaUrl = t.value.trim(); saveReg('Адрес почты сохранён'); }
     if (t.id === 'memoPerson') { S.memoPerson = t.value; render(); }
     if (t.id === 'upcPerson') { S.upcPerson = t.value; render(); }

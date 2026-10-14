@@ -223,3 +223,6 @@ table.grid.avr tr.avr-cancelled td, table.grid.avr tr.avr-nokpi td { background:
 table.grid.avr tr.st-diff td:nth-child(4) { background: #fff4f2; }
 .avr-cmp { font-size: 12.5px; margin-top: 6px; display: flex; flex-direction: column; gap: 3px; white-space: pre-wrap; }
 .avr-cmp b { color: var(--muted); font-weight: 600; }
+.avrq { margin-top: 8px; padding: 6px 8px; background: var(--none-bg); border-radius: 8px; }
+.avrq textarea { background: #fff; }
+.avr-banner { line-height: 1.5; }

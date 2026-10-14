@@ -120,11 +120,12 @@
     let h = '<div class="report-head"><h1>' + esc(v.person.fio) + '</h1>' + freshBadge(v) + (f ? '<span class="badge s-none">фильтр: ' + esc(FILTERS.find((x) => x[0] === f)[1]) + '</span>' : '') + '</div>';
     h += countTiles(v.counts, 'поручений');
     const memo = v.memo.filter(pass), co = v.co.filter(pass);
-    h += '<h3 class="sec">1. Поручения</h3>' + (memo.length ? '<div class="items">' + memo.map((m) => itemCard(m, today)).join('') + '</div>' : '<div class="muted small">' + (f && v.memo.length ? 'Под фильтр ничего не попало' : 'Открытых поручений нет') + '</div>');
+    const T = M().sections(reg);
+    h += '<h3 class="sec">' + esc(T.memo) + '</h3>' + (memo.length ? '<div class="items">' + memo.map((m) => itemCard(m, today)).join('') + '</div>' : '<div class="muted small">' + (f && v.memo.length ? 'Под фильтр ничего не попало' : 'Открытых поручений нет') + '</div>');
     if (co.length) h += '<h3 class="sec">Соисполнитель <span class="muted">статус ведёт ответственный</span></h3><div class="items">' + co.map((m) => itemCard(m, today, '<div class="muted small">Отв.: ' + esc(M().respName(reg, m)) + '</div>')).join('') + '</div>';
-    h += '<h3 class="sec">2. РОС</h3>' + freeTable(v.ros, today, f);
-    h += '<h3 class="sec">3. Текущие проекты</h3>' + freeTable(v.proj, today, f);
-    h += '<h3 class="sec">4. Показатели УПЦ</h3>';
+    if (T.ros) h += '<h3 class="sec">' + esc(T.ros) + '</h3>' + freeTable(v.ros, today, f);
+    if (T.proj) h += '<h3 class="sec">' + esc(T.proj) + '</h3>' + freeTable(v.proj, today, f);
+    h += '<h3 class="sec">' + esc(T.upc) + '</h3>';
     if (!v.kpiOwn.length && !v.kpiOther.length) h += '<div class="muted small">Показателей, по которым руководитель отчитывается, нет</div>';
     for (const k of v.kpiOwn) {
       h += '<div class="kpi">' + kpiHead(k) + (k.comment ? '<div class="kpi-comment"><b>Комментарий:</b> ' + esc(k.comment) + '</div>' : '') + eventsTable(k.events, reg, today, k.events.some((e) => !e.mine), f) + '</div>';
@@ -138,7 +139,7 @@
         v.kpiTeam.map((k) => '<tr><td>' + esc(M().shortKpi(k.name)) + '</td><td>' + esc(k.goal) + '</td><td>' + esc(short(k.fact)) + '</td><td>' + esc(short(k.forecast)) + '</td><td>' + esc(k.leader) + '</td></tr>').join('') + '</tbody></table></details>';
     }
     if (v.attachments.length) {
-      h += '<h3 class="sec">Приложения</h3>' + v.attachments.map((a) => '<div class="att" data-pid="' + esc(pid) + '" data-file="' + esc(a.file) + '"><div class="att-title">' + fileIcon(a.file) + ' ' + esc(a.name) + '</div><div class="att-body muted small">Загрузка…</div></div>').join('');
+      h += '<h3 class="sec">' + esc(T.att) + '</h3>' + v.attachments.map((a) => '<div class="att" data-pid="' + esc(pid) + '" data-file="' + esc(a.file) + '"><div class="att-title">' + fileIcon(a.file) + ' ' + esc(a.name) + '</div><div class="att-body muted small">Загрузка…</div></div>').join('');
     }
     return h;
   }

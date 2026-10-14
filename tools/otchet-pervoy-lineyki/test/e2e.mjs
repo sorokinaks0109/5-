@@ -656,6 +656,57 @@ await page.close();
   await pa.close();
   fs.rmSync(dlPath);
 }
+// ---------- 3д. Настройки помощника доходят до отчётов: разделы и запрос итогов за квартал ----------
+{
+  const pa = await open('Помощник.html');
+  await pa.evaluate(async () => sessionStorage.setItem('otchet.unlocked', await Base.sha('тест1234')));
+  await MOUNT(pa, files);
+  await pa.click('[data-tab=settings]');
+  await pa.selectOption('[data-sec-hidden="ros"]', '1');
+  await pa.waitForTimeout(300);
+  await pa.fill('[data-sec-title="proj"]', 'Ключевые проекты');
+  await pa.locator('[data-sec-title="proj"]').dispatchEvent('change');
+  await pa.waitForTimeout(300);
+  await pa.selectOption('#avr_on', '1');
+  await pa.fill('#avr_period', '4 кв. 2026');
+  await pa.fill('#avr_due', '2027-01-15');
+  await pa.click('[data-act=avrReqSave]');
+  await pa.waitForTimeout(300);
+  files = await DUMP(pa);
+  const rg = json(files, 'реестр.json');
+  check(rg.settings.sections.ros.hidden && rg.settings.sections.proj.title === 'Ключевые проекты' && rg.settings.avrReq.on, 'настройки разделов и запрос итогов сохранены в реестре');
+  const pm = await open('Страницы руководителей/Отчёт — Мещеряков.html');
+  await MOUNT(pm, files);
+  const heads = await pm.locator('main .panel h2').allInnerTexts();
+  check(!heads.some((x) => /РОС/.test(x)) && heads.includes('2. Ключевые проекты') && heads.includes('3. Показатели УПЦ'), 'у руководителя: РОС скрыт, проекты переименованы, номера пересчитаны: ' + heads.join(' | '));
+  check(await pm.locator('.avr-banner').isVisible() && /итоги за 4 кв\. 2026/i.test(await pm.locator('.avr-banner').innerText()), 'у руководителя вверху запрос итогов за 4 кв. 2026');
+  const q = pm.locator('textarea[data-k^="avrq|"]').first();
+  const qid = (await q.getAttribute('data-k')).split('|')[1];
+  await q.fill('Итог квартала: выполнено полностью, 3 договора');
+  await pm.fill('#reportDate', '2026-10-09');
+  await pm.click('[data-act=save]');
+  await pm.waitForTimeout(300);
+  files = await DUMP(pm);
+  check(json(files, 'руководители/Мещеряков.json').avrq['4 кв. 2026|' + qid].startsWith('Итог квартала'), 'итог за квартал сохранён в отчёте руководителя');
+  await pm.click('[data-act=preview]');
+  const ph = await pm.locator('.preview h3.sec').allInnerTexts();
+  check(!ph.some((x) => /РОС/i.test(x)) && ph.some((x) => /ключевые проекты/i.test(x)), 'и на совещании раздел РОС скрыт, проекты переименованы');
+  await pm.close();
+  await MOUNT(pa, files);
+  await pa.click('[data-tab=who]');
+  check(/Мещеряков А\.В\.: 1 из \d+/.test(await pa.locator('.panel:has-text("для АВР")').innerText()), 'помощник видит, кто сколько итогов заполнил');
+  const t = await pa.evaluate((id) => Model.avrqText(window.Otchet.S.reg, window.Otchet.S.data, window.Otchet.S.reg.events.find((e) => e.id === id)), qid);
+  check(t.startsWith('Итог квартала'), 'итог за квартал пойдёт в план мероприятий АВР');
+  // вернуть как было
+  await pa.click('[data-tab=settings]');
+  await pa.selectOption('[data-sec-hidden="ros"]', '0');
+  await pa.waitForTimeout(300);
+  await pa.selectOption('#avr_on', '0');
+  await pa.click('[data-act=avrReqSave]');
+  await pa.waitForTimeout(300);
+  files = await DUMP(pa);
+  await pa.close();
+}
 // ---------- 4. Директор ----------
 page = await open('Директор.html');
 await MOUNT(page, files);
