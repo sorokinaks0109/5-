@@ -8,7 +8,7 @@
     memoFilter: '', memoPerson: '', edit: null, cardDiff: null, card: null, upcPerson: '', log: [], meetFilter: '', sentFile: '',
   };
   const today = () => Model.todayISO();
-  const TABS = [['who', 'Кто обновил'], ['meeting', 'Совещание'], ['memo', 'Поручения'], ['upc', 'УПЦ'], ['avr', 'План АВР'], ['out', 'Свод и письма'], ['settings', 'Настройки'], ['help', 'Как пользоваться']];
+  const TABS = [['who', 'Кто обновил'], ['meeting', 'Совещание'], ['memo', 'Поручения'], ['upc', 'УПЦ'], ['avr', 'План АВР'], ['plan', 'План на год'], ['out', 'Свод и письма'], ['settings', 'Настройки'], ['help', 'Как пользоваться']];
 
   const conn = Base.connector({ mode: 'readwrite', render: () => render(), onDir: async (dir) => { S.dir = dir; await load(); } });
 
@@ -80,7 +80,7 @@
       setTimeout(() => $('#pass') && $('#pass').focus(), 0);
       return;
     }
-    const views = { who: whoTab, meeting: meetingTab, memo: memoTab, upc: upcTab, avr: avrTab, out: outTab, settings: settingsTab, help: helpTab };
+    const views = { who: whoTab, meeting: meetingTab, memo: memoTab, upc: upcTab, avr: avrTab, plan: planTab, out: outTab, settings: settingsTab, help: helpTab };
     main.innerHTML = views[S.tab]();
     if (S.tab === 'meeting') View.hydrateAttachments(main, S.dir, S.reg);
     View.autoGrow(main);
@@ -434,6 +434,111 @@
     if (await saveReg('Перенесено в отчёт: ' + list.length + '. Руководители увидят статусы у себя.')) { S.avr.rows.forEach(avrPrepare); render(); }
   }
 
+  // ---------- сбор мероприятий на следующий год (Приложение 3 к приказу № 1) ----------
+  const planOf = () => (S.reg.plan = S.reg.plan || { year: new Date().getFullYear() + 1, on: false, due: '', text: '', kpis: [], events: [] });
+  let planTimer = null;
+  const planSaveSoon = (msg) => { clearTimeout(planTimer); planTimer = setTimeout(() => saveReg(msg || ''), 700); };
+  function planTab() {
+    const P = planOf();
+    const ppl = (sel) => '<option value="">— не назначен —</option>' + S.reg.people.map((p) => '<option value="' + esc(p.id) + '"' + (sel === p.id ? ' selected' : '') + '>' + esc(p.fio) + '</option>').join('');
+    let h = '<div class="panel"><h2>Сбор мероприятий на ' + esc(P.year) + ' год</h2><p class="muted small">Порядок: 1) возьмите показатели и мероприятия текущего года, поправьте список и цели, добавьте новые; ' +
+      '2) включите сбор — у лидеров в отчёте появится раздел «Проект на ' + esc(P.year) + ' год» с уже вписанными мероприятиями, они подтверждают или правят и могут предложить свои бизнес-инициативы; ' +
+      '3) следите за ходом ниже; 4) «Выгрузить в форму Приложения 3» — Excel для управления. Текущий отчёт руководителей это не меняет.</p>' +
+      '<div class="form-grid"><label>Год<input id="plan_year" type="number" value="' + esc(P.year) + '"></label>' +
+      '<label>Сбор<select id="plan_on"><option value="0">выключен</option><option value="1"' + (P.on ? ' selected' : '') + '>включён</option></select></label>' +
+      '<label>Срок<input type="date" id="plan_due" value="' + esc(P.due || '') + '"></label>' +
+      '<label class="wide">Текст для руководителей' + View.ta('id="plan_text"', P.text || 'Прошу проверить мероприятия по своим показателям на следующий год: подтвердить или поправить, указать ответственных и сроки.') + '</label></div>' +
+      '<div class="row"><button class="primary" data-act="planCfg">Сохранить</button></div></div>';
+    // ход сбора
+    if (P.on) {
+      const rows = S.reg.people.map((p) => ({ p, g: Model.planProgress(S.reg, S.data, p.id), bi: ((S.data[p.id] && S.data[p.id].data && S.data[p.id].data.planBI) || []).length })).filter((x) => x.g.total || x.bi);
+      const left = rows.filter((x) => x.g.done < x.g.total);
+      h += '<div class="panel"><div class="row between"><h2>Ход сбора</h2>' + (left.length ? '<button data-act="planRemind">Напомнить не заполнившим</button>' : '') + '</div><div class="nums">' +
+        rows.map((x) => '<span class="badge ' + (x.g.done >= x.g.total ? 's-done' : x.g.done ? 's-work' : 's-fail') + '">' + esc(x.p.fio) + ': ' + x.g.done + ' из ' + x.g.total + (x.bi ? ' · БИ: ' + x.bi : '') + '</span>').join('') + '</div></div>';
+    }
+    // показатели проекта
+    h += '<div class="panel"><div class="row between"><h2>Показатели и мероприятия на ' + esc(P.year) + ' год: ' + P.kpis.length + '</h2><span class="row">' +
+      '<button data-act="planCopy">Взять показатели и мероприятия текущего года</button><button data-act="planKpiAdd">+ Показатель</button>' +
+      '<button class="primary" data-act="planExport">Выгрузить в форму Приложения 3</button></span></div>' +
+      '<p class="muted small">Цель — для ФОП из присланной таблицы кроссфункциональных показателей. Лидер — кто проверяет мероприятия по показателю. Мероприятия ниже — то, что увидит лидер; после его ответа показывается его вариант.</p>';
+    if (!P.kpis.length) h += '<div class="muted">Пока пусто. Нажмите «Взять показатели и мероприятия текущего года».</div>';
+    const noLead = P.kpis.filter((k) => !k.leader).length;
+    if (noLead) h += '<div class="msg warn">Без лидера: ' + noLead + ' — эти показатели в отчётах никто не увидит. Назначьте лидера в списке «Лидер».</div>';
+    const PST = { '': '<span class="badge s-none">лидер ещё не смотрел</span>', ok: '<span class="badge s-done">лидер подтвердил</span>', edit: '<span class="badge s-work">лидер изменил</span>' };
+    for (const k of P.kpis) {
+      const f = Model.planFinal(S.reg, S.data, k);
+      h += '<div class="kpi"><div class="row"><input data-pkf="' + esc(k.id) + '|name" value="' + esc(k.name) + '" style="flex:1;min-width:280px;font-weight:600">' +
+        '<select data-pkf="' + esc(k.id) + '|type">' + ['ФОП', 'БИ', 'другое'].map((t) => '<option' + ((k.type || 'ФОП') === t ? ' selected' : '') + '>' + t + '</option>').join('') + '</select>' +
+        '<label class="small">Цель <input data-pkf="' + esc(k.id) + '|goal" value="' + esc(k.goal || '') + '" style="width:160px"></label>' +
+        '<label class="small">Лидер <select data-pkf="' + esc(k.id) + '|leader">' + ppl(k.leader) + '</select></label>' + PST[f.st || ''] +
+        '<button class="mini danger" data-pkdel="' + esc(k.id) + '">✕</button></div>';
+      if (f.st) {
+        h += '<div class="small" style="margin-top:6px"><b>Вариант лидера:</b><ol>' + f.events.map((e) => '<li>' + esc(e.text) + (e.executors ? ' — <i>' + esc(e.executors) + '</i>' : '') + (e.due ? ' · ' + esc(Model.fmtISO(e.due)) : '') + '</li>').join('') + '</ol></div>';
+      } else {
+        const evs = P.events.filter((e) => e.kpi === k.id);
+        h += '<details' + (evs.length ? '' : ' open') + '><summary class="small">Предложенные мероприятия: ' + evs.length + '</summary><table class="grid edit"><tbody>' +
+          evs.map((e) => '<tr><td>' + View.ta('data-pef="' + esc(e.id) + '|text"', e.text) + '</td><td class="c-resp">' + View.ta('data-pef="' + esc(e.id) + '|executors"', e.executors || '') + '</td>' +
+            '<td class="c-due"><input data-pef="' + esc(e.id) + '|due" value="' + esc(Model.fmtISO(e.due || '')) + '"></td><td class="c-act"><button class="mini danger" data-pedel="' + esc(e.id) + '">✕</button></td></tr>').join('') +
+          '</tbody></table><button class="mini" data-peadd="' + esc(k.id) + '">+ мероприятие</button></details>';
+      }
+      h += '</div>';
+    }
+    // предложенные руководителями бизнес-инициативы
+    const bis = [];
+    for (const p of S.reg.people) for (const b of ((S.data[p.id] && S.data[p.id].data && S.data[p.id].data.planBI) || [])) if ((b.name || '').trim()) bis.push({ p, b });
+    if (bis.length) h += '<h3 class="sec">Предложенные бизнес-инициативы: ' + bis.length + '</h3>' + bis.map(({ p, b }) => '<div class="kpi"><b>' + esc(b.name) + '</b> <span class="muted small">— ' + esc(p.fio) + '</span>' +
+      (b.goal ? '<div class="small">Цель: ' + esc(b.goal) + '</div>' : '') + (b.measure ? '<div class="small">Как оцениваем: ' + esc(b.measure) + '</div>' : '') +
+      '<ol class="small">' + (b.events || []).map((e) => '<li>' + esc(e.text) + (e.executors ? ' — <i>' + esc(e.executors) + '</i>' : '') + (e.due ? ' · ' + esc(Model.fmtISO(e.due)) : '') + '</li>').join('') + '</ol></div>').join('') +
+      '<p class="muted small">Попадут в выгрузку в «Блок БИ».</p>';
+    return h + '</div>';
+  }
+  // Показатели и мероприятия текущего года — основа проекта на следующий
+  function planCopy() {
+    const P = planOf();
+    if (P.kpis.length && !confirm('В проекте уже есть показатели. Заменить их показателями и мероприятиями текущего года? Ответы лидеров по старому списку перестанут отображаться.')) return;
+    const shift = (d) => (/^\d{4}-\d{2}-\d{2}$/.test(d || '') && +d.slice(0, 4) === P.year - 1 ? P.year + d.slice(4) : d || '');
+    P.kpis = []; P.events = [];
+    for (const k of S.reg.kpis) {
+      const id = Model.uid('P');
+      P.kpis.push({ id, src: k.id, name: k.name, type: k.type || 'ФОП', goal: '', leader: k.reporter || null });
+      for (const e of S.reg.events.filter((x) => x.kpi === k.id)) P.events.push({ id: Model.uid('pe'), kpi: id, text: e.text, executors: e.executors || '', due: shift(e.due) });
+    }
+    saveReg('Взято показателей: ' + P.kpis.length + ', мероприятий: ' + P.events.length + '. Поправьте список и цели, затем включите сбор.').then(() => render());
+  }
+  async function planExport() {
+    const P = planOf();
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Дивизион "Восточная сибирь"', { pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, paperSize: 9 } });
+    [8.7, 71, 45, 22, 30, 40].forEach((w, i) => (ws.getColumn(i + 1).width = w));
+    const thin = { style: 'thin', color: { argb: 'FF808080' } }; const border = { top: thin, left: thin, bottom: thin, right: thin };
+    ws.getCell('D1').value = 'Приложение 3'; ws.getCell('D2').value = 'к приказу № 1-П';
+    ws.mergeCells('A4:F4'); ws.getCell('A4').value = 'План мероприятий по достижению целевых показателей на ' + P.year + 'г.'; ws.getCell('A4').font = { bold: true, size: 13 }; ws.getCell('A4').alignment = { horizontal: 'center' };
+    ws.getCell('A5').value = 'Дивизион "Восточная сибирь"'; ws.getCell('A5').font = { bold: true };
+    const hr = ws.getRow(6); hr.values = ['№ п/п', 'Мероприятие', 'Ответственный исполнитель', 'Срок исполнения', 'Примечания', 'Ресурсы на реализацию мероприятия (при необходимости)'];
+    hr.eachCell((c) => { c.font = { bold: true }; c.border = border; c.alignment = { wrapText: true, vertical: 'middle', horizontal: 'center' }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCE6F1' } }; });
+    const band = (text, argb) => { const r = ws.addRow([text]); ws.mergeCells(r.number, 1, r.number, 6); r.getCell(1).font = { bold: true }; r.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb } }; r.getCell(1).border = border; r.getCell(1).alignment = { wrapText: true }; };
+    const evRows = (evs, note) => evs.forEach((e, i) => { const r = ws.addRow([i + 1, e.text, e.executors || '', Model.fmtISO(e.due || ''), i === 0 && note ? note : '', '']); r.eachCell({ includeEmpty: true }, (c) => { c.border = border; c.alignment = { wrapText: true, vertical: 'top' }; }); });
+    const blocks = [['Блок ФОП', P.kpis.filter((k) => k.type !== 'БИ')], ['Блок БИ', P.kpis.filter((k) => k.type === 'БИ')]];
+    let n = 0;
+    for (const [title, ks] of blocks) {
+      band(title, 'FFBDD7EE');
+      for (const k of ks) { band(k.name + (k.goal ? ' (цель: ' + k.goal + ')' : ''), 'FFF2F2F2'); const f = Model.planFinal(S.reg, S.data, k); evRows(f.events); n += f.events.length; }
+      if (title === 'Блок БИ') {
+        for (const p of S.reg.people) for (const b of ((S.data[p.id] && S.data[p.id].data && S.data[p.id].data.planBI) || [])) {
+          if (!(b.name || '').trim()) continue;
+          band(b.name + ' (предложено: ' + p.fio + ')', 'FFFFF2CC');
+          evRows(b.events || [], [b.goal ? 'Цель: ' + b.goal : '', b.measure ? 'Как оцениваем: ' + b.measure : '', b.due ? 'Срок: ' + Model.fmtISO(b.due) : ''].filter(Boolean).join('\n'));
+          n += (b.events || []).length;
+        }
+      }
+    }
+    const bytes = new Uint8Array(await wb.xlsx.writeBuffer());
+    const name = 'План мероприятий на ' + P.year + ' — Восточная Сибирь.xlsx';
+    if (!S.demo) { try { await Store.writeBytes(S.dir, ['Своды', name], bytes); } catch (e) { S.log.push('В «Своды» не записалось: ' + e.message); } }
+    await View.saveFile(bytes, name, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', '.xlsx', 'Excel');
+    View.toast('Выгружено мероприятий: ' + n + '. Файл — в папке «Своды»', 'ok');
+  }
+
   // ---------- показатель вручную (пока его нет в выгрузке карты) ----------
   function kpiForm() {
     const k = S.kpiForm.id ? S.reg.kpis.find((x) => x.id === S.kpiForm.id) : { name: '', type: 'БИ', leader: '', goal: '', fact: '', forecast: '', reporter: '' };
@@ -678,6 +783,7 @@
       '<li><b>Поручение нескольким</b>: отметьте нескольких ответственных (или «Все на совещании»). У каждого свой статус, у поручения — «выполнили N из M». Снимается, когда выполнили все (или вручную).</li>' +
       '<li><b>Соисполнители</b> пишут свой комментарий по поручению в своём отчёте — он виден у ответственного и на совещании.</li>' +
       '<li><b>Раз в месяц</b>: «УПЦ» → «Загрузить новую карту УПЦ». Сборщик покажет, что добавится, уйдёт и изменится.</li>' +
+      '<li><b>Ноябрь–декабрь</b>: вкладка «План на год» → «Взять показатели и мероприятия текущего года», поправьте список, впишите цели, назначьте лидеров, включите сбор. Лидеры подтверждают или правят мероприятия в разделе «Проект на … год» своего отчёта и предлагают бизнес-инициативы. Затем «Выгрузить в форму Приложения 3».</li>' +
       '<li><b>В начале месяца после квартала</b>: «Настройки» → «Запрос итогов за квартал» → включите, укажите квартал и срок. Руководители увидят запрос у себя и заполнят «Итог за квартал» у своих мероприятий; кто сколько заполнил — на вкладке «Кто обновил». После сбора выключите.</li>' +
       '<li><b>Раз в квартал</b>: вкладка «План АВР» → загрузите квартальный файл. Статусы и пояснения подставятся из отчёта в новую колонку «Статус … кв.», в «выполнено» — 1 у выполненных. Проверьте, поправьте, «Сохранить заполненный файл». Что сопоставили вручную, запоминается на следующий квартал.</li></ol>' +
       '<h3>Статусы</h3><p>Везде одни и те же: ' + Model.STATUSES.map((s) => View.badge(s.key)).join(' ') + ' и ' + View.badge('') + '. ' +
@@ -690,11 +796,14 @@
   // ---------- события ----------
   function people() { return S.reg.people.filter((p) => p.onMeeting !== false).concat(S.reg.people.filter((p) => p.onMeeting === false)); }
   document.addEventListener('click', async (e) => {
-    const b = e.target.closest('[data-tab],[data-act],[data-mailtest],[data-kpiedit],[data-kpidel],[data-avrf],[data-avr-src],[data-avr-excl],[data-person-idx],[data-mf],[data-meetf],[data-memo],[data-evdel],[data-evadd],[data-pmove],.who .card');
+    const b = e.target.closest('[data-tab],[data-act],[data-mailtest],[data-kpiedit],[data-kpidel],[data-avrf],[data-avr-src],[data-avr-excl],[data-pkdel],[data-pedel],[data-peadd],[data-person-idx],[data-mf],[data-meetf],[data-memo],[data-evdel],[data-evadd],[data-pmove],.who .card');
     if (!b) return;
     if (b.dataset.tab) { S.tab = b.dataset.tab; render(); return; }
     if (b.dataset.meetf !== undefined) { S.meetFilter = b.dataset.meetf; render(); return; }
     if (b.dataset.avrf !== undefined) { S.avr.filter = b.dataset.avrf; render(); return; }
+    if (b.dataset.pkdel) { const P = planOf(); if (!confirm('Убрать показатель из проекта?')) return; P.kpis = P.kpis.filter((k) => k.id !== b.dataset.pkdel); P.events = P.events.filter((e) => e.kpi !== b.dataset.pkdel); if (await saveReg('Убрано')) render(); return; }
+    if (b.dataset.pedel) { const P = planOf(); P.events = P.events.filter((e) => e.id !== b.dataset.pedel); if (await saveReg()) render(); return; }
+    if (b.dataset.peadd) { const P = planOf(); P.events.push({ id: Model.uid('pe'), kpi: b.dataset.peadd, text: '', executors: '', due: '' }); if (await saveReg()) render(); return; }
     if (b.dataset.avrExcl !== undefined) {
       const r = S.avr.rows[+b.dataset.avrExcl];
       if (r.exclude) { r.exclude = ''; r.how = r.eventId ? 'manual' : ''; r.learned = false; }
@@ -772,6 +881,22 @@
     else if (a === 'avrSave') avrSave();
     else if (a === 'avrClose') { await avrPersist(true); S.avr = null; render(); }
     else if (a === 'avrResume') avrResume();
+    else if (a === 'planCopy') planCopy();
+    else if (a === 'planExport') planExport();
+    else if (a === 'planKpiAdd') { const P = planOf(); P.kpis.push({ id: Model.uid('P'), name: 'Новый показатель', type: 'БИ', goal: '', leader: null }); if (await saveReg()) render(); }
+    else if (a === 'planCfg') {
+      const P = planOf(); P.year = +$('#plan_year').value || P.year; P.on = $('#plan_on').value === '1'; P.due = $('#plan_due').value; P.text = $('#plan_text').value.trim();
+      if (P.on && !P.kpis.length) { View.toast('Сначала добавьте показатели: «Взять показатели и мероприятия текущего года»', 'bad'); P.on = false; }
+      if (await saveReg(P.on ? 'Сбор включён: лидеры увидят раздел «Проект на ' + P.year + ' год»' : 'Сохранено')) render();
+    }
+    else if (a === 'planRemind') {
+      const P = planOf();
+      const left = S.reg.people.filter((p) => { const g = Model.planProgress(S.reg, S.data, p.id); return g.total && g.done < g.total; });
+      const to = left.map((p) => p.email).filter(Boolean);
+      const noMail = left.filter((p) => !p.email).map((p) => p.fio);
+      if (noMail.length) View.toast('Нет почты у: ' + noMail.join(', ') + '. Добавьте в «Настройках».', 'bad');
+      View.mail(S.reg.settings, to, 'Мероприятия на ' + P.year + ' год', 'Коллеги, добрый день!\n\nПрошу в отчёте первой линейки, раздел «Проект на ' + P.year + ' год», проверить мероприятия по своим показателям — подтвердить или поправить' + (P.due ? ' до ' + Model.fmtISO(P.due) : '') + ' — и нажать «Сохранить». Если есть предложения по новым бизнес-инициативам — добавьте их там же.\n\nСпасибо!');
+    }
     else if (a === 'avrPush') avrPush();
     else if (a === 'avrAllFile' || a === 'avrAllRep') { S.avr.rows.forEach((r) => { if (r.file && r.rep && !same(r.file, r.rep)) { r.src = a === 'avrAllFile' ? 'file' : 'report'; avrPrepare(r); } }); avrPersist(); render(); }
     else if (a === 'kpiSave') kpiSave();
@@ -812,6 +937,7 @@
     if (t.id === 'dirEmail') { S.reg.settings.directorEmail = t.value.trim(); saveReg('Почта сохранена'); }
     if (t.id === 'cardFile' && t.files[0]) loadCard(t.files[0]);
     if (t.id === 'avrFile' && t.files[0]) avrLoad(t.files[0]);
+    if (t.dataset.pkf && t.tagName === 'SELECT') { const [id, f] = t.dataset.pkf.split('|'); planOf().kpis.find((k) => k.id === id)[f] = t.value || null; if (await saveReg('Сохранено')) render(); }
     if (t.id === 'avrCol') { S.avr.statusCol = +t.value; S.avr.rows.forEach((r) => { if (r.src !== 'edit') r.src = ''; avrPrepare(r); }); avrPersist(); render(); }
     if (t.dataset.avrDone) { S.avr.rows[+t.dataset.avrDone].done = t.checked; avrPersist(); }
     if (t.dataset.avrEv) {
@@ -827,6 +953,8 @@
   });
   document.addEventListener('input', (e) => {
     if (e.target.dataset.ev && e.target.tagName !== 'SELECT') evEdit(e.target.dataset.ev, e.target.value);
+    if (e.target.dataset.pkf && e.target.tagName !== 'SELECT') { const [id, f] = e.target.dataset.pkf.split('|'); planOf().kpis.find((k) => k.id === id)[f] = e.target.value; planSaveSoon(); }
+    if (e.target.dataset.pef) { const [id, f] = e.target.dataset.pef.split('|'); planOf().events.find((x) => x.id === id)[f] = f === 'due' ? Model.parseDue(e.target.value) : e.target.value; planSaveSoon(); }
     if (e.target.dataset.avrText) { Object.assign(S.avr.rows[+e.target.dataset.avrText], { out: e.target.value, src: 'edit' }); avrPersist(); }
   });
   document.addEventListener('keydown', (e) => {

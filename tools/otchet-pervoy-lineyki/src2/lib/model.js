@@ -336,6 +336,23 @@
     return { total: evs.length, done: evs.filter((e) => avrqText(reg, data, e, r.period)).length };
   }
 
+  // ---------- сбор мероприятий на следующий год (проект плана, Приложение 3 к приказу № 1) ----------
+  // reg.plan = { year, on, due, text, kpis: [{ id, name, type, goal, leader }], events: [{ id, kpi, text, executors, due }] }
+  // ответ лидера — в его файле: data.planK[показатель] = { st: 'ok' | 'edit', events: [...], at }, data.planBI = [предложенные БИ]
+  function planOn(reg) { const p = reg.plan; return p && p.on && p.kpis && p.kpis.length ? p : null; }
+  // Итог по показателю: версия лидера, если он подтвердил или поправил, иначе — предложение помощника
+  function planFinal(reg, data, k) {
+    const d = k.leader && data[k.leader] && data[k.leader].data;
+    const own = d && d.planK && d.planK[k.id];
+    if (own) return { events: own.events || [], st: own.st || 'edit', at: own.at };
+    return { events: ((reg.plan && reg.plan.events) || []).filter((e) => e.kpi === k.id), st: '' };
+  }
+  function planProgress(reg, data, pid) {
+    const p = reg.plan; if (!p) return null;
+    const ks = p.kpis.filter((k) => k.leader === pid);
+    return { total: ks.length, done: ks.filter((k) => planFinal(reg, data, k).st).length };
+  }
+
   // ---------- слияние правок: один отчёт заполняют несколько человек ----------
   // base — версия, с которой человек начал; mine — что он сохраняет; theirs — что сейчас лежит в папке.
   // Берём из mine только то, что он сам поменял относительно base; остальное — из theirs.
@@ -354,12 +371,12 @@
         }
       }
     }
-    for (const f of ['kpi', 'coNotes', 'avrq']) {
+    for (const f of ['kpi', 'coNotes', 'avrq', 'planK']) {
       const b = base[f] || {}, m = mine[f] || {};
       out[f] = { ...(theirs[f] || {}) };
       for (const id of new Set([...Object.keys(b), ...Object.keys(m)])) if (J(b[id]) !== J(m[id])) out[f][id] = m[id];
     }
-    for (const f of ['ros', 'proj']) if (J(base[f] || []) !== J(mine[f] || [])) out[f] = mine[f];
+    for (const f of ['ros', 'proj', 'planBI']) if (J(base[f] || []) !== J(mine[f] || [])) out[f] = mine[f];
     // вложения — по имени файла: добавленные мной добавляются, удалённые мной удаляются, чужие остаются
     const bA = base.attachments || [], mA = mine.attachments || [];
     const removed = bA.filter((a) => !mA.some((x) => x.file === a.file)).map((a) => a.file);
@@ -379,7 +396,7 @@
   root.Model = {
     STATUSES, NO_STATUS, statusLabel, isFinal, ISO, todayISO, fmtISO, parseDue, isOverdue, fmtDateTime, uid, norm, surname,
     personById, personByName, inTeam, shortKpi, memoStatus, eventStatus, respName, personView, countFlags, freshness,
-    respsOf, isResp, combineFlags, coNotes, mergeReport, sameVersion, stOf, sections, avrReq, avrqKey, avrqText, avrqProgress,
+    respsOf, isResp, combineFlags, coNotes, mergeReport, sameVersion, stOf, sections, avrReq, avrqKey, avrqText, avrqProgress, planOn, planFinal, planProgress,
     cellText, parseCard, diffCard, applyCard, defaultReporter, buildSummary, summaryText,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

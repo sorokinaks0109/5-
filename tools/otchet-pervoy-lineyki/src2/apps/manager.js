@@ -68,9 +68,9 @@
       return;
     }
     const pv = viewData();
-    main.innerHTML = sentPanel() + headBar() + avrBanner() + filterBar() + (S.preview
+    main.innerHTML = sentPanel() + headBar() + avrBanner() + planBanner() + filterBar() + (S.preview
       ? '<div class="panel preview">' + View.personReport(S.reg, pv, S.me, today(), { filter: S.filter }) + '</div>'
-      : memoSec() + (T().ros ? freeSec('ros', T().ros) : '') + (T().proj ? freeSec('proj', T().proj) : '') + upcSec() + attSec());
+      : memoSec() + (T().ros ? freeSec('ros', T().ros) : '') + (T().proj ? freeSec('proj', T().proj) : '') + upcSec() + attSec() + planSec());
     if (S.preview) View.hydrateAttachments(main, S.dir, S.reg, { [S.me]: S.pendingAtt });
     View.autoGrow(main);
     updateSaveState();
@@ -85,6 +85,74 @@
     return '<div class="panel msg ' + (left ? 'warn' : 'ok') + ' avr-banner"><b>Нужно заполнить итоги за ' + esc(r.period) + ' для отчёта анализа высшего руководства' + (r.due ? ' до ' + esc(Model.fmtISO(r.due)) : '') + '.</b> ' +
       esc(r.text || '') + '<br>Заполнено: <b>' + p.done + ' из ' + p.total + '</b>. Поле «Итог за ' + esc(r.period) + '» — у каждого вашего мероприятия в разделе «' + esc(T().upcPlain) + '». ' +
       (left ? '<button class="mini" data-act="toUpc">Перейти к мероприятиям</button>' : 'Спасибо!') + '</div>';
+  }
+  // ---------- проект плана мероприятий на следующий год ----------
+  function planBanner() {
+    const p = Model.planOn(S.reg); if (!p) return '';
+    const g = Model.planProgress(S.reg, viewData(), S.me);
+    if (!g || !g.total) return '';
+    return '<div class="panel msg ' + (g.done < g.total ? 'warn' : 'ok') + ' plan-banner"><b>Сбор мероприятий на ' + esc(p.year) + ' год' + (p.due ? ' — до ' + esc(Model.fmtISO(p.due)) : '') + '.</b> ' +
+      'Ваших показателей: ' + g.total + ', проверено: ' + g.done + '. Мероприятия уже вписаны — подтвердите или поправьте. ' +
+      '<button class="mini" data-act="toPlan">Перейти</button></div>';
+  }
+  const PST = { '': '<span class="badge s-none">предложено помощником — проверьте</span>', ok: '<span class="badge s-done">подтверждено</span>', edit: '<span class="badge s-work">изменено</span>' };
+  // kind: 'k' — показатель (key = код), 'b' — предложенная инициатива (key = номер)
+  function planEvTable(list, kind, key, addAttr) {
+    const at = (i, f) => 'data-pv="' + kind + '|' + esc(key) + '|' + i + '|' + f + '"';
+    return '<table class="grid edit plan-ev"><thead><tr><th class="c-no">№</th><th>Мероприятие</th><th class="c-resp">Ответственные</th><th class="c-due">Срок</th><th class="c-act"></th></tr></thead><tbody>' +
+      (list.length ? list.map((e, i) => '<tr><td class="c-no">' + (i + 1) + '</td><td>' + View.ta(at(i, 'text'), e.text || '', 'Что сделаем') + '</td>' +
+        '<td>' + View.ta(at(i, 'executors'), e.executors || '', 'Фамилии') + '</td><td><input ' + at(i, 'due') + ' value="' + esc(Model.fmtISO(e.due || '')) + '" placeholder="дд.мм.гггг или «постоянно»"></td>' +
+        '<td class="c-act"><button class="mini danger" data-pvdel="' + kind + '|' + esc(key) + '|' + i + '" title="Удалить">✕</button></td></tr>').join('') : '<tr><td colspan="5" class="muted">Мероприятий нет</td></tr>') +
+      '</tbody></table><button class="mini" ' + addAttr + '>+ мероприятие</button>';
+  }
+  function planSec() {
+    const p = Model.planOn(S.reg); if (!p) return '';
+    const ks = p.kpis.filter((k) => k.leader === S.me);
+    let h = '<div class="panel plan" id="planSec"><h2>Проект на ' + esc(p.year) + ' год</h2>' +
+      '<div class="msg warn small">Это не текущий отчёт: здесь мероприятия на ' + esc(p.year) + ' год для приказа № 1. ' + esc(p.text || '') + (p.due ? ' Срок — до ' + esc(Model.fmtISO(p.due)) + '.' : '') +
+      ' Мероприятия по вашим показателям уже вписаны: если всё верно — «Подтвердить», если нет — поправьте прямо в таблице. Сохраняется общей кнопкой «Сохранить».</div>';
+    if (!ks.length) h += '<div class="muted small">Показателей, где вы лидер, в проекте нет.</div>';
+    for (const k of ks) {
+      const f = Model.planFinal(S.reg, viewData(), k);
+      h += '<div class="kpi"><div class="kpi-head"><div class="kpi-name">' + esc(Model.shortKpi(k.name)) + ' <span class="muted small">' + esc(k.type || '') + '</span> ' + PST[f.st || ''] + '</div>' +
+        (k.goal ? '<div class="kpi-vals"><span><b>Цель ' + esc(p.year) + ':</b> ' + esc(k.goal) + '</span></div>' : '') + '</div>' +
+        planEvTable(f.events, 'k', k.id, 'data-pkadd="' + esc(k.id) + '"') +
+        (f.st !== 'ok' ? ' <button class="mini primary" data-pkok="' + esc(k.id) + '">Подтвердить</button>' : '') + '</div>';
+    }
+    h += '<h3 class="sec">Бизнес-инициативы на ' + esc(p.year) + ' год <span class="muted">предложите свои, если есть</span></h3>';
+    (S.draft.planBI || []).forEach((b, bi) => {
+      h += '<div class="kpi"><div class="form-grid"><label class="wide">Название инициативы<input data-pb="' + bi + '|name" value="' + esc(b.name || '') + '"></label>' +
+        '<label class="wide">Что получим (цель)' + View.ta('data-pb="' + bi + '|goal"', b.goal || '') + '</label>' +
+        '<label class="wide">Как будем оценивать' + View.ta('data-pb="' + bi + '|measure"', b.measure || '') + '</label>' +
+        '<label>Срок<input data-pb="' + bi + '|due" value="' + esc(Model.fmtISO(b.due || '')) + '"></label></div>' +
+        planEvTable(b.events || [], 'b', bi, 'data-pbadd="' + bi + '"') + ' <button class="mini danger" data-pbdel="' + bi + '">Удалить инициативу</button></div>';
+    });
+    return h + '<button data-pbnew="1">+ Предложить бизнес-инициативу</button></div>';
+  }
+  // Первая правка показателя: берём за основу то, что предложено, и дальше правим свою копию
+  function planK(kid) {
+    S.draft.planK = S.draft.planK || {};
+    if (!S.draft.planK[kid]) {
+      const k = Model.planOn(S.reg).kpis.find((x) => x.id === kid);
+      S.draft.planK[kid] = { st: 'edit', events: Model.planFinal(S.reg, viewData(), k).events.map((e) => ({ text: e.text || '', executors: e.executors || '', due: e.due || '' })) };
+    }
+    return S.draft.planK[kid];
+  }
+  const planList = (kind, key) => (kind === 'k' ? planK(key).events : S.draft.planBI[+key].events);
+  const planTouch = (kind, key) => { if (kind === 'k') { const pk = planK(key); pk.st = 'edit'; pk.at = Date.now(); } };
+  function planInput(t) {
+    if (t.dataset.pv) { const [kind, key, i, f] = t.dataset.pv.split('|'); planList(kind, key)[+i][f] = f === 'due' ? Model.parseDue(t.value) : t.value; planTouch(kind, key); return true; }
+    if (t.dataset.pb) { const [bi, f] = t.dataset.pb.split('|'); S.draft.planBI[+bi][f] = f === 'due' ? Model.parseDue(t.value) : t.value; return true; }
+    return false;
+  }
+  function planClick(b) {
+    if (b.dataset.pvdel) { const [kind, key, i] = b.dataset.pvdel.split('|'); planList(kind, key).splice(+i, 1); planTouch(kind, key); return true; }
+    if (b.dataset.pkadd) { const pk = planK(b.dataset.pkadd); pk.events.push({ text: '', executors: '', due: '' }); pk.st = 'edit'; pk.at = Date.now(); return true; }
+    if (b.dataset.pkok) { const pk = planK(b.dataset.pkok); pk.st = 'ok'; pk.at = Date.now(); View.toast('Подтверждено. Не забудьте «Сохранить».', 'ok'); return true; }
+    if (b.dataset.pbnew) { S.draft.planBI = S.draft.planBI || []; S.draft.planBI.push({ name: '', goal: '', measure: '', due: '', events: [{ text: '', executors: '', due: '' }] }); return true; }
+    if (b.dataset.pbadd !== undefined) { S.draft.planBI[+b.dataset.pbadd].events.push({ text: '', executors: '', due: '' }); return true; }
+    if (b.dataset.pbdel !== undefined) { if (!confirm('Удалить предложенную инициативу?')) return false; S.draft.planBI.splice(+b.dataset.pbdel, 1); return true; }
+    return false;
   }
   // Фильтр по статусу: поручения, РОС, проекты, мероприятия
   const pass = (flag, d) => View.flagPass(S.filter, flag, d, today());
@@ -331,6 +399,7 @@
   // ---------- события ----------
   document.addEventListener('input', (e) => {
     if (e.target.dataset.k) setByKey(e.target.dataset.k, e.target.value);
+    if (S.draft && planInput(e.target)) { S.dirty = true; updateSaveState(); }
     if (e.target.id === 'reportDate') { S.draft.reportDate = e.target.value; S.dirty = true; updateSaveState(); }
   });
   document.addEventListener('change', (e) => {
@@ -341,8 +410,9 @@
     await View.printHtml(View.personReport(S.reg, viewData(), S.me, today(), { filter: S.filter }), (el) => View.hydrateAttachments(el, S.dir, S.reg, { [S.me]: S.pendingAtt }));
   }
   document.addEventListener('click', async (e) => {
-    const b = e.target.closest('[data-act],[data-me],[data-row],[data-att],[data-flt]');
+    const b = e.target.closest('[data-act],[data-me],[data-row],[data-att],[data-flt],[data-pkadd],[data-pkok],[data-pbnew],[data-pbadd],[data-pbdel],[data-pvdel]');
     if (!b) return;
+    if (S.draft && planClick(b)) { S.dirty = true; render(); return; }
     if (b.dataset.flt !== undefined) { S.filter = b.dataset.flt; render(); return; }
     if (b.dataset.me) { S.me = b.dataset.me; try { localStorage.setItem('otchet.me', S.me); } catch (x) { /* нет хранилища */ } startDraft(); render(); return; }
     if (b.dataset.row) {
@@ -366,6 +436,7 @@
     else if (a === 'demo') { S.demo = true; S.me = 'p1'; S.dir = await Base.demoFolder(); await load(); }
     else if (a === 'save') save();
     else if (a === 'print') printMine();
+    else if (a === 'toPlan') { if (S.preview) { S.preview = false; render(); } const el = document.getElementById('planSec'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }
     else if (a === 'toUpc') { const el = document.getElementById('upcSec'); if (S.preview) { S.preview = false; render(); } if (document.getElementById('upcSec')) document.getElementById('upcSec').scrollIntoView({ behavior: 'smooth' }); else if (el) el.scrollIntoView(); }
     else if (a === 'linkFolder') { if (conn.saved) { await conn.grant(); if (!S.dir) conn.pick(); } else conn.pick(); }
     else if (a === 'sentOk') { S.sent = null; render(); }
