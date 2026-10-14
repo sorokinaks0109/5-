@@ -80,7 +80,9 @@
     return { data: JSON.parse(text), modified };
   }
   async function writeJSON(root, path, data) {
-    await writeBytes(root, path, new TextEncoder().encode(JSON.stringify(data, null, 1)));
+    const text = JSON.stringify(data, null, 1);
+    JSON.parse(text); // перед записью убеждаемся, что пишем целый, читаемый файл
+    await writeBytes(root, path, new TextEncoder().encode(text));
   }
   async function list(root, path) {
     try {

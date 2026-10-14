@@ -1,13 +1,25 @@
-/* global Store, Model, View */
+/* global Store, Model, View, JSZip */
 // Общее для всех трёх страниц: подключение папки и чтение всех данных.
 (function (root) {
   'use strict';
 
   // Шаг загрузки показываем на экране «Открываю папку…», чтобы было видно, где застряло.
   function step(msg) { const el = typeof document !== 'undefined' && document.getElementById('busyStep'); if (el) el.textContent = msg; }
+  // Файл повреждён (например, запись оборвалась из-за сбоя сети) — открываем последнюю исправную копию из архива.
+  async function readSafe(dir, path, prefix, restored, what) {
+    try { return await Store.readJSON(dir, path); } catch (e) {
+      if (Store.isNotFound(e)) throw e;
+      const copies = (await Store.list(dir, [Store.DATA, Store.ARCH])).filter((x) => x.kind === 'file' && x.name.startsWith(prefix + '_') && x.name.endsWith('.json')).map((x) => x.name).sort().reverse();
+      for (const n of copies) {
+        try { const r = await Store.readJSON(dir, [Store.DATA, Store.ARCH, n]); restored.push({ what, path, from: n, data: r.data }); return { data: r.data, modified: null }; } catch (e2) { /* и эта копия не читается — берём следующую */ }
+      }
+      throw e;
+    }
+  }
   async function loadAll(dir) {
     step('Читаю реестр…');
-    const { data: reg, modified } = await Store.readJSON(dir, [Store.DATA, Store.REG]);
+    const restored = [];
+    const { data: reg, modified } = await readSafe(dir, [Store.DATA, Store.REG], 'реестр', restored, 'Реестр (поручения, показатели, настройки)');
     reg.settings = reg.settings || {};
     reg.people = reg.people || []; reg.memo = reg.memo || []; reg.kpis = reg.kpis || []; reg.events = reg.events || [];
     const data = {};
@@ -15,13 +27,43 @@
     for (const p of reg.people) {
       step('Читаю отчёт: ' + p.fio + ' (' + (++i) + ' из ' + reg.people.length + ')');
       try {
-        const r = await Store.readJSON(dir, [Store.DATA, Store.PEOPLE, p.slug + '.json']);
+        const r = await readSafe(dir, [Store.DATA, Store.PEOPLE, p.slug + '.json'], p.slug, restored, 'Отчёт: ' + p.fio);
         data[p.id] = { data: r.data, modified: r.modified };
       } catch (e) {
         data[p.id] = Store.isNotFound(e) ? { data: null } : { data: null, error: 'Файл не читается: ' + e.message };
       }
     }
-    return { reg, data, regModified: modified };
+    return { reg, data, regModified: modified, restored };
+  }
+
+  // Еженедельная копия всех данных (без вложений) — хранится полгода: Данные/архив/еженедельно/ГГГГ-ММ-ДД
+  async function weeklyBackup(dir, reg) {
+    try {
+      const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+      const name = Model.todayISO(d);
+      const base = [Store.DATA, Store.ARCH, 'еженедельно'];
+      const have = (await Store.list(dir, base)).filter((x) => x.kind === 'directory').map((x) => x.name).sort();
+      if (have.includes(name)) return false;
+      const copy = async (from, to) => { try { const { bytes } = await Store.readBytes(dir, from); await Store.writeBytes(dir, base.concat(name, to), bytes); } catch (e) { /* нет файла — пропускаем */ } };
+      await copy([Store.DATA, Store.REG], [Store.REG]);
+      for (const p of reg.people) await copy([Store.DATA, Store.PEOPLE, p.slug + '.json'], [Store.PEOPLE, p.slug + '.json']);
+      await copy([Store.DATA, 'АВР', 'работа.json'], ['АВР', 'работа.json']);
+      for (const old of have.slice(0, Math.max(0, have.length + 1 - 26))) await Store.remove(dir, base.concat(old));
+      return true;
+    } catch (e) { return false; }
+  }
+
+  // Полная копия папки «Данные» (со вложениями, без архива) одним zip-файлом — на свой компьютер
+  async function exportZip(dir) {
+    const zip = new JSZip();
+    const walk = async (path, rel) => {
+      for (const x of await Store.list(dir, path)) {
+        if (x.kind === 'directory') { if (path.length === 1 && x.name === Store.ARCH) continue; await walk(path.concat(x.name), rel + x.name + '/'); }
+        else { const { bytes } = await Store.readBytes(dir, path.concat(x.name)); zip.file(rel + x.name, bytes); }
+      }
+    };
+    await walk([Store.DATA], 'Данные/');
+    return zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE' });
   }
 
   // Поток подключения папки: сохранённая → разрешение одним кликом → выбор папки.
@@ -268,7 +310,7 @@
     return { accepted, total: items.length, log };
   }
 
-  root.Base = { loadAll, connector, demoFolder, sha, step, writeSnapshot, acceptReport, processInbox, collectAtt, mobileFile };
+  root.Base = { loadAll, weeklyBackup, exportZip, connector, demoFolder, sha, step, writeSnapshot, acceptReport, processInbox, collectAtt, mobileFile };
 })(typeof window !== 'undefined' ? window : globalThis);
 
 // Любая неожиданная ошибка — сообщением внизу экрана, чтобы кнопка не «молчала».

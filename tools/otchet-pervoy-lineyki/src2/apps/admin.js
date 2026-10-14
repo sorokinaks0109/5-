@@ -15,6 +15,8 @@
   async function load() {
     const all = await Base.loadAll(S.dir);
     S.reg = all.reg; S.data = all.data; S.regModified = all.regModified ? all.regModified.getTime() : 0;
+    S.restored = all.restored || [];
+    if (!S.demo && !conn.readOnly && !S.restored.length) Base.weeklyBackup(S.dir, S.reg);
     let unlocked = false; try { unlocked = sessionStorage.getItem('otchet.unlocked') === S.reg.settings.passHash; } catch (e) { /* нет хранилища */ }
     S.locked = !!S.reg.settings.passHash && !unlocked;
     if (!S.demo && !conn.readOnly) {
@@ -86,6 +88,21 @@
     View.autoGrow(main);
   }
 
+  // Повреждённые файлы, открытые из архивной копии, и напоминание о копии на компьютер
+  function safetyPanel() {
+    let h = '';
+    if (S.restored && S.restored.length) {
+      h += '<div class="panel msg bad"><b>Найдены повреждённые файлы — открыты последние исправные копии из архива.</b> Ничего не потеряно, кроме изменений после времени копии.<ul>' +
+        S.restored.map((r, i) => '<li>' + esc(r.what) + ' — копия «' + esc(r.from) + '» <button class="mini primary" data-restore="' + i + '">Вернуть эту копию на место</button></li>').join('') + '</ul></div>';
+    }
+    const last = S.reg.settings.lastExport || 0;
+    const days = last ? Math.floor((Date.now() - last) / 864e5) : null;
+    if (!S.demo && (days === null || days >= 14)) {
+      h += '<div class="panel msg warn row between"><span>' + (days === null ? 'Копии данных на ваш компьютер ещё не было.' : 'Копия данных на ваш компьютер делалась ' + days + ' дн. назад.') +
+        ' Это страховка на случай, если что-то случится с самой сетевой папкой.</span><button data-act="exportZip">Скачать копию данных</button></div>';
+    }
+    return h;
+  }
   function whoTab() {
     const st = S.reg.settings;
     const stale = Model.reportPeople(S.reg).filter((p) => Model.personView(S.reg, S.data, p.id, today()).fresh !== 'fresh');
@@ -96,7 +113,7 @@
       '<div class="msg ' + (stale.length ? 'bad' : 'ok') + '" style="margin-top:10px">' + (stale.length ? 'Не обновили: ' + stale.map((p) => esc(p.fio)).join(', ') : 'Все обновили отчёт') + '</div>' +
       '<div class="row">' + (stale.length ? '<button data-act="remind">Написать напоминание не обновившим</button>' : '') +
       '<label class="button">Загрузить отчёты из файлов (присланные по почте)<input type="file" id="importFiles" multiple hidden></label></div>' +
-      '<div class="muted small">Отчёты из папки «Входящие» забираются сами, когда вы открываете эту страницу или нажимаете «Обновить».</div></div>' + avrReqPanel() + View.whoCards(S.reg, S.data, today());
+      '<div class="muted small">Отчёты из папки «Входящие» забираются сами, когда вы открываете эту страницу или нажимаете «Обновить».</div></div>' + safetyPanel() + avrReqPanel() + View.whoCards(S.reg, S.data, today());
   }
   // Ход запроса итогов за квартал (АВР): кто сколько заполнил
   function avrReqPanel() {
@@ -797,11 +814,17 @@
   // ---------- события ----------
   function people() { return Model.reportPeople(S.reg); }
   document.addEventListener('click', async (e) => {
-    const b = e.target.closest('[data-tab],[data-act],[data-mailtest],[data-kpiedit],[data-kpidel],[data-avrf],[data-avr-src],[data-avr-excl],[data-pkdel],[data-pedel],[data-peadd],[data-person-idx],[data-mf],[data-meetf],[data-memo],[data-evdel],[data-evadd],[data-pmove],.who .card');
+    const b = e.target.closest('[data-tab],[data-act],[data-mailtest],[data-kpiedit],[data-kpidel],[data-avrf],[data-avr-src],[data-avr-excl],[data-restore],[data-pkdel],[data-pedel],[data-peadd],[data-person-idx],[data-mf],[data-meetf],[data-memo],[data-evdel],[data-evadd],[data-pmove],.who .card');
     if (!b) return;
     if (b.dataset.tab) { S.tab = b.dataset.tab; render(); return; }
     if (b.dataset.meetf !== undefined) { S.meetFilter = b.dataset.meetf; render(); return; }
     if (b.dataset.avrf !== undefined) { S.avr.filter = b.dataset.avrf; render(); return; }
+    if (b.dataset.restore !== undefined) {
+      const r = S.restored[+b.dataset.restore];
+      if (!confirm('Записать копию «' + r.from + '» на место повреждённого файла?')) return;
+      try { await Store.writeJSON(S.dir, r.path, r.data); S.restored.splice(+b.dataset.restore, 1); View.toast('Восстановлено', 'ok'); await load(); } catch (e) { View.toast('Не получилось: ' + e.message, 'bad'); }
+      return;
+    }
     if (b.dataset.pkdel) { const P = planOf(); if (!confirm('Убрать показатель из проекта?')) return; P.kpis = P.kpis.filter((k) => k.id !== b.dataset.pkdel); P.events = P.events.filter((e) => e.kpi !== b.dataset.pkdel); if (await saveReg('Убрано')) render(); return; }
     if (b.dataset.pedel) { const P = planOf(); P.events = P.events.filter((e) => e.id !== b.dataset.pedel); if (await saveReg()) render(); return; }
     if (b.dataset.peadd) { const P = planOf(); P.events.push({ id: Model.uid('pe'), kpi: b.dataset.peadd, text: '', executors: '', due: '' }); if (await saveReg()) render(); return; }
@@ -883,6 +906,14 @@
     else if (a === 'avrClose') { await avrPersist(true); S.avr = null; render(); }
     else if (a === 'avrResume') avrResume();
     else if (a === 'planCopy') planCopy();
+    else if (a === 'exportZip') {
+      View.toast('Собираю копию…');
+      try {
+        const bytes = await Base.exportZip(S.dir);
+        const r = await View.saveFile(bytes, 'Отчёт первой линейки — копия данных ' + today() + '.zip', 'application/zip', '.zip', 'Архив');
+        if (r.ok) { S.reg.settings.lastExport = Date.now(); if (await saveReg('Копия данных сохранена: ' + r.name + '. Храните её у себя.')) render(); }
+      } catch (e) { View.toast('Копия не собралась: ' + e.message, 'bad'); }
+    }
     else if (a === 'planExport') planExport();
     else if (a === 'planKpiAdd') { const P = planOf(); P.kpis.push({ id: Model.uid('P'), name: 'Новый показатель', type: 'БИ', goal: '', leader: null }); if (await saveReg()) render(); }
     else if (a === 'planCfg') {

@@ -823,6 +823,39 @@ await page.close();
   files = await DUMP(pa);
   await pa.close();
 }
+// ---------- 3ж. Защита данных: повреждённый файл, недельные копии, копия на компьютер ----------
+{
+  const pa = await open('Помощник.html');
+  await pa.evaluate(async () => sessionStorage.setItem('otchet.unlocked', await Base.sha('тест1234')));
+  await MOUNT(pa, files);
+  await pa.waitForTimeout(500);
+  const weekly = await pa.evaluate(async () => { try { const d = await (await (await window.__root.getDirectoryHandle('Данные')).getDirectoryHandle('архив')).getDirectoryHandle('еженедельно'); const n = []; for await (const h of d.values()) n.push(h.name); return n; } catch (e) { return []; } });
+  check(weekly.length === 1, 'еженедельная копия данных создана: ' + weekly.join(', '));
+  // реестр «побился» при записи
+  const good = await pa.evaluate(() => window.Otchet.S.reg.memo.length);
+  await pa.evaluate(async () => {
+    const d = await window.__root.getDirectoryHandle('Данные');
+    const hasArch = await (async () => { try { const a = await d.getDirectoryHandle('архив'); for await (const h of a.values()) if (h.name.startsWith('реестр_')) return true; } catch (e) { /* */ } return false; })();
+    if (!hasArch) { const a = await d.getDirectoryHandle('архив', { create: true }); a.items.set('реестр_2026-10-01.json', new Store.MemFile('реестр_2026-10-01.json', (await (await d.getFileHandle('реестр.json')).getFile()).arrayBuffer ? new Uint8Array(await (await (await d.getFileHandle('реестр.json')).getFile()).arrayBuffer()) : new Uint8Array())); }
+    d.items.set('реестр.json', new Store.MemFile('реестр.json', new TextEncoder().encode('{"settings": {"lastMee')));
+    await window.Otchet.load();
+  });
+  await pa.click('[data-tab=who]');
+  check(await pa.locator('.msg.bad:has-text("повреждённые файлы")').isVisible() && await pa.evaluate(() => window.Otchet.S.reg.memo.length) > 0, 'повреждённый реестр: страница открыла исправную копию из архива и предупредила');
+  await pa.click('[data-restore="0"]');
+  await pa.waitForTimeout(400);
+  const fixed = await pa.evaluate(async () => { const d = await window.__root.getDirectoryHandle('Данные'); try { JSON.parse(await (await (await d.getFileHandle('реестр.json')).getFile()).text()); return true; } catch (e) { return false; } });
+  check(fixed && !(await pa.locator('.msg.bad:has-text("повреждённые файлы")').count()), 'одной кнопкой исправная копия вернулась на место');
+  // копия на компьютер
+  await pa.evaluate(() => { window.showSaveFilePicker = async (o) => ({ name: o.suggestedName, async createWritable() { const parts = []; return { async write(x) { parts.push(x); }, async close() { window.__zip = new Uint8Array(await new Blob(parts).arrayBuffer()); } }; } }); });
+  check(await pa.locator('[data-act=exportZip]').isVisible(), 'помощнику напоминает сделать копию данных на компьютер');
+  await pa.click('[data-act=exportZip]');
+  await pa.waitForFunction(() => window.__zip, null, { timeout: 30000 });
+  const names = await pa.evaluate(async () => Object.keys((await JSZip.loadAsync(window.__zip)).files));
+  check(names.includes('Данные/реестр.json') && names.some((n) => n.startsWith('Данные/руководители/')) && !names.some((n) => n.includes('/архив/')), 'копия данных одним zip: реестр и отчёты, без архива (' + names.length + ' файлов)');
+  files = await DUMP(pa);
+  await pa.close();
+}
 // ---------- 4. Директор ----------
 page = await open('Директор.html');
 await MOUNT(page, files);
