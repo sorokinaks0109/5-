@@ -344,9 +344,20 @@ if (card2) {
     await page.waitForSelector('text=Что изменится');
     const d = await page.locator('.panel:has-text("Что изменится")').textContent();
     check(/ПКАЗС/.test(d) && !/Ручной показатель/.test(d.split('Уйдут')[1].split('Изменятся')[0]), 'новая карта 13.10: ПКАЗС — новый показатель, ручной не уходит');
+    check(/нет колонок: факт, прогноз, оценка/.test(d), 'в карте 13.10 нет факта, прогноза и оценки — помощник предупреждён, что останутся прежние');
+    const before3 = r.kpis.find((k) => k.id === 'F0142534');
     await page.click('[data-act=cardApply]');
     await page.waitForTimeout(300);
     r = json(await DUMP(page), 'реестр.json');
+    const after3 = r.kpis.find((k) => k.id === 'F0142534');
+    check(before3.fact && after3.fact === before3.fact && after3.forecast === before3.forecast && after3.grade === before3.grade, 'карта без факта и прогноза не стирает их: выручка факт ' + after3.fact + ', оценка ' + after3.grade);
+    // как было у Ксении: значения уже стёрты — возвращаем из архива одной кнопкой
+    await page.evaluate(() => { for (const k of window.Otchet.S.reg.kpis) { k.fact = ''; k.forecast = ''; k.grade = ''; } window.Otchet.render(); });
+    check(await page.locator('[data-act=kpiRestore]').count() > 0, 'пропали факт, прогноз и оценка — помощнику предложено вернуть из архива');
+    await page.click('[data-act=kpiRestore]');
+    await page.waitForTimeout(400);
+    r = json(await DUMP(page), 'реестр.json');
+    check(r.kpis.find((k) => k.id === 'F0142534').fact === before3.fact && !(await page.locator('[data-act=kpiRestore]').count()), 'факт, прогноз и оценка вернулись из архивной копии реестра');
     const pk = r.kpis.find((k) => k.id === 'B0168827');
     check(pk && pk.reporter === 'Суходолов' && r.kpis.some((k) => k.manual) && r.events.some((e) => e.id === 'У-077'), 'после карты: ПКАЗС у Суходолова, ручной показатель и мероприятия на месте');
     await page.locator('select[data-ev="У-077|kpi"]').selectOption('B0168827');

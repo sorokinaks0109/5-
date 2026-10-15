@@ -99,7 +99,7 @@
 
   // Повреждённые файлы, открытые из архивной копии, и напоминание о копии на компьютер
   function safetyPanel() {
-    let h = '';
+    let h = kpiLostPanel();
     if (S.restored && S.restored.length) {
       h += '<div class="panel msg bad"><b>Найдены повреждённые файлы — открыты последние исправные копии из архива.</b> Ничего не потеряно, кроме изменений после времени копии.<ul>' +
         S.restored.map((r, i) => '<li>' + esc(r.what) + ' — копия «' + esc(r.from) + '» <button class="mini primary" data-restore="' + i + '">Вернуть эту копию на место</button></li>').join('') + '</ul></div>';
@@ -292,6 +292,7 @@
       '<span class="row"><button data-tab="avr">План мероприятий (АВР) →</button><button data-act="kpiNew">+ Показатель вручную</button><label class="button">Загрузить новую карту УПЦ (xlsx)<input type="file" id="cardFile" accept=".xlsx" hidden></label></span></div>' +
       '<div class="muted small" style="margin-top:6px">Новая карта не стирает заполненное: статусы и комментарии руководителей привязаны к коду показателя и мероприятию. Уходят только показатели, которых нет в новой карте, — перед применением список видно. ' +
       'Мероприятие можно перенести на другой показатель — список «Перенести» в строке мероприятия, статус сохранится.</div></div>';
+    h += kpiLostPanel();
     if (S.kpiForm) h += kpiForm();
     if (S.cardDiff) h += cardDiffPanel();
     const unassigned = S.reg.kpis.filter((k) => !k.reporter).length;
@@ -662,6 +663,7 @@
     const d = S.cardDiff;
     const li = (arr, f) => (arr.length ? '<ul>' + arr.map(f).join('') + '</ul>' : '<div class="muted small">нет</div>');
     return '<div class="panel"><h2>Что изменится по новой карте от ' + esc(Model.fmtISO(d.date) || '—') + '</h2>' +
+      (d.missing.length ? '<div class="msg warn">В этом файле нет колонок: ' + d.missing.map((f) => ({ fact: 'факт', forecast: 'прогноз', grade: 'оценка', goal: 'цель', stretch: 'напряжённая цель', team: 'команда', leader: 'лидер', unit: 'ед. изм.', type: 'тип', top3: 'ТОП-3' }[f] || f)).join(', ') + '. Эти значения останутся прежними, из прошлой карты.</div>' : '') +
       '<h3 class="sec">Новые показатели</h3>' + li(d.added, (k) => '<li>' + esc(Model.shortKpi(k.name)) + ' — лидер ' + esc(k.leader) + '</li>') +
       '<h3 class="sec">Уйдут из отчётов (их нет в карте)</h3>' + li(d.removed, (k) => '<li>' + esc(Model.shortKpi(k.name)) + (k.eventCount ? ' — и ' + k.eventCount + ' мероприятий' : '') + '</li>') +
       (d.manualDup && d.manualDup.length ? '<div class="msg warn">Есть в карте и уже добавлены вручную: ' + d.manualDup.map((k) => esc(Model.shortKpi(k.name))).join(', ') + '. После применения перенесите мероприятия на показатель из карты и удалите ручной.</div>' : '') +
@@ -677,6 +679,26 @@
       S.cardDiff = Model.diffCard(S.reg, S.card);
       render();
     } catch (e) { View.toast(e.message, 'bad'); }
+  }
+  function kpiLostPanel() {
+    if (!Model.kpiValuesLost(S.reg)) return '';
+    return '<div class="panel msg warn row between"><span><b>У показателей УПЦ пропали факт, прогноз и оценка.</b> Последняя загруженная карта была выгружена без этих колонок. ' +
+      'Можно вернуть значения из архивной копии реестра — цели и всё остальное останутся из новой карты.</span><button class="primary" data-act="kpiRestore">Вернуть из архива</button></div>';
+  }
+  // Ищем в архиве самую свежую копию реестра, где у показателей есть факт, прогноз или оценка
+  async function kpiRestore() {
+    const A = [Store.DATA, Store.ARCH];
+    const daily = (await Store.list(S.dir, A)).filter((x) => /^реестр_\d{4}-\d{2}-\d{2}\.json$/.test(x.name)).map((x) => ({ path: A.concat(x.name), date: x.name.slice(7, 17) }));
+    const weekly = (await Store.list(S.dir, A.concat('еженедельно'))).filter((x) => x.kind === 'directory').map((x) => ({ path: A.concat('еженедельно', x.name, Store.REG), date: x.name }));
+    for (const c of daily.concat(weekly).sort((a, b) => (a.date < b.date ? 1 : -1))) {
+      let old; try { old = (await Store.readJSON(S.dir, c.path)).data; } catch (e) { continue; }
+      if (!old || !old.kpis || Model.kpiValuesLost(old)) continue;
+      const n = Model.restoreKpiValues(S.reg, old);
+      if (!n) continue;
+      if (await saveReg('Факт, прогноз и оценка возвращены из копии от ' + Model.fmtISO(c.date) + ': ' + n + ' показателей')) render();
+      return;
+    }
+    View.toast('В архиве нет копии с фактом, прогнозом и оценкой. Загрузите выгрузку карты УПЦ, где эти колонки есть.', 'bad');
   }
   async function cardApply() {
     Model.applyCard(S.reg, S.card);
@@ -992,6 +1014,7 @@
         'Коллеги, добрый день!\n\nПрошу заполнить в отчёте первой линейки итоги за ' + r.period + ' по своим мероприятиям УПЦ (поле «Итог за ' + r.period + '»)' + (r.due ? ' до ' + Model.fmtISO(r.due) : '') + ' и нажать «Сохранить».\n\nСпасибо!');
     }
     else if (a === 'kpiNew') { S.kpiForm = {}; render(); }
+    else if (a === 'kpiRestore') kpiRestore();
     else if (a === 'dnParse') { S.dnPasteText = $('#dnPaste').value; S.dnParsed = Model.parseDirMail(S.reg, S.dnPasteText); render(); }
     else if (a === 'dnClear') { S.dnParsed = null; S.dnPasteText = ''; render(); }
     else if (a === 'dnAdd') dnAdd();

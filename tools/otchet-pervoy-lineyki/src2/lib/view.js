@@ -457,8 +457,9 @@
     const order = { C: 0, B: 1, A: 2 };
     ks.sort((a, b) => (order[a.g] ?? 3) - (order[b.g] ?? 3));
     const cnt = (g) => ks.filter((x) => x.g === g).length;
-    const tiles = '<div class="ch-grades">' + [['A', 'достигнем'], ['B', 'есть риск'], ['C', 'не достигнем']].map(([g, t]) =>
-      '<div class="ch-grade g-' + G[g] + '"><b>' + cnt(g) + '</b><span>оценка ' + g + ' · ' + t + '</span></div>').join('') + '</div>';
+    const tiles = cnt('A') + cnt('B') + cnt('C') ? '<div class="ch-grades">' + [['A', 'достигнем'], ['B', 'есть риск'], ['C', 'не достигнем']].map(([g, t]) =>
+      '<div class="ch-grade g-' + G[g] + '"><b>' + cnt(g) + '</b><span>оценка ' + g + ' · ' + t + '</span></div>').join('') + '</div>'
+      : '<div class="msg warn small">В карте УПЦ нет факта, прогноза и оценки — по каждому показателю показана доля выполненных мероприятий (зелёным).</div>';
     const row = (x) => {
       const chip = '<span class="gchip g-' + (G[x.g] || 'none') + '">' + esc(x.g || '—') + '</span>';
       let bar = '', txt = '';

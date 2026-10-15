@@ -196,7 +196,9 @@
           forecast: g('forecast'), grade: g('grade'), team: g('team'), leader: g('leader'), unit: g('unit'), type: g('type'),
         });
       }
-      return { date, kpis };
+      // колонок, которых нет в выгрузке (бывает выгрузка без факта, прогноза и оценки), — старые значения не трогаем
+      const missing = KPI_FIELDS.filter((k) => k !== 'name' && !(cols[k] > 0));
+      return { date, kpis, missing };
     }
     throw new Error('В файле не нашлась таблица карты УПЦ (нужны колонки «Идентификатор» и «Показатель»).');
   }
@@ -216,10 +218,10 @@
       if (!o) continue;
       // состав команды сравниваем без учёта порядка фамилий — выгрузка его перемешивает
       const same = (x) => x === 'team' ? teamKey(o.team) === teamKey(k.team) : String(o[x] || '') === String(k[x] || '');
-      const f = KPI_FIELDS.filter((x) => !same(x));
+      const f = KPI_FIELDS.filter((x) => !(card.missing || []).includes(x) && !same(x));
       if (f.length) changed.push({ id: k.id, name: k.name, fields: f, leaderChanged: f.includes('leader'), old: o, neu: k });
     }
-    return { added, removed, changed, manualDup, date: card.date };
+    return { added, removed, changed, manualDup, date: card.date, missing: card.missing || [] };
   }
   function defaultReporter(reg, kpi) {
     const p = personByName(reg, kpi.leader);
@@ -232,12 +234,27 @@
     reg.kpis = card.kpis.map((k) => {
       const o = keep.get(k.id);
       const reporter = o && !d.changed.some((c) => c.id === k.id && c.leaderChanged) ? o.reporter : defaultReporter(reg, k);
-      return { ...k, reporter: reporter === undefined ? null : reporter };
+      const kept = {}; if (o) for (const f of card.missing || []) kept[f] = o[f];
+      return { ...k, ...kept, reporter: reporter === undefined ? null : reporter };
     }).concat(reg.kpis.filter((k) => k.manual && !ids0.has(k.id)));
     const ids = new Set(reg.kpis.map((k) => k.id));
     reg.events = reg.events.filter((e) => ids.has(e.kpi));
     reg.settings.cardDate = card.date || todayISO();
     return d;
+  }
+
+  // Факт, прогноз и оценка пропали (загрузили выгрузку карты без этих колонок) — вернуть из старой копии реестра
+  const KEEP_FIELDS = ['fact', 'forecast', 'grade'];
+  function kpiValuesLost(reg) { return reg.kpis.length > 0 && reg.kpis.filter((k) => !k.manual).every((k) => KEEP_FIELDS.every((f) => !String(k[f] || '').trim())); }
+  function restoreKpiValues(reg, old) {
+    const by = new Map((old.kpis || []).map((k) => [k.id, k])); let n = 0;
+    for (const k of reg.kpis) {
+      const o = by.get(k.id); if (!o) continue;
+      let hit = false;
+      for (const f of KEEP_FIELDS) if (!String(k[f] || '').trim() && String(o[f] || '').trim()) { k[f] = o[f]; hit = true; }
+      if (hit) n++;
+    }
+    return n;
   }
 
   // ---------- свод в Excel ----------
@@ -539,6 +556,6 @@
     personById, reportPeople, personByName, inTeam, shortKpi, memoStatus, eventStatus, respName, personView, countFlags, freshness,
     respsOf, isResp, combineFlags, coNotes, mergeReport, sameVersion, stOf, sections, avrReq, avrqKey, avrqText, avrqProgress, planOn, planFinal, planProgress, recordWeek,
     NOTE_TYPES, dirAnswer, noteState, dirNotes, noteItem, dirCode, parseDirMail, addDirNote, updateTrack, takeSnap, attention, changes, discipline,
-    cellText, parseCard, diffCard, applyCard, defaultReporter, buildSummary, summaryText,
+    cellText, parseCard, diffCard, applyCard, kpiValuesLost, restoreKpiValues, defaultReporter, buildSummary, summaryText,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
