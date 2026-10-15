@@ -472,6 +472,7 @@ await page.waitForTimeout(1500);
   check(urls[0].includes('/owa/?ae=Item&a=New&t=IPM.Note&to=d%40x.ru') && urls[1].includes('/owa/#path=/mail/action/compose&to=') && urls[2].includes('/owa/?path=/mail/action/compose'), 'три варианта ссылки на новое письмо для проверки в «Настройках»');
   files = await DUMP(page);
   const mob = await page.evaluate(async () => { const d = await window.__root.getDirectoryHandle('Своды'); for await (const h of d.values()) if (h.name.endsWith('.html')) return await (await h.getFile()).text(); return ''; });
+  check(/ch-memo/.test(mob) && /ch-kpis/.test(mob), 'графики есть и в версии для телефона');
   check(mob.length > 5000 && !/<script/i.test(mob) && /<details/.test(mob) && mob.includes('Просрочено и не выполнено'), 'версия для телефона: без скриптов, руководители раскрываются, есть «Просрочено» (' + Math.round(mob.length / 1024) + ' КБ)');
   check(/<img[^>]+data:image\/png/.test(mob), 'в версии для телефона есть картинка из вложений');
   const mp = await ctx.newPage();
@@ -831,6 +832,8 @@ await page.close();
   await pa.waitForTimeout(500);
   const weekly = await pa.evaluate(async () => { try { const d = await (await (await window.__root.getDirectoryHandle('Данные')).getDirectoryHandle('архив')).getDirectoryHandle('еженедельно'); const n = []; for await (const h of d.values()) n.push(h.name); return n; } catch (e) { return []; } });
   check(weekly.length === 1, 'еженедельная копия данных создана: ' + weekly.join(', '));
+  const hist = await pa.evaluate(() => window.Otchet.S.reg.history || []);
+  check(hist.length >= 1 && hist[hist.length - 1].total >= 1 && Array.isArray(hist[hist.length - 1].fresh), 'записана статистика недели для будущих графиков (' + hist.length + ')');
   // реестр «побился» при записи
   const good = await pa.evaluate(() => window.Otchet.S.reg.memo.length);
   await pa.evaluate(async () => {
@@ -861,6 +864,12 @@ page = await open('Директор.html');
 await MOUNT(page, files);
 const before = JSON.stringify(files);
 check(await page.locator('.tiles').first().isVisible(), 'директор: сводка');
+{
+  const n = await page.evaluate(() => ({ people: Model.reportPeople(window.Otchet.S.reg).length, kpis: window.Otchet.S.reg.kpis.length }));
+  check((await page.locator('.ch-memo .ch-row').count()) === n.people && (await page.locator('.ch-kpis .ch-row').count()) === n.kpis, 'директор: графики — поручения по руководителям (' + n.people + ') и прогноз по показателям УПЦ (' + n.kpis + ')');
+  const gr = await page.locator('.ch-grades').innerText();
+  check(/оценка A/.test(gr) && /оценка C/.test(gr), 'на графике УПЦ — сколько показателей с оценкой A, B, C');
+}
 await shot(page, '7-director');
 await page.click('[data-tab=meeting]');
 await page.click('[data-tab=memo]');

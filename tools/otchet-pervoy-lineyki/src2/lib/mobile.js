@@ -7,6 +7,16 @@
   const V = () => root.View;
 
   const CSS = [
+    '.chart{background:#fff;border:1px solid #d9e0e8;border-radius:10px;padding:10px;margin:6px 0 10px}.ch-title{font-weight:700;margin-bottom:4px}',
+    '.ch-legend{display:flex;flex-wrap:wrap;gap:2px 10px;font-size:12px;color:#5d6b7a;margin-bottom:8px}.ch-legend .sw{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px}',
+    '.ch-row{padding:5px 0;font-size:13px;border-top:1px solid #eef1f4}.ch-name{font-weight:600}.ch-val{color:#5d6b7a;font-size:12px}.ch-krow .gchip{float:left;margin-right:6px}',
+    '.ch-track{position:relative;height:14px;margin:3px 0}.ch-bar{display:flex;gap:2px;height:14px}.ch-bar .seg{min-width:3px}.ch-bar .seg:first-child{border-radius:4px 0 0 4px}.ch-bar .seg:last-child{border-radius:0 4px 4px 0}',
+    '.sw-done{background:#2e8b57}.sw-work{background:#3b78c4}.sw-fail{background:#c8423a}.sw-none{background:#e0a800}.sw-na{background:#9aa6b2}.sw-rest{background:#e3e7ec}',
+    '.ch-kpi{background:#eef1f4;border-radius:4px}.ch-fc{position:absolute;left:0;top:3px;height:8px;border-radius:0 4px 4px 0}.ch-goal{position:absolute;top:-3px;bottom:-3px;width:2px;background:#1d2733}',
+    '.ch-fact{position:absolute;top:1px;width:10px;height:10px;margin-left:-5px;border-radius:50%;background:#fff;border:2px solid #1d2733}.sw-goalmark{background:#1d2733;width:3px!important}.sw-factmark{background:#fff;border:2px solid #1d2733;border-radius:50%!important}',
+    '.g-good{background:#2e8b57;color:#fff}.g-warn{background:#e0a800;color:#1d2733}.g-bad{background:#c8423a;color:#fff}.g-none{background:#9aa6b2;color:#fff}',
+    '.gchip{display:inline-flex;width:22px;height:22px;border-radius:6px;align-items:center;justify-content:center;font-weight:700;font-size:12px}',
+    '.ch-grades{display:flex;gap:6px;margin:4px 0 8px;flex-wrap:wrap}.ch-grade{border-radius:8px;padding:4px 10px}.ch-grade b{font-size:20px;margin-right:6px}.ch-grade span{font-size:12px}',
     'body{margin:0;background:#f4f6f9;color:#1d2733;font:15px/1.4 -apple-system,"Segoe UI",Roboto,Arial,sans-serif;-webkit-text-size-adjust:100%}',
     'header{background:#1f3a5f;color:#fff;padding:12px 14px}header h1{margin:0;font-size:18px}header div{font-size:13px;opacity:.85}',
     'main{padding:10px 10px 40px;max-width:900px;margin:0 auto}',
@@ -66,7 +76,7 @@
     let h = '<header><h1>Отчёт первой линейки</h1><div>Данные на ' + esc(M().fmtDateTime(at)) + '</div></header><main>';
     h += '<h2>Поручения на контроле</h2>' + tiles(all, 'на контроле');
     h += '<h2>Просрочено и не выполнено: ' + bad.length + '</h2>' + (bad.length ? bad.map((m) => card(m, '<div class="meta">Отв.: ' + esc(M().respName(reg, m)) + '</div>')).join('') : '<div class="muted">Нет</div>');
-    h += '<h2>По руководителям</h2>';
+    h += '<h2>По руководителям</h2>' + V().chartMemo(reg, data, today);
     const people = M().reportPeople(reg);
     for (const p of people) {
       const v = M().personView(reg, data, p.id, today);
@@ -97,12 +107,7 @@
       }
       h += '</div></details>';
     }
-    h += '<h2>Показатели УПЦ</h2>';
-    for (const k of reg.kpis) {
-      const rep = M().personById(reg, k.reporter);
-      const c = M().countFlags(reg.events.filter((e) => e.kpi === k.id).map((e) => M().eventStatus(reg, data, e).flag));
-      h += '<div class="kpi">' + kpiHead(k) + '<div class="small">Отчитывается: ' + esc(rep ? rep.fio : '—') + (c.total ? ' · мероприятий выполнено ' + c.done + ' из ' + c.total : '') + '</div></div>';
-    }
+    h += '<h2>Показатели УПЦ</h2>' + V().chartKpi(reg, data);
     h += '</main>';
     return '<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">' +
       '<title>Отчёт первой линейки ' + esc(M().fmtISO(today)) + '</title><style>' + CSS + '</style></head><body>' + h + '</body></html>';

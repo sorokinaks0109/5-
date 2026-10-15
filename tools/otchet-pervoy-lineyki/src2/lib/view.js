@@ -353,6 +353,57 @@
     return h || '<div class="muted">Показателей нет</div>';
   }
 
+  // ---------- графики: поручения по руководителям, прогноз по показателям УПЦ ----------
+  // Простые полосы на HTML (без скриптов) — открываются и в версии для телефона.
+  const SEG = [['done', 'выполнено'], ['work', 'в работе'], ['fail', 'не выполнено'], ['none', 'без статуса'], ['na', 'неактуально']];
+  const plural = (n, a, b, c) => { const m = n % 10, h = n % 100; return m === 1 && h !== 11 ? a : m >= 2 && m <= 4 && (h < 12 || h > 14) ? b : c; };
+  function chartMemo(reg, data, today) {
+    const rows = M().reportPeople(reg).map((p) => ({ p, c: M().personView(reg, data, p.id, today).counts }));
+    const max = Math.max(1, ...rows.map((r) => r.c.total));
+    const legend = '<div class="ch-legend">' + SEG.map(([k, t]) => '<span><i class="sw sw-' + k + '"></i>' + t + '</span>').join('') + '<span class="late">● срок прошёл</span></div>';
+    return '<div class="chart ch-memo"><div class="ch-title">Поручения на контроле по руководителям</div>' + legend +
+      rows.map(({ p, c }) => {
+        const segs = SEG.filter(([k]) => c[k]).map(([k, t]) => '<span class="seg sw-' + k + '" style="flex:' + c[k] + '" title="' + esc(p.fio) + ': ' + t + ' — ' + c[k] + '"></span>').join('');
+        return '<div class="ch-row"><div class="ch-name">' + esc(p.fio) + '</div><div class="ch-track"><div class="ch-bar" style="width:' + (100 * c.total / max).toFixed(1) + '%">' + segs + '</div></div>' +
+          '<div class="ch-val">' + (c.total ? c.done + ' из ' + c.total + ' выполнено' : 'нет поручений') + (c.overdue ? ' · <span class="late">срок прошёл: ' + c.overdue + '</span>' : '') + '</div></div>';
+      }).join('') + '</div>';
+  }
+  const num = (s) => { const t = String(s === null || s === undefined ? '' : s).replace(/\s/g, '').replace(',', '.'); return /^-?\d+(\.\d+)?$/.test(t) ? +t : null; };
+  const fmtN = (x) => (Math.abs(x) >= 100 ? Math.round(x) : Math.abs(x) >= 1 || x === 0 ? Math.round(x * 100) / 100 : +x.toPrecision(2)).toLocaleString('ru-RU', { maximumFractionDigits: 6 });
+  function chartKpi(reg, data) {
+    const G = { A: 'good', B: 'warn', C: 'bad' };
+    const ks = reg.kpis.map((k) => {
+      const g = String(k.grade || '').trim().toUpperCase().charAt(0);
+      const goal = num(k.goal), fact = num(k.fact), fc = num(k.forecast);
+      const evs = reg.events.filter((e) => e.kpi === k.id).map((e) => M().eventStatus(reg, data, e).flag);
+      return { k, g, goal, fact, fc, evDone: evs.filter((f) => f === 'done').length, evTotal: evs.length, numeric: goal !== null && goal > 0 && fc !== null && fact !== null };
+    });
+    const order = { C: 0, B: 1, A: 2 };
+    ks.sort((a, b) => (order[a.g] ?? 3) - (order[b.g] ?? 3));
+    const cnt = (g) => ks.filter((x) => x.g === g).length;
+    const tiles = '<div class="ch-grades">' + [['A', 'достигнем'], ['B', 'есть риск'], ['C', 'не достигнем']].map(([g, t]) =>
+      '<div class="ch-grade g-' + G[g] + '"><b>' + cnt(g) + '</b><span>оценка ' + g + ' · ' + t + '</span></div>').join('') + '</div>';
+    const row = (x) => {
+      const chip = '<span class="gchip g-' + (G[x.g] || 'none') + '">' + esc(x.g || '—') + '</span>';
+      let bar = '', txt = '';
+      if (x.numeric) {
+        const pf = Math.min(150, 100 * x.fc / x.goal), pa = Math.min(150, 100 * x.fact / x.goal);
+        bar = '<div class="ch-track ch-kpi"><div class="ch-goal" style="left:' + (100 / 1.5).toFixed(1) + '%" title="цель"></div>' +
+          '<div class="ch-fc g-' + (G[x.g] || 'none') + '" style="width:' + (pf / 1.5).toFixed(1) + '%" title="прогноз ' + Math.round(100 * x.fc / x.goal) + '% цели"></div>' +
+          '<div class="ch-fact" style="left:' + (pa / 1.5).toFixed(1) + '%" title="факт ' + Math.round(100 * x.fact / x.goal) + '% цели"></div></div>';
+        txt = 'цель ' + fmtN(x.goal) + ' · факт ' + fmtN(x.fact) + ' · прогноз ' + fmtN(x.fc) + (x.k.unit ? ' ' + esc(x.k.unit) : '');
+      } else if (x.evTotal) {
+        bar = '<div class="ch-track"><div class="ch-bar" style="width:100%">' + (x.evDone ? '<span class="seg sw-done" style="flex:' + x.evDone + '" title="выполнено ' + x.evDone + '"></span>' : '') +
+          (x.evTotal - x.evDone ? '<span class="seg sw-rest" style="flex:' + (x.evTotal - x.evDone) + '" title="не выполнено ' + (x.evTotal - x.evDone) + '"></span>' : '') + '</div></div>';
+        txt = 'мероприятий выполнено ' + x.evDone + ' из ' + x.evTotal;
+      } else txt = 'нет числовой цели и мероприятий';
+      return '<div class="ch-row ch-krow">' + chip + '<div class="ch-name" title="' + esc(x.k.name) + '">' + esc(M().shortKpi(x.k.name)) + '</div>' + (bar || '<div class="ch-track"></div>') + '<div class="ch-val">' + txt + '</div></div>';
+    };
+    return '<div class="chart ch-kpis"><div class="ch-title">Показатели УПЦ: прогноз достижения целей</div>' + tiles +
+      '<div class="ch-legend"><span><i class="sw sw-goalmark"></i>цель (100%)</span><span><i class="sw sw-factmark"></i>факт</span><span><i class="sw g-good"></i>прогноз, цвет — оценка</span>' +
+      '<span class="muted">шкала до 150% цели; там, где лучше меньше (НЗС, инвентаризация), смотрите на оценку</span></div>' + ks.map(row).join('') + '</div>';
+  }
+
   // ---------- кто обновил ----------
   function whoCards(reg, data, today) {
     return '<div class="who">' + reg.people.filter((p) => !p.extra).map((p) => {
@@ -541,6 +592,6 @@
   root.View = {
     esc, $, $$, badge, due, ago, statusSelect, tile, countTiles, freshBadge, itemCard, freeTable, kpiHead, eventsTable, personReport,
     hydrateAttachments, xlsxToHtml, memoTable, upcOverview, whoCards, printHtml, mailto, copyHtml, download, saveFile, toast, folderScreen,
-    FILTERS, flagPass, filterChips, filterCounts, notesHtml, fileKind, fileIcon, attHtml, docxToHtml, activatePdf, b64, ta, autoGrow, mail, mailUrl, mailMode, MAIL_MODES, copyText, MIME, EXT,
+    chartMemo, chartKpi, FILTERS, flagPass, filterChips, filterCounts, notesHtml, fileKind, fileIcon, attHtml, docxToHtml, activatePdf, b64, ta, autoGrow, mail, mailUrl, mailMode, MAIL_MODES, copyText, MIME, EXT,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

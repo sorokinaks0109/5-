@@ -33,8 +33,8 @@
     return '<div class="row between no-print"><h2>Поручения на контроле</h2><span class="row"><button data-act="reload">Обновить</button><button data-act="print">Печать</button>' + (S.snap ? '' : '<button data-act="xlsx">Скачать свод в Excel</button>') + '</span></div>' +
       (S.snap ? '<div class="muted small no-print">Это снимок данных на ' + esc(Model.fmtDateTime(window.SNAPSHOT.at)) + '. Он обновляется сам, когда помощник или руководители открывают и сохраняют свои страницы. «Обновить» — перечитать файл.</div>' : '') +
       View.countTiles(Model.countFlags(open)) + (late ? '<div class="msg bad">Срок прошёл: ' + late + '</div>' : '') +
-      '<h3 class="sec">По руководителям</h3>' + View.whoCards(S.reg, S.data, today()) +
-      '<h3 class="sec">Показатели УПЦ <span class="muted">карта от ' + esc(Model.fmtISO(S.reg.settings.cardDate) || '—') + '</span></h3>' +
+      '<h3 class="sec">По руководителям</h3>' + View.chartMemo(S.reg, S.data, today()) + View.whoCards(S.reg, S.data, today()) +
+      '<h3 class="sec">Показатели УПЦ <span class="muted">карта от ' + esc(Model.fmtISO(S.reg.settings.cardDate) || '—') + '</span></h3>' + View.chartKpi(S.reg, S.data) +
       '<table class="grid"><thead><tr><th>Показатель</th><th>Цель</th><th>Факт</th><th>Прогноз</th><th>Оценка</th><th class="c-resp">Отчитывается</th><th class="c-resp">Мероприятия выполнено</th></tr></thead><tbody>' + kpiRows + '</tbody></table>';
   }
   function cut(s) { s = String(s || ''); return s.length > 40 ? s.slice(0, 40) + '…' : s; }

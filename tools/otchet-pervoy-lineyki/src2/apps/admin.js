@@ -16,7 +16,12 @@
     const all = await Base.loadAll(S.dir);
     S.reg = all.reg; S.data = all.data; S.regModified = all.regModified ? all.regModified.getTime() : 0;
     S.restored = all.restored || [];
-    if (!S.demo && !conn.readOnly && !S.restored.length) Base.weeklyBackup(S.dir, S.reg);
+    if (!S.demo && !conn.readOnly && !S.restored.length) {
+      Base.weeklyBackup(S.dir, S.reg);
+      // статистика недели для будущих графиков: если за эту неделю записи ещё нет — записываем
+      const wk = (() => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return Model.todayISO(d); })();
+      if (!(S.reg.history || []).some((x) => x.week === wk)) { Model.recordWeek(S.reg, S.data, today()); S.histPending = true; }
+    }
     let unlocked = false; try { unlocked = sessionStorage.getItem('otchet.unlocked') === S.reg.settings.passHash; } catch (e) { /* нет хранилища */ }
     S.locked = !!S.reg.settings.passHash && !unlocked;
     if (!S.demo && !conn.readOnly) {
@@ -29,6 +34,7 @@
     try { S.avrSaved = (await Store.readJSON(S.dir, [Store.DATA, 'АВР', 'работа.json'])).data; } catch (e) { S.avrSaved = null; }
     render();
     snapshotSoon();
+    if (S.histPending && !S.locked) { S.histPending = false; saveReg(); }
   }
   async function importFiles(list) {
     let ok = 0;
@@ -113,7 +119,7 @@
       '<div class="msg ' + (stale.length ? 'bad' : 'ok') + '" style="margin-top:10px">' + (stale.length ? 'Не обновили: ' + stale.map((p) => esc(p.fio)).join(', ') : 'Все обновили отчёт') + '</div>' +
       '<div class="row">' + (stale.length ? '<button data-act="remind">Написать напоминание не обновившим</button>' : '') +
       '<label class="button">Загрузить отчёты из файлов (присланные по почте)<input type="file" id="importFiles" multiple hidden></label></div>' +
-      '<div class="muted small">Отчёты из папки «Входящие» забираются сами, когда вы открываете эту страницу или нажимаете «Обновить».</div></div>' + safetyPanel() + avrReqPanel() + View.whoCards(S.reg, S.data, today());
+      '<div class="muted small">Отчёты из папки «Входящие» забираются сами, когда вы открываете эту страницу или нажимаете «Обновить».</div></div>' + safetyPanel() + avrReqPanel() + View.chartMemo(S.reg, S.data, today()) + View.whoCards(S.reg, S.data, today());
   }
   // Ход запроса итогов за квартал (АВР): кто сколько заполнил
   function avrReqPanel() {
@@ -869,7 +875,7 @@
     else if (a === 'demo') { S.demo = true; S.dir = await Base.demoFolder(); await load(); }
     else if (a === 'reload') reloadData();
     else if (a === 'unlock') { const h = await Base.sha($('#pass').value); if (h === S.reg.settings.passHash) { try { sessionStorage.setItem('otchet.unlocked', h); } catch (x) { /* */ } S.locked = false; render(); } else View.toast('Неверный пароль', 'bad'); }
-    else if (a === 'meetingToday') { S.reg.settings.lastMeeting = today(); if (await saveReg('Отмечено: совещание прошло сегодня. Отчёты станут «не обновлён», пока руководители не поставят новую дату.')) render(); }
+    else if (a === 'meetingToday') { Model.recordWeek(S.reg, S.data, today()); S.reg.settings.lastMeeting = today(); if (await saveReg('Отмечено: совещание прошло сегодня. Отчёты станут «не обновлён», пока руководители не поставят новую дату.')) render(); }
     else if (a === 'remind') {
       const stale = Model.reportPeople(S.reg).filter((p) => Model.personView(S.reg, S.data, p.id, today()).fresh !== 'fresh');
       const to = stale.map((p) => p.email).filter(Boolean);

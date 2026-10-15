@@ -355,6 +355,23 @@
     return { total: ks.length, done: ks.filter((k) => planFinal(reg, data, k).st).length };
   }
 
+  // ---------- история по неделям (для графиков динамики и дисциплины отчётности) ----------
+  // Одна запись на неделю (по понедельнику); при повторной записи в ту же неделю — обновляется.
+  function recordWeek(reg, data, today) {
+    const d = new Date(today + 'T00:00:00'); d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    const week = todayISO(d);
+    const open = reg.memo.filter((m) => !m.closed).map((m) => ({ m, f: memoStatus(reg, data, m).flag }));
+    const c = countFlags(open.map((x) => x.f));
+    const rec = { week, at: today, total: c.total, done: c.done, work: c.work, fail: c.fail, na: c.na, none: c.none,
+      overdue: open.filter((x) => isOverdue(x.m.due, x.f, today)).length,
+      fresh: reportPeople(reg).filter((p) => freshness(reg, data[p.id] && data[p.id].data) === 'fresh').map((p) => p.id),
+      people: reportPeople(reg).map((p) => p.id) };
+    const h = (reg.history || []).filter((x) => x.week !== week);
+    h.push(rec); h.sort((a, b) => (a.week < b.week ? -1 : 1));
+    reg.history = h.slice(-104);
+    return rec;
+  }
+
   // ---------- слияние правок: один отчёт заполняют несколько человек ----------
   // base — версия, с которой человек начал; mine — что он сохраняет; theirs — что сейчас лежит в папке.
   // Берём из mine только то, что он сам поменял относительно base; остальное — из theirs.
@@ -398,7 +415,7 @@
   root.Model = {
     STATUSES, NO_STATUS, statusLabel, isFinal, ISO, todayISO, fmtISO, parseDue, isOverdue, fmtDateTime, uid, norm, surname,
     personById, reportPeople, personByName, inTeam, shortKpi, memoStatus, eventStatus, respName, personView, countFlags, freshness,
-    respsOf, isResp, combineFlags, coNotes, mergeReport, sameVersion, stOf, sections, avrReq, avrqKey, avrqText, avrqProgress, planOn, planFinal, planProgress,
+    respsOf, isResp, combineFlags, coNotes, mergeReport, sameVersion, stOf, sections, avrReq, avrqKey, avrqText, avrqProgress, planOn, planFinal, planProgress, recordWeek,
     cellText, parseCard, diffCard, applyCard, defaultReporter, buildSummary, summaryText,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
