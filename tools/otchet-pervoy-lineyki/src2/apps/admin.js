@@ -18,6 +18,7 @@
     S.restored = all.restored || [];
     if (!S.demo && !conn.readOnly && !S.restored.length) {
       Base.weeklyBackup(S.dir, S.reg);
+      Base.cleanSwap(S.dir).then((n) => { if (n) S.log.push('Убраны остатки прерванных записей (.crswap): ' + n); });
       // статистика недели для будущих графиков: если за эту неделю записи ещё нет — записываем
       const wk = (() => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return Model.todayISO(d); })();
       if (!(S.reg.history || []).some((x) => x.week === wk)) { Model.recordWeek(S.reg, S.data, today()); S.histPending = true; }

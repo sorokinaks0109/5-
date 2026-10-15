@@ -53,6 +53,25 @@
     } catch (e) { return false; }
   }
 
+  // Остатки прерванных записей браузера («файл.crswap») — удаляем, если им больше часа (свежие может писать кто-то сейчас)
+  async function cleanSwap(dir) {
+    let n = 0;
+    const where = [[], [Store.DATA], [Store.DATA, Store.PEOPLE], [Store.DATA, Store.ARCH], ['Страницы руководителей'], ['Своды'], ['Входящие'], [Store.DATA, 'АВР']];
+    for (const path of where) {
+      let items = [];
+      try { items = await Store.list(dir, path); } catch (e) { continue; }
+      for (const x of items) {
+        if (x.kind !== 'file' || !/\.crswap$/i.test(x.name)) continue;
+        try {
+          const { modified } = await Store.readBytes(dir, path.concat(x.name));
+          if (Date.now() - modified.getTime() < 3600e3) continue;
+          await Store.remove(dir, path.concat(x.name)); n++;
+        } catch (e) { /* не удалось — не страшно */ }
+      }
+    }
+    return n;
+  }
+
   // Полная копия папки «Данные» (со вложениями, без архива) одним zip-файлом — на свой компьютер
   async function exportZip(dir) {
     const zip = new JSZip();
@@ -310,7 +329,7 @@
     return { accepted, total: items.length, log };
   }
 
-  root.Base = { loadAll, weeklyBackup, exportZip, connector, demoFolder, sha, step, writeSnapshot, acceptReport, processInbox, collectAtt, mobileFile };
+  root.Base = { loadAll, weeklyBackup, exportZip, cleanSwap, connector, demoFolder, sha, step, writeSnapshot, acceptReport, processInbox, collectAtt, mobileFile };
 })(typeof window !== 'undefined' ? window : globalThis);
 
 // Любая неожиданная ошибка — сообщением внизу экрана, чтобы кнопка не «молчала».

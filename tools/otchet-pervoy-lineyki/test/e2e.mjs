@@ -832,6 +832,14 @@ await page.close();
   await pa.waitForTimeout(500);
   const weekly = await pa.evaluate(async () => { try { const d = await (await (await window.__root.getDirectoryHandle('Данные')).getDirectoryHandle('архив')).getDirectoryHandle('еженедельно'); const n = []; for await (const h of d.values()) n.push(h.name); return n; } catch (e) { return []; } });
   check(weekly.length === 1, 'еженедельная копия данных создана: ' + weekly.join(', '));
+  const sw = await pa.evaluate(async () => {
+    const r = window.__root;
+    r.items.set('Для директора.html.crswap', new Store.MemFile('Для директора.html.crswap', new Uint8Array(0), Date.now() - 2 * 864e5));
+    r.items.set('Для директора.html.1.crswap', new Store.MemFile('Для директора.html.1.crswap', new Uint8Array(0), Date.now() - 60e3));
+    const n = await Base.cleanSwap(r);
+    return { n, left: Array.from(r.items.keys()).filter((x) => x.endsWith('.crswap')) };
+  });
+  check(sw.n === 1 && sw.left.length === 1 && sw.left[0] === 'Для директора.html.1.crswap', 'старые остатки .crswap убираются сами, свежий (идёт запись) не трогается');
   const hist = await pa.evaluate(() => window.Otchet.S.reg.history || []);
   check(hist.length >= 1 && hist[hist.length - 1].total >= 1 && Array.isArray(hist[hist.length - 1].fresh), 'записана статистика недели для будущих графиков (' + hist.length + ')');
   // реестр «побился» при записи
