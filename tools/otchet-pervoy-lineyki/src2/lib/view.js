@@ -97,13 +97,14 @@
       (k.grade ? '<span><b>Оценка прогноза:</b> ' + esc(k.grade) + '</span>' : '') + (k.unit ? '<span class="muted">' + esc(k.unit) + '</span>' : '') +
       '<span class="muted">Лидер: ' + esc(k.leader) + '</span></div></div>';
   }
-  function eventsTable(events, reg, today, showSpeaker, filter) {
+  function eventsTable(events, reg, today, showSpeaker, filter, ctx) {
     events = events.filter((e) => flagPass(filter, e.st.flag, e.due, today));
+    if (ctx) events = meetFirst(reg, 'e', events, ctx.pid);
     if (!events.length) return '<div class="muted small">' + (filter ? 'Под фильтр ничего не попало' : 'Мероприятий нет') + '</div>';
     let h = '<table class="grid"><thead><tr><th>Мероприятие</th><th class="c-due">Срок</th><th class="c-st">Статус</th><th>Пояснение</th>' + (showSpeaker ? '<th class="c-resp">Заполняет</th>' : '') + '</tr></thead><tbody>';
     for (const e of events) {
       const sp = M().personById(reg, e.speaker);
-      h += '<tr><td>' + esc(e.text) + (e.executors ? '<div class="muted small">Исп.: ' + esc(e.executors) + '</div>' : '') + '</td><td>' + due(e.due, e.st.flag, today) + '</td><td>' + badge(e.st.flag) + '</td><td>' + esc(e.st.text) + '</td>' +
+      h += '<tr><td>' + esc(e.text) + (e.executors ? '<div class="muted small">Исп.: ' + esc(e.executors) + '</div>' : '') + (ctx ? itemExtras(reg, ctx, 'e', e.id, e.speaker || ctx.pid) : '') + '</td><td>' + due(e.due, e.st.flag, today) + '</td><td>' + badge(e.st.flag) + '</td><td>' + esc(e.st.text) + '</td>' +
         (showSpeaker ? '<td>' + esc(sp ? sp.fio : 'помощник') + '</td>' : '') + '</tr>';
     }
     return h + '</tbody></table>';
@@ -117,22 +118,24 @@
     const v = M().personView(reg, data, pid, today);
     if (!v.person) return '<div class="panel">Нет такого руководителя</div>';
     const pass = (x) => flagPass(f, x.st.flag, x.due, today);
-    let h = '<div class="report-head"><h1>' + esc(v.person.fio) + '</h1>' + freshBadge(v) + (f ? '<span class="badge s-none">фильтр: ' + esc(FILTERS.find((x) => x[0] === f)[1]) + '</span>' : '') + '</div>';
-    h += countTiles(v.counts, 'поручений');
-    const memo = v.memo.filter(pass), co = v.co.filter(pass);
+    const ctx = { data, pid, opts, att: attMap(reg, data, today, pid) };
+    const X = (kind, ref, who) => itemExtras(reg, ctx, kind, ref, who || pid);
+    let h = '<div class="report-head"><h1>' + esc(v.person.fio) + '</h1>' + freshBadge(v) + noteButtons(ctx, 'g', '', pid, 'к отчёту') + (f ? '<span class="badge s-none">фильтр: ' + esc(FILTERS.find((x) => x[0] === f)[1]) + '</span>' : '') + '</div>';
+    h += countTiles(v.counts, 'поручений') + notesBlock(reg, data, pid, 'g', '', opts);
+    const memo = meetFirst(reg, 'm', v.memo.filter(pass), pid), co = v.co.filter(pass);
     const T = M().sections(reg);
-    h += '<h3 class="sec">' + esc(T.memo) + '</h3>' + (memo.length ? '<div class="items">' + memo.map((m) => itemCard(m, today)).join('') + '</div>' : '<div class="muted small">' + (f && v.memo.length ? 'Под фильтр ничего не попало' : 'Открытых поручений нет') + '</div>');
+    h += '<h3 class="sec">' + esc(T.memo) + '</h3>' + (memo.length ? '<div class="items">' + memo.map((m) => itemCard(m, today, X('m', m.id))).join('') + '</div>' : '<div class="muted small">' + (f && v.memo.length ? 'Под фильтр ничего не попало' : 'Открытых поручений нет') + '</div>');
     if (co.length) h += '<h3 class="sec">Соисполнитель <span class="muted">статус ведёт ответственный</span></h3><div class="items">' + co.map((m) => itemCard(m, today, '<div class="muted small">Отв.: ' + esc(M().respName(reg, m)) + '</div>')).join('') + '</div>';
-    if (T.ros) h += '<h3 class="sec">' + esc(T.ros) + '</h3>' + freeTable(v.ros, today, f);
-    if (T.proj) h += '<h3 class="sec">' + esc(T.proj) + '</h3>' + freeTable(v.proj, today, f);
+    if (T.ros) h += '<h3 class="sec">' + esc(T.ros) + noteButtons(ctx, 'g', 'ros', pid, 'к разделу') + '</h3>' + notesBlock(reg, data, pid, 'g', 'ros', opts) + freeTable(v.ros, today, f);
+    if (T.proj) h += '<h3 class="sec">' + esc(T.proj) + noteButtons(ctx, 'g', 'proj', pid, 'к разделу') + '</h3>' + notesBlock(reg, data, pid, 'g', 'proj', opts) + freeTable(v.proj, today, f);
     h += '<h3 class="sec">' + esc(T.upc) + '</h3>';
     if (!v.kpiOwn.length && !v.kpiOther.length) h += '<div class="muted small">Показателей, по которым руководитель отчитывается, нет</div>';
     for (const k of v.kpiOwn) {
-      h += '<div class="kpi">' + kpiHead(k) + (k.comment ? '<div class="kpi-comment"><b>Комментарий:</b> ' + esc(k.comment) + '</div>' : '') + eventsTable(k.events, reg, today, k.events.some((e) => !e.mine), f) + '</div>';
+      h += '<div class="kpi">' + kpiHead(k) + (k.comment ? '<div class="kpi-comment"><b>Комментарий:</b> ' + esc(k.comment) + '</div>' : '') + X('k', k.id) + eventsTable(k.events, reg, today, k.events.some((e) => !e.mine), f, ctx) + '</div>';
     }
     if (v.kpiOther.length) {
       h += '<h3 class="sec">Мероприятия по показателям других лидеров</h3>';
-      for (const k of v.kpiOther) h += '<div class="kpi">' + kpiHead(k) + eventsTable(k.events, reg, today, false, f) + '</div>';
+      for (const k of v.kpiOther) h += '<div class="kpi">' + kpiHead(k) + eventsTable(k.events, reg, today, false, f, ctx) + '</div>';
     }
     if (v.kpiTeam.length) {
       h += '<details class="team"><summary>В составе команды (справочно): ' + v.kpiTeam.length + '</summary><table class="grid"><thead><tr><th>Показатель</th><th>Цель</th><th>Факт</th><th>Прогноз</th><th>Лидер</th></tr></thead><tbody>' +
@@ -144,6 +147,79 @@
     return h;
   }
   function short(s) { s = String(s || ''); return s.length > 60 ? s.slice(0, 60) + '…' : s; }
+  // ---------- комментарии директора ----------
+  // opts.dir — страница директора: кнопки открывают письмо помощнику; opts.admin — экран совещания: «+ комментарий директора»
+  function noteButtons(ctx, kind, ref, pid, label) {
+    const o = ctx.opts || {};
+    const a = (type, t) => '<button class="mini dn-btn" data-dn="' + type + '|' + kind + '|' + esc(ref) + '|' + esc(pid) + '">' + t + '</button>';
+    if (o.dir) return '<span class="dn-tools no-print">' + a('c', '💬 Комментарий' + (label ? ' ' + label : '')) + (kind === 'm' || kind === 'e' ? a('meet', 'На совещание') : '') + (kind === 'm' ? a('rm', 'Снять с контроля') : '') + '</span>';
+    if (o.admin) return '<span class="dn-tools no-print"><button class="mini dn-btn" data-dadd="' + kind + '|' + esc(ref) + '|' + esc(pid) + '">+ комментарий директора' + (label ? ' ' + label : '') + '</button></span>';
+    return '';
+  }
+  function noteHtml(reg, data, n, opts) {
+    const st = M().noteState(data, n); const ans = M().dirAnswer(data, n);
+    if (n.type !== 'c') return '<div class="dnote dn-' + n.type + '"><b>' + esc(M().NOTE_TYPES[n.type]) + '</b>' + (n.text ? ': ' + esc(n.text) : '') + ' <span class="muted small">' + esc(M().fmtISO(n.date)) + '</span></div>';
+    return '<div class="dnote dn-' + st + '"><b>Комментарий директора</b> <span class="muted small">' + esc(M().fmtISO(n.date)) + '</span>: ' + esc(n.text) +
+      (ans ? '<div class="dn-ans"><b>Ответ:</b> ' + esc(ans) + '</div>' : (opts && opts.noWait ? '' : '<div class="dn-wait">ждёт ответа руководителя</div>')) + '</div>';
+  }
+  function notesBlock(reg, data, pid, kind, ref, opts) {
+    const ns = M().dirNotes(reg, pid, kind, ref);
+    return ns.length ? '<div class="dnotes">' + ns.map((n) => noteHtml(reg, data, n, opts)).join('') + '</div>' : '';
+  }
+  // всё, что добавляется к пункту отчёта: комментарии директора, пометка «требует внимания», кнопки
+  function itemExtras(reg, ctx, kind, ref, pid) {
+    const a = kind === 'm' ? ctx.att['m|' + ref + '|' + pid] : kind === 'e' ? ctx.att['e|' + ref] : null;
+    return (a ? '<div class="attn">⚠ ' + esc(a.reasons.join('; ')) + '</div>' : '') + notesBlock(reg, ctx.data, pid, kind, ref, ctx.opts) + noteButtons(ctx, kind, ref, pid);
+  }
+  function attMap(reg, data, today, pid) { const m = {}; for (const x of M().attention(reg, data, today, pid)) m[x.key] = x; return m; }
+  // пункты, которые директор хочет услышать, — первыми
+  function meetFirst(reg, kind, list, pid) {
+    const ids = new Set(M().dirNotes(reg, pid, kind).filter((n) => n.type === 'meet').map((n) => n.ref));
+    return ids.size ? list.filter((x) => ids.has(x.id)).concat(list.filter((x) => !ids.has(x.id))) : list;
+  }
+
+  // ---------- сводка для директора: что изменилось, что требует внимания ----------
+  const itemLine = (reg, x, extra) => '<li><b>' + esc((M().personById(reg, x.pid) || {}).fio || '') + '</b> — ' + (x.kind === 'm' ? 'поручение' : 'мероприятие') + ' «' + esc(short(x.text)) + '»' + (extra ? ' <span class="muted small">' + extra + '</span>' : '') + '</li>';
+  function changesHtml(reg, data, today) {
+    const c = M().changes(reg, data, today); if (!c) return '';
+    const blk = (t, list, cls, f) => list.length ? '<details class="chg ' + cls + '"><summary>' + t + ': <b>' + list.length + '</b></summary><ul>' + list.map(f).join('') + '</ul></details>' : '';
+    const memoLine = (m) => '<li>«' + esc(short(m.text)) + '» — ' + esc(M().respName(reg, m)) + '</li>';
+    const body = blk('Выполнено', c.done, 'c-done', (x) => itemLine(reg, x)) + blk('Стало «не выполнено»', c.fail, 'c-fail', (x) => itemLine(reg, x)) +
+      blk('Новые просрочки', c.late, 'c-fail', (x) => itemLine(reg, x, 'срок ' + esc(M().fmtISO(x.due)))) + blk('Новые поручения', c.added, 'c-work', memoLine) + blk('Снято с контроля', c.closed, 'c-na', memoLine);
+    return '<div class="panel changes"><h3>Что изменилось с ' + esc(M().fmtISO(c.since)) + '</h3>' + (body || '<div class="muted small">Изменений пока нет</div>') + '</div>';
+  }
+  function attentionHtml(reg, data, today, pid) {
+    const list = M().attention(reg, data, today, pid);
+    if (!list.length) return pid ? '' : '<div class="panel attention"><h3>Требуют внимания</h3><div class="muted small">Нет пунктов, где пояснение давно не меняется или срок прошёл без движения.</div></div>';
+    const by = new Map(); for (const x of list) { if (!by.has(x.pid)) by.set(x.pid, []); by.get(x.pid).push(x); }
+    return '<div class="panel attention"><h3>Требуют внимания: ' + list.length + '</h3><div class="muted small">Пояснение давно не меняется, срок прошёл без движения, срок переносили несколько раз или пояснения нет.</div>' +
+      Array.from(by).map(([p, xs]) => '<details' + (pid ? ' open' : '') + '><summary><b>' + esc((M().personById(reg, p) || {}).fio || p) + '</b>: ' + xs.length + '</summary><ul>' +
+        xs.map((x) => '<li>' + (x.kind === 'm' ? 'Поручение' : 'Мероприятие') + ' «' + esc(short(x.text)) + '» — ' + badge(x.flag) + ' <span class="attn-r">' + esc(x.reasons.join('; ')) + '</span>' +
+          (x.note ? '<div class="muted small">Пояснение: ' + esc(short(x.note)) + '</div>' : '') + '</li>').join('') + '</ul></details>').join('') + '</div>';
+  }
+  // Карточка руководителя: всё по одному человеку на одной странице
+  function personCard(reg, data, pid, today) {
+    const v = M().personView(reg, data, pid, today); if (!v.person) return '';
+    const late = [...v.memo.filter((m) => M().isOverdue(m.due, m.st.flag, today)).map((m) => ({ kind: 'поручение', text: m.text, due: m.due, flag: m.st.flag })),
+      ...[].concat(...v.kpiOwn.map((k) => k.events.filter((e) => e.mine)), ...v.kpiOther.map((k) => k.events)).filter((e) => M().isOverdue(e.due, e.st.flag, today)).map((e) => ({ kind: 'мероприятие', text: e.text, due: e.due, flag: e.st.flag }))];
+    const disc = M().discipline(reg, pid, 13);
+    const notes = M().dirNotes(reg, pid, '', undefined, true).filter((n) => !n.closed || n.closed.date >= addDays(today, -90));
+    let h = '<div class="pcard"><div class="report-head"><h1>' + esc(v.person.fio) + '</h1>' + freshBadge(v) + '<span class="muted small">карточка на ' + esc(M().fmtISO(today)) + '</span></div>';
+    h += '<h3 class="sec">Поручения</h3>' + countTiles(v.counts, 'поручений');
+    if (v.evCounts.total) h += '<h3 class="sec">Мероприятия УПЦ</h3>' + countTiles(v.evCounts, 'мероприятий');
+    h += '<h3 class="sec">Срок прошёл: ' + late.length + '</h3>' + (late.length ? '<ul>' + late.map((x) => '<li>' + x.kind + ' «' + esc(short(x.text)) + '» — срок ' + esc(M().fmtISO(x.due)) + ' ' + badge(x.flag) + '</li>').join('') + '</ul>' : '<div class="muted small">Нет</div>');
+    const att = M().attention(reg, data, today, pid);
+    h += '<h3 class="sec">Требуют внимания: ' + att.length + '</h3>' + (att.length ? '<ul>' + att.map((x) => '<li>' + (x.kind === 'm' ? 'поручение' : 'мероприятие') + ' «' + esc(short(x.text)) + '» — <span class="attn-r">' + esc(x.reasons.join('; ')) + '</span></li>').join('') + '</ul>' : '<div class="muted small">Нет</div>');
+    h += '<h3 class="sec">Комментарии директора за 3 месяца: ' + notes.length + '</h3>' + (notes.length ? notes.map((n) => {
+      const it = M().noteItem(reg, n);
+      return '<div class="dn-card"><div class="muted small">' + esc(it.what) + ' «' + esc(short(it.text)) + '»' + (n.closed ? ' · закрыт ' + esc(M().fmtISO(n.closed.date)) : '') + '</div>' + noteHtml(reg, data, n, { noWait: !!n.closed }) + '</div>';
+    }).join('') : '<div class="muted small">Нет</div>');
+    h += '<h3 class="sec">Обновлял отчёт к совещанию</h3>' + (disc.length ? '<div class="disc">' + disc.map((d) => '<span class="dw ' + (d.fresh ? 'dw-ok' : 'dw-no') + '" title="неделя с ' + esc(M().fmtISO(d.week)) + '"></span>').join('') +
+      ' <span class="small">' + disc.filter((d) => d.fresh).length + ' из ' + disc.length + ' нед.</span></div><div class="muted small">Квадрат — неделя: зелёный — отчёт обновлён к совещанию, красный — нет.</div>' : '<div class="muted small">Статистика копится с момента обновления — появится через несколько недель.</div>');
+    return h + '</div>';
+  }
+  function addDays(iso, n) { const d = new Date(iso + 'T00:00:00'); d.setDate(d.getDate() + n); return M().todayISO(d); }
+
 
   // ---------- вложения: Excel — таблицей, картинки — картинкой, PDF и остальное — кнопкой «Открыть» ----------
   const EXT = (name) => (String(name).match(/\.([a-z0-9]+)$/i) || [, ''])[1].toLowerCase();
@@ -592,6 +668,6 @@
   root.View = {
     esc, $, $$, badge, due, ago, statusSelect, tile, countTiles, freshBadge, itemCard, freeTable, kpiHead, eventsTable, personReport,
     hydrateAttachments, xlsxToHtml, memoTable, upcOverview, whoCards, printHtml, mailto, copyHtml, download, saveFile, toast, folderScreen,
-    chartMemo, chartKpi, FILTERS, flagPass, filterChips, filterCounts, notesHtml, fileKind, fileIcon, attHtml, docxToHtml, activatePdf, b64, ta, autoGrow, mail, mailUrl, mailMode, MAIL_MODES, copyText, MIME, EXT,
+    chartMemo, chartKpi, changesHtml, attentionHtml, personCard, noteHtml, notesBlock, FILTERS, flagPass, filterChips, filterCounts, notesHtml, fileKind, fileIcon, attHtml, docxToHtml, activatePdf, b64, ta, autoGrow, mail, mailUrl, mailMode, MAIL_MODES, copyText, MIME, EXT,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

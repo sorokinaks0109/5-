@@ -867,6 +867,116 @@ await page.close();
   files = await DUMP(pa);
   await pa.close();
 }
+// ---------- 3з. Комментарии директора, «требуют внимания», что изменилось, карточка ----------
+{
+  let pa = await open('Помощник.html');
+  await pa.evaluate(async () => sessionStorage.setItem('otchet.unlocked', await Base.sha('тест1234')));
+  await MOUNT(pa, files);
+  await pa.click('[data-tab=settings]');
+  await pa.fill('#asstFio', 'Златковская Ю.');
+  await pa.locator('#asstFio').dispatchEvent('change');
+  await pa.fill('#asstEmail', 'zlatkovskaya@example.ru');
+  await pa.locator('#asstEmail').dispatchEvent('change');
+  await pa.waitForTimeout(300);
+  const tr = await pa.evaluate(() => window.Otchet.S.reg.track);
+  check(tr && Object.keys(tr.items).length > 10 && tr.snap && tr.snap.date, 'помощник при открытии начал отслеживать пояснения и сделал снимок статусов (' + Object.keys(tr.items).length + ')');
+  files = await DUMP(pa);
+  await pa.close();
+
+  // директор: кнопки у пунктов открывают письмо помощнику
+  const pd = await open('Директор.html');
+  await MOUNT(pd, files);
+  await pd.evaluate(() => { window.__mails = []; const o = HTMLAnchorElement.prototype.click; HTMLAnchorElement.prototype.click = function () { if (this.href.startsWith('mailto:')) window.__mails.push(this.href); else o.call(this); }; });
+  await pd.click('[data-tab=meeting]');
+  await pd.evaluate(() => { const S = window.Otchet.S; S.person = Model.reportPeople(S.reg).findIndex((p) => p.slug === 'Мещеряков'); window.Otchet.render(); });
+  check(await pd.locator('[data-dn^="c|m|"]').count() > 0 && await pd.locator('[data-dn^="rm|m|"]').count() > 0 && await pd.locator('[data-dn^="meet|e|"]').count() > 0, 'у директора у пунктов кнопки «Комментарий», «На совещание», «Снять с контроля»');
+  const dnC = await pd.locator('[data-dn^="c|m|"]').first().getAttribute('data-dn');
+  const dnRm = await pd.locator('[data-dn^="rm|m|"]').nth(1).getAttribute('data-dn');
+  const dnMeet = await pd.locator('[data-dn^="meet|e|"]').first().getAttribute('data-dn');
+  await pd.locator('[data-dn="' + dnC + '"]').click();
+  await pd.locator('[data-dn="' + dnRm + '"]').click();
+  await pd.locator('[data-dn="' + dnMeet + '"]').click();
+  const mails = (await pd.evaluate(() => window.__mails)).map((h) => { const u = new URL(h); return { to: decodeURIComponent(u.pathname), subject: u.searchParams.get('subject'), body: u.searchParams.get('body'), len: h.length }; });
+  check(mails.length === 3 && mails.every((m) => m.to === 'zlatkovskaya@example.ru') && /^Комментарий директора — Мещеряков, поручение/.test(mails[0].subject) && mails[0].body.includes('[код D|c|m|'), 'письмо директора: адрес помощника, тема, пункт и код (' + (mails[0] || {}).subject + ')');
+  check(mails.every((m) => m.len < 2000), 'ссылка письма короткая — Outlook откроет (' + mails.map((m) => m.len).join(', ') + ' знаков)');
+  await pd.click('[data-act=card]');
+  check(await pd.locator('.pcard').isVisible() && /Обновлял отчёт к совещанию/.test(await pd.locator('.pcard').textContent()), 'карточка руководителя открывается');
+  await pd.close();
+
+  // директор дописал текст и отправил; помощник вставляет письма
+  const typed = mails[0].body.replace('Комментарий:\n\n\n', 'Комментарий:\nКакой срок? Распишите этапы.\n\n') + '\n\nОт: Директор\nОтправлено: 15 октября 2026 г.\n\n' +
+    mails[1].body.replace('Причина:\n\n\n', 'Причина:\nУже неактуально\n\n') + '\n\n' + mails[2].body;
+  pa = await open('Помощник.html');
+  await pa.evaluate(async () => sessionStorage.setItem('otchet.unlocked', await Base.sha('тест1234')));
+  await MOUNT(pa, files);
+  await pa.click('[data-tab=dir]');
+  await pa.fill('#dnPaste', typed);
+  await pa.click('[data-act=dnParse]');
+  const parsed = await pa.evaluate(() => window.Otchet.S.dnParsed.map((n) => ({ type: n.type, text: n.text, ok: !!(n.item && n.item.ok) })));
+  check(parsed.length === 3 && parsed[0].text === 'Какой срок? Распишите этапы.' && parsed[1].text === 'Уже неактуально' && parsed[2].text === '' && parsed.every((x) => x.ok), 'письма разобраны: 3 пункта, текст директора без хвостов письма');
+  await pa.click('[data-act=dnAdd]');
+  await pa.waitForTimeout(300);
+  check((await pa.evaluate(() => (window.Otchet.S.reg.dirNotes || []).length)) === 3, 'внесено в реестр: 3');
+  // на совещании: комментарий виден, «на совещание» — первым, + комментарий голосом
+  await pa.click('[data-tab=meeting]');
+  await pa.evaluate(() => { const S = window.Otchet.S; S.person = Model.reportPeople(S.reg).findIndex((p) => p.slug === 'Мещеряков'); window.Otchet.render(); });
+  const rep = await pa.locator('#report').innerText();
+  check(rep.includes('Какой срок? Распишите этапы.') && rep.includes('ждёт ответа руководителя') && rep.includes('Директор хочет услышать на совещании'), 'на совещании видно комментарий директора и пометку «на совещание»');
+  const firstEv = await pa.evaluate(() => { const td = document.querySelector('#report .dn-meet').closest('tr'); return td === td.parentElement.firstElementChild ? 'хочет услышать — первая строка' : td.innerText; });
+  check(/хочет услышать/.test(firstEv), 'мероприятие «на совещание» стоит первым');
+  await pa.evaluate(() => { window.prompt = () => 'Доложите по экономии'; });
+  await pa.locator('[data-dadd^="k|"]').first().click();
+  await pa.waitForTimeout(300);
+  check((await pa.evaluate(() => window.Otchet.S.reg.dirNotes.filter((n) => n.via === 'meeting').length)) === 1, 'комментарий директора, сказанный на совещании, внесён кнопкой у пункта');
+  files = await DUMP(pa);
+  await pa.close();
+
+  // руководитель видит и отвечает
+  const pm = await open('Страницы руководителей/Отчёт — Мещеряков.html');
+  await MOUNT(pm, files);
+  check(await pm.locator('.dn-banner').isVisible() && /ждут вашего ответа: 2/.test(await pm.locator('.dn-banner').innerText()), 'у руководителя вверху: комментарии директора ждут ответа');
+  const cId = await pm.evaluate(() => window.Otchet.S.reg.dirNotes.find((n) => n.type === 'c' && n.kind === 'm').id);
+  await pm.fill('[data-k="dirAns|' + cId + '"]', 'Срок 30.11, этапы расписал в пояснении');
+  // заодно отмечает выполненным другое поручение — для «что изменилось»
+  const doneId = await pm.evaluate((cid) => { const S = window.Otchet.S; const n = S.reg.dirNotes.find((x) => x.id === cid); return S.reg.memo.find((m) => !m.closed && Model.isResp(m, S.me) && !S.reg.dirNotes.some((x) => x.ref === m.id) && (S.draft.memo[m.id] || {}).flag !== 'done').id; }, cId);
+  await pm.selectOption('[data-k="memo|' + doneId + '|flag"]', 'done');
+  await pm.fill('#reportDate', await pm.evaluate(() => Model.todayISO()));
+  await pm.click('[data-act=save]');
+  await pm.waitForTimeout(400);
+  files = await DUMP(pm);
+  check(json(files, 'руководители/Мещеряков.json').dirAns[cId].startsWith('Срок 30.11'), 'ответ директору сохранён в отчёте руководителя');
+  await pm.close();
+
+  // помощник: ответ получен, закрыть; «снять с контроля» — снять поручение
+  pa = await open('Помощник.html');
+  await pa.evaluate(async () => sessionStorage.setItem('otchet.unlocked', await Base.sha('тест1234')));
+  await MOUNT(pa, files);
+  await pa.click('[data-tab=dir]');
+  check(/ответ есть/.test(await pa.locator('.panel:has-text("Открытые")').innerText()), 'помощник видит: ответ руководителя получен');
+  const rmNote = await pa.evaluate(() => window.Otchet.S.reg.dirNotes.find((n) => n.type === 'rm').id);
+  await pa.click('[data-dnop="rmdo|' + rmNote + '"]');
+  await pa.waitForTimeout(300);
+  const rmm = await pa.evaluate((id) => { const S = window.Otchet.S; const n = S.reg.dirNotes.find((x) => x.id === id); return S.reg.memo.find((m) => m.id === n.ref).closed; }, rmNote);
+  check(rmm && /по решению директора: Уже неактуально/.test(rmm.why), 'поручение снято с контроля по решению директора, причина записана');
+  // «требуют внимания»: делаем вид, что пояснения не менялись с начала сентября
+  await pa.evaluate(async () => { const S = window.Otchet.S; for (const v of Object.values(S.reg.track.items)) v.since = '2026-09-01'; });
+  await pa.click('[data-tab=meeting]');
+  await pa.evaluate(() => { const S = window.Otchet.S; S.person = Model.reportPeople(S.reg).findIndex((p) => p.slug === 'Мещеряков'); window.Otchet.render(); });
+  check(await pa.locator('#report .attn').count() > 0, 'на совещании у пунктов без движения пометка ⚠');
+  // track с «сентябрём» сохраняем через запись реестра
+  await pa.evaluate(async () => { const S = window.Otchet.S; await Store.writeJSON(S.dir, [Store.DATA, Store.REG], S.reg); });
+  files = await DUMP(pa);
+  await pa.close();
+
+  const pd2 = await open('Директор.html');
+  await MOUNT(pd2, files);
+  const sum = await pd2.locator('main').textContent();
+  check(/Требуют внимания: \d+/.test(sum) && /не менялось \d+ нед\./.test(sum), 'у директора в сводке блок «Требуют внимания»');
+  check(/Что изменилось с/.test(sum) && /Выполнено: \d+/.test(sum), 'у директора в сводке «Что изменилось»: выполнено');
+  check(/Ваши комментарии руководителям/.test(sum) && /ответ получен: 1/.test(sum), 'директор видит свои комментарии и ответ руководителя');
+  await shot(pd2, '8-director-notes');
+  await pd2.close();
+}
 // ---------- 4. Директор ----------
 page = await open('Директор.html');
 await MOUNT(page, files);

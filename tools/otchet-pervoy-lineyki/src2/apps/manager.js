@@ -71,11 +71,11 @@
     // участник «только план и УПЦ»: без еженедельного отчёта, только его мероприятия УПЦ и проект плана на год
     if (isExtra()) {
       const v = Model.personView(S.reg, viewData(), S.me, today());
-      main.innerHTML = sentPanel() + headBar() + avrBanner() + planBanner() + (v.kpiOwn.length || v.kpiOther.length ? upcSec() : '') + planSec() +
+      main.innerHTML = sentPanel() + headBar() + dnBanner() + avrBanner() + planBanner() + (v.kpiOwn.length || v.kpiOther.length ? upcSec() : '') + planSec() +
         (!(v.kpiOwn.length || v.kpiOther.length) && !Model.planOn(S.reg) ? '<div class="panel muted">Сейчас заполнять нечего. Когда помощник попросит — здесь появятся ваши мероприятия.</div>' : '');
       View.autoGrow(main); updateSaveState(); return;
     }
-    main.innerHTML = sentPanel() + headBar() + avrBanner() + planBanner() + filterBar() + (S.preview
+    main.innerHTML = sentPanel() + headBar() + dnBanner() + avrBanner() + planBanner() + filterBar() + (S.preview
       ? '<div class="panel preview">' + View.personReport(S.reg, pv, S.me, today(), { filter: S.filter }) + '</div>'
       : memoSec() + (T().ros ? freeSec('ros', T().ros) : '') + (T().proj ? freeSec('proj', T().proj) : '') + upcSec() + attSec() + planSec());
     if (S.preview) View.hydrateAttachments(main, S.dir, S.reg, { [S.me]: S.pendingAtt });
@@ -83,6 +83,25 @@
     updateSaveState();
   }
   const T = () => Model.sections(S.reg);
+  // ---------- комментарии директора: видны у пункта, руководитель отвечает здесь же ----------
+  const myNotes = (kind, ref) => Model.dirNotes(S.reg, S.me, kind, ref).filter((n) => Model.noteItem(S.reg, n).ok);
+  function dnEdit(kind, ref) {
+    return myNotes(kind, ref).map((n) => {
+      if (n.type !== 'c') return '<div class="dnote dn-' + n.type + '"><b>' + esc(Model.NOTE_TYPES[n.type]) + '</b>' + (n.text ? ': ' + esc(n.text) : '') + '</div>';
+      const ans = ((S.draft.dirAns || {})[n.id] || '');
+      return '<div class="dnote dn-' + (ans.trim() ? 'answered' : 'open') + '"><b>Комментарий директора</b> <span class="muted small">' + esc(Model.fmtISO(n.date)) + '</span>: ' + esc(n.text) +
+        View.ta('data-k="dirAns|' + esc(n.id) + '"', ans, 'Ваш ответ директору: что исправили или почему так') + '</div>';
+    }).join('');
+  }
+  function dnBanner() {
+    const all = myNotes().filter((n) => n.type === 'c');
+    const left = all.filter((n) => !String((S.draft.dirAns || {})[n.id] || '').trim());
+    const gen = myNotes('g');
+    if (!all.length && !gen.length) return '';
+    return '<div class="panel msg ' + (left.length ? 'bad' : 'ok') + ' dn-banner"><b>Комментарии директора: ' + all.length + (left.length ? ', ждут вашего ответа: ' + left.length : ', на все ответили') + '.</b> ' +
+      'Комментарий виден у пункта, к которому он написан. Исправьте пояснение и/или ответьте в поле под комментарием, затем «Сохранить». Директор увидит ответ у себя.' +
+      (gen.length ? '<div class="dn-gen">' + ['', 'ros', 'proj'].filter((r) => myNotes('g', r).length).map((r) => '<div class="small"><b>' + (r ? 'К разделу «' + esc(T()[r + 'Plain'] || r) + '»' : 'К отчёту в целом') + '</b></div>' + dnEdit('g', r)).join('') + '</div>' : '') + '</div>';
+  }
   // Запрос помощника: итоги за квартал для АВР — плашка сверху и поле у каждого своего мероприятия УПЦ
   function avrBanner() {
     const r = Model.avrReq(S.reg); if (!r) return '';
@@ -221,7 +240,7 @@
       h += '<div class="edit-item"><div class="ei-text"><b>' + esc(m.text) + '</b><div class="muted small">Поручено ' + esc(Model.fmtISO(m.date)) + ' · срок: ' + View.due(m.due, getSt('memo', m.id).flag, today()) +
         ((m.co || []).length ? ' · соисп.: ' + esc(m.co.map((id) => (Model.personById(S.reg, id) || {}).fio).join(', ')) : '') + '</div>' +
         (m.all && m.all.progress ? '<div class="muted small">Поручено ' + m.all.progress.total + ' руководителям, у каждого свой статус · выполнили ' + m.all.progress.done + ' из ' + m.all.progress.total + '</div>' : '') +
-        View.notesHtml(m.notes) + '</div>' + stRow('memo', m.id, getSt('memo', m.id)) + '</div>';
+        View.notesHtml(m.notes) + dnEdit('m', m.id) + '</div>' + stRow('memo', m.id, getSt('memo', m.id)) + '</div>';
     }
     const co = v.co.filter((m) => pass(m.st.flag, m.due));
     if (co.length) {
@@ -262,7 +281,7 @@
     if (!v.kpiOwn.length && !v.kpiOther.length) h += '<div class="muted">Показателей, по которым вы отчитываетесь, нет.</div>';
     for (const k of v.kpiOwn) {
       h += '<div class="kpi">' + View.kpiHead(k) + '<div class="muted small">Вы отчитываетесь по показателю целиком.</div>' +
-        View.ta('data-k="kpi|' + esc(k.id) + '"', (S.draft.kpi || {})[k.id] || '', 'Комментарий к показателю: факт, прогноз, риски') +
+        View.ta('data-k="kpi|' + esc(k.id) + '"', (S.draft.kpi || {})[k.id] || '', 'Комментарий к показателю: факт, прогноз, риски') + dnEdit('k', k.id) +
         k.events.filter((e) => pass(e.st.flag, e.due)).map((e) => evRow(e)).join('') + '</div>';
     }
     if (v.kpiOther.length) {
@@ -284,7 +303,7 @@
     const r = Model.avrReq(S.reg);
     const q = r ? '<div class="avrq"><div class="small"><b>Итог за ' + esc(r.period) + '</b> <span class="muted">для отчёта анализа высшего руководства — что сделано за квартал, с цифрами</span></div>' +
       View.ta('data-k="avrq|' + esc(e.id) + '"', (S.draft.avrq || {})[Model.avrqKey(r.period, e.id)] || '', 'Итог за ' + r.period) + '</div>' : '';
-    return '<div class="edit-item"><div class="ei-text">' + esc(e.text) + '<div class="muted small">' + (e.executors ? 'Исп.: ' + esc(e.executors) + ' · ' : '') + 'срок: ' + View.due(e.due, getSt('events', e.id).flag, today()) + '</div></div>' +
+    return '<div class="edit-item"><div class="ei-text">' + esc(e.text) + '<div class="muted small">' + (e.executors ? 'Исп.: ' + esc(e.executors) + ' · ' : '') + 'срок: ' + View.due(e.due, getSt('events', e.id).flag, today()) + '</div>' + dnEdit('e', e.id) + '</div>' +
       '<div>' + stRow('events', e.id, getSt('events', e.id)) + q + '</div></div>';
   }
 
@@ -311,6 +330,7 @@
   function setByKey(key, value) {
     const [kind, id, field] = key.split('|');
     if (kind === 'kpi') { S.draft.kpi = S.draft.kpi || {}; S.draft.kpi[id] = value; }
+    else if (kind === 'dirAns') { S.draft.dirAns = S.draft.dirAns || {}; S.draft.dirAns[id] = value; }
     else if (kind === 'coNotes') { S.draft.coNotes = S.draft.coNotes || {}; S.draft.coNotes[id] = value; }
     else if (kind === 'avrq') { const r = Model.avrReq(S.reg); S.draft.avrq = S.draft.avrq || {}; S.draft.avrq[Model.avrqKey(r.period, id)] = value; updateBanner(); }
     else if (kind === 'memo' || kind === 'events') {

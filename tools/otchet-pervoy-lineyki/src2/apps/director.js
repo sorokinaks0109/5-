@@ -1,5 +1,6 @@
 /* global ExcelJS, Model, View, Base */
 // Страница директора: только просмотр. Папку открывает на чтение и ничего не записывает.
+// Комментарии директора уходят письмом помощнику (кнопки у пунктов), помощник вносит их в отчёт.
 (function () {
   'use strict';
   const { esc, $ } = View;
@@ -33,18 +34,29 @@
     return '<div class="row between no-print"><h2>Поручения на контроле</h2><span class="row"><button data-act="reload">Обновить</button><button data-act="print">Печать</button>' + (S.snap ? '' : '<button data-act="xlsx">Скачать свод в Excel</button>') + '</span></div>' +
       (S.snap ? '<div class="muted small no-print">Это снимок данных на ' + esc(Model.fmtDateTime(window.SNAPSHOT.at)) + '. Он обновляется сам, когда помощник или руководители открывают и сохраняют свои страницы. «Обновить» — перечитать файл.</div>' : '') +
       View.countTiles(Model.countFlags(open)) + (late ? '<div class="msg bad">Срок прошёл: ' + late + '</div>' : '') +
+      myNotes() + View.changesHtml(S.reg, S.data, today()) + View.attentionHtml(S.reg, S.data, today()) +
       '<h3 class="sec">По руководителям</h3>' + View.chartMemo(S.reg, S.data, today()) + View.whoCards(S.reg, S.data, today()) +
       '<h3 class="sec">Показатели УПЦ <span class="muted">карта от ' + esc(Model.fmtISO(S.reg.settings.cardDate) || '—') + '</span></h3>' + View.chartKpi(S.reg, S.data) +
       '<table class="grid"><thead><tr><th>Показатель</th><th>Цель</th><th>Факт</th><th>Прогноз</th><th>Оценка</th><th class="c-resp">Отчитывается</th><th class="c-resp">Мероприятия выполнено</th></tr></thead><tbody>' + kpiRows + '</tbody></table>';
+  }
+  // Комментарии директора, которые помощник уже внёс: ждут ответа / ответ получен
+  function myNotes() {
+    const ns = (S.reg.dirNotes || []).filter((n) => !n.closed && n.type === 'c');
+    if (!ns.length) return '';
+    const ans = ns.filter((n) => Model.dirAnswer(S.data, n));
+    return '<div class="panel dn-sum"><h3>Ваши комментарии руководителям</h3><div class="nums"><span class="badge s-done">ответ получен: ' + ans.length + '</span><span class="badge s-fail">ждут ответа: ' + (ns.length - ans.length) + '</span></div>' +
+      ns.map((n) => { const it = Model.noteItem(S.reg, n); return '<div class="dn-card"><div class="muted small"><b>' + esc(it.fio) + '</b> · ' + esc(it.what) + ' «' + esc(cut(it.text)) + '»</div>' + View.noteHtml(S.reg, S.data, n) + '</div>'; }).join('') + '</div>';
   }
   function cut(s) { s = String(s || ''); return s.length > 40 ? s.slice(0, 40) + '…' : s; }
 
   function meetingTab() {
     const ps = people(); if (S.person >= ps.length) S.person = 0;
     return '<div class="people-bar">' + ps.map((x, i) => '<button class="chip ' + (i === S.person ? 'active' : '') + '" data-person-idx="' + i + '">' + esc(x.fio) + '</button>').join('') +
-      '<span class="tools row"><button data-act="prev">←</button><button data-act="next">→</button><button data-act="print">Печать</button></span></div>' +
-      View.filterChips(S.meetFilter, 'data-meetf') +
-      View.personReport(S.reg, S.data, ps[S.person].id, today(), { filter: S.meetFilter });
+      '<span class="tools row"><button data-act="prev">←</button><button data-act="next">→</button><button data-act="card">' + (S.card ? 'Доклад' : 'Карточка руководителя') + '</button><button data-act="print">Печать</button></span></div>' +
+      (S.card ? View.personCard(S.reg, S.data, ps[S.person].id, today()) :
+        (asst() ? '' : '<div class="msg warn small no-print">Кнопки «Комментарий» заработают, когда помощник впишет свою почту в настройках.</div>') +
+        View.filterChips(S.meetFilter, 'data-meetf') +
+        View.personReport(S.reg, S.data, ps[S.person].id, today(), { filter: S.meetFilter, dir: true }));
   }
   function memoTab() {
     const chip = (k, t) => '<button class="chip ' + (S.memoFilter === k ? 'active' : '') + '" data-mf="' + k + '">' + t + '</button>';
@@ -54,9 +66,23 @@
   }
   function upcTab() { return '<div class="row between no-print"><span></span><button data-act="print">Печать</button></div>' + View.upcOverview(S.reg, S.data, today()); }
 
+  const asst = () => { const a = S.reg.settings.asst || {}; return (a.email || '').trim() ? a : null; };
+  const cut2 = (s, n) => { s = String(s || '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n) + '…' : s; };
+  // Письмо помощнику: тема и пункт уже вписаны, директор дописывает свой текст. Код в конце — по нему помощник вносит одной кнопкой.
+  function noteMail(type, kind, ref, pid) {
+    const a = asst();
+    if (!a) { View.toast('Помощник не указал свою почту в настройках — напишите ему как обычно', 'bad'); return; }
+    const n = { type, kind, ref, pid }; const it = Model.noteItem(S.reg, n);
+    const surname = it.fio.split(/\s+/)[0];
+    const subj = { c: 'Комментарий директора', meet: 'На совещание', rm: 'Снять с контроля' }[type] + ' — ' + surname + ', ' + it.what;
+    const lead = { c: 'Комментарий:\n\n\n', meet: 'Прошу доложить на совещании. Комментарий (если нужно):\n\n\n', rm: 'Предлагаю снять с контроля. Причина:\n\n\n' }[type];
+    const body = it.fio + ', ' + it.what + ' «' + cut2(it.text, 90) + '»\n\n' + lead + Model.dirCode(type, kind, ref, pid);
+    View.mailto([a.email], subj, body);
+  }
   document.addEventListener('click', async (e) => {
-    const b = e.target.closest('[data-tab],[data-act],[data-person-idx],[data-mf],[data-meetf],.who .card');
+    const b = e.target.closest('[data-tab],[data-act],[data-person-idx],[data-mf],[data-meetf],[data-dn],.who .card');
     if (!b) return;
+    if (b.dataset.dn) { const [type, kind, ref, pid] = b.dataset.dn.split('|'); noteMail(type, kind, ref, pid); return; }
     if (b.dataset.meetf !== undefined) { S.meetFilter = b.dataset.meetf; render(); return; }
     if (b.dataset.tab) { S.tab = b.dataset.tab; render(); return; }
     if (b.classList.contains('card') && b.dataset.person) { S.person = people().findIndex((p) => p.id === b.dataset.person); S.tab = 'meeting'; render(); return; }
@@ -68,6 +94,7 @@
     else if (a === 'demo') { S.demo = true; S.dir = await Base.demoFolder(); await load(); }
     else if (a === 'reload') { if (S.snap) location.reload(); else load(); }
     else if (a === 'print') window.print();
+    else if (a === 'card') { S.card = !S.card; render(); }
     else if (a === 'prev') { S.person = (S.person - 1 + n) % n; render(); }
     else if (a === 'next') { S.person = (S.person + 1) % n; render(); }
     else if (a === 'xlsx') { const wb = Model.buildSummary(ExcelJS, S.reg, S.data, today()); await View.saveFile(new Uint8Array(await wb.xlsx.writeBuffer()), 'Свод_' + today() + '.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', '.xlsx', 'Excel'); }

@@ -8,7 +8,7 @@
     memoFilter: '', memoPerson: '', edit: null, cardDiff: null, card: null, upcPerson: '', log: [], meetFilter: '', sentFile: '',
   };
   const today = () => Model.todayISO();
-  const TABS = [['who', 'Кто обновил'], ['meeting', 'Совещание'], ['memo', 'Поручения'], ['upc', 'УПЦ'], ['avr', 'План АВР'], ['plan', 'План на год'], ['out', 'Свод и письма'], ['settings', 'Настройки'], ['help', 'Как пользоваться']];
+  const TABS = [['who', 'Кто обновил'], ['meeting', 'Совещание'], ['memo', 'Поручения'], ['dir', 'Директор'], ['upc', 'УПЦ'], ['avr', 'План АВР'], ['plan', 'План на год'], ['out', 'Свод и письма'], ['settings', 'Настройки'], ['help', 'Как пользоваться']];
 
   const conn = Base.connector({ mode: 'readwrite', render: () => render(), onDir: async (dir) => { S.dir = dir; await load(); } });
 
@@ -22,6 +22,8 @@
       // статистика недели для будущих графиков: если за эту неделю записи ещё нет — записываем
       const wk = (() => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return Model.todayISO(d); })();
       if (!(S.reg.history || []).some((x) => x.week === wk)) { Model.recordWeek(S.reg, S.data, today()); S.histPending = true; }
+      // с какого дня не меняются пояснения, переносы сроков — для «Требуют внимания»
+      if (Model.updateTrack(S.reg, S.data, today())) S.histPending = true;
     }
     let unlocked = false; try { unlocked = sessionStorage.getItem('otchet.unlocked') === S.reg.settings.passHash; } catch (e) { /* нет хранилища */ }
     S.locked = !!S.reg.settings.passHash && !unlocked;
@@ -89,7 +91,7 @@
       setTimeout(() => $('#pass') && $('#pass').focus(), 0);
       return;
     }
-    const views = { who: whoTab, meeting: meetingTab, memo: memoTab, upc: upcTab, avr: avrTab, plan: planTab, out: outTab, settings: settingsTab, help: helpTab };
+    const views = { who: whoTab, meeting: meetingTab, memo: memoTab, dir: dirTab, upc: upcTab, avr: avrTab, plan: planTab, out: outTab, settings: settingsTab, help: helpTab };
     main.innerHTML = views[S.tab]();
     if (S.tab === 'meeting') View.hydrateAttachments(main, S.dir, S.reg);
     View.autoGrow(main);
@@ -141,7 +143,7 @@
       '<span class="tools row"><button data-act="prev">←</button><button data-act="next">→</button><button class="primary" data-act="present">На весь экран</button>' +
       '<button data-act="print">Печать</button><button data-act="printAll">Печать всех</button></span></div>' +
       View.filterChips(S.meetFilter, 'data-meetf') +
-      '<div id="report">' + (p ? View.personReport(S.reg, S.data, p.id, today(), { filter: S.meetFilter }) : '') + '</div>';
+      '<div id="report">' + (p ? View.personReport(S.reg, S.data, p.id, today(), { filter: S.meetFilter, admin: true }) : '') + '</div>';
   }
 
   // ---------- поручения ----------
@@ -201,6 +203,7 @@
       const st = Model.memoStatus(S.reg, S.data, m);
       if (!Model.isFinal(st.flag) && !confirm('Поручение не отмечено как выполненное. Всё равно снять с контроля?')) return;
       m.closed = { date: today(), flag: st.flag, text: st.text };
+      closeNotesOf(m.id);
     }
     if (op === 'reopen') delete m.closed;
     if (await saveReg(op === 'close' ? 'Снято с контроля' : 'Возвращено на контроль')) render();
@@ -208,8 +211,77 @@
   async function closeReady() {
     const list = S.reg.memo.filter((m) => !m.closed && Model.isFinal(Model.memoStatus(S.reg, S.data, m).flag));
     if (!confirm('Снять с контроля ' + list.length + ' поручений со статусом «выполнено» или «неактуально»?')) return;
-    list.forEach((m) => { const st = Model.memoStatus(S.reg, S.data, m); m.closed = { date: today(), flag: st.flag, text: st.text }; });
+    list.forEach((m) => { const st = Model.memoStatus(S.reg, S.data, m); m.closed = { date: today(), flag: st.flag, text: st.text }; closeNotesOf(m.id); });
     if (await saveReg('Снято: ' + list.length)) render();
+  }
+
+  // ---------- комментарии директора ----------
+  function closeNotesOf(memoId) { (S.reg.dirNotes || []).forEach((n) => { if (n.kind === 'm' && n.ref === memoId && !n.closed) n.closed = { date: today(), why: 'поручение снято' }; }); }
+  const ST_LABEL = { open: '<span class="badge s-fail">ждёт ответа</span>', answered: '<span class="badge s-done">ответ есть</span>', meet: '<span class="badge s-work">на совещание</span>', rm: '<span class="badge s-na">предлагает снять</span>' };
+  function dirTab() {
+    const asst = S.reg.settings.asst || {};
+    let h = '<div class="panel"><h2>Комментарии директора</h2><p class="muted small">Директор нажимает у пункта отчёта «Комментарий», «На совещание» или «Снять с контроля» — у него открывается письмо ' +
+      (asst.email ? 'на <b>' + esc(asst.email) + '</b>' : 'помощнику (<b>почта помощника не указана — впишите в «Настройках»</b>)') + ' с кодом пункта в конце. ' +
+      'Скопируйте текст письма (Ctrl+A, Ctrl+C) и вставьте сюда — можно несколько писем подряд. Комментарий появится у руководителя у этого пункта, с подписью «Комментарий директора».</p>' +
+      View.ta('id="dnPaste"', S.dnPasteText || '', 'Вставьте сюда текст письма директора') +
+      '<div class="row"><button class="primary" data-act="dnParse">Разобрать письмо</button></div>';
+    if (S.dnParsed) {
+      h += S.dnParsed.length ? '<table class="grid"><thead><tr><th class="c-resp">Руководитель</th><th>Пункт</th><th class="c-st">Что</th><th>Текст директора</th><th class="c-act"></th></tr></thead><tbody>' +
+        S.dnParsed.map((n, i) => '<tr><td>' + esc(n.person ? n.person.fio : '?') + '</td><td>' + (n.item ? esc(n.item.what) + ' «' + esc(cutS(n.item.text)) + '»' + (n.item.ok ? '' : ' <span class="late">пункт уже снят или удалён</span>') : '<span class="late">руководитель не найден</span>') + '</td>' +
+          '<td>' + esc(Model.NOTE_TYPES[n.type]) + '</td><td>' + View.ta('data-dnp="' + i + '"', n.text, n.type === 'c' ? 'Текст комментария' : 'необязательно') + (n.dup ? '<div class="muted small">такой комментарий уже внесён</div>' : '') + '</td>' +
+          '<td class="c-act"><button class="mini danger" data-dnskip="' + i + '">Не вносить</button></td></tr>').join('') + '</tbody></table>' +
+          '<div class="row"><button class="primary" data-act="dnAdd">Внести (' + S.dnParsed.filter((n) => n.person && n.item && n.item.ok && !n.dup).length + ')</button><button data-act="dnClear">Отмена</button></div>'
+        : '<div class="msg bad">В тексте нет кода пункта «[код D|…]». Видимо, письмо написано не через кнопку в отчёте — внесите комментарий вручную на экране «Совещание» (кнопка «+ комментарий директора» у пункта).</div>';
+    }
+    h += '</div>';
+    const all = S.reg.dirNotes || [];
+    const open = all.filter((n) => !n.closed);
+    const waiting = open.filter((n) => Model.noteState(S.data, n) === 'open');
+    h += '<div class="panel"><div class="row between"><h2>Открытые: ' + open.length + '</h2>' + (waiting.length ? '<button data-act="dnRemind">Напомнить ответить (' + new Set(waiting.map((n) => n.pid)).size + ' чел.)</button>' : '') + '</div>' +
+      '<p class="muted small">«Ждёт ответа» — руководитель ещё не ответил. Когда ответ устроил директора — «Закрыть». «На совещание» закрывается само после «Совещание прошло сегодня». «Предлагает снять» — решаете вы: «Снять поручение» или «Оставить».</p>';
+    h += open.length ? noteTable(open, true) : '<div class="muted small">Открытых комментариев нет</div>';
+    const closed = all.filter((n) => n.closed).slice(-50).reverse();
+    if (closed.length) h += '<details><summary>Закрытые (последние ' + closed.length + ')</summary>' + noteTable(closed, false) + '</details>';
+    return h + '</div>';
+  }
+  const cutS = (t) => { t = String(t || ''); return t.length > 90 ? t.slice(0, 90) + '…' : t; };
+  function noteTable(list, active) {
+    return '<table class="grid"><thead><tr><th class="c-due">Дата</th><th class="c-resp">Руководитель</th><th>Пункт</th><th>Директор</th><th>Ответ руководителя</th><th class="c-st">Состояние</th>' + (active ? '<th class="c-act"></th>' : '') + '</tr></thead><tbody>' +
+      list.map((n) => {
+        const it = Model.noteItem(S.reg, n); const st = Model.noteState(S.data, n);
+        const acts = n.type === 'rm' && n.kind === 'm' && it.ok ? '<button class="mini primary" data-dnop="rmdo|' + esc(n.id) + '">Снять поручение</button><button class="mini" data-dnop="close|' + esc(n.id) + '">Оставить</button>'
+          : '<button class="mini" data-dnop="close|' + esc(n.id) + '">Закрыть</button>';
+        return '<tr><td>' + esc(Model.fmtISO(n.date)) + (n.via === 'meeting' ? '<div class="muted small">на совещании</div>' : '') + '</td><td>' + esc(it.fio) + '</td><td>' + esc(it.what) + ' «' + esc(cutS(it.text)) + '»</td><td>' +
+          (n.type !== 'c' ? '<b>' + esc(Model.NOTE_TYPES[n.type]) + '</b> ' : '') + esc(n.text) + '</td><td>' + esc(Model.dirAnswer(S.data, n)) + '</td><td>' + (n.closed ? 'закрыт ' + esc(Model.fmtISO(n.closed.date)) + (n.closed.why ? '<div class="muted small">' + esc(n.closed.why) + '</div>' : '') : ST_LABEL[st]) + '</td>' +
+          (active ? '<td class="c-act">' + acts + '<button class="mini danger" data-dnop="del|' + esc(n.id) + '" title="Удалить — внесён по ошибке">✕</button></td>' : '') + '</tr>';
+      }).join('') + '</tbody></table>';
+  }
+  async function dnOp(op, id) {
+    const n = (S.reg.dirNotes || []).find((x) => x.id === id); if (!n) return;
+    if (op === 'del') { if (!confirm('Удалить комментарий? Руководитель перестанет его видеть.')) return; S.reg.dirNotes = S.reg.dirNotes.filter((x) => x !== n); }
+    if (op === 'close') n.closed = { date: today() };
+    if (op === 'rmdo') {
+      const m = S.reg.memo.find((x) => x.id === n.ref); const st = Model.memoStatus(S.reg, S.data, m);
+      m.closed = { date: today(), flag: st.flag, text: st.text, why: 'по решению директора' + (n.text ? ': ' + n.text : '') };
+      closeNotesOf(m.id);
+    }
+    if (await saveReg({ del: 'Удалено', close: 'Закрыто', rmdo: 'Поручение снято с контроля по решению директора' }[op])) render();
+  }
+  async function dnAdd() {
+    const ok = S.dnParsed.filter((n) => n.person && n.item && n.item.ok && !n.dup);
+    if (!ok.length) { View.toast('Вносить нечего', 'bad'); return; }
+    const empty = ok.filter((n) => n.type === 'c' && !n.text.trim());
+    if (empty.length) { View.toast('У комментария нет текста — впишите его или нажмите «Не вносить»', 'bad'); return; }
+    ok.forEach((n) => Model.addDirNote(S.reg, n, today()));
+    S.dnParsed = null; S.dnPasteText = '';
+    if (await saveReg('Внесено: ' + ok.length + '. Руководители увидят при следующем открытии отчёта.')) render();
+  }
+  async function dnFromMeeting(kind, ref, pid) {
+    const p = Model.personById(S.reg, pid);
+    const text = prompt('Комментарий директора для ' + (p ? p.fio : '') + ' (руководитель увидит его у этого пункта и должен ответить):');
+    if (!text || !text.trim()) return;
+    Model.addDirNote(S.reg, { type: 'c', kind, ref, pid, text, via: 'meeting' }, today());
+    if (await saveReg('Комментарий директора внесён')) render();
   }
 
   // ---------- УПЦ ----------
@@ -752,6 +824,9 @@
       '</tbody></table><div class="row" style="margin-top:8px"><input id="newFio" placeholder="Фамилия И.О."><button data-act="addPerson">Добавить руководителя</button></div>' +
       '<p class="muted small">Новому руководителю скопируйте любую страницу из папки «Страницы руководителей» и переименуйте в «Отчёт — Фамилия.html».</p></div>' +
       sectionsPanel() + avrReqSettings() +
+      '<div class="panel"><h2>Помощник по поручениям</h2><p class="muted small">Кому директор пишет комментарии кнопками из своего отчёта. Почта нужна, чтобы у директора открывалось письмо с этим адресом.</p>' +
+      '<div class="row"><label class="small">ФИО <input id="asstFio" value="' + esc((st.asst || {}).fio || '') + '" placeholder="Фамилия И.О."></label>' +
+      '<label class="small">Почта <input id="asstEmail" style="min-width:280px" value="' + esc((st.asst || {}).email || '') + '" placeholder="адрес@gazprom-neft.ru"></label></div></div>' +
       '<div class="panel"><h2>Почта</h2><p class="muted small">Как открывать письма (напоминания, директору). Ссылка на новое письмо в OWA зависит от версии почтового сервера. ' +
       'Нажмите по очереди кнопки «Проверить»: какая откроет <b>новое письмо с заполненными адресом и темой</b> — тот способ и выберите. Если ни одна — оставьте первый способ: почта откроется, а текст письма будет скопирован, останется вставить Ctrl+V.</p>' +
       '<div class="row"><label class="small">Открывать письма <select id="mailVia">' + View.MAIL_MODES.map(([k, t]) => '<option value="' + k + '"' + (View.mailMode(st) === k ? ' selected' : '') + '>' + esc(t) + '</option>').join('') + '</select></label>' +
@@ -807,6 +882,8 @@
       '<li><b>Директору</b>: «Свод и письма» → «Отправить отчёт директору» — файл для телефона в папке «Своды» и новое письмо; файл прикрепите к письму. Там же Excel-свод.</li>' +
       '<li><b>Поручение нескольким</b>: отметьте нескольких ответственных (или «Все на совещании»). У каждого свой статус, у поручения — «выполнили N из M». Снимается, когда выполнили все (или вручную).</li>' +
       '<li><b>Соисполнители</b> пишут свой комментарий по поручению в своём отчёте — он виден у ответственного и на совещании.</li>' +
+      '<li><b>Комментарии директора</b>: директор нажимает у пункта «Комментарий», «На совещание» или «Снять с контроля» — вам приходит письмо с кодом пункта. Скопируйте текст письма во вкладку «Директор» → «Разобрать» → «Внести». Руководитель видит комментарий у пункта и отвечает там же; директор видит ответ. Комментарий, сказанный на совещании, — кнопка «+ комментарий директора» у пункта на экране «Совещание».</li>' +
+      '<li><b>«Требуют внимания»</b> у директора и пометки ⚠ на совещании собираются сами: пояснение не менялось 3 недели и больше, срок прошёл без движения, срок переносили 2 раза и больше, пояснения нет. Считается с первого открытия этой страницы после обновления.</li>' +
       '<li><b>Раз в месяц</b>: «УПЦ» → «Загрузить новую карту УПЦ». Сборщик покажет, что добавится, уйдёт и изменится.</li>' +
       '<li><b>Ноябрь–декабрь</b>: вкладка «План на год» → «Взять показатели и мероприятия текущего года», поправьте список, впишите цели, назначьте лидеров, включите сбор. Лидеры подтверждают или правят мероприятия в разделе «Проект на … год» своего отчёта и предлагают бизнес-инициативы. Затем «Выгрузить в форму Приложения 3».</li>' +
       '<li><b>В начале месяца после квартала</b>: «Настройки» → «Запрос итогов за квартал» → включите, укажите квартал и срок. Руководители увидят запрос у себя и заполнят «Итог за квартал» у своих мероприятий; кто сколько заполнил — на вкладке «Кто обновил». После сбора выключите.</li>' +
@@ -821,8 +898,11 @@
   // ---------- события ----------
   function people() { return Model.reportPeople(S.reg); }
   document.addEventListener('click', async (e) => {
-    const b = e.target.closest('[data-tab],[data-act],[data-mailtest],[data-kpiedit],[data-kpidel],[data-avrf],[data-avr-src],[data-avr-excl],[data-restore],[data-pkdel],[data-pedel],[data-peadd],[data-person-idx],[data-mf],[data-meetf],[data-memo],[data-evdel],[data-evadd],[data-pmove],.who .card');
+    const b = e.target.closest('[data-tab],[data-act],[data-mailtest],[data-kpiedit],[data-kpidel],[data-avrf],[data-avr-src],[data-avr-excl],[data-restore],[data-pkdel],[data-pedel],[data-peadd],[data-person-idx],[data-mf],[data-meetf],[data-memo],[data-evdel],[data-evadd],[data-pmove],[data-dnop],[data-dnskip],[data-dadd],.who .card');
     if (!b) return;
+    if (b.dataset.dnop) { const [op, id] = b.dataset.dnop.split('|'); dnOp(op, id); return; }
+    if (b.dataset.dnskip !== undefined) { S.dnParsed.splice(+b.dataset.dnskip, 1); render(); return; }
+    if (b.dataset.dadd) { const [kind, ref, pid] = b.dataset.dadd.split('|'); dnFromMeeting(kind, ref, pid); return; }
     if (b.dataset.tab) { S.tab = b.dataset.tab; render(); return; }
     if (b.dataset.meetf !== undefined) { S.meetFilter = b.dataset.meetf; render(); return; }
     if (b.dataset.avrf !== undefined) { S.avr.filter = b.dataset.avrf; render(); return; }
@@ -876,7 +956,10 @@
     else if (a === 'demo') { S.demo = true; S.dir = await Base.demoFolder(); await load(); }
     else if (a === 'reload') reloadData();
     else if (a === 'unlock') { const h = await Base.sha($('#pass').value); if (h === S.reg.settings.passHash) { try { sessionStorage.setItem('otchet.unlocked', h); } catch (x) { /* */ } S.locked = false; render(); } else View.toast('Неверный пароль', 'bad'); }
-    else if (a === 'meetingToday') { Model.recordWeek(S.reg, S.data, today()); S.reg.settings.lastMeeting = today(); if (await saveReg('Отмечено: совещание прошло сегодня. Отчёты станут «не обновлён», пока руководители не поставят новую дату.')) render(); }
+    else if (a === 'meetingToday') {
+      Model.recordWeek(S.reg, S.data, today()); S.reg.settings.lastMeeting = today();
+      Model.updateTrack(S.reg, S.data, today()); Model.takeSnap(S.reg, S.data, today());
+      (S.reg.dirNotes || []).forEach((n) => { if (n.type === 'meet' && !n.closed) n.closed = { date: today(), why: 'доложено на совещании' }; }); if (await saveReg('Отмечено: совещание прошло сегодня. Отчёты станут «не обновлён», пока руководители не поставят новую дату.')) render(); }
     else if (a === 'remind') {
       const stale = Model.reportPeople(S.reg).filter((p) => Model.personView(S.reg, S.data, p.id, today()).fresh !== 'fresh');
       const to = stale.map((p) => p.email).filter(Boolean);
@@ -909,6 +992,17 @@
         'Коллеги, добрый день!\n\nПрошу заполнить в отчёте первой линейки итоги за ' + r.period + ' по своим мероприятиям УПЦ (поле «Итог за ' + r.period + '»)' + (r.due ? ' до ' + Model.fmtISO(r.due) : '') + ' и нажать «Сохранить».\n\nСпасибо!');
     }
     else if (a === 'kpiNew') { S.kpiForm = {}; render(); }
+    else if (a === 'dnParse') { S.dnPasteText = $('#dnPaste').value; S.dnParsed = Model.parseDirMail(S.reg, S.dnPasteText); render(); }
+    else if (a === 'dnClear') { S.dnParsed = null; S.dnPasteText = ''; render(); }
+    else if (a === 'dnAdd') dnAdd();
+    else if (a === 'dnRemind') {
+      const ids = new Set((S.reg.dirNotes || []).filter((n) => !n.closed && Model.noteState(S.data, n) === 'open').map((n) => n.pid));
+      const ps = S.reg.people.filter((p) => ids.has(p.id));
+      const noMail = ps.filter((p) => !p.email).map((p) => p.fio);
+      if (noMail.length) View.toast('Нет почты у: ' + noMail.join(', ') + '. Добавьте в «Настройках».', 'bad');
+      View.mail(S.reg.settings, ps.map((p) => p.email).filter(Boolean), 'Комментарии директора в отчёте первой линейки',
+        'Коллеги, добрый день!\n\nВ вашем отчёте первой линейки есть комментарии директора, на которые ещё нет ответа. Они выделены у пунктов, к которым написаны, и вверху отчёта. Прошу исправить пояснение и/или ответить в поле под комментарием и нажать «Сохранить».\n\nСпасибо!');
+    }
     else if (a === 'avrSave') avrSave();
     else if (a === 'avrClose') { await avrPersist(true); S.avr = null; render(); }
     else if (a === 'avrResume') avrResume();
@@ -973,6 +1067,7 @@
     if (t.id === 'memoPerson') { S.memoPerson = t.value; render(); }
     if (t.id === 'upcPerson') { S.upcPerson = t.value; render(); }
     if (t.id === 'lastMeeting') { S.reg.settings.lastMeeting = t.value; if (await saveReg('Дата совещания сохранена')) render(); }
+    if (t.id === 'asstFio' || t.id === 'asstEmail') { S.reg.settings.asst = { ...(S.reg.settings.asst || {}), [t.id === 'asstFio' ? 'fio' : 'email']: t.value.trim() }; saveReg('Сохранено'); }
     if (t.id === 'dirEmail') { S.reg.settings.directorEmail = t.value.trim(); saveReg('Почта сохранена'); }
     if (t.id === 'cardFile' && t.files[0]) loadCard(t.files[0]);
     if (t.id === 'avrFile' && t.files[0]) avrLoad(t.files[0]);
@@ -994,6 +1089,7 @@
     if (e.target.dataset.ev && e.target.tagName !== 'SELECT') evEdit(e.target.dataset.ev, e.target.value);
     if (e.target.dataset.pkf && e.target.tagName !== 'SELECT') { const [id, f] = e.target.dataset.pkf.split('|'); planOf().kpis.find((k) => k.id === id)[f] = e.target.value; planSaveSoon(); }
     if (e.target.dataset.pef) { const [id, f] = e.target.dataset.pef.split('|'); planOf().events.find((x) => x.id === id)[f] = f === 'due' ? Model.parseDue(e.target.value) : e.target.value; planSaveSoon(); }
+    if (e.target.dataset.dnp !== undefined && S.dnParsed) S.dnParsed[+e.target.dataset.dnp].text = e.target.value;
     if (e.target.dataset.avrText) { Object.assign(S.avr.rows[+e.target.dataset.avrText], { out: e.target.value, src: 'edit' }); avrPersist(); }
   });
   document.addEventListener('keydown', (e) => {

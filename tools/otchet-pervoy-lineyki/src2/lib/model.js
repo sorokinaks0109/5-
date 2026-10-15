@@ -372,6 +372,128 @@
     return rec;
   }
 
+  // ---------- комментарии директора ----------
+  // reg.dirNotes = [{ id, pid, kind: 'm' | 'e' | 'k' | 'g', ref, type: 'c' | 'meet' | 'rm', text, date, via, closed? }]
+  // c — комментарий (руководитель отвечает в своём отчёте: data.dirAns[id]); meet — «хочу услышать на совещании»;
+  // rm — «предлагаю снять с контроля» (решает помощник). kind g — к отчёту или разделу целиком (ref — раздел или '').
+  const NOTE_TYPES = { c: 'Комментарий директора', meet: 'Директор хочет услышать на совещании', rm: 'Директор предлагает снять с контроля' };
+  function dirAnswer(data, n) { const d = data[n.pid] && data[n.pid].data; return String((d && d.dirAns && d.dirAns[n.id]) || '').trim(); }
+  function noteState(data, n) { return n.closed ? 'closed' : n.type !== 'c' ? n.type : dirAnswer(data, n) ? 'answered' : 'open'; }
+  function dirNotes(reg, pid, kind, ref, all) {
+    return (reg.dirNotes || []).filter((n) => (!pid || n.pid === pid) && (!kind || n.kind === kind) && (ref === undefined || n.ref === ref) && (all || !n.closed));
+  }
+  // Что за пункт: для письма, списка у помощника и карточки
+  function noteItem(reg, n) {
+    const p = personById(reg, n.pid) || { fio: n.pid };
+    if (n.kind === 'm') { const m = reg.memo.find((x) => x.id === n.ref); return { fio: p.fio, what: 'поручение', text: m ? m.text : '(поручение удалено)', ok: !!m && !m.closed }; }
+    if (n.kind === 'e') { const e = reg.events.find((x) => x.id === n.ref); return { fio: p.fio, what: 'мероприятие УПЦ', text: e ? e.text : '(мероприятие удалено)', ok: !!e }; }
+    if (n.kind === 'k') { const k = reg.kpis.find((x) => x.id === n.ref); return { fio: p.fio, what: 'показатель', text: k ? shortKpi(k.name) : '(показатель удалён)', ok: !!k }; }
+    const T = sections(reg);
+    return { fio: p.fio, what: n.ref ? 'раздел' : 'отчёт', text: n.ref ? (T[n.ref + 'Plain'] || n.ref) : 'отчёт целиком', ok: true };
+  }
+  // Код в конце письма директора: по нему помощник вносит письмо одной кнопкой
+  const dirCode = (type, kind, ref, pid) => '[код D|' + type + '|' + kind + '|' + ref + '|' + pid + ']';
+  // Разбираем вставленный текст писем: перед каждым кодом — «Комментарий:» / «Причина:» и текст директора
+  function parseDirMail(reg, text) {
+    const out = []; const re = /\[код\s*D\|(c|meet|rm)\|([mekg])\|([^|\]]*)\|([^\]\s]+)\]/g;
+    let m, from = 0;
+    while ((m = re.exec(text))) {
+      const seg = text.slice(from, m.index); from = re.lastIndex;
+      const lab = /(?:Комментарий[^:\n]{0,20}|Причина)\s*:/gi; let last = null, x;
+      while ((x = lab.exec(seg))) last = x;
+      const body = last ? seg.slice(last.index + last[0].length) : '';
+      const clean = body.split('\n').filter((l) => !/^\s*>/.test(l)).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+      const n = { type: m[1], kind: m[2], ref: m[3], pid: m[4], text: clean };
+      n.person = personById(reg, n.pid);
+      n.item = n.person ? noteItem(reg, n) : null;
+      n.dup = (reg.dirNotes || []).some((o) => !o.closed && o.pid === n.pid && o.kind === n.kind && o.ref === n.ref && o.type === n.type && (o.text || '') === n.text);
+      out.push(n);
+    }
+    return out;
+  }
+  function addDirNote(reg, n, today) {
+    const note = { id: uid('dn'), pid: n.pid, kind: n.kind, ref: n.ref || '', type: n.type, text: String(n.text || '').trim(), date: today, via: n.via || 'mail' };
+    reg.dirNotes = (reg.dirNotes || []).concat(note);
+    return note;
+  }
+
+  // ---------- что требует внимания: пояснения без движения, просрочки, переносы сроков ----------
+  // reg.track = { items: { ключ: { h, since, due, moves } }, snap: { date, flags: { ключ: статус }, late: [ключи] } }
+  // since — с какого дня пояснение не менялось (считаем с первого открытия помощника после обновления).
+  function trackItems(reg, data) {
+    const out = [];
+    for (const m of reg.memo.filter((x) => !x.closed)) {
+      for (const pid of respsOf(m)) { const s = stOf(data, pid, 'memo', m.id); out.push({ key: 'm|' + m.id + '|' + pid, kind: 'm', ref: m.id, pid, text: m.text, due: m.due, flag: s.flag, note: s.text }); }
+    }
+    for (const e of reg.events.filter((x) => x.speaker)) { const s = eventStatus(reg, data, e); out.push({ key: 'e|' + e.id, kind: 'e', ref: e.id, pid: e.speaker, text: e.text, due: e.due, flag: s.flag, note: s.text }); }
+    return out;
+  }
+  const hashOf = (it) => norm(it.flag + '|' + it.note);
+  function updateTrack(reg, data, today) {
+    const t = reg.track = reg.track || { items: {} };
+    const before = JSON.stringify(t);
+    const items = trackItems(reg, data); const keep = {};
+    for (const it of items) {
+      const o = t.items[it.key]; const h = hashOf(it);
+      if (!o) keep[it.key] = { h, since: today, due: it.due || '', moves: 0 };
+      else {
+        const n = { ...o };
+        if (o.h !== h) { n.h = h; n.since = today; }
+        if (ISO.test(o.due || '') && ISO.test(it.due || '') && o.due !== it.due) n.moves = (o.moves || 0) + 1;
+        n.due = it.due || '';
+        keep[it.key] = n;
+      }
+    }
+    t.items = keep;
+    if (!t.snap) takeSnap(reg, data, today, items);
+    return JSON.stringify(t) !== before;
+  }
+  // Снимок статусов на день совещания — от него считаем «что изменилось»
+  function takeSnap(reg, data, today, items) {
+    items = items || trackItems(reg, data);
+    reg.track = reg.track || { items: {} };
+    reg.track.snap = { date: today, flags: Object.fromEntries(items.map((x) => [x.key, x.flag])), late: items.filter((x) => isOverdue(x.due, x.flag, today)).map((x) => x.key) };
+  }
+  const weeksBetween = (a, b) => Math.floor((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 6048e5);
+  // [{ ...пункт, reasons: ['…'] }] — по всем или по одному руководителю
+  function attention(reg, data, today, pid) {
+    const tr = (reg.track && reg.track.items) || {};
+    const out = [];
+    for (const it of trackItems(reg, data)) {
+      if (pid && it.pid !== pid) continue;
+      if (isFinal(it.flag)) continue;
+      const o = tr[it.key];
+      const since = o && o.h === hashOf(it) ? o.since : today; // текст поменяли после последнего открытия помощника — свежий
+      const r = [];
+      const late = isOverdue(it.due, it.flag, today);
+      if (late && since <= it.due) r.push('срок прошёл ' + fmtISO(it.due) + ', пояснение с тех пор не менялось');
+      else { const w = weeksBetween(since, today); if (w >= 3) r.push('пояснение не менялось ' + w + ' нед.'); }
+      if (o && o.moves >= 2) r.push('срок переносили ' + o.moves + ' раз' + (o.moves < 5 ? 'а' : ''));
+      if (it.flag && !String(it.note).trim() && weeksBetween(since, today) >= 1) r.push('статус есть, пояснения нет');
+      if (r.length) out.push({ ...it, reasons: r, late });
+    }
+    return out;
+  }
+  // Что изменилось с последнего совещания (или с первого открытия после обновления)
+  function changes(reg, data, today) {
+    const sn = reg.track && reg.track.snap; if (!sn) return null;
+    const items = trackItems(reg, data);
+    const was = (k) => sn.flags[k];
+    return {
+      since: sn.date,
+      done: items.filter((x) => x.flag === 'done' && was(x.key) !== undefined && was(x.key) !== 'done'),
+      fail: items.filter((x) => x.flag === 'fail' && was(x.key) !== undefined && was(x.key) !== 'fail'),
+      late: items.filter((x) => isOverdue(x.due, x.flag, today) && !sn.late.includes(x.key)),
+      added: reg.memo.filter((m) => !m.closed && m.date && m.date >= sn.date),
+      closed: reg.memo.filter((m) => m.closed && m.closed.date >= sn.date),
+    };
+  }
+  // Как руководитель обновлял отчёт к совещаниям (по истории недель)
+  function discipline(reg, pid, weeks) {
+    const h = (reg.history || []).filter((x) => (x.people || []).includes(pid)).slice(-(weeks || 13));
+    return h.map((x) => ({ week: x.week, fresh: (x.fresh || []).includes(pid) }));
+  }
+
   // ---------- слияние правок: один отчёт заполняют несколько человек ----------
   // base — версия, с которой человек начал; mine — что он сохраняет; theirs — что сейчас лежит в папке.
   // Берём из mine только то, что он сам поменял относительно base; остальное — из theirs.
@@ -390,7 +512,7 @@
         }
       }
     }
-    for (const f of ['kpi', 'coNotes', 'avrq', 'planK']) {
+    for (const f of ['kpi', 'coNotes', 'avrq', 'planK', 'dirAns']) {
       const b = base[f] || {}, m = mine[f] || {};
       out[f] = { ...(theirs[f] || {}) };
       for (const id of new Set([...Object.keys(b), ...Object.keys(m)])) if (J(b[id]) !== J(m[id])) out[f][id] = m[id];
@@ -416,6 +538,7 @@
     STATUSES, NO_STATUS, statusLabel, isFinal, ISO, todayISO, fmtISO, parseDue, isOverdue, fmtDateTime, uid, norm, surname,
     personById, reportPeople, personByName, inTeam, shortKpi, memoStatus, eventStatus, respName, personView, countFlags, freshness,
     respsOf, isResp, combineFlags, coNotes, mergeReport, sameVersion, stOf, sections, avrReq, avrqKey, avrqText, avrqProgress, planOn, planFinal, planProgress, recordWeek,
+    NOTE_TYPES, dirAnswer, noteState, dirNotes, noteItem, dirCode, parseDirMail, addDirNote, updateTrack, takeSnap, attention, changes, discipline,
     cellText, parseCard, diffCard, applyCard, defaultReporter, buildSummary, summaryText,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

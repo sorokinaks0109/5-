@@ -256,3 +256,35 @@ details.avr-missing summary { cursor: pointer; }
 @media (max-width: 900px) { .ch-row, .ch-krow { grid-template-columns: 1fr; gap: 4px; } .ch-krow .gchip { display: none; } }
 @media print { .chart { break-inside: avoid; border: 0; padding: 0; } }
 .chart, .chart * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+/* комментарии директора */
+.dnotes { margin: 6px 0; }
+.dnote { margin-top: 6px; font-size: 13.5px; border-left: 4px solid var(--fail); background: var(--fail-bg); border-radius: 6px; padding: 5px 9px; white-space: pre-wrap; }
+.dnote.dn-answered { border-left-color: var(--done); background: var(--done-bg); }
+.dnote.dn-meet { border-left-color: var(--work); background: var(--work-bg); }
+.dnote.dn-rm { border-left-color: var(--na); background: var(--na-bg); }
+.dnote .ta-wrap { margin-top: 5px; white-space: normal; }
+.dn-ans { margin-top: 3px; }
+.dn-wait { margin-top: 3px; color: var(--fail); font-weight: 600; font-size: 12.5px; }
+.dn-tools { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: 8px; vertical-align: middle; }
+td .dn-tools, .what .dn-tools { display: flex; margin: 5px 0 0; }
+.dn-btn { font-size: 12px !important; color: var(--accent); }
+h3.sec .dn-tools { font-weight: normal; }
+.dn-card { border-top: 1px solid var(--line); padding: 6px 0; }
+.dn-gen { margin-top: 8px; }
+.dn-banner .dnote { color: var(--ink); }
+/* требуют внимания, что изменилось */
+.attn { margin-top: 5px; font-size: 12.5px; color: var(--none); background: var(--none-bg); border-radius: 6px; padding: 2px 8px; display: inline-block; }
+.attn-r { color: var(--none); font-size: 13px; }
+.attention h3, .changes h3, .dn-sum h3 { margin: 0 0 8px; font-size: 16px; }
+.attention details, .changes details { margin: 4px 0; }
+.attention summary, .changes summary { cursor: pointer; }
+.attention ul, .changes ul { margin: 4px 0 8px; padding-left: 22px; }
+.attention li, .changes li { margin: 3px 0; }
+.chg.c-done summary b { color: var(--done); } .chg.c-fail summary b { color: var(--fail); } .chg.c-work summary b { color: var(--work); }
+/* карточка руководителя */
+.pcard ul { padding-left: 22px; } .pcard li { margin: 3px 0; }
+.disc { display: flex; align-items: center; gap: 3px; flex-wrap: wrap; }
+.dw { width: 16px; height: 16px; border-radius: 3px; display: inline-block; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.dw-ok { background: #2e8b57; } .dw-no { background: #c8423a; }
+@media print { .dn-tools { display: none !important; } .dnote, .attn { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
