@@ -288,3 +288,7 @@ h3.sec .dn-tools { font-weight: normal; }
 .dw { width: 16px; height: 16px; border-radius: 3px; display: inline-block; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 .dw-ok { background: #2e8b57; } .dw-no { background: #c8423a; }
 @media print { .dn-tools { display: none !important; } .dnote, .attn { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+
+/* показатели без числовой цели — той же толщины, что прогноз */
+.ch-krow .ch-bar { height: 8px; margin-top: 3px; }
+.ch-sub { margin: 12px 0 6px; font-size: 13px; font-weight: 600; }

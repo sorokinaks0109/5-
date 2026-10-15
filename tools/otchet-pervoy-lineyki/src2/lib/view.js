@@ -152,7 +152,7 @@
   function noteButtons(ctx, kind, ref, pid, label) {
     const o = ctx.opts || {};
     const a = (type, t) => '<button class="mini dn-btn" data-dn="' + type + '|' + kind + '|' + esc(ref) + '|' + esc(pid) + '">' + t + '</button>';
-    if (o.dir) return '<span class="dn-tools no-print">' + a('c', '💬 Комментарий' + (label ? ' ' + label : '')) + (kind === 'm' || kind === 'e' ? a('meet', 'На совещание') : '') + (kind === 'm' ? a('rm', 'Снять с контроля') : '') + '</span>';
+    if (o.dir) return '<span class="dn-tools no-print">' + a('c', '💬 Комментарий' + (label ? ' ' + label : '')) + (kind === 'm' ? a('rm', 'Снять с контроля') : '') + '</span>';
     if (o.admin) return '<span class="dn-tools no-print"><button class="mini dn-btn" data-dadd="' + kind + '|' + esc(ref) + '|' + esc(pid) + '">+ комментарий директора' + (label ? ' ' + label : '') + '</button></span>';
     return '';
   }
@@ -478,7 +478,8 @@
     };
     return '<div class="chart ch-kpis"><div class="ch-title">Показатели УПЦ: прогноз достижения целей</div>' + tiles +
       '<div class="ch-legend"><span><i class="sw sw-goalmark"></i>цель (100%)</span><span><i class="sw sw-factmark"></i>факт</span><span><i class="sw g-good"></i>прогноз, цвет — оценка</span>' +
-      '<span class="muted">шкала до 150% цели; там, где лучше меньше (НЗС, инвентаризация), смотрите на оценку</span></div>' + ks.map(row).join('') + '</div>';
+      '<span class="muted">шкала до 150% цели; там, где лучше меньше (НЗС, инвентаризация), смотрите на оценку</span></div>' + ks.filter((x) => x.numeric).map(row).join('') +
+      (ks.some((x) => !x.numeric) ? '<div class="ch-sub">Без числовой цели — сколько мероприятий выполнено <span class="muted">(зелёное — выполнено, серое — остальные)</span></div>' + ks.filter((x) => !x.numeric).map(row).join('') : '') + '</div>';
   }
 
   // ---------- кто обновил ----------
