@@ -222,16 +222,16 @@
     const asst = S.reg.settings.asst || {};
     let h = '<div class="panel"><h2>Комментарии директора</h2><p class="muted small">Директор нажимает у пункта отчёта «Комментарий», «На совещание» или «Снять с контроля» — у него открывается письмо ' +
       (asst.email ? 'на <b>' + esc(asst.email) + '</b>' : 'помощнику (<b>почта помощника не указана — впишите в «Настройках»</b>)') + ' с кодом пункта в конце. ' +
-      'Скопируйте текст письма (Ctrl+A, Ctrl+C) и вставьте сюда — можно несколько писем подряд. Комментарий появится у руководителя у этого пункта, с подписью «Комментарий директора».</p>' +
+      'Скопируйте письмо вместе с темой и вставьте сюда — можно несколько писем подряд. Комментарий появится у руководителя у этого пункта, с подписью «Комментарий директора».</p>' +
       View.ta('id="dnPaste"', S.dnPasteText || '', 'Вставьте сюда текст письма директора') +
       '<div class="row"><button class="primary" data-act="dnParse">Разобрать письмо</button></div>';
     if (S.dnParsed) {
       h += S.dnParsed.length ? '<table class="grid"><thead><tr><th class="c-resp">Руководитель</th><th>Пункт</th><th class="c-st">Что</th><th>Текст директора</th><th class="c-act"></th></tr></thead><tbody>' +
         S.dnParsed.map((n, i) => '<tr><td>' + esc(n.person ? n.person.fio : '?') + '</td><td>' + (n.item ? esc(n.item.what) + ' «' + esc(cutS(n.item.text)) + '»' + (n.item.ok ? '' : ' <span class="late">пункт уже снят или удалён</span>') : '<span class="late">руководитель не найден</span>') + '</td>' +
-          '<td>' + esc(Model.NOTE_TYPES[n.type]) + '</td><td>' + View.ta('data-dnp="' + i + '"', n.text, n.type === 'c' ? 'Текст комментария' : 'необязательно') + (n.dup ? '<div class="muted small">такой комментарий уже внесён</div>' : '') + '</td>' +
+          '<td>' + esc(Model.NOTE_TYPES[n.type]) + '</td><td>' + View.ta('data-dnp="' + i + '"', n.text, n.type === 'c' ? 'Текст комментария' : 'необязательно') + (n.dup ? '<div class="muted small">такой комментарий уже внесён</div>' : '') + (n.bySubject ? '<div class="muted small">поручение найдено по теме письма — проверьте текст, лишнее удалите</div>' : '') + '</td>' +
           '<td class="c-act"><button class="mini danger" data-dnskip="' + i + '">Не вносить</button></td></tr>').join('') + '</tbody></table>' +
           '<div class="row"><button class="primary" data-act="dnAdd">Внести (' + S.dnParsed.filter((n) => n.person && n.item && n.item.ok && !n.dup).length + ')</button><button data-act="dnClear">Отмена</button></div>'
-        : '<div class="msg bad">В тексте нет кода пункта «[код D|…]». Видимо, письмо написано не через кнопку в отчёте — внесите комментарий вручную на экране «Совещание» (кнопка «+ комментарий директора» у пункта).</div>';
+        : '<div class="msg bad">В тексте нет кода пункта «[код D|…]» и номера поручения в теме. Скопируйте письмо вместе с темой. Если письмо написано не через кнопку в отчёте — внесите комментарий вручную на экране «Совещание» (кнопка «+ комментарий директора» у пункта).</div>';
     }
     h += '</div>';
     const all = S.reg.dirNotes || [];

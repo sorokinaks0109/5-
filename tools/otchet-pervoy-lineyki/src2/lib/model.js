@@ -426,6 +426,24 @@
       n.dup = (reg.dirNotes || []).some((o) => !o.closed && o.pid === n.pid && o.kind === n.kind && o.ref === n.ref && o.type === n.type && (o.text || '') === n.text);
       out.push(n);
     }
+    // письмо без кода (почта не вставила текст): узнаём поручение по теме «… — Фамилия, поручение №12: «…»»
+    if (!out.length) {
+      const sm = /(Комментарий директора|На совещание|Снять с контроля)\s*[—–-]\s*([А-ЯЁа-яё-]+),\s*поручение\s*№\s*(\d+)/i.exec(text);
+      if (sm) {
+        const type = /^ком/i.test(sm[1]) ? 'c' : /^на/i.test(sm[1]) ? 'meet' : 'rm';
+        const p = reg.people.find((x) => norm(x.slug) === norm(sm[2]) || surname(x.fio) === norm(sm[2]));
+        const m = reg.memo.find((x) => String(x.num) === sm[3] && (!p || isResp(x, p.id)));
+        if (m) {
+          const pid = p ? p.id : respsOf(m)[0];
+          // текст директора — всё, кроме темы и служебных строк почты
+          const body = text.split('\n').filter((l) => !sm[0] || !l.includes(sm[0])).filter((l) => !/^\s*(От|Отправлено|Кому|Копия|Тема|From|Sent|To|Cc|Subject)\s*:/i.test(l) && !/^\s*>/.test(l)).join('\n').trim();
+          const n = { type, kind: 'm', ref: m.id, pid, text: body, bySubject: true };
+          n.person = personById(reg, pid); n.item = noteItem(reg, n);
+          n.dup = (reg.dirNotes || []).some((o) => !o.closed && o.pid === n.pid && o.kind === 'm' && o.ref === n.ref && o.type === n.type && (o.text || '') === n.text);
+          out.push(n);
+        }
+      }
+    }
     return out;
   }
   function addDirNote(reg, n, today) {

@@ -74,10 +74,15 @@
     if (!a) { View.toast('Помощник не указал свою почту в настройках — напишите ему как обычно', 'bad'); return; }
     const n = { type, kind, ref, pid }; const it = Model.noteItem(S.reg, n);
     const surname = it.fio.split(/\s+/)[0];
-    const subj = { c: 'Комментарий директора', meet: 'На совещание', rm: 'Снять с контроля' }[type] + ' — ' + surname + ', ' + it.what;
+    const m = kind === 'm' ? S.reg.memo.find((x) => x.id === ref) : null;
+    // тема — с номером поручения и началом текста: даже если почта не вставит текст письма, помощник поймёт, о чём речь
+    const subj = { c: 'Комментарий директора', meet: 'На совещание', rm: 'Снять с контроля' }[type] + ' — ' + surname + ', ' + it.what + (m && m.num ? ' №' + m.num : '') + ': «' + cut2(it.text, 60) + '»';
     const lead = { c: 'Комментарий:\n\n\n', meet: 'Прошу доложить на совещании. Комментарий (если нужно):\n\n\n', rm: 'Предлагаю снять с контроля. Причина:\n\n\n' }[type];
-    const body = it.fio + ', ' + it.what + ' «' + cut2(it.text, 90) + '»\n\n' + lead + Model.dirCode(type, kind, ref, pid);
+    const body = it.fio + ', ' + it.what + (m && m.num ? ' №' + m.num : '') + ':\n«' + cut2(it.text, 90) + '»\n\n' + lead + Model.dirCode(type, kind, ref, pid);
+    // некоторые почтовые программы не принимают текст письма из ссылки — кладём его ещё и в буфер обмена
+    View.copyText(body);
     View.mailto([a.email], subj, body);
+    View.toast('Открывается письмо помощнику. Если в письме нет текста — щёлкните в поле письма и нажмите Ctrl+V', 'ok');
   }
   document.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-tab],[data-act],[data-person-idx],[data-mf],[data-meetf],[data-dn],.who .card');

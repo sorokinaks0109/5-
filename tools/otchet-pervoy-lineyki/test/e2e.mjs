@@ -909,6 +909,7 @@ await page.close();
   await pd.locator('[data-dn="' + dnMeet + '"]').click();
   const mails = (await pd.evaluate(() => window.__mails)).map((h) => { const u = new URL(h); return { to: decodeURIComponent(u.pathname), subject: u.searchParams.get('subject'), body: u.searchParams.get('body'), len: h.length }; });
   check(mails.length === 3 && mails.every((m) => m.to === 'zlatkovskaya@example.ru') && /^Комментарий директора — Мещеряков, поручение/.test(mails[0].subject) && mails[0].body.includes('[код D|c|m|'), 'письмо директора: адрес помощника, тема, пункт и код (' + (mails[0] || {}).subject + ')');
+  check(/№\d+: «/.test(mails[0].subject) && /«.+»/.test(mails[0].body), 'в теме — номер и начало поручения, в тексте — текст поручения');
   check(mails.every((m) => m.len < 2000), 'ссылка письма короткая — Outlook откроет (' + mails.map((m) => m.len).join(', ') + ' знаков)');
   await pd.click('[data-act=card]');
   check(await pd.locator('.pcard').isVisible() && /Обновлял отчёт к совещанию/.test(await pd.locator('.pcard').textContent()), 'карточка руководителя открывается');
@@ -925,6 +926,9 @@ await page.close();
   await pa.click('[data-act=dnParse]');
   const parsed = await pa.evaluate(() => window.Otchet.S.dnParsed.map((n) => ({ type: n.type, text: n.text, ok: !!(n.item && n.item.ok) })));
   check(parsed.length === 3 && parsed[0].text === 'Какой срок? Распишите этапы.' && parsed[1].text === 'Уже неактуально' && parsed[2].text === '' && parsed.every((x) => x.ok), 'письма разобраны: 3 пункта, текст директора без хвостов письма');
+  // почта не вставила текст: директор написал только своё, тема осталась
+  const bySubj = await pa.evaluate((subj) => Model.parseDirMail(window.Otchet.S.reg, 'От: Директор\nТема: ' + subj + '\n\nНужно ускорить, срок до конца месяца'), mails[0].subject);
+  check(bySubj.length === 1 && bySubj[0].bySubject && bySubj[0].item.ok && bySubj[0].text === 'Нужно ускорить, срок до конца месяца', 'письмо без кода: поручение найдено по номеру в теме, текст директора взят');
   await pa.click('[data-act=dnAdd]');
   await pa.waitForTimeout(300);
   check((await pa.evaluate(() => (window.Otchet.S.reg.dirNotes || []).length)) === 3, 'внесено в реестр: 3');
