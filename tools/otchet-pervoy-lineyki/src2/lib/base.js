@@ -277,6 +277,47 @@
   // Отчёт руководителя, сохранённый файлом: принимаем в общую папку. Файл старее уже принятого не принимаем.
   // Один отчёт могут заполнять несколько человек: файл несёт версию, с которой человек начал (base),
   // и из него переносятся только его правки — чужие, принятые раньше, не затираются.
+  // Текст файла отчёта → объект. Почта и браузер иногда отдают отчёт, «завёрнутый» в сохранённую веб-страницу
+  // (MHTML: «From: <Saved by Blink>», «Сохранить страницу как»): достаём отчёт изнутри.
+  function parseReportText(text) {
+    text = String(text || '').replace(/^﻿/, '');
+    if (!text.trim()) throw new Error('файл пустой — запись или копирование не закончились. Если повторяется, пусть руководитель нажмёт «Сохранить» ещё раз');
+    try { return JSON.parse(text); } catch (e) {
+      if (!/^\s*(From|MIME-Version|Content-Type|Snapshot-Content-Location|Subject)\s*:/im.test(text.slice(0, 800)) && !/^\s*</.test(text)) {
+        throw new Error(/end of JSON/i.test(e.message) ? 'файл оборван — копирование не закончилось. Если повторяется, пусть руководитель нажмёт «Сохранить» ещё раз' : e.message);
+      }
+    }
+    const fromBody = (body) => {
+      const a = body.indexOf('{'), b = body.lastIndexOf('}');
+      if (a < 0 || b <= a) return null;
+      try { const o = JSON.parse(body.slice(a, b + 1)); return o && o.kind === 'otchet-report' ? o : null; } catch (e) { return null; }
+    };
+    const htmlText = (h) => (typeof DOMParser !== 'undefined' ? new DOMParser().parseFromString(h, 'text/html').body.textContent : h.replace(/<[^>]*>/g, '').replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&'));
+    const decode = (head, body) => {
+      const cs = ((head.match(/charset="?([\w-]+)/i) || [])[1] || 'utf-8').toLowerCase();
+      let bytes = null;
+      if (/transfer-encoding:\s*quoted-printable/i.test(head)) {
+        const t = body.replace(/=\r?\n/g, ''); const out = [];
+        for (let i = 0; i < t.length; i++) { if (t[i] === '=' && /^[0-9A-F]{2}$/i.test(t.substr(i + 1, 2))) { out.push(parseInt(t.substr(i + 1, 2), 16)); i += 2; } else out.push(t.charCodeAt(i) & 255); }
+        bytes = new Uint8Array(out);
+      } else if (/transfer-encoding:\s*base64/i.test(head)) {
+        try { bytes = Uint8Array.from(atob(body.replace(/\s/g, '')), (c) => c.charCodeAt(0)); } catch (e) { return ''; }
+      }
+      let txt = body;
+      if (bytes) { try { txt = new TextDecoder(cs).decode(bytes); } catch (e) { txt = new TextDecoder().decode(bytes); } }
+      return /text\/html/i.test(head) ? htmlText(txt) : txt;
+    };
+    const parts = text.split(/\r?\n--[^\r\n]*\r?\n/);
+    for (const part of parts) {
+      const i = part.search(/\r?\n\r?\n/);
+      const o = i < 0 ? null : fromBody(decode(part.slice(0, i), part.slice(i).replace(/^\s+/, '')));
+      if (o) return o;
+    }
+    const o = /^\s*</.test(text) ? fromBody(htmlText(text)) : null;
+    if (o) return o;
+    throw new Error('это сохранённая веб-страница, а не файл отчёта (в браузере нажали «Сохранить страницу как»). Пусть руководитель нажмёт синюю кнопку «Сохранить» в самом отчёте и пришлёт получившийся файл «Отчёт — Фамилия.json»');
+  }
+
   async function acceptReport(dir, reg, data, obj, fileName) {
     if (!obj || obj.kind !== 'otchet-report' || !obj.personId) return { ok: false, msg: fileName + ': это не файл отчёта' };
     const p = reg.people.find((x) => x.id === obj.personId);
@@ -309,19 +350,35 @@
     const items = [];
     for (const f of files) {
       const txt = /\.txt$/i.test(f.name);
+      let bytes = null, modified = null;
       try {
-        const { bytes } = await Store.readBytes(dir, ['Входящие', f.name]);
-        const obj = JSON.parse(new TextDecoder().decode(bytes));
+        ({ bytes, modified } = await Store.readBytes(dir, ['Входящие', f.name]));
+        const obj = parseReportText(new TextDecoder().decode(bytes));
         if (txt && (!obj || obj.kind !== 'otchet-report')) continue;
         items.push({ name: f.name, bytes, obj });
-      } catch (e) { if (!txt) items.push({ name: f.name, err: e.message }); }
+      } catch (e) {
+        if (txt) continue;
+        // файл не читается и лежит дольше 10 минут (значит, не копируется прямо сейчас) — убираем, чтобы не мешал
+        const stuck = bytes && modified && Date.now() - modified.getTime() > 10 * 60e3;
+        items.push({ name: f.name, err: e.message, bytes: stuck ? bytes : null });
+      }
     }
     // если от одного человека несколько файлов — сначала старые, потом новые
     items.sort((a, b) => ((a.obj && a.obj.savedAt) || 0) - ((b.obj && b.obj.savedAt) || 0));
     const log = [];
     let accepted = 0;
     for (const it of items) {
-      if (it.err) { log.push(it.name + ': не читается — ' + it.err); continue; }
+      if (it.err) {
+        if (it.bytes) {
+          try {
+            await Store.writeBytes(dir, [Store.DATA, Store.ARCH, 'входящие', 'не прочитались', Model.todayISO() + ' ' + it.name], it.bytes);
+            await Store.remove(dir, ['Входящие', it.name]);
+            log.push(it.name + ': не читается — ' + it.err + '. Убран из «Входящих» в «Данные/архив/входящие/не прочитались»');
+            continue;
+          } catch (e) { /* оставляем на месте */ }
+        }
+        log.push(it.name + ': не читается — ' + it.err); continue;
+      }
       const r = await acceptReport(dir, reg, data, it.obj, it.name);
       log.push(r.msg);
       if (r.ok) accepted++;
@@ -333,7 +390,7 @@
     return { accepted, total: items.length, log };
   }
 
-  root.Base = { loadAll, weeklyBackup, exportZip, cleanSwap, connector, demoFolder, sha, step, writeSnapshot, acceptReport, processInbox, collectAtt, mobileFile };
+  root.Base = { loadAll, weeklyBackup, exportZip, cleanSwap, connector, demoFolder, sha, step, writeSnapshot, acceptReport, processInbox, parseReportText, collectAtt, mobileFile };
 })(typeof window !== 'undefined' ? window : globalThis);
 
 // Любая неожиданная ошибка — сообщением внизу экрана, чтобы кнопка не «молчала».

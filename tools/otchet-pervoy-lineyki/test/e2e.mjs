@@ -1008,6 +1008,25 @@ await page.close();
   const d = await DUMP(pa);
   const left = await pa.evaluate(async () => { const n = []; for await (const h of (await window.__root.getDirectoryHandle('Входящие')).values()) n.push(h.name); return n; });
   check(json(d, 'руководители/Мещеряков.json').kpi.__txt === 'из txt' && left.length === 1 && left[0] === 'Как сохранять.txt', 'отчёт, переименованный в .txt, принят из «Входящих»; обычный .txt не тронут');
+  // отчёт, «завёрнутый» в сохранённую веб-страницу (MHTML), и пустой застрявший файл
+  const pkg2 = { ...pkg, saveId: 'smht', saveIds: [...pkg.saveIds, 'smht'], savedAt: Date.now() + 1000, kpi: { ...pkg.kpi, __mht: 'из mhtml' } };
+  const html = '<html><body><pre style="word-wrap: break-word;">' + JSON.stringify(pkg2).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;') + '</pre></body></html>';
+  const qp = Array.from(new TextEncoder().encode(html)).map((b) => (b >= 33 && b <= 126 && b !== 61 ? String.fromCharCode(b) : '=' + b.toString(16).toUpperCase().padStart(2, '0'))).join('').replace(/(.{70})/g, '$1=\r\n');
+  const mht = 'From: <Saved by Blink>\r\nSnapshot-Content-Location: file:///x.json\r\nSubject: x\r\nMIME-Version: 1.0\r\nContent-Type: multipart/related;\r\n\ttype="text/html";\r\n\tboundary="----MultipartBoundary--abc----"\r\n\r\n\r\n------MultipartBoundary--abc----\r\nContent-Type: text/html\r\nContent-ID: <frame-1>\r\nContent-Transfer-Encoding: quoted-printable\r\nContent-Location: file:///x.json\r\n\r\n' + qp + '\r\n\r\n------MultipartBoundary--abc------\r\n';
+  await pa.evaluate(async (mht) => {
+    const inbox = await window.__root.getDirectoryHandle('Входящие');
+    inbox.items.set('отчет— Мещеряков.json', new Store.MemFile('отчет— Мещеряков.json', new TextEncoder().encode(mht)));
+    inbox.items.set('Отчёт — Хисматуллин.json', new Store.MemFile('Отчёт — Хисматуллин.json', new Uint8Array(0), Date.now() - 3600e3));
+    await window.Otchet.load();
+  }, mht);
+  await pa.waitForTimeout(400);
+  const d2 = await DUMP(pa);
+  const left2 = await pa.evaluate(async () => { const n = []; for await (const h of (await window.__root.getDirectoryHandle('Входящие')).values()) n.push(h.name); return n.sort(); });
+  const log2 = await pa.evaluate(() => window.Otchet.S.log.join('\n'));
+  check(json(d2, 'руководители/Мещеряков.json').kpi.__mht === 'из mhtml', 'отчёт внутри сохранённой веб-страницы (MHTML) распознан и принят');
+  check(left2.length === 1 && /пустой/.test(log2) && Object.keys(d2).some((k) => k.startsWith('архив/входящие/не прочитались/')), 'пустой застрявший файл убран из «Входящих» с понятным объяснением');
+  const bad = await pa.evaluate(() => { try { Base.parseReportText('From: <Saved by Blink>\r\nContent-Type: text/html\r\n\r\n<html><body>Отчёт</body></html>'); return ''; } catch (e) { return e.message; } });
+  check(/сохранённая веб-страница/.test(bad), 'настоящая веб-страница без отчёта — понятное сообщение, что нажать');
   await pa.close();
 }
 // ---------- 4. Директор ----------
