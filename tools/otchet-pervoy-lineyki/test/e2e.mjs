@@ -990,6 +990,26 @@ await page.close();
   await shot(pd2, '8-director-notes');
   await pd2.close();
 }
+// ---------- 3и. Отчёт, присланный по почте как .txt (почта не пропустила .json), берётся из «Входящих» ----------
+{
+  const pa = await open('Помощник.html');
+  await pa.evaluate(async () => sessionStorage.setItem('otchet.unlocked', await Base.sha('тест1234')));
+  const own = json(files, 'руководители/Мещеряков.json');
+  const pkg = { ...own, kind: 'otchet-report', base: { ...own }, attFiles: {}, savedAt: Date.now(), saveId: 'stxt', saveIds: [...(own.saveIds || []), 'stxt'], kpi: { ...(own.kpi || {}), __txt: 'из txt' } };
+  const f2 = { ...files };
+  await MOUNT(pa, f2);
+  await pa.evaluate(async (pkg) => {
+    const inbox = await window.__root.getDirectoryHandle('Входящие', { create: true });
+    inbox.items.set('Отчёт — Мещеряков.txt', new Store.MemFile('Отчёт — Мещеряков.txt', new TextEncoder().encode(JSON.stringify(pkg))));
+    inbox.items.set('Как сохранять.txt', new Store.MemFile('Как сохранять.txt', new TextEncoder().encode('Просто текст')));
+    await window.Otchet.load();
+  }, pkg);
+  await pa.waitForTimeout(400);
+  const d = await DUMP(pa);
+  const left = await pa.evaluate(async () => { const n = []; for await (const h of (await window.__root.getDirectoryHandle('Входящие')).values()) n.push(h.name); return n; });
+  check(json(d, 'руководители/Мещеряков.json').kpi.__txt === 'из txt' && left.length === 1 && left[0] === 'Как сохранять.txt', 'отчёт, переименованный в .txt, принят из «Входящих»; обычный .txt не тронут');
+  await pa.close();
+}
 // ---------- 4. Директор ----------
 page = await open('Директор.html');
 await MOUNT(page, files);

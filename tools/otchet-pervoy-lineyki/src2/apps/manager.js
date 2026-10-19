@@ -194,6 +194,12 @@
 
   // После сохранения файлом — что сделать с файлом (Windows, без доступа к папке).
   function sentPanel() {
+    // на этом компьютере есть сохранённый отчёт, которого помощник ещё не получил
+    if (!S.sent && S.undelivered && S.embedded && !S.dir) {
+      return '<div class="panel msg warn"><b>Ваш отчёт, сохранённый ' + esc(Model.fmtDateTime(S.undelivered)) + ', ещё не дошёл до помощника.</b> ' +
+        'Страница показывает его, но в общей папке его нет — значит, файл не попал в папку «Входящие». Нажмите «Сохранить» и перетащите файл из «Загрузок» во «Входящие». ' +
+        'Проще — кнопка «Сохранять сразу в папку» вверху: если она сработает, файлы больше не понадобятся.</div>';
+    }
     if (!S.sent) return '';
     return '<div class="panel msg ok sent"><h2>Отчёт сохранён в файл «' + esc(S.sent) + '»</h2>' +
       '<ol><li>Откройте папку, куда сохранили файл (обычно <b>«Загрузки»</b>; в браузере — значок загрузок справа вверху → «Показать в папке»).</li>' +
@@ -400,7 +406,7 @@
     S.draft = JSON.parse(JSON.stringify(out));
     S.prevDate = out.reportDate;
     S.dirty = false;
-    S.sent = name;
+    S.sent = name; S.undelivered = 0;
     render();
     window.scrollTo(0, 0);
   }
@@ -486,7 +492,7 @@
     S.reg = window.SNAPSHOT.reg; S.data = window.SNAPSHOT.data; S.me = window.SNAPSHOT.me;
     let local = null; try { local = JSON.parse(localStorage.getItem(LS(S.me)) || 'null'); } catch (e) { /* нет копии */ }
     const own = S.data[S.me] && S.data[S.me].data;
-    if (local && local.savedAt && (!own || !own.savedAt || local.savedAt > own.savedAt)) S.data[S.me] = { data: local };
+    if (local && local.savedAt && (!own || !own.savedAt || local.savedAt > own.savedAt)) { S.data[S.me] = { data: local }; S.undelivered = local.savedAt; }
     startDraft();
     render();
     // На Astra страница может сама подхватить папку, если её уже выбирали кнопкой «Сохранять сразу в папку»

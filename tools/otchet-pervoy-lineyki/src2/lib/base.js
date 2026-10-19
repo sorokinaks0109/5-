@@ -304,13 +304,17 @@
   // Забираем отчёты из папки «Входящие»; обработанные файлы переносим в «Данные/архив/входящие».
   async function processInbox(dir, reg, data) {
     // любое имя: браузер мог сохранить файл как «download» — проверяем содержимое
-    const files = (await Store.list(dir, ['Входящие'])).filter((f) => f.kind === 'file' && !/\.(txt|html?|xlsx?|docx?|pdf)$/i.test(f.name));
+    // .txt тоже берём: почта может не пропустить .json, и файл переименовывают — но только если внутри отчёт
+    const files = (await Store.list(dir, ['Входящие'])).filter((f) => f.kind === 'file' && !/\.(html?|xlsx?|docx?|pdf|crswap)$/i.test(f.name));
     const items = [];
     for (const f of files) {
+      const txt = /\.txt$/i.test(f.name);
       try {
         const { bytes } = await Store.readBytes(dir, ['Входящие', f.name]);
-        items.push({ name: f.name, bytes, obj: JSON.parse(new TextDecoder().decode(bytes)) });
-      } catch (e) { items.push({ name: f.name, err: e.message }); }
+        const obj = JSON.parse(new TextDecoder().decode(bytes));
+        if (txt && (!obj || obj.kind !== 'otchet-report')) continue;
+        items.push({ name: f.name, bytes, obj });
+      } catch (e) { if (!txt) items.push({ name: f.name, err: e.message }); }
     }
     // если от одного человека несколько файлов — сначала старые, потом новые
     items.sort((a, b) => ((a.obj && a.obj.savedAt) || 0) - ((b.obj && b.obj.savedAt) || 0));
