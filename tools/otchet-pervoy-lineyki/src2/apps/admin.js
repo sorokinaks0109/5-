@@ -43,7 +43,9 @@
     let ok = 0;
     for (const f of Array.from(list)) {
       try {
-        const r = await Base.acceptReport(S.dir, S.reg, S.data, Base.parseReportText(await f.text()), f.name);
+        const obj = Base.parseReportText(await f.text());
+        let r = await Base.acceptReport(S.dir, S.reg, S.data, obj, f.name);
+        if (!r.ok && r.old && confirm(r.msg + '\n\nПринять этот файл ещё раз и взять из него все статусы и пояснения?')) r = await Base.acceptReport(S.dir, S.reg, S.data, obj, f.name, { force: true });
         S.log.push(r.msg); if (r.ok) ok++;
       } catch (e) { S.log.push(f.name + ': не читается — ' + e.message); }
     }

@@ -1025,6 +1025,23 @@ await page.close();
   const log2 = await pa.evaluate(() => window.Otchet.S.log.join('\n'));
   check(json(d2, 'руководители/Мещеряков.json').kpi.__mht === 'из mhtml', 'отчёт внутри сохранённой веб-страницы (MHTML) распознан и принят');
   check(left2.length === 1 && /пустой/.test(log2) && Object.keys(d2).some((k) => k.startsWith('архив/входящие/не прочитались/')), 'пустой застрявший файл убран из «Входящих» с понятным объяснением');
+  // как у Мещерякова 20.10: на Windows сохранял 10 раз, дошёл только последний файл; его «база» — предыдущий файл, которого в папке не было
+  const lost = await pa.evaluate(async () => {
+    const S = window.Otchet.S; const cur = S.data['Мещеряков'].data;
+    const id = Object.keys(cur.memo || {})[0] || S.reg.memo.find((m) => Model.isResp(m, 'Мещеряков')).id;
+    const mine = JSON.parse(JSON.stringify(cur)); mine.memo = { ...(mine.memo || {}), [id]: { flag: 'work', text: 'Письмо на согласовании' } };
+    const base = { ...JSON.parse(JSON.stringify(mine)), saveId: 'snotdelivered', savedAt: Date.now() - 25000 };
+    const obj = { ...mine, kind: 'otchet-report', base, attFiles: {}, saveId: 'slast', savedAt: Date.now() };
+    const r1 = await Base.acceptReport(S.dir, S.reg, S.data, obj, 'f.json');
+    const ok1 = S.data['Мещеряков'].data.memo[id].text === 'Письмо на согласовании';
+    // принятый раньше по-старому файл можно принять ещё раз
+    S.data['Мещеряков'].data.memo[id] = { flag: '', text: '' };
+    const r2 = await Base.acceptReport(S.dir, S.reg, S.data, obj, 'f.json');
+    const r3 = await Base.acceptReport(S.dir, S.reg, S.data, obj, 'f.json', { force: true });
+    return { ok1, r1: r1.ok, r2old: !r2.ok && r2.old, ok3: r3.ok && S.data['Мещеряков'].data.memo[id].text === 'Письмо на согласовании' };
+  });
+  check(lost.r1 && lost.ok1, 'файл, начатый с недошедшего предыдущего файла, применяется целиком — статусы не теряются');
+  check(lost.r2old && lost.ok3, 'уже принятый файл можно принять ещё раз и взять из него все статусы');
   const bad = await pa.evaluate(() => { try { Base.parseReportText('From: <Saved by Blink>\r\nContent-Type: text/html\r\n\r\n<html><body>Отчёт</body></html>'); return ''; } catch (e) { return e.message; } });
   check(/сохранённая веб-страница/.test(bad), 'настоящая веб-страница без отчёта — понятное сообщение, что нажать');
   await pa.close();

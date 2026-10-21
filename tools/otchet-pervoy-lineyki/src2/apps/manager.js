@@ -402,7 +402,7 @@
     // Копия на этом компьютере — чтобы при следующем открытии видеть свой последний отчёт, даже если помощник его ещё не забрал.
     try { localStorage.setItem(LS(S.me), JSON.stringify(out)); } catch (e) { /* без копии тоже работает */ }
     S.data[S.me] = { data: out };
-    S.base = JSON.parse(JSON.stringify(out));
+    // S.base не сдвигаем: следующий файл должен нести все правки с последней версии, которая есть в папке
     S.draft = JSON.parse(JSON.stringify(out));
     S.prevDate = out.reportDate;
     S.dirty = false;
@@ -494,6 +494,8 @@
     const own = S.data[S.me] && S.data[S.me].data;
     if (local && local.savedAt && (!own || !own.savedAt || local.savedAt > own.savedAt)) { S.data[S.me] = { data: local }; S.undelivered = local.savedAt; }
     startDraft();
+    // база для объединения — версия из общей папки, а не последний файл с этого компьютера (он мог не дойти)
+    if (S.undelivered) S.base = own ? JSON.parse(JSON.stringify(own)) : {};
     render();
     // На Astra страница может сама подхватить папку, если её уже выбирали кнопкой «Сохранять сразу в папку»
     conn.init().then((ok) => { if (!ok) render(); }).catch(() => {});

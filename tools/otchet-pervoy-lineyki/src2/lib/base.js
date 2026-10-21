@@ -318,22 +318,28 @@
     throw new Error('это сохранённая веб-страница, а не файл отчёта (в браузере нажали «Сохранить страницу как»). Пусть руководитель нажмёт синюю кнопку «Сохранить» в самом отчёте и пришлёт получившийся файл «Отчёт — Фамилия.json»');
   }
 
-  async function acceptReport(dir, reg, data, obj, fileName) {
+  // force — принять ещё раз уже принятый файл и взять из него всё, что в нём заполнено
+  async function acceptReport(dir, reg, data, obj, fileName, opts) {
+    const force = !!(opts && opts.force);
     if (!obj || obj.kind !== 'otchet-report' || !obj.personId) return { ok: false, msg: fileName + ': это не файл отчёта' };
     const p = reg.people.find((x) => x.id === obj.personId);
     if (!p) return { ok: false, msg: fileName + ': руководителя нет в списке' };
     const cur = data[p.id] && data[p.id].data;
-    if (cur && obj.saveId && (cur.saveIds || []).includes(obj.saveId)) return { ok: false, old: true, msg: p.fio + ': этот файл уже принят — пропущен' };
+    if (!force && cur && obj.saveId && (cur.saveIds || []).includes(obj.saveId)) return { ok: false, old: true, msg: p.fio + ': этот файл уже принят — пропущен' };
     const hasBase = Object.prototype.hasOwnProperty.call(obj, 'base');
-    if (cur && cur.savedAt && !hasBase && obj.savedAt <= cur.savedAt) return { ok: false, old: true, msg: p.fio + ': файл не новее уже принятого — пропущен' };
+    if (!force && cur && cur.savedAt && !hasBase && obj.savedAt <= cur.savedAt) return { ok: false, old: true, msg: p.fio + ': файл не новее уже принятого — пропущен' };
     for (const [name, b64] of Object.entries(obj.attFiles || {})) {
       await Store.writeBytes(dir, [Store.DATA, Store.ATT, p.slug, name], Uint8Array.from(atob(b64), (ch) => ch.charCodeAt(0)));
     }
     const mine = { ...obj };
     delete mine.attFiles; delete mine.kind; delete mine.base;
     if (mine.saveId) mine.saveIds = [mine.saveId];
-    const merged = hasBase && cur && !Model.sameVersion(obj.base, cur);
-    let clean = merged ? Model.mergeReport(obj.base, mine, cur) : mine;
+    // База — версия, с которой человек начал. Если её в папке никогда не было (он сохранял несколько раз,
+    // а дошёл только последний файл), сравнивать не с чем: берём из файла всё, что в нём заполнено.
+    const b = obj.base;
+    const known = b && cur && (Model.sameVersion(b, cur) || (b.saveId && (cur.saveIds || []).includes(b.saveId)));
+    const merged = !!(cur && (force || (hasBase && !Model.sameVersion(b, cur))));
+    let clean = merged ? Model.mergeReport(known && !force ? b : {}, mine, cur) : mine;
     if (!merged && cur && cur.saveIds) clean.saveIds = Array.from(new Set([...cur.saveIds, ...(mine.saveIds || [])])).slice(-100);
     if (merged) clean.savedAt = Math.max(cur.savedAt || 0, mine.savedAt || 0);
     await Store.dailyBackup(dir, [Store.DATA, Store.PEOPLE, p.slug + '.json'], p.slug, 10);
