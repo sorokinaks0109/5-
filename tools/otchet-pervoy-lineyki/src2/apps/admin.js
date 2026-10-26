@@ -563,26 +563,30 @@
       '<p class="muted small">Проект карты на следующий год (xlsx с колонками «Показатель», «Цель», «Напряженная цель», «Лидер команды») загружается кнопкой «Загрузить проект карты УПЦ»: показатели и цели берутся из файла, мероприятия — из карты текущего года по тому же показателю (сроки сдвигаются на год), у БИ — из текста цели. Карту текущего года и отчёты это не меняет. ' +
       'Цель — для ФОП из присланной таблицы кроссфункциональных показателей. Лидер — кто проверяет мероприятия по показателю. Мероприятия ниже — то, что увидит лидер; после его ответа показывается его вариант.</p>';
     if (!P.kpis.length) h += '<div class="muted">Пока пусто. Нажмите «Взять показатели и мероприятия текущего года».</div>';
-    const noLead = P.kpis.filter((k) => !k.leader).length;
-    if (noLead) h += '<div class="msg warn">Без лидера: ' + noLead + ' — эти показатели в отчётах никто не увидит. Назначьте лидера в списке «Лидер».</div>';
-    const PST = { '': '<span class="badge s-none">лидер ещё не смотрел</span>', ok: '<span class="badge s-done">лидер подтвердил</span>', edit: '<span class="badge s-work">лидер изменил</span>' };
+    const noFill = P.kpis.filter((k) => !Model.planFillers(k).length).length;
+    if (noFill) h += '<div class="msg warn">Некому заполнять: ' + noFill + ' — эти показатели в отчётах никто не увидит. Отметьте, кто заполняет («Заполняют»).</div>';
+    const PST = { '': '<span class="badge s-none">ещё не смотрели</span>', part: '<span class="badge s-work">ответили не все</span>', ok: '<span class="badge s-done">подтверждено</span>', edit: '<span class="badge s-work">изменено</span>' };
+    const fio = (id) => (Model.personById(S.reg, id) || {}).fio || id;
     for (const k of P.kpis) {
       const f = Model.planFinal(S.reg, S.data, k);
       h += '<div class="kpi"><div class="row"><input data-pkf="' + esc(k.id) + '|name" value="' + esc(k.name) + '" style="flex:1;min-width:280px;font-weight:600">' +
         '<select data-pkf="' + esc(k.id) + '|type">' + ['ФОП', 'БИ', 'другое'].map((t) => '<option' + ((k.type || 'ФОП') === t ? ' selected' : '') + '>' + t + '</option>').join('') + '</select>' +
         '<label class="small">Цель <input data-pkf="' + esc(k.id) + '|goal" value="' + esc(k.goal || '') + '" style="width:110px"></label>' +
         '<label class="small">Напряж. <input data-pkf="' + esc(k.id) + '|stretch" value="' + esc(k.stretch || '') + '" style="width:110px"></label>' + (k.unit ? '<span class="muted small">' + esc(k.unit) + '</span>' : '') +
-        '<label class="small">Лидер <select data-pkf="' + esc(k.id) + '|leader">' + ppl(k.leader) + '</select></label>' + PST[f.st || ''] +
+        '<label class="small">Лидер <select data-pkf="' + esc(k.id) + '|leader">' + ppl(k.leader).replace('— не назначен —', k.leaderName && !k.leader ? esc(k.leaderName) : '— не назначен —') + '</select></label>' + PST[f.st || ''] +
         '<button class="mini danger" data-pkdel="' + esc(k.id) + '">✕</button></div>' +
-        (!k.leader && k.leaderName ? '<div class="msg warn small">В файле лидер: <b>' + esc(k.leaderName) + '</b>' + (/уточн/i.test(k.leaderName) ? '' : ' — его нет в списке руководителей. Добавьте в «Настройках» с отметкой «нет — только план и УПЦ» и выберите здесь') + '</div>' : '') +
+        fillersHtml(k, f) +
         (k.note ? '<div class="muted small">Источник: ' + esc(k.note) + '</div>' : '') + planGHtml(k);
+      const fs = Model.planFillers(k);
       if (f.st) {
-        h += '<div class="small" style="margin-top:6px"><b>Вариант лидера:</b><ol>' + f.events.map((e) => '<li>' + esc(e.text) + (e.executors ? ' — <i>' + esc(e.executors) + '</i>' : '') + (e.due ? ' · ' + esc(Model.fmtISO(e.due)) : '') + '</li>').join('') + '</ol></div>';
+        h += '<div class="small" style="margin-top:6px">' + f.parts.map((x) => '<b>' + esc(fio(x.pid)) + '</b> — ' + (x.st ? (x.st === 'ok' ? 'подтвердил' : 'изменил') : 'ещё не ответил, ниже — предложенное') + ':<ol>' +
+          x.events.map((e) => '<li>' + esc(e.text) + (e.executors ? ' — <i>' + esc(e.executors) + '</i>' : '') + (e.due ? ' · ' + esc(Model.fmtISO(e.due)) : '') + '</li>').join('') + '</ol>').join('') + '</div>';
       } else {
         const evs = P.events.filter((e) => e.kpi === k.id);
-        h += '<details' + (evs.length ? '' : ' open') + '><summary class="small">Предложенные мероприятия: ' + evs.length + '</summary><table class="grid edit"><tbody>' +
+        const whoSel = (e) => fs.length > 1 ? '<select data-pef="' + esc(e.id) + '|who">' + fs.map((pid) => '<option value="' + esc(pid) + '"' + ((e.who && fs.includes(e.who) ? e.who : fs[0]) === pid ? ' selected' : '') + '>' + esc(fio(pid)) + '</option>').join('') + '</select>' : '';
+        h += '<details' + (evs.length ? '' : ' open') + '><summary class="small">Предложенные мероприятия: ' + evs.length + '</summary><table class="grid edit"><thead><tr><th>Мероприятие</th><th class="c-resp">Исполнители</th><th class="c-due">Срок</th>' + (fs.length > 1 ? '<th class="c-resp">Заполняет</th>' : '') + '<th class="c-act"></th></tr></thead><tbody>' +
           evs.map((e) => '<tr><td>' + View.ta('data-pef="' + esc(e.id) + '|text"', e.text) + '</td><td class="c-resp">' + View.ta('data-pef="' + esc(e.id) + '|executors"', e.executors || '') + '</td>' +
-            '<td class="c-due"><input data-pef="' + esc(e.id) + '|due" value="' + esc(Model.fmtISO(e.due || '')) + '"></td><td class="c-act"><button class="mini danger" data-pedel="' + esc(e.id) + '">✕</button></td></tr>').join('') +
+            '<td class="c-due"><input data-pef="' + esc(e.id) + '|due" value="' + esc(Model.fmtISO(e.due || '')) + '"></td>' + (fs.length > 1 ? '<td>' + whoSel(e) + '</td>' : '') + '<td class="c-act"><button class="mini danger" data-pedel="' + esc(e.id) + '">✕</button></td></tr>').join('') +
           '</tbody></table><button class="mini" data-peadd="' + esc(k.id) + '">+ мероприятие</button></details>';
       }
       h += '</div>';
@@ -596,16 +600,28 @@
       '<p class="muted small">Попадут в выгрузку в «Блок БИ».</p>';
     return h + '</div>';
   }
-  // Предложение лидера по цели (из его отчёта)
-  function planG(k) { const d = k.leader && S.data[k.leader] && S.data[k.leader].data; const g = d && d.planG && d.planG[k.id]; return g && (g.goal || g.stretch || g.note) ? g : null; }
+  // Кто заполняет мероприятия показателя: лидер может быть только подписью (директор), заполняют ответственные
+  function fillersHtml(k, f) {
+    const fs = Model.planFillers(k);
+    const st = (pid) => { const x = (f.parts || []).find((y) => y.pid === pid); return x && x.st ? ' ✓' : ''; };
+    return '<details class="small"' + (fs.length ? '' : ' open') + '><summary>Заполняют: ' + (fs.length ? esc(fs.map((id) => ((Model.personById(S.reg, id) || {}).fio || id) + st(id)).join(', ')) : '<b class="late">никто — отметьте</b>') + '</summary><div class="row" style="flex-wrap:wrap;gap:4px 14px;margin:6px 0">' +
+      S.reg.people.map((p) => '<label class="small"><input type="checkbox" data-pkfill="' + esc(k.id) + '|' + esc(p.id) + '"' + (fs.includes(p.id) ? ' checked' : '') + '> ' + esc(p.fio) + '</label>').join('') +
+      '</div><div class="muted small">У каждого в отчёте появится этот показатель с закреплёнными за ним мероприятиями. За кем какое мероприятие — в столбце «Заполняет» ниже.</div></details>' +
+      (k.leaderName && !k.leader && !/уточн/i.test(k.leaderName) ? '<div class="muted small">Лидер по файлу: ' + esc(k.leaderName) + ' — в отчётах не заполняет, только подпись.</div>' : '');
+  }
+  // Предложения по цели от заполняющих (из их отчётов)
+  function planG(k) {
+    return Model.planFillers(k).map((pid) => { const d = S.data[pid] && S.data[pid].data; const g = d && d.planG && d.planG[k.id]; return g && (g.goal || g.stretch || g.note) ? { ...g, fio: (Model.personById(S.reg, pid) || {}).fio || pid } : null; }).filter(Boolean);
+  }
+  const planGText = (g) => [g.goal ? 'цель ' + g.goal : '', g.stretch ? 'напряжённая ' + g.stretch : ''].filter(Boolean).join(', ') + (g.note ? ' — ' + g.note : '');
   function planGHtml(k) {
-    const g = planG(k); if (!g) return '';
-    return '<div class="msg ok small"><b>Лидер предлагает:</b> ' + [g.goal ? 'цель ' + esc(g.goal) : '', g.stretch ? 'напряжённая ' + esc(g.stretch) : ''].filter(Boolean).join(', ') + (g.note ? ' — ' + esc(g.note) : '') + '</div>';
+    return planG(k).map((g) => '<div class="msg ok small"><b>' + esc(g.fio) + ' предлагает:</b> ' + esc(planGText(g)) + '</div>').join('');
   }
   function planInfoPanel() {
     const I = S.planInfo; if (!I) return '';
     return '<div class="msg ok">Загружено из «' + esc(I.file) + '»: показателей ' + I.total + ', из них ' + I.matched + ' найдены в карте текущего года (мероприятия перенесены), мероприятий всего ' + I.events + '.' +
-      (I.noLeader.length ? '<div class="small" style="margin-top:6px"><b>Лидер не найден в списке руководителей (' + I.noLeader.length + '):</b><ul>' + I.noLeader.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul>Кого нет в списке — добавьте в «Настройках» с отметкой «нет — только план и УПЦ»: у них будет страница только с проектом плана.</div>' : '') + '</div>';
+      ((I.noFill || []).length ? '<div class="small" style="margin-top:6px"><b>Некому заполнять (' + I.noFill.length + '):</b> ' + I.noFill.map(esc).join('; ') + '. Отметьте у показателя «Заполняют».</div>' : '') +
+      (I.noLeader.length ? '<div class="small muted" style="margin-top:6px">Лидер из файла не найден в списке руководителей (' + I.noLeader.length + '): ' + I.noLeader.map(esc).join('; ') + '. Это не мешает: лидер — подпись, мероприятия пишут те, кто отмечен в «Заполняют». Если лидер сам должен писать — добавьте его в «Настройках» с отметкой «нет — только план и УПЦ».</div>' : '') + '</div>';
   }
   async function planImport(file) {
     try {
@@ -616,7 +632,7 @@
       if (card.year) P.year = card.year;
       const r = Model.planFromCard(S.reg, card, P.year);
       P.kpis = r.kpis; P.events = r.events; P.source = { file: file.name, title: card.title, at: today() };
-      S.planInfo = { file: file.name, total: r.kpis.length, matched: r.matched, events: r.events.length, noLeader: r.noLeader };
+      S.planInfo = { file: file.name, total: r.kpis.length, matched: r.matched, events: r.events.length, noLeader: r.noLeader, noFill: r.noFill };
       if (await saveReg('Проект загружен: ' + r.kpis.length + ' показателей, ' + r.events.length + ' мероприятий')) render();
     } catch (e) { View.toast('Файл не прочитан: ' + e.message, 'bad'); }
   }
@@ -628,8 +644,10 @@
     P.kpis = []; P.events = [];
     for (const k of S.reg.kpis) {
       const id = Model.uid('P');
-      P.kpis.push({ id, src: k.id, name: k.name, type: k.type || 'ФОП', goal: '', leader: k.reporter || null });
-      for (const e of S.reg.events.filter((x) => x.kpi === k.id)) P.events.push({ id: Model.uid('pe'), kpi: id, text: e.text, executors: e.executors || '', due: shift(e.due) });
+      const evs = S.reg.events.filter((x) => x.kpi === k.id);
+      const fillers = Array.from(new Set([...(k.reporter ? [k.reporter] : []), ...evs.map((e) => e.speaker).filter((x) => x && Model.personById(S.reg, x))]));
+      P.kpis.push({ id, src: k.id, name: k.name, type: k.type || 'ФОП', goal: '', leader: k.reporter || null, leaderName: k.leader || '', fillers });
+      for (const e of evs) P.events.push({ id: Model.uid('pe'), kpi: id, text: e.text, executors: e.executors || '', due: shift(e.due), who: fillers.includes(e.speaker) ? e.speaker : fillers[0] || '' });
     }
     saveReg('Взято показателей: ' + P.kpis.length + ', мероприятий: ' + P.events.length + '. Поправьте список и цели, затем включите сбор.').then(() => render());
   }
@@ -652,7 +670,7 @@
       band(title, 'FFBDD7EE');
       for (const k of ks) {
         const g = planG(k);
-        band(k.name + (k.goal ? ' (цель: ' + k.goal + (k.stretch ? ', напряжённая: ' + k.stretch : '') + ')' : '') + (g ? '\nПредложение лидера: ' + [g.goal ? 'цель ' + g.goal : '', g.stretch ? 'напряжённая ' + g.stretch : ''].filter(Boolean).join(', ') + (g.note ? ' — ' + g.note : '') : ''), 'FFF2F2F2'); const f = Model.planFinal(S.reg, S.data, k); evRows(f.events); n += f.events.length; }
+        band(k.name + (k.goal ? ' (цель: ' + k.goal + (k.stretch ? ', напряжённая: ' + k.stretch : '') + ')' : '') + g.map((x) => '\nПредложение (' + x.fio + '): ' + planGText(x)).join(''), 'FFF2F2F2'); const f = Model.planFinal(S.reg, S.data, k); evRows(f.events); n += f.events.length; }
       if (title === 'Блок БИ') {
         for (const p of S.reg.people) for (const b of ((S.data[p.id] && S.data[p.id].data && S.data[p.id].data.planBI) || [])) {
           if (!(b.name || '').trim()) continue;
@@ -1128,7 +1146,19 @@
     if (t.id === 'cardFile' && t.files[0]) loadCard(t.files[0]);
     if (t.id === 'avrFile' && t.files[0]) avrLoad(t.files[0]);
     if (t.id === 'planCardFile' && t.files[0]) planImport(t.files[0]);
-    if (t.dataset.pkf && t.tagName === 'SELECT') { const [id, f] = t.dataset.pkf.split('|'); planOf().kpis.find((k) => k.id === id)[f] = t.value || null; if (await saveReg('Сохранено')) render(); }
+    if (t.dataset.pkfill) {
+      const [kid, pid] = t.dataset.pkfill.split('|'); const k = planOf().kpis.find((x) => x.id === kid);
+      const fs = Model.planFillers(k).slice();
+      k.fillers = t.checked ? Array.from(new Set([...fs, pid])) : fs.filter((x) => x !== pid);
+      if (await saveReg('Сохранено')) render();
+    }
+    if (t.dataset.pkf && t.tagName === 'SELECT') {
+      const [id, f] = t.dataset.pkf.split('|'); const k = planOf().kpis.find((x) => x.id === id);
+      k[f] = t.value || null;
+      // выбранный лидер из списка обычно и пишет мероприятия
+      if (f === 'leader' && k.leader) { const fs = Model.planFillers(k); if (!fs.includes(k.leader)) k.fillers = [k.leader, ...fs]; }
+      if (await saveReg('Сохранено')) render();
+    }
     if (t.id === 'avrCol') { S.avr.statusCol = +t.value; S.avr.rows.forEach((r) => { if (r.src !== 'edit') r.src = ''; avrPrepare(r); }); avrPersist(); render(); }
     if (t.dataset.avrDone) { S.avr.rows[+t.dataset.avrDone].done = t.checked; avrPersist(); }
     if (t.dataset.avrEv) {

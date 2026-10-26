@@ -133,14 +133,16 @@
   }
   function planSec() {
     const p = Model.planOn(S.reg); if (!p) return '';
-    const ks = p.kpis.filter((k) => k.leader === S.me);
+    const ks = p.kpis.filter((k) => Model.planFillers(k).includes(S.me));
     let h = '<div class="panel plan" id="planSec"><h2>Проект на ' + esc(p.year) + ' год</h2>' +
       '<div class="msg warn small">Это не текущий отчёт: здесь мероприятия на ' + esc(p.year) + ' год для приказа № 1. ' + esc(p.text || '') + (p.due ? ' Срок — до ' + esc(Model.fmtISO(p.due)) + '.' : '') +
       ' Мероприятия по вашим показателям уже вписаны: если всё верно — «Подтвердить», если нет — поправьте прямо в таблице. Сохраняется общей кнопкой «Сохранить».</div>';
     if (!ks.length) h += '<div class="muted small">Показателей, где вы лидер, в проекте нет.</div>';
     for (const k of ks) {
-      const f = Model.planFinal(S.reg, viewData(), k);
+      const f = Model.planMine(S.reg, viewData(), k, S.me);
+      const others = Model.planFillers(k).filter((x) => x !== S.me).map((x) => (Model.personById(S.reg, x) || {}).fio).filter(Boolean);
       h += '<div class="kpi"><div class="kpi-head"><div class="kpi-name">' + esc(Model.shortKpi(k.name)) + ' <span class="muted small">' + esc(k.type || '') + '</span> ' + PST[f.st || ''] + '</div>' +
+        '<div class="muted small">Лидер: ' + esc(Model.planLeaderName(S.reg, k) || '—') + (others.length ? ' · мероприятия по показателю пишут также: ' + esc(others.join(', ')) + ' — здесь только ваши' : '') + '</div>' +
         '<div class="kpi-vals">' + (k.goal ? '<span><b>Цель ' + esc(p.year) + ':</b> ' + esc(k.goal) + '</span>' : '<span class="muted">цель не задана</span>') + (k.stretch ? '<span><b>Напряжённая:</b> ' + esc(k.stretch) + '</span>' : '') + (k.unit ? '<span class="muted">' + esc(k.unit) + '</span>' : '') + '</div>' +
         (k.note ? '<div class="muted small">Источник: ' + esc(k.note) + '</div>' : '') + '</div>' + planGEdit(k) +
         planEvTable(f.events, 'k', k.id, 'data-pkadd="' + esc(k.id) + '"') +
@@ -170,7 +172,7 @@
     S.draft.planK = S.draft.planK || {};
     if (!S.draft.planK[kid]) {
       const k = Model.planOn(S.reg).kpis.find((x) => x.id === kid);
-      S.draft.planK[kid] = { st: 'edit', events: Model.planFinal(S.reg, viewData(), k).events.map((e) => ({ text: e.text || '', executors: e.executors || '', due: e.due || '' })) };
+      S.draft.planK[kid] = { st: 'edit', events: Model.planMine(S.reg, viewData(), k, S.me).events.map((e) => ({ text: e.text || '', executors: e.executors || '', due: e.due || '' })) };
     }
     return S.draft.planK[kid];
   }

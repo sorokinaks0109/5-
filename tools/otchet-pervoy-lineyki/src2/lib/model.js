@@ -359,17 +359,33 @@
   // reg.plan = { year, on, due, text, kpis: [{ id, name, type, goal, leader }], events: [{ id, kpi, text, executors, due }] }
   // ответ лидера — в его файле: data.planK[показатель] = { st: 'ok' | 'edit', events: [...], at }, data.planBI = [предложенные БИ]
   function planOn(reg) { const p = reg.plan; return p && p.on && p.kpis && p.kpis.length ? p : null; }
-  // Итог по показателю: версия лидера, если он подтвердил или поправил, иначе — предложение помощника
-  function planFinal(reg, data, k) {
-    const d = k.leader && data[k.leader] && data[k.leader].data;
+  // Лидер показателя — подпись (может быть и не из списка, например директор); мероприятия заполняют k.fillers.
+  // Каждое предложенное мероприятие закреплено за тем, кто его заполняет (e.who), — оно в отчёте этого человека.
+  function planFillers(k) { return Array.isArray(k.fillers) ? k.fillers : k.leader ? [k.leader] : []; }
+  function planLeaderName(reg, k) { const p = k.leader && personById(reg, k.leader); return p ? p.fio : k.leaderName || ''; }
+  const planProposed = (reg, k) => ((reg.plan && reg.plan.events) || []).filter((e) => e.kpi === k.id);
+  // Мероприятия одного заполняющего: его ответ, если он уже ответил, иначе — предложенные ему
+  function planMine(reg, data, k, pid) {
+    const d = data[pid] && data[pid].data;
     const own = d && d.planK && d.planK[k.id];
     if (own) return { events: own.events || [], st: own.st || 'edit', at: own.at };
-    return { events: ((reg.plan && reg.plan.events) || []).filter((e) => e.kpi === k.id), st: '' };
+    const fs = planFillers(k);
+    return { events: planProposed(reg, k).filter((e) => (e.who && fs.includes(e.who) ? e.who === pid : pid === fs[0])), st: '' };
+  }
+  // Итог по показателю — все заполняющие вместе; st: '' никто не ответил, 'part' — часть, 'ok' / 'edit' — все
+  function planFinal(reg, data, k) {
+    const fs = planFillers(k);
+    const parts = fs.map((pid) => ({ pid, ...planMine(reg, data, k, pid) }));
+    const events = [].concat(...parts.map((x) => x.events.map((e) => ({ ...e, who: x.pid }))));
+    if (!fs.length) events.push(...planProposed(reg, k));
+    const done = parts.filter((x) => x.st);
+    const st = !parts.length || !done.length ? '' : done.length < parts.length ? 'part' : parts.every((x) => x.st === 'ok') ? 'ok' : 'edit';
+    return { events, st, parts };
   }
   function planProgress(reg, data, pid) {
     const p = reg.plan; if (!p) return null;
-    const ks = p.kpis.filter((k) => k.leader === pid);
-    return { total: ks.length, done: ks.filter((k) => planFinal(reg, data, k).st).length };
+    const ks = p.kpis.filter((k) => planFillers(k).includes(pid));
+    return { total: ks.length, done: ks.filter((k) => planMine(reg, data, k, pid).st).length };
   }
 
   // ---------- проект карты УПЦ на следующий год из xlsx («ПРОЕКТ карты УПЦ на 2027 год») ----------
@@ -413,7 +429,7 @@
   // Проект из файла: лидеры — по ФИО, мероприятия — из карты текущего года по тому же показателю, у БИ — из текста цели
   function planFromCard(reg, card, year) {
     const shift = (d) => (/^\d{4}-\d{2}-\d{2}$/.test(d || '') && +d.slice(0, 4) === year - 1 ? year + d.slice(4) : d || '');
-    const kpis = [], events = [], noLeader = [];
+    const kpis = [], events = [], noLeader = [], noFill = [];
     const cores = new Set(card.kpis.map((c) => kpiCore(c.name))); // показатель текущего года, который в проекте есть под тем же названием, «похожим» не считаем
     for (const c of card.kpis) {
       const id = uid('P');
@@ -425,11 +441,15 @@
       const lp = /уточн/i.test(c.leaderName) ? null : personByName(reg, c.leaderName);
       if (!lp) noLeader.push(shortKpi(c.name) + ' — ' + (c.leaderName || 'лидер не указан'));
       const fromStretch = bi ? splitEvents(c.stretch) : [];
-      kpis.push({ id, src: src ? src.id : '', code: c.code, name: c.name, type: bi ? 'БИ' : 'ФОП', goal: c.goal, stretch: fromStretch.length ? '' : c.stretch, unit: c.unit, note: c.note, team: c.team, leader: lp ? lp.id : null, leaderName: c.leaderName, top3: c.top3 });
-      if (src) for (const e of reg.events.filter((x) => x.kpi === src.id)) events.push({ id: uid('pe'), kpi: id, text: e.text, executors: e.executors || '', due: shift(e.due) });
-      for (const e of fromStretch) events.push({ id: uid('pe'), kpi: id, ...e });
+      // заполняют: лидер (если он в списке) и те, кто в текущем году заполнял мероприятия этого показателя
+      const srcEv = src ? reg.events.filter((x) => x.kpi === src.id) : [];
+      const fillers = Array.from(new Set([...(lp ? [lp.id] : []), ...srcEv.map((e) => e.speaker).filter((x) => x && personById(reg, x))]));
+      if (!fillers.length) noFill.push(shortKpi(c.name));
+      kpis.push({ id, src: src ? src.id : '', code: c.code, name: c.name, type: bi ? 'БИ' : 'ФОП', goal: c.goal, stretch: fromStretch.length ? '' : c.stretch, unit: c.unit, note: c.note, team: c.team, leader: lp ? lp.id : null, leaderName: c.leaderName, top3: c.top3, fillers });
+      for (const e of srcEv) events.push({ id: uid('pe'), kpi: id, text: e.text, executors: e.executors || '', due: shift(e.due), who: fillers.includes(e.speaker) ? e.speaker : fillers[0] || '' });
+      for (const e of fromStretch) events.push({ id: uid('pe'), kpi: id, ...e, who: fillers[0] || '' });
     }
-    return { kpis, events, noLeader, matched: kpis.filter((k) => k.src).length };
+    return { kpis, events, noLeader, noFill, matched: kpis.filter((k) => k.src).length };
   }
 
   // ---------- история по неделям (для графиков динамики и дисциплины отчётности) ----------
@@ -632,7 +652,7 @@
   root.Model = {
     STATUSES, NO_STATUS, statusLabel, isFinal, ISO, todayISO, fmtISO, parseDue, isOverdue, fmtDateTime, uid, norm, surname,
     personById, reportPeople, personByName, inTeam, shortKpi, memoStatus, eventStatus, respName, personView, countFlags, freshness,
-    respsOf, isResp, combineFlags, coNotes, mergeReport, sameVersion, stOf, sections, avrReq, avrqKey, avrqText, avrqProgress, planOn, planFinal, planProgress, recordWeek,
+    respsOf, isResp, combineFlags, coNotes, mergeReport, sameVersion, stOf, sections, avrReq, avrqKey, avrqText, avrqProgress, planOn, planFinal, planProgress, planMine, planFillers, planLeaderName, recordWeek,
     parsePlanCard, planFromCard, splitEvents, kpiCore,
     NOTE_TYPES, dirAnswer, noteState, dirNotes, noteItem, dirCode, parseDirMail, addDirNote, updateTrack, takeSnap, attention, changes, discipline,
     cellText, parseCard, diffCard, applyCard, kpiValuesLost, restoreKpiValues, defaultReporter, buildSummary, summaryText,

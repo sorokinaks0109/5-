@@ -767,11 +767,22 @@ await page.close();
     await pa.waitForTimeout(800);
     const I = await pa.evaluate(() => { const P = window.Otchet.S.reg.plan; const bi = P.kpis.filter((k) => k.type === 'БИ'); return { year: P.year, k: P.kpis.length, matched: P.kpis.filter((k) => k.src).length, biEv: P.events.filter((e) => bi.some((k) => k.id === e.kpi) && e.due).length, goals: P.kpis.filter((k) => k.goal).length, noLead: window.Otchet.S.planInfo.noLeader.length }; });
     check(I.year === 2027 && I.k === 25 && I.matched >= 13 && I.biEv >= 6 && I.goals >= 10, 'проект карты на 2027 загружен: показателей ' + I.k + ', найдено в карте 2026 — ' + I.matched + ', мероприятий БИ со сроками — ' + I.biEv);
-    check(I.noLead > 0 && /Лидер не найден в списке/.test(await pa.locator('main').textContent()), 'помощнику показано, у каких показателей лидера нет в списке (' + I.noLead + ')');
+    check(I.noLead > 0 && /Лидер из файла не найден/.test(await pa.locator('main').textContent()), 'помощнику показано, у каких показателей лидера нет в списке (' + I.noLead + ')');
+    // лидер — директор (его нет в списке), мероприятия пишут ответственные: показатель у них в отчётах
+    const dk = await pa.evaluate(() => { const P = window.Otchet.S.reg.plan; const k = P.kpis.find((x) => !x.leader && /Брух/.test(x.leaderName) && Model.planFillers(x).length >= 1); return k && { name: Model.shortKpi(k.name), fillers: Model.planFillers(k), n: P.events.filter((e) => e.kpi === k.id).length }; });
+    check(dk && dk.fillers.length >= 1 && dk.n >= 1, 'показатель с лидером-директором: заполняют ответственные текущего года (' + (dk ? dk.name + ': ' + dk.fillers.join(', ') : '—') + ')');
+    await pa.selectOption('#plan_on', '1');
+    await pa.click('[data-act=planCfg]');
+    await pa.waitForTimeout(300);
+    const fp = await open('Страницы руководителей/Отчёт — ' + dk.fillers[0] + '.html');
+    await MOUNT(fp, await DUMP(pa));
+    const ps = await fp.locator('#planSec').textContent();
+    check(ps.includes(dk.name.slice(0, 20)) && /Лидер: Бруховский/.test(ps), 'у ответственного в отчёте этот показатель с подписью «Лидер: Бруховский» и его мероприятиями');
+    await fp.close();
   }
   await pa.click('[data-act=planCopy]');
   await pa.waitForTimeout(400);
-  const P0 = await pa.evaluate(() => ({ k: window.Otchet.S.reg.plan.kpis.length, e: window.Otchet.S.reg.plan.events.length, mine: window.Otchet.S.reg.plan.kpis.filter((k) => k.leader === 'Мещеряков').length }));
+  const P0 = await pa.evaluate(() => ({ k: window.Otchet.S.reg.plan.kpis.length, e: window.Otchet.S.reg.plan.events.length, mine: window.Otchet.S.reg.plan.kpis.filter((k) => Model.planFillers(k).includes('Мещеряков')).length }));
   check(P0.k >= 20 && P0.e >= 80 && P0.mine >= 1, 'план на год: взяты показатели (' + P0.k + ') и мероприятия (' + P0.e + ') текущего года, лидеры — отчитывающиеся');
   await pa.fill('#plan_due', '2026-12-20');
   await pa.selectOption('#plan_on', '1');
@@ -815,7 +826,7 @@ await page.close();
   await pa.waitForFunction(() => window.__planOut, null, { timeout: 30000 });
   const xl = await pa.evaluate(async () => { const wb = new ExcelJS.Workbook(); await wb.xlsx.load(window.__planOut); const ws = wb.worksheets[0]; const t = []; ws.eachRow((r) => t.push(r.values.slice(1).map((v) => String(v || '')).join(' | '))); return t; });
   check(xl.some((x) => /План мероприятий .* на 2027г/.test(x)) && xl.some((x) => x.startsWith('Блок ФОП')) && xl.some((x) => x.startsWith('Блок БИ')) && xl.some((x) => x.includes('цифровой склад')) && xl.some((x) => x.includes('беспилотная доставка')), 'выгрузка в форму Приложения 3: заголовок, блоки, правки лидера, предложенная БИ (' + xl.length + ' строк)');
-  check(xl.some((x) => /Предложение лидера: цель 110 — Рост объёмов перевозок/.test(x)) && /Лидер предлагает/.test(await pa.locator('main').textContent()), 'предложение лидера по цели видно помощнику и попадает в выгрузку');
+  check(xl.some((x) => /Предложение \(Мещеряков А\.В\.\): цель 110 — Рост объёмов перевозок/.test(x)) && /Мещеряков А\.В\. предлагает/.test(await pa.locator('main').textContent()), 'предложение лидера по цели видно помощнику и попадает в выгрузку');
   // участник «только план и УПЦ»: не мешает первой линейке
   await pa.click('[data-tab=settings]');
   const li = await pa.evaluate(() => window.Otchet.S.reg.people.findIndex((p) => p.id === 'Лазар'));
