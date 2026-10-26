@@ -557,9 +557,11 @@
     }
     // показатели проекта
     h += '<div class="panel"><div class="row between"><h2>Показатели и мероприятия на ' + esc(P.year) + ' год: ' + P.kpis.length + '</h2><span class="row">' +
-      '<button data-act="planCopy">Взять показатели и мероприятия текущего года</button><button data-act="planKpiAdd">+ Показатель</button>' +
+      '<label class="button">Загрузить проект карты УПЦ (xlsx)<input type="file" id="planCardFile" accept=".xlsx" hidden></label><button data-act="planCopy">Взять показатели и мероприятия текущего года</button><button data-act="planKpiAdd">+ Показатель</button>' +
       '<button class="primary" data-act="planExport">Выгрузить в форму Приложения 3</button></span></div>' +
-      '<p class="muted small">Цель — для ФОП из присланной таблицы кроссфункциональных показателей. Лидер — кто проверяет мероприятия по показателю. Мероприятия ниже — то, что увидит лидер; после его ответа показывается его вариант.</p>';
+      planInfoPanel() +
+      '<p class="muted small">Проект карты на следующий год (xlsx с колонками «Показатель», «Цель», «Напряженная цель», «Лидер команды») загружается кнопкой «Загрузить проект карты УПЦ»: показатели и цели берутся из файла, мероприятия — из карты текущего года по тому же показателю (сроки сдвигаются на год), у БИ — из текста цели. Карту текущего года и отчёты это не меняет. ' +
+      'Цель — для ФОП из присланной таблицы кроссфункциональных показателей. Лидер — кто проверяет мероприятия по показателю. Мероприятия ниже — то, что увидит лидер; после его ответа показывается его вариант.</p>';
     if (!P.kpis.length) h += '<div class="muted">Пока пусто. Нажмите «Взять показатели и мероприятия текущего года».</div>';
     const noLead = P.kpis.filter((k) => !k.leader).length;
     if (noLead) h += '<div class="msg warn">Без лидера: ' + noLead + ' — эти показатели в отчётах никто не увидит. Назначьте лидера в списке «Лидер».</div>';
@@ -568,9 +570,12 @@
       const f = Model.planFinal(S.reg, S.data, k);
       h += '<div class="kpi"><div class="row"><input data-pkf="' + esc(k.id) + '|name" value="' + esc(k.name) + '" style="flex:1;min-width:280px;font-weight:600">' +
         '<select data-pkf="' + esc(k.id) + '|type">' + ['ФОП', 'БИ', 'другое'].map((t) => '<option' + ((k.type || 'ФОП') === t ? ' selected' : '') + '>' + t + '</option>').join('') + '</select>' +
-        '<label class="small">Цель <input data-pkf="' + esc(k.id) + '|goal" value="' + esc(k.goal || '') + '" style="width:160px"></label>' +
+        '<label class="small">Цель <input data-pkf="' + esc(k.id) + '|goal" value="' + esc(k.goal || '') + '" style="width:110px"></label>' +
+        '<label class="small">Напряж. <input data-pkf="' + esc(k.id) + '|stretch" value="' + esc(k.stretch || '') + '" style="width:110px"></label>' + (k.unit ? '<span class="muted small">' + esc(k.unit) + '</span>' : '') +
         '<label class="small">Лидер <select data-pkf="' + esc(k.id) + '|leader">' + ppl(k.leader) + '</select></label>' + PST[f.st || ''] +
-        '<button class="mini danger" data-pkdel="' + esc(k.id) + '">✕</button></div>';
+        '<button class="mini danger" data-pkdel="' + esc(k.id) + '">✕</button></div>' +
+        (!k.leader && k.leaderName ? '<div class="msg warn small">В файле лидер: <b>' + esc(k.leaderName) + '</b>' + (/уточн/i.test(k.leaderName) ? '' : ' — его нет в списке руководителей. Добавьте в «Настройках» с отметкой «нет — только план и УПЦ» и выберите здесь') + '</div>' : '') +
+        (k.note ? '<div class="muted small">Источник: ' + esc(k.note) + '</div>' : '') + planGHtml(k);
       if (f.st) {
         h += '<div class="small" style="margin-top:6px"><b>Вариант лидера:</b><ol>' + f.events.map((e) => '<li>' + esc(e.text) + (e.executors ? ' — <i>' + esc(e.executors) + '</i>' : '') + (e.due ? ' · ' + esc(Model.fmtISO(e.due)) : '') + '</li>').join('') + '</ol></div>';
       } else {
@@ -590,6 +595,30 @@
       '<ol class="small">' + (b.events || []).map((e) => '<li>' + esc(e.text) + (e.executors ? ' — <i>' + esc(e.executors) + '</i>' : '') + (e.due ? ' · ' + esc(Model.fmtISO(e.due)) : '') + '</li>').join('') + '</ol></div>').join('') +
       '<p class="muted small">Попадут в выгрузку в «Блок БИ».</p>';
     return h + '</div>';
+  }
+  // Предложение лидера по цели (из его отчёта)
+  function planG(k) { const d = k.leader && S.data[k.leader] && S.data[k.leader].data; const g = d && d.planG && d.planG[k.id]; return g && (g.goal || g.stretch || g.note) ? g : null; }
+  function planGHtml(k) {
+    const g = planG(k); if (!g) return '';
+    return '<div class="msg ok small"><b>Лидер предлагает:</b> ' + [g.goal ? 'цель ' + esc(g.goal) : '', g.stretch ? 'напряжённая ' + esc(g.stretch) : ''].filter(Boolean).join(', ') + (g.note ? ' — ' + esc(g.note) : '') + '</div>';
+  }
+  function planInfoPanel() {
+    const I = S.planInfo; if (!I) return '';
+    return '<div class="msg ok">Загружено из «' + esc(I.file) + '»: показателей ' + I.total + ', из них ' + I.matched + ' найдены в карте текущего года (мероприятия перенесены), мероприятий всего ' + I.events + '.' +
+      (I.noLeader.length ? '<div class="small" style="margin-top:6px"><b>Лидер не найден в списке руководителей (' + I.noLeader.length + '):</b><ul>' + I.noLeader.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul>Кого нет в списке — добавьте в «Настройках» с отметкой «нет — только план и УПЦ»: у них будет страница только с проектом плана.</div>' : '') + '</div>';
+  }
+  async function planImport(file) {
+    try {
+      const wb = new ExcelJS.Workbook(); await wb.xlsx.load(new Uint8Array(await file.arrayBuffer()));
+      const card = Model.parsePlanCard(wb);
+      const P = planOf();
+      if (P.kpis.length && !confirm('В проекте уже есть показатели (' + P.kpis.length + '). Заменить их показателями из файла? Ответы лидеров по старому списку перестанут отображаться.')) return;
+      if (card.year) P.year = card.year;
+      const r = Model.planFromCard(S.reg, card, P.year);
+      P.kpis = r.kpis; P.events = r.events; P.source = { file: file.name, title: card.title, at: today() };
+      S.planInfo = { file: file.name, total: r.kpis.length, matched: r.matched, events: r.events.length, noLeader: r.noLeader };
+      if (await saveReg('Проект загружен: ' + r.kpis.length + ' показателей, ' + r.events.length + ' мероприятий')) render();
+    } catch (e) { View.toast('Файл не прочитан: ' + e.message, 'bad'); }
   }
   // Показатели и мероприятия текущего года — основа проекта на следующий
   function planCopy() {
@@ -621,7 +650,9 @@
     let n = 0;
     for (const [title, ks] of blocks) {
       band(title, 'FFBDD7EE');
-      for (const k of ks) { band(k.name + (k.goal ? ' (цель: ' + k.goal + ')' : ''), 'FFF2F2F2'); const f = Model.planFinal(S.reg, S.data, k); evRows(f.events); n += f.events.length; }
+      for (const k of ks) {
+        const g = planG(k);
+        band(k.name + (k.goal ? ' (цель: ' + k.goal + (k.stretch ? ', напряжённая: ' + k.stretch : '') + ')' : '') + (g ? '\nПредложение лидера: ' + [g.goal ? 'цель ' + g.goal : '', g.stretch ? 'напряжённая ' + g.stretch : ''].filter(Boolean).join(', ') + (g.note ? ' — ' + g.note : '') : ''), 'FFF2F2F2'); const f = Model.planFinal(S.reg, S.data, k); evRows(f.events); n += f.events.length; }
       if (title === 'Блок БИ') {
         for (const p of S.reg.people) for (const b of ((S.data[p.id] && S.data[p.id].data && S.data[p.id].data.planBI) || [])) {
           if (!(b.name || '').trim()) continue;
@@ -1096,6 +1127,7 @@
     if (t.id === 'dirEmail') { S.reg.settings.directorEmail = t.value.trim(); saveReg('Почта сохранена'); }
     if (t.id === 'cardFile' && t.files[0]) loadCard(t.files[0]);
     if (t.id === 'avrFile' && t.files[0]) avrLoad(t.files[0]);
+    if (t.id === 'planCardFile' && t.files[0]) planImport(t.files[0]);
     if (t.dataset.pkf && t.tagName === 'SELECT') { const [id, f] = t.dataset.pkf.split('|'); planOf().kpis.find((k) => k.id === id)[f] = t.value || null; if (await saveReg('Сохранено')) render(); }
     if (t.id === 'avrCol') { S.avr.statusCol = +t.value; S.avr.rows.forEach((r) => { if (r.src !== 'edit') r.src = ''; avrPrepare(r); }); avrPersist(); render(); }
     if (t.dataset.avrDone) { S.avr.rows[+t.dataset.avrDone].done = t.checked; avrPersist(); }

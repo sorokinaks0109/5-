@@ -761,6 +761,14 @@ await page.close();
   await pa.evaluate(async () => sessionStorage.setItem('otchet.unlocked', await Base.sha('тест1234')));
   await MOUNT(pa, files);
   await pa.click('[data-tab=plan]');
+  // проект карты УПЦ на следующий год из xlsx (файл не в репозитории — путь в PLAN27)
+  if (process.env.PLAN27) {
+    await pa.setInputFiles('#planCardFile', process.env.PLAN27);
+    await pa.waitForTimeout(800);
+    const I = await pa.evaluate(() => { const P = window.Otchet.S.reg.plan; const bi = P.kpis.filter((k) => k.type === 'БИ'); return { year: P.year, k: P.kpis.length, matched: P.kpis.filter((k) => k.src).length, biEv: P.events.filter((e) => bi.some((k) => k.id === e.kpi) && e.due).length, goals: P.kpis.filter((k) => k.goal).length, noLead: window.Otchet.S.planInfo.noLeader.length }; });
+    check(I.year === 2027 && I.k === 25 && I.matched >= 13 && I.biEv >= 6 && I.goals >= 10, 'проект карты на 2027 загружен: показателей ' + I.k + ', найдено в карте 2026 — ' + I.matched + ', мероприятий БИ со сроками — ' + I.biEv);
+    check(I.noLead > 0 && /Лидер не найден в списке/.test(await pa.locator('main').textContent()), 'помощнику показано, у каких показателей лидера нет в списке (' + I.noLead + ')');
+  }
   await pa.click('[data-act=planCopy]');
   await pa.waitForTimeout(400);
   const P0 = await pa.evaluate(() => ({ k: window.Otchet.S.reg.plan.kpis.length, e: window.Otchet.S.reg.plan.events.length, mine: window.Otchet.S.reg.plan.kpis.filter((k) => k.leader === 'Мещеряков').length }));
@@ -784,11 +792,16 @@ await page.close();
   await pm.click('[data-pbnew]');
   await pm.fill('input[data-pb="0|name"]', 'БИ: беспилотная доставка на объекты');
   await pm.locator('textarea[data-pv="b|0|0|text"]').fill('Пилот на участке Витим');
+  await pm.locator('details.plan-g').first().evaluate((d) => { d.open = true; });
+  const gKey = (await pm.locator('input[data-pg$="|goal"]').first().getAttribute('data-pg')).split('|')[0];
+  await pm.locator('input[data-pg$="|goal"]').first().fill('110');
+  await pm.locator('textarea[data-pg$="|note"]').first().fill('Рост объёмов перевозок');
   await pm.fill('#reportDate', '2026-10-09');
   await pm.click('[data-act=save]');
   await pm.waitForTimeout(300);
   files = await DUMP(pm);
   const md = json(files, 'руководители/Мещеряков.json');
+  check(md.planG && md.planG[gKey].goal === '110' && md.planG[gKey].note === 'Рост объёмов перевозок', 'лидер предложил другую цель с обоснованием — сохранено');
   check(md.planK[okId].st === 'ok' && md.planK[editKey].events.some((e) => e.text.includes('цифровой склад')) && md.planBI[0].name.includes('беспилотная'), 'лидер подтвердил, поправил и предложил БИ — всё сохранено в его отчёте');
   await pm.click('[data-act=preview]');
   check(!(await pm.locator('.preview').innerText()).includes('Проект на 2027'), 'проект на следующий год не попадает в доклад на совещании');
@@ -802,6 +815,7 @@ await page.close();
   await pa.waitForFunction(() => window.__planOut, null, { timeout: 30000 });
   const xl = await pa.evaluate(async () => { const wb = new ExcelJS.Workbook(); await wb.xlsx.load(window.__planOut); const ws = wb.worksheets[0]; const t = []; ws.eachRow((r) => t.push(r.values.slice(1).map((v) => String(v || '')).join(' | '))); return t; });
   check(xl.some((x) => /План мероприятий .* на 2027г/.test(x)) && xl.some((x) => x.startsWith('Блок ФОП')) && xl.some((x) => x.startsWith('Блок БИ')) && xl.some((x) => x.includes('цифровой склад')) && xl.some((x) => x.includes('беспилотная доставка')), 'выгрузка в форму Приложения 3: заголовок, блоки, правки лидера, предложенная БИ (' + xl.length + ' строк)');
+  check(xl.some((x) => /Предложение лидера: цель 110 — Рост объёмов перевозок/.test(x)) && /Лидер предлагает/.test(await pa.locator('main').textContent()), 'предложение лидера по цели видно помощнику и попадает в выгрузку');
   // участник «только план и УПЦ»: не мешает первой линейке
   await pa.click('[data-tab=settings]');
   const li = await pa.evaluate(() => window.Otchet.S.reg.people.findIndex((p) => p.id === 'Лазар'));

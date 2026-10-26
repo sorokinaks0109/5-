@@ -372,6 +372,66 @@
     return { total: ks.length, done: ks.filter((k) => planFinal(reg, data, k).st).length };
   }
 
+  // ---------- проект карты УПЦ на следующий год из xlsx («ПРОЕКТ карты УПЦ на 2027 год») ----------
+  // Название показателя без префикса и хвоста подразделения — чтобы найти тот же показатель в карте текущего года
+  const kpiCore = (name) => norm(shortKpi(name).replace(/\s·\s(вс|восточная\s+сибирь|восточ\S*\s+сиб\S*|логистика.*|дивизион.*|сибирь)$/i, '').replace(/\s·\s(вс|восточная\s+сибирь)$/i, ''));
+  // «1. Проведён анализ…, срок: 30.06.2027 2. Разработан…» → мероприятия
+  function splitEvents(text) {
+    const t = String(text || '').trim(); if (!/^\s*1[.)]\s/.test(t)) return [];
+    return t.split(/(?:^|\s)\d{1,2}[.)]\s+/).map((x) => x.trim()).filter(Boolean).map((x) => {
+      const m = x.match(/,?\s*срок\s*:?\s*(\d{1,2}\.\d{1,2}\.\d{2,4})\s*[.;]?\s*$/i);
+      return { text: m ? x.slice(0, m.index).trim() : x, executors: '', due: m ? parseDue(m[1]) : '' };
+    });
+  }
+  function parsePlanCard(wb) {
+    for (const ws of wb.worksheets) {
+      let head = 0, cols = {}, title = '';
+      for (let r = 1; r <= Math.min(ws.rowCount, 30) && !head; r++) {
+        const row = ws.getRow(r); const cells = [];
+        for (let c = 1; c <= Math.max(row.cellCount, 1); c++) cells.push(cellText(row.getCell(c).value));
+        const t = cells.find((x) => /проект\s+карты|карт\S*\s+упц\s+на\s+\d{4}/i.test(x)); if (t) title = t;
+        if (cells.some((x) => /^показатель$/i.test(x))) {
+          head = r;
+          const find = (re) => cells.findIndex((x) => re.test(x)) + 1;
+          cols = { id: find(/^идентификатор$/i), name: find(/^показатель$/i), goal: find(/^цель$/i), stretch: find(/^напряж[её]нная цель$/i), note: find(/^источник|^комментарий/i),
+            team: find(/^команда/i), leader: find(/^лидер/i), unit: find(/^ед/i), type: find(/^тип$/i), top3: find(/^топ ?3$/i) };
+        }
+      }
+      if (!head) continue;
+      const year = +((title.match(/на\s+(\d{4})/) || [])[1]) || 0;
+      const kpis = [];
+      for (let r = head + 1; r <= ws.rowCount; r++) {
+        const row = ws.getRow(r);
+        const g = (k) => (cols[k] > 0 ? cellText(row.getCell(cols[k]).value) : '');
+        if (!g('name')) continue;
+        kpis.push({ code: g('id'), name: g('name'), goal: g('goal'), stretch: g('stretch'), note: g('note'), team: g('team'), leaderName: g('leader'), unit: g('unit'), type: g('type'), top3: /да/i.test(g('top3')) });
+      }
+      if (kpis.length) return { year, title, kpis };
+    }
+    throw new Error('В файле не нашлась таблица с колонкой «Показатель»');
+  }
+  // Проект из файла: лидеры — по ФИО, мероприятия — из карты текущего года по тому же показателю, у БИ — из текста цели
+  function planFromCard(reg, card, year) {
+    const shift = (d) => (/^\d{4}-\d{2}-\d{2}$/.test(d || '') && +d.slice(0, 4) === year - 1 ? year + d.slice(4) : d || '');
+    const kpis = [], events = [], noLeader = [];
+    const cores = new Set(card.kpis.map((c) => kpiCore(c.name))); // показатель текущего года, который в проекте есть под тем же названием, «похожим» не считаем
+    for (const c of card.kpis) {
+      const id = uid('P');
+      const bi = /би/i.test(c.type);
+      const cc = kpiCore(c.name);
+      // тот же показатель: по коду, по названию; «Качество управления запасами» = «… запасами МТР»
+      const src = !bi && (reg.kpis.find((k) => (c.code && k.id === c.code) || kpiCore(k.name) === cc) ||
+        reg.kpis.find((k) => { const kc = kpiCore(k.name); return !cores.has(kc) && Math.min(kc.length, cc.length) >= 15 && (kc.startsWith(cc) || cc.startsWith(kc)); }));
+      const lp = /уточн/i.test(c.leaderName) ? null : personByName(reg, c.leaderName);
+      if (!lp) noLeader.push(shortKpi(c.name) + ' — ' + (c.leaderName || 'лидер не указан'));
+      const fromStretch = bi ? splitEvents(c.stretch) : [];
+      kpis.push({ id, src: src ? src.id : '', code: c.code, name: c.name, type: bi ? 'БИ' : 'ФОП', goal: c.goal, stretch: fromStretch.length ? '' : c.stretch, unit: c.unit, note: c.note, team: c.team, leader: lp ? lp.id : null, leaderName: c.leaderName, top3: c.top3 });
+      if (src) for (const e of reg.events.filter((x) => x.kpi === src.id)) events.push({ id: uid('pe'), kpi: id, text: e.text, executors: e.executors || '', due: shift(e.due) });
+      for (const e of fromStretch) events.push({ id: uid('pe'), kpi: id, ...e });
+    }
+    return { kpis, events, noLeader, matched: kpis.filter((k) => k.src).length };
+  }
+
   // ---------- история по неделям (для графиков динамики и дисциплины отчётности) ----------
   // Одна запись на неделю (по понедельнику); при повторной записи в ту же неделю — обновляется.
   function recordWeek(reg, data, today) {
@@ -547,7 +607,7 @@
         }
       }
     }
-    for (const f of ['kpi', 'coNotes', 'avrq', 'planK', 'dirAns']) {
+    for (const f of ['kpi', 'coNotes', 'avrq', 'planK', 'planG', 'dirAns']) {
       const b = base[f] || {}, m = mine[f] || {};
       out[f] = { ...(theirs[f] || {}) };
       for (const id of new Set([...Object.keys(b), ...Object.keys(m)])) if (J(b[id]) !== J(m[id])) out[f][id] = m[id];
@@ -573,6 +633,7 @@
     STATUSES, NO_STATUS, statusLabel, isFinal, ISO, todayISO, fmtISO, parseDue, isOverdue, fmtDateTime, uid, norm, surname,
     personById, reportPeople, personByName, inTeam, shortKpi, memoStatus, eventStatus, respName, personView, countFlags, freshness,
     respsOf, isResp, combineFlags, coNotes, mergeReport, sameVersion, stOf, sections, avrReq, avrqKey, avrqText, avrqProgress, planOn, planFinal, planProgress, recordWeek,
+    parsePlanCard, planFromCard, splitEvents, kpiCore,
     NOTE_TYPES, dirAnswer, noteState, dirNotes, noteItem, dirCode, parseDirMail, addDirNote, updateTrack, takeSnap, attention, changes, discipline,
     cellText, parseCard, diffCard, applyCard, kpiValuesLost, restoreKpiValues, defaultReporter, buildSummary, summaryText,
   };

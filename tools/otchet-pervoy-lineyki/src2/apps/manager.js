@@ -141,7 +141,8 @@
     for (const k of ks) {
       const f = Model.planFinal(S.reg, viewData(), k);
       h += '<div class="kpi"><div class="kpi-head"><div class="kpi-name">' + esc(Model.shortKpi(k.name)) + ' <span class="muted small">' + esc(k.type || '') + '</span> ' + PST[f.st || ''] + '</div>' +
-        (k.goal ? '<div class="kpi-vals"><span><b>Цель ' + esc(p.year) + ':</b> ' + esc(k.goal) + '</span></div>' : '') + '</div>' +
+        '<div class="kpi-vals">' + (k.goal ? '<span><b>Цель ' + esc(p.year) + ':</b> ' + esc(k.goal) + '</span>' : '<span class="muted">цель не задана</span>') + (k.stretch ? '<span><b>Напряжённая:</b> ' + esc(k.stretch) + '</span>' : '') + (k.unit ? '<span class="muted">' + esc(k.unit) + '</span>' : '') + '</div>' +
+        (k.note ? '<div class="muted small">Источник: ' + esc(k.note) + '</div>' : '') + '</div>' + planGEdit(k) +
         planEvTable(f.events, 'k', k.id, 'data-pkadd="' + esc(k.id) + '"') +
         (f.st !== 'ok' ? ' <button class="mini primary" data-pkok="' + esc(k.id) + '">Подтвердить</button>' : '') + '</div>';
     }
@@ -154,6 +155,15 @@
         planEvTable(b.events || [], 'b', bi, 'data-pbadd="' + bi + '"') + ' <button class="mini danger" data-pbdel="' + bi + '">Удалить инициативу</button></div>';
     });
     return h + '<button data-pbnew="1">+ Предложить бизнес-инициативу</button></div>';
+  }
+  // Предложение лидера по цели показателя (корректировка): своё значение и обоснование
+  function planGEdit(k) {
+    const g = (S.draft.planG || {})[k.id] || {};
+    const at = (f) => 'data-pg="' + esc(k.id) + '|' + f + '"';
+    return '<details class="plan-g"' + (g.goal || g.stretch || g.note ? ' open' : '') + '><summary class="small">Предложить другую цель</summary><div class="form-grid">' +
+      '<label>Цель — моё предложение<input ' + at('goal') + ' value="' + esc(g.goal || '') + '"></label>' +
+      '<label>Напряжённая — моё предложение<input ' + at('stretch') + ' value="' + esc(g.stretch || '') + '"></label>' +
+      '<label class="wide">Обоснование' + View.ta(at('note'), g.note || '', 'Почему предлагаю другое значение') + '</label></div></details>';
   }
   // Первая правка показателя: берём за основу то, что предложено, и дальше правим свою копию
   function planK(kid) {
@@ -168,6 +178,7 @@
   const planTouch = (kind, key) => { if (kind === 'k') { const pk = planK(key); pk.st = 'edit'; pk.at = Date.now(); } };
   function planInput(t) {
     if (t.dataset.pv) { const [kind, key, i, f] = t.dataset.pv.split('|'); planList(kind, key)[+i][f] = f === 'due' ? Model.parseDue(t.value) : t.value; planTouch(kind, key); return true; }
+    if (t.dataset.pg) { const [kid, f] = t.dataset.pg.split('|'); S.draft.planG = S.draft.planG || {}; S.draft.planG[kid] = { ...(S.draft.planG[kid] || {}), [f]: t.value }; return true; }
     if (t.dataset.pb) { const [bi, f] = t.dataset.pb.split('|'); S.draft.planBI[+bi][f] = f === 'due' ? Model.parseDue(t.value) : t.value; return true; }
     return false;
   }
