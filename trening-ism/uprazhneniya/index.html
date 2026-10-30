@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Упражнения ИСМ</title><style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font-family:"Segoe UI",Arial,sans-serif;background:#F2F2F2;color:#1B1B1B;font-size:20px;display:flex;flex-direction:column}
+header{background:#48A044;color:#fff;display:flex;align-items:center;gap:18px;padding:14px 28px}
+header h1{margin:0;font-size:30px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+header .slide{margin-left:auto;font-size:16px;opacity:.9}
+header a{color:#fff;text-decoration:none;font-size:16px;border:1px solid rgba(255,255,255,.6);padding:6px 12px;border-radius:6px}
+main{flex:1;padding:20px 28px;display:flex;flex-direction:column;gap:16px;max-width:1500px;width:100%;margin:0 auto}
+.task{background:#fff;border-left:6px solid #48A044;padding:14px 18px;font-size:22px}
+.note{background:#fff;padding:12px 18px;font-size:17px;line-height:1.45;color:#333}
+.pool{display:flex;flex-wrap:wrap;gap:10px;min-height:64px;padding:12px;background:#fff;border:2px dashed #C8C8C8;border-radius:8px}
+.pool:empty::after{content:"Все карточки разложены. Нажмите «Проверить»";color:#888;align-self:center}
+.card{background:#fff;border:2px solid #0097D8;border-radius:8px;padding:10px 14px;cursor:pointer;user-select:none;font-size:18px;line-height:1.25;box-shadow:0 1px 3px rgba(0,0,0,.12);transition:transform .12s}
+.card:hover{transform:translateY(-2px)}
+.card.sel{background:#FFF6B3;border-color:#E6A800;box-shadow:0 0 0 4px rgba(230,168,0,.3)}
+.card.ok{border-color:#48A044;background:#E6F4E5}
+.card.bad{border-color:#CD242C;background:#FBE4E5}
+.cols{display:grid;gap:14px;flex:1}
+.col{background:#fff;border-radius:8px;display:flex;flex-direction:column;min-height:180px;cursor:pointer;border:2px solid transparent}
+.col.hot{border-color:#E6A800}
+.col h2{margin:0;color:#fff;font-size:20px;text-transform:uppercase;padding:10px 14px;border-radius:6px 6px 0 0}
+.col h2 small{display:block;font-size:14px;text-transform:none;font-weight:400;opacity:.9}
+.col .drop{flex:1;padding:10px;display:flex;flex-direction:column;gap:8px}
+.bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+button{font:inherit;font-size:18px;padding:10px 22px;border-radius:8px;border:0;cursor:pointer;background:#003196;color:#fff}
+button.sec{background:#fff;color:#003196;border:2px solid #003196}
+button:disabled{opacity:.4;cursor:default}
+.score{font-size:20px;font-weight:600}
+.why{background:#003196;color:#fff;padding:12px 18px;border-radius:8px;font-size:18px;min-height:48px}
+.why:empty{display:none}
+.big{font-size:30px;line-height:1.3;background:#fff;padding:26px 30px;border-radius:10px}
+.big img{display:block;margin:14px 0 0;max-height:220px}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.opt{background:#fff;color:#003196;border:3px solid #003196;font-size:24px;padding:20px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:12px;min-height:90px}
+.opt.ok{background:#48A044;border-color:#48A044;color:#fff}
+.opt.bad{background:#CD242C;border-color:#CD242C;color:#fff}
+.progress{display:flex;gap:6px}
+.progress i{flex:1;height:8px;border-radius:4px;background:#D0D0D0}
+.progress i.ok{background:#48A044}.progress i.bad{background:#CD242C}.progress i.cur{background:#E6A800}
+.timer{font-size:36px;font-weight:700;color:#E65907;min-width:70px;text-align:right}
+.final{text-align:center;font-size:34px;background:#fff;padding:40px;border-radius:10px}
+.final b{font-size:80px;color:#48A044;display:block}
+.hub{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.hub a{background:#fff;border-radius:10px;padding:18px 20px;text-decoration:none;color:#1B1B1B;border-top:6px solid #48A044;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.hub a:hover{box-shadow:0 4px 12px rgba(0,0,0,.18)}
+.hub small{color:#777;font-size:15px;display:block;margin-bottom:6px}
+.hub span{font-size:22px;font-weight:600}
+.help{font-size:15px;color:#666}
+</style></head>
+<body><header><h1>Упражнения к тренингу по ИСМ</h1></header><main><div class="hub"><a href="01-oblast.html"><small>Слайд 4</small><span>Область применения</span></a><a href="02-processy.html"><small>Слайд 12</small><span>Типы процессов</span></a><a href="03-sreda.html"><small>Слайд 14</small><span>Среда организации</span></a><a href="04-zainteresovannye.html"><small>Слайд 17</small><span>Заинтересованные стороны</span></a><a href="05-zapisi.html"><small>Слайд 27</small><span>Записи</span></a><a href="06-risk-ili-net.html"><small>Слайд 31</small><span>Риск или не риск?</span></a><a href="07-strategii.html"><small>Слайд 34</small><span>Стратегии управления риском</span></a><a href="08-opasnosti-aspekty.html"><small>Слайд 37</small><span>Опасности и экологические аспекты</span></a><a href="09-proverka.html"><small>Слайд 39</small><span>Мониторинг, измерение, анализ, оценка</span></a><a href="10-nesootvetstviya.html"><small>Слайд 41</small><span>Коррекция или корректирующее действие</span></a><a href="11-velosiped.html"><small>Слайд 45</small><span>Верификация или валидация</span></a><a href="12-pit-stop.html"><small>Слайд 46</small><span>Пит-стоп: итоговый квиз</span></a></div></main></body></html>

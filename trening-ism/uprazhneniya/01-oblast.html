@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Область применения</title><style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font-family:"Segoe UI",Arial,sans-serif;background:#F2F2F2;color:#1B1B1B;font-size:20px;display:flex;flex-direction:column}
+header{background:#48A044;color:#fff;display:flex;align-items:center;gap:18px;padding:14px 28px}
+header h1{margin:0;font-size:30px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+header .slide{margin-left:auto;font-size:16px;opacity:.9}
+header a{color:#fff;text-decoration:none;font-size:16px;border:1px solid rgba(255,255,255,.6);padding:6px 12px;border-radius:6px}
+main{flex:1;padding:20px 28px;display:flex;flex-direction:column;gap:16px;max-width:1500px;width:100%;margin:0 auto}
+.task{background:#fff;border-left:6px solid #48A044;padding:14px 18px;font-size:22px}
+.note{background:#fff;padding:12px 18px;font-size:17px;line-height:1.45;color:#333}
+.pool{display:flex;flex-wrap:wrap;gap:10px;min-height:64px;padding:12px;background:#fff;border:2px dashed #C8C8C8;border-radius:8px}
+.pool:empty::after{content:"Все карточки разложены. Нажмите «Проверить»";color:#888;align-self:center}
+.card{background:#fff;border:2px solid #0097D8;border-radius:8px;padding:10px 14px;cursor:pointer;user-select:none;font-size:18px;line-height:1.25;box-shadow:0 1px 3px rgba(0,0,0,.12);transition:transform .12s}
+.card:hover{transform:translateY(-2px)}
+.card.sel{background:#FFF6B3;border-color:#E6A800;box-shadow:0 0 0 4px rgba(230,168,0,.3)}
+.card.ok{border-color:#48A044;background:#E6F4E5}
+.card.bad{border-color:#CD242C;background:#FBE4E5}
+.cols{display:grid;gap:14px;flex:1}
+.col{background:#fff;border-radius:8px;display:flex;flex-direction:column;min-height:180px;cursor:pointer;border:2px solid transparent}
+.col.hot{border-color:#E6A800}
+.col h2{margin:0;color:#fff;font-size:20px;text-transform:uppercase;padding:10px 14px;border-radius:6px 6px 0 0}
+.col h2 small{display:block;font-size:14px;text-transform:none;font-weight:400;opacity:.9}
+.col .drop{flex:1;padding:10px;display:flex;flex-direction:column;gap:8px}
+.bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+button{font:inherit;font-size:18px;padding:10px 22px;border-radius:8px;border:0;cursor:pointer;background:#003196;color:#fff}
+button.sec{background:#fff;color:#003196;border:2px solid #003196}
+button:disabled{opacity:.4;cursor:default}
+.score{font-size:20px;font-weight:600}
+.why{background:#003196;color:#fff;padding:12px 18px;border-radius:8px;font-size:18px;min-height:48px}
+.why:empty{display:none}
+.big{font-size:30px;line-height:1.3;background:#fff;padding:26px 30px;border-radius:10px}
+.big img{display:block;margin:14px 0 0;max-height:220px}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.opt{background:#fff;color:#003196;border:3px solid #003196;font-size:24px;padding:20px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:12px;min-height:90px}
+.opt.ok{background:#48A044;border-color:#48A044;color:#fff}
+.opt.bad{background:#CD242C;border-color:#CD242C;color:#fff}
+.progress{display:flex;gap:6px}
+.progress i{flex:1;height:8px;border-radius:4px;background:#D0D0D0}
+.progress i.ok{background:#48A044}.progress i.bad{background:#CD242C}.progress i.cur{background:#E6A800}
+.timer{font-size:36px;font-weight:700;color:#E65907;min-width:70px;text-align:right}
+.final{text-align:center;font-size:34px;background:#fff;padding:40px;border-radius:10px}
+.final b{font-size:80px;color:#48A044;display:block}
+.hub{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.hub a{background:#fff;border-radius:10px;padding:18px 20px;text-decoration:none;color:#1B1B1B;border-top:6px solid #48A044;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.hub a:hover{box-shadow:0 4px 12px rgba(0,0,0,.18)}
+.hub small{color:#777;font-size:15px;display:block;margin-bottom:6px}
+.hub span{font-size:22px;font-weight:600}
+.help{font-size:15px;color:#666}
+</style></head>
+<body><header><h1>Область применения</h1><span class="slide">к слайду 4</span><a href="index.html">Все упражнения</a></header><main>
+<div class="task">Какие виды деятельности входят в область применения системы менеджмента ГПН-Снабжения?</div>
+
+<div class="pool" id="pool"></div>
+<div class="cols" id="cols"></div>
+<div class="why" id="why"></div>
+<div class="bar"><button id="bCheck">Проверить</button><button class="sec" id="bFix">Исправить ошибки</button><button class="sec" id="bAns">Показать ответы</button><button class="sec" id="bRe">Заново</button>
+<span class="score" id="score"></span><span class="help" id="count" style="margin-left:auto"></span></div>
+<div class="help">Нажмите на карточку, потом на колонку. Или перетащите карточку мышкой.</div>
+</main><script>const DATA={"cols": [{"id": "in", "name": "Входит", "color": "#48A044"}, {"id": "out", "name": "Не входит", "color": "#CD242C"}], "items": [{"t": "Услуги складской логистики", "c": "in", "why": "Это основа деятельности Общества: приёмка, хранение и выдача МТР."}, {"t": "Управление транспортной логистикой", "c": "in", "why": "Входит: доставка МТР до объектов заказчика."}, {"t": "Управление закупками", "c": "in", "why": "Входит: закупка материально-технических ресурсов."}, {"t": "Перевозка грузов авиационным, речным и морским транспортом", "c": "in", "why": "Входит: особенно важно для северных месторождений, куда нет дорог."}, {"t": "Инспекционные услуги и технические аудиты", "c": "in", "why": "Входит: контроль качества МТР у поставщиков."}, {"t": "Инженерные изыскания в строительстве", "c": "in", "why": "Входит в область применения, хотя об этом часто забывают."}, {"t": "Добыча нефти", "c": "out", "why": "Это делают добывающие дочерние общества, а не ГПН-Снабжение."}, {"t": "Переработка нефти на НПЗ", "c": "out", "why": "Этим занимаются нефтеперерабатывающие заводы группы."}, {"t": "Продажа топлива на АЗС", "c": "out", "why": "Это сбытовой бизнес, к снабжению отношения не имеет."}, {"t": "Бурение скважин", "c": "out", "why": "Бурение выполняют сервисные и добывающие компании. Мы им только поставляем МТР."}]};
+const D = DATA;
+const score = document.getElementById('score'), count = document.getElementById('count');
+const pool = document.getElementById('pool'), colsEl = document.getElementById('cols'), why = document.getElementById('why');
+let selected = null, checked = false;
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+colsEl.style.gridTemplateColumns = `repeat(${D.cols.length},1fr)`;
+D.cols.forEach(c=>{
+  const col=document.createElement('div');col.className='col';col.dataset.id=c.id;
+  col.innerHTML=`<h2 style="background:${c.color}">${c.name}${c.hint?`<small>${c.hint}</small>`:''}</h2><div class="drop"></div>`;
+  col.addEventListener('click',e=>{if(e.target.closest('.card'))return;if(selected){put(selected,col.querySelector('.drop'))}});
+  col.addEventListener('dragover',e=>{e.preventDefault();col.classList.add('hot')});
+  col.addEventListener('dragleave',()=>col.classList.remove('hot'));
+  col.addEventListener('drop',e=>{e.preventDefault();col.classList.remove('hot');const el=document.getElementById(e.dataTransfer.getData('text'));if(el)put(el,col.querySelector('.drop'))});
+  colsEl.appendChild(col);
+});
+pool.addEventListener('dragover',e=>e.preventDefault());
+pool.addEventListener('drop',e=>{e.preventDefault();const el=document.getElementById(e.dataTransfer.getData('text'));if(el)put(el,pool)});
+pool.addEventListener('click',e=>{if(!e.target.closest('.card')&&selected)put(selected,pool)});
+function build(){
+  pool.innerHTML='';document.querySelectorAll('.drop').forEach(d=>d.innerHTML='');
+  shuffle(D.items.map((it,i)=>({...it,i}))).forEach(it=>{
+    const c=document.createElement('div');c.className='card';c.id='c'+it.i;c.textContent=it.t;c.draggable=true;c.dataset.c=it.c;c.dataset.why=it.why||'';
+    c.addEventListener('dragstart',e=>e.dataTransfer.setData('text',c.id));
+    c.addEventListener('click',()=>{
+      if(checked){why.textContent=c.textContent+' — '+c.dataset.why;return}
+      if(selected===c){c.classList.remove('sel');selected=null;return}
+      if(selected)selected.classList.remove('sel');selected=c;c.classList.add('sel');
+    });
+    pool.appendChild(c);
+  });
+  checked=false;selected=null;why.textContent='';score.textContent='';update();
+}
+function put(card,target){
+  if(checked)return;
+  card.classList.remove('sel');selected=null;target.appendChild(card);update();
+}
+function update(){
+  const left=pool.children.length;
+  count.textContent=`Разложено ${D.items.length-left} из ${D.items.length}`;
+}
+function check(){
+  let ok=0;
+  document.querySelectorAll('.card').forEach(c=>{
+    const col=c.closest('.col');c.classList.remove('ok','bad','sel');
+    if(!col)return;
+    if(col.dataset.id===c.dataset.c){c.classList.add('ok');ok++}else c.classList.add('bad');
+  });
+  checked=true;selected=null;
+  score.textContent=`Верно: ${ok} из ${D.items.length}`;
+  why.textContent='Нажмите на любую карточку, чтобы увидеть пояснение.';
+}
+function answers(){
+  document.querySelectorAll('.card').forEach(c=>document.querySelector(`.col[data-id="${c.dataset.c}"] .drop`).appendChild(c));
+  update();
+  check();
+}
+function again(){
+  if(checked){checked=false;document.querySelectorAll('.card').forEach(c=>c.classList.remove('ok','bad'));why.textContent='';score.textContent='';}
+  else build();
+}
+document.getElementById('bCheck').onclick=check;
+document.getElementById('bAns').onclick=answers;
+document.getElementById('bRe').onclick=()=>{checked=false;build()};
+document.getElementById('bFix').onclick=again;
+build();
+</script></body></html>
