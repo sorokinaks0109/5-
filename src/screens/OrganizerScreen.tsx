@@ -6,7 +6,8 @@ import { pc } from '../content.ts';
 import { prettyCode } from '../core/codes.ts';
 import { AUTO_STAGES, STAGES, type Account, type ItemStat, type ProgressRow, type ResultsView, type StageStatus } from '../core/types.ts';
 import { formatDate, meters, useApp } from '../hooks.ts';
-import { downloadCsv, downloadXlsx, stamp, type Sheet } from '../lib/export.ts';
+import { downloadBlob, downloadCsv, downloadXlsx, stamp, type Sheet } from '../lib/export.ts';
+import { buildReport } from '../lib/report.ts';
 import { STAGE_THEME } from '../theme.ts';
 import { AwardsTab } from './AwardsTab.tsx';
 import { RatingMountain } from './LeaderboardScreen.tsx';
@@ -638,6 +639,30 @@ function ResultsTab() {
           <span className="spacer" />
           <button className="btn btn-small" onClick={() => downloadXlsx([ratingSheet, jurySheet, ideasSheet], `itogi_${stamp()}.xlsx`).catch(error)}>
             Скачать Excel
+          </button>
+          <button
+            className="btn btn-small"
+            onClick={() =>
+              downloadBlob(
+                new Blob(
+                  [
+                    buildReport({
+                      tourName: pc.settings.tourName,
+                      rows: data.rows,
+                      ideas: data.jury,
+                      fields: pc.idea.fields,
+                      criteria,
+                      stageNames: pc.stages.map((s) => s.name),
+                      generatedAt: new Date(),
+                    }),
+                  ],
+                  { type: 'text/html;charset=utf-8' },
+                ),
+                `itogi_i_idei_${stamp()}.html`,
+              )
+            }
+          >
+            Итоги и идеи для чтения
           </button>
           <button className="btn btn-ghost btn-small" onClick={() => downloadCsv(ratingSheet, `reyting_${stamp()}.csv`)}>
             Рейтинг CSV
