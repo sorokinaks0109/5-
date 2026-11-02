@@ -6,7 +6,8 @@ import { pc } from '../content.ts';
 import { prettyCode } from '../core/codes.ts';
 import { AUTO_STAGES, STAGES, type Account, type ItemStat, type ProgressRow, type ResultsView, type StageStatus } from '../core/types.ts';
 import { formatDate, meters, useApp } from '../hooks.ts';
-import { downloadCsv, downloadXlsx, stamp, type Sheet } from '../lib/export.ts';
+import { downloadBlob, downloadCsv, downloadXlsx, stamp, type Sheet } from '../lib/export.ts';
+import { buildReport } from '../lib/report.ts';
 import { STAGE_THEME } from '../theme.ts';
 import { AwardsTab } from './AwardsTab.tsx';
 import { RatingMountain } from './LeaderboardScreen.tsx';
@@ -628,6 +629,26 @@ function ResultsTab() {
     header: ['Работа №', 'Ник автора', ...pc.idea.fields.map((f) => (f.group ? `${f.group}: ${f.label}` : f.label))],
     rows: data.jury.map((j) => [j.workNo, j.nick, ...pc.idea.fields.map((f) => j.fields[f.id] ?? '')]),
   };
+  // Файл для жюри: без ников, с пустыми колонками под оценки и комментарий
+  const forJurySheet: Sheet = {
+    name: 'Оценка идей',
+    header: [
+      'Работа №',
+      ...pc.idea.fields.map((f) => (f.group ? `${f.group}: ${f.label}` : f.label)),
+      ...criteria.map((c) => `${c.name} (0–${c.max})`),
+      'Комментарий жюри',
+    ],
+    widths: [10, ...pc.idea.fields.map((f) => Math.min(60, Math.max(22, Math.round((f.maxLength ?? 300) / 12)))), ...criteria.map(() => 16), 50],
+    wrap: true,
+    rows: data.jury.map((j) => [j.workNo, ...pc.idea.fields.map((f) => j.fields[f.id] ?? ''), ...criteria.map(() => ''), '']),
+  };
+  const criteriaSheet: Sheet = {
+    name: 'Критерии',
+    header: ['Критерий', 'Максимум', 'Что оцениваем'],
+    widths: [26, 10, 80],
+    wrap: true,
+    rows: criteria.map((c) => [c.name, c.max, c.description]),
+  };
   const incomplete = data.jury.filter((j) => j.scores.length < pc.settings.juryCount);
 
   return (
@@ -638,6 +659,33 @@ function ResultsTab() {
           <span className="spacer" />
           <button className="btn btn-small" onClick={() => downloadXlsx([ratingSheet, jurySheet, ideasSheet], `itogi_${stamp()}.xlsx`).catch(error)}>
             Скачать Excel
+          </button>
+          <button className="btn btn-small" onClick={() => downloadXlsx([forJurySheet, criteriaSheet], `idei_dlya_zhyuri_${stamp()}.xlsx`).catch(error)}>
+            Excel для жюри
+          </button>
+          <button
+            className="btn btn-small"
+            onClick={() =>
+              downloadBlob(
+                new Blob(
+                  [
+                    buildReport({
+                      tourName: pc.settings.tourName,
+                      rows: data.rows,
+                      ideas: data.jury,
+                      fields: pc.idea.fields,
+                      criteria,
+                      stageNames: pc.stages.map((s) => s.name),
+                      generatedAt: new Date(),
+                    }),
+                  ],
+                  { type: 'text/html;charset=utf-8' },
+                ),
+                `itogi_i_idei_${stamp()}.html`,
+              )
+            }
+          >
+            Итоги и идеи для чтения
           </button>
           <button className="btn btn-ghost btn-small" onClick={() => downloadCsv(ratingSheet, `reyting_${stamp()}.csv`)}>
             Рейтинг CSV
