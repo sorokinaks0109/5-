@@ -71,13 +71,16 @@
     // участник «только план и УПЦ»: без еженедельного отчёта, только его мероприятия УПЦ и проект плана на год
     if (isExtra()) {
       const v = Model.personView(S.reg, viewData(), S.me, today());
-      main.innerHTML = sentPanel() + headBar() + dnBanner() + avrBanner() + planBanner() + (v.kpiOwn.length || v.kpiOther.length ? upcSec() : '') + planSec() +
+      if (S.planView && Model.planOn(S.reg)) { main.innerHTML = sentPanel() + headBar() + planScreen(); View.autoGrow(main); updateSaveState(); return; }
+      main.innerHTML = sentPanel() + headBar() + dnBanner() + avrBanner() + planBanner() + (v.kpiOwn.length || v.kpiOther.length ? upcSec() : '') +
         (!(v.kpiOwn.length || v.kpiOther.length) && !Model.planOn(S.reg) ? '<div class="panel muted">Сейчас заполнять нечего. Когда помощник попросит — здесь появятся ваши мероприятия.</div>' : '');
       View.autoGrow(main); updateSaveState(); return;
     }
-    main.innerHTML = sentPanel() + headBar() + dnBanner() + avrBanner() + planBanner() + filterBar() + (S.preview
+    // сбор целей на следующий год — отдельный экран, чтобы не путать с текущим отчётом
+    if (S.planView && Model.planOn(S.reg)) { main.innerHTML = sentPanel() + headBar() + planScreen(); View.autoGrow(main); updateSaveState(); return; }
+    main.innerHTML = sentPanel() + headBar() + planBanner() + dnBanner() + avrBanner() + filterBar() + (S.preview
       ? '<div class="panel preview">' + View.personReport(S.reg, pv, S.me, today(), { filter: S.filter }) + '</div>'
-      : memoSec() + (T().ros ? freeSec('ros', T().ros) : '') + (T().proj ? freeSec('proj', T().proj) : '') + upcSec() + attSec() + planSec());
+      : memoSec() + (T().ros ? freeSec('ros', T().ros) : '') + (T().proj ? freeSec('proj', T().proj) : '') + upcSec() + attSec());
     if (S.preview) View.hydrateAttachments(main, S.dir, S.reg, { [S.me]: S.pendingAtt });
     View.autoGrow(main);
     updateSaveState();
@@ -117,9 +120,10 @@
     const p = Model.planOn(S.reg); if (!p) return '';
     const g = Model.planProgress(S.reg, viewData(), S.me);
     if (!g || !g.total) return '';
-    return '<div class="panel plan-banner' + (g.done < g.total ? '' : ' done') + '"><b>📋 Сбор мероприятий ФОП и БИ на ' + esc(p.year) + ' год' + (p.due ? ' — до ' + esc(Model.fmtISO(p.due)) : '') + '.</b> ' +
-      'Ваших показателей: ' + g.total + ', проверено: ' + g.done + '. Мероприятия уже вписаны — подтвердите или поправьте. ' +
-      '<button class="mini" data-act="toPlan">Перейти</button></div>';
+    const ok = g.done >= g.total;
+    return '<div class="panel plan-banner' + (ok ? ' done' : '') + '"><button class="plan-go" data-act="toPlan">📋 Заполнить цели УПЦ на ' + esc(p.year) + ' год</button>' +
+      '<span class="plan-st">' + (ok ? '✓ Заполнено' : '✗ Не заполнено — проверено ' + g.done + ' из ' + g.total) + '</span>' +
+      (p.due ? '<span class="muted">срок — до ' + esc(Model.fmtISO(p.due)) + '</span>' : '') + '</div>';
   }
   const PST = { '': '<span class="badge s-none">предложено помощником — проверьте</span>', ok: '<span class="badge s-done">подтверждено</span>', edit: '<span class="badge s-work">изменено</span>' };
   // kind: 'k' — показатель (key = код), 'b' — предложенная инициатива (key = номер)
@@ -130,6 +134,10 @@
         '<td>' + View.ta(at(i, 'executors'), e.executors || '', 'Фамилии') + '</td><td><input ' + at(i, 'due') + ' value="' + esc(Model.fmtISO(e.due || '')) + '" placeholder="дд.мм.гггг или «постоянно»"></td>' +
         '<td class="c-act"><button class="mini danger" data-pvdel="' + kind + '|' + esc(key) + '|' + i + '" title="Удалить">✕</button></td></tr>').join('') : '<tr><td colspan="5" class="muted">Мероприятий нет</td></tr>') +
       '</tbody></table><button class="mini" ' + addAttr + '>+ мероприятие</button>';
+  }
+  // Экран сбора целей: только проект на следующий год и кнопка «назад»
+  function planScreen() {
+    return '<div class="panel plan-back"><button data-act="fromPlan">← Вернуться к отчёту</button><span class="muted small">Текущий отчёт к совещанию — там. Здесь только мероприятия и цели на ' + esc(Model.planOn(S.reg).year) + ' год. Сохраняется общей кнопкой «Сохранить» вверху.</span></div>' + planSec();
   }
   function planSec() {
     const p = Model.planOn(S.reg); if (!p) return '';
@@ -489,7 +497,8 @@
     else if (a === 'demo') { S.demo = true; S.me = 'p1'; S.dir = await Base.demoFolder(); await load(); }
     else if (a === 'save') save();
     else if (a === 'print') printMine();
-    else if (a === 'toPlan') { if (S.preview) { S.preview = false; render(); } const el = document.getElementById('planSec'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }
+    else if (a === 'toPlan') { S.planView = true; S.preview = false; render(); window.scrollTo(0, 0); }
+    else if (a === 'fromPlan') { S.planView = false; render(); window.scrollTo(0, 0); }
     else if (a === 'toUpc') { const el = document.getElementById('upcSec'); if (S.preview) { S.preview = false; render(); } if (document.getElementById('upcSec')) document.getElementById('upcSec').scrollIntoView({ behavior: 'smooth' }); else if (el) el.scrollIntoView(); }
     else if (a === 'linkFolder') { if (conn.saved) { await conn.grant(); if (!S.dir) conn.pick(); } else conn.pick(); }
     else if (a === 'sentOk') { S.sent = null; render(); }

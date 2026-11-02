@@ -35,7 +35,7 @@
   }
   function freshBadge(v) {
     if (v.fresh === 'fresh') return '<span class="badge s-done">отчёт актуален на ' + esc(M().fmtISO(v.reportDate)) + '</span>';
-    if (v.fresh === 'stale') return '<span class="badge s-fail" title="Отчёт считается обновлённым, если дата «актуален на» позже даты последнего совещания">в отчёте ' + esc(M().fmtISO(v.reportDate)) + ' — не позже совещания ' + esc(M().fmtISO(v.lastMeeting)) + '</span>';
+    if (v.fresh === 'stale') return '<span class="badge s-fail" title="Дата «Отчёт актуален на» (' + esc(M().fmtISO(v.reportDate)) + ') не позже последнего совещания (' + esc(M().fmtISO(v.lastMeeting)) + ')">не обновлён с ' + esc(M().fmtISO(v.reportDate)) + '</span>';
     return '<span class="badge s-fail">отчёт не заполнялся</span>';
   }
 
