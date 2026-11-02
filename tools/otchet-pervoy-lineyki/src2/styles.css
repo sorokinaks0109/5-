@@ -292,3 +292,11 @@ h3.sec .dn-tools { font-weight: normal; }
 /* показатели без числовой цели — той же толщины, что прогноз */
 .ch-krow .ch-bar { height: 8px; margin-top: 3px; }
 .ch-sub { margin: 12px 0 6px; font-size: 13px; font-weight: 600; }
+
+/* сбор мероприятий на следующий год — свой цвет, чтобы не сливался с текущим отчётом */
+.plan-banner { background: #f1ecfb; border: 1px solid #b9a6e6; border-left: 6px solid #6b4fbb; color: #2d2150; }
+.plan-banner.done { background: #eef7f1; border-color: #a9d3b8; border-left-color: #2e8b57; color: var(--ink); }
+.panel.plan { background: #f7f4fd; border: 2px solid #8f75d6; border-top: 8px solid #6b4fbb; margin-top: 28px; }
+.panel.plan > h2 { color: #4b3591; font-size: 19px; }
+.panel.plan .kpi { background: #fff; border-color: #d6cbf2; }
+@media print { .panel.plan, .plan-banner { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }

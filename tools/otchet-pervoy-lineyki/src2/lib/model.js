@@ -135,7 +135,7 @@
     return {
       person: p, memo, co, kpiOwn, kpiOther, kpiTeam, counts, evCounts,
       ros: own.ros || [], proj: own.proj || [], attachments: own.attachments || [],
-      reportDate: own.reportDate || '', savedAt: own.savedAt || 0, fresh: freshness(reg, own),
+      reportDate: own.reportDate || '', savedAt: own.savedAt || 0, fresh: freshness(reg, own), lastMeeting: reg.settings.lastMeeting || '',
     };
   }
   function countFlags(flags) {
@@ -144,11 +144,14 @@
     return c;
   }
   // Отчёт свежий, если руководитель указал дату актуальности позже последнего совещания.
+  // В день совещания свежим считается и отчёт, сохранённый после нажатия «Совещание прошло сегодня».
   function freshness(reg, own) {
     const d = own && own.reportDate;
     if (!d) return 'never';
     const last = reg.settings.lastMeeting || '';
-    return !last || d > last ? 'fresh' : 'stale';
+    if (!last || d > last) return 'fresh';
+    const at = reg.settings.lastMeetingAt || 0;
+    return d === last && at && (own.savedAt || 0) > at ? 'fresh' : 'stale';
   }
 
   // ---------- карта УПЦ из выгрузки (xlsx) ----------

@@ -117,7 +117,7 @@
     const p = Model.planOn(S.reg); if (!p) return '';
     const g = Model.planProgress(S.reg, viewData(), S.me);
     if (!g || !g.total) return '';
-    return '<div class="panel msg ' + (g.done < g.total ? 'warn' : 'ok') + ' plan-banner"><b>Сбор мероприятий на ' + esc(p.year) + ' год' + (p.due ? ' — до ' + esc(Model.fmtISO(p.due)) : '') + '.</b> ' +
+    return '<div class="panel plan-banner' + (g.done < g.total ? '' : ' done') + '"><b>📋 Сбор мероприятий ФОП и БИ на ' + esc(p.year) + ' год' + (p.due ? ' — до ' + esc(Model.fmtISO(p.due)) : '') + '.</b> ' +
       'Ваших показателей: ' + g.total + ', проверено: ' + g.done + '. Мероприятия уже вписаны — подтвердите или поправьте. ' +
       '<button class="mini" data-act="toPlan">Перейти</button></div>';
   }
@@ -134,7 +134,7 @@
   function planSec() {
     const p = Model.planOn(S.reg); if (!p) return '';
     const ks = p.kpis.filter((k) => Model.planFillers(k).includes(S.me));
-    let h = '<div class="panel plan" id="planSec"><h2>Проект на ' + esc(p.year) + ' год</h2>' +
+    let h = '<div class="panel plan" id="planSec"><h2>📋 Сбор мероприятий ФОП и БИ на ' + esc(p.year) + ' год' + (p.due ? ' — до ' + esc(Model.fmtISO(p.due)) : '') + '</h2>' +
       '<div class="msg warn small">Это не текущий отчёт: здесь мероприятия на ' + esc(p.year) + ' год для приказа № 1. ' + esc(p.text || '') + (p.due ? ' Срок — до ' + esc(Model.fmtISO(p.due)) + '.' : '') +
       ' Мероприятия по вашим показателям уже вписаны: если всё верно — «Подтвердить», если нет — поправьте прямо в таблице. Сохраняется общей кнопкой «Сохранить».</div>';
     if (!ks.length) h += '<div class="muted small">Показателей, где вы лидер, в проекте нет.</div>';

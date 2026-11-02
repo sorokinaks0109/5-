@@ -1030,7 +1030,7 @@
     else if (a === 'reload') reloadData();
     else if (a === 'unlock') { const h = await Base.sha($('#pass').value); if (h === S.reg.settings.passHash) { try { sessionStorage.setItem('otchet.unlocked', h); } catch (x) { /* */ } S.locked = false; render(); } else View.toast('Неверный пароль', 'bad'); }
     else if (a === 'meetingToday') {
-      Model.recordWeek(S.reg, S.data, today()); S.reg.settings.lastMeeting = today();
+      Model.recordWeek(S.reg, S.data, today()); S.reg.settings.lastMeeting = today(); S.reg.settings.lastMeetingAt = Date.now();
       Model.updateTrack(S.reg, S.data, today()); Model.takeSnap(S.reg, S.data, today());
       (S.reg.dirNotes || []).forEach((n) => { if (n.type === 'meet' && !n.closed) n.closed = { date: today(), why: 'доложено на совещании' }; }); if (await saveReg('Отмечено: совещание прошло сегодня. Отчёты станут «не обновлён», пока руководители не поставят новую дату.')) render(); }
     else if (a === 'remind') {
@@ -1140,7 +1140,7 @@
     if (t.id === 'owaUrl') { S.reg.settings.owaUrl = t.value.trim(); saveReg('Адрес почты сохранён'); }
     if (t.id === 'memoPerson') { S.memoPerson = t.value; render(); }
     if (t.id === 'upcPerson') { S.upcPerson = t.value; render(); }
-    if (t.id === 'lastMeeting') { S.reg.settings.lastMeeting = t.value; if (await saveReg('Дата совещания сохранена')) render(); }
+    if (t.id === 'lastMeeting') { S.reg.settings.lastMeeting = t.value; delete S.reg.settings.lastMeetingAt; if (await saveReg('Дата совещания сохранена')) render(); }
     if (t.id === 'asstFio' || t.id === 'asstEmail') { S.reg.settings.asst = { ...(S.reg.settings.asst || {}), [t.id === 'asstFio' ? 'fio' : 'email']: t.value.trim() }; saveReg('Сохранено'); }
     if (t.id === 'dirEmail') { S.reg.settings.directorEmail = t.value.trim(); saveReg('Почта сохранена'); }
     if (t.id === 'cardFile' && t.files[0]) loadCard(t.files[0]);

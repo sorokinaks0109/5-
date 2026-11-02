@@ -61,7 +61,9 @@ function makeDocx(text) {
   return Buffer.concat([...parts, cd, end]);
 }
 
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+// браузер, уже установленный в среде (/opt/pw-browsers/chromium-*/chrome-linux*/chrome), — без скачивания
+const exe = (() => { const base = '/opt/pw-browsers'; try { for (const d of fs.readdirSync(base).filter((x) => /^chromium-\d+$/.test(x)).sort().reverse()) for (const s of ['chrome-linux64', 'chrome-linux']) { const f = path.join(base, d, s, 'chrome'); if (fs.existsSync(f)) return f; } } catch (e) { /* нет папки */ } return undefined; })();
+const browser = await chromium.launch(exe ? { executablePath: exe } : {});
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
 const errors = [];
 const open = async (file) => {
@@ -815,7 +817,7 @@ await page.close();
   check(md.planG && md.planG[gKey].goal === '110' && md.planG[gKey].note === 'Рост объёмов перевозок', 'лидер предложил другую цель с обоснованием — сохранено');
   check(md.planK[okId].st === 'ok' && md.planK[editKey].events.some((e) => e.text.includes('цифровой склад')) && md.planBI[0].name.includes('беспилотная'), 'лидер подтвердил, поправил и предложил БИ — всё сохранено в его отчёте');
   await pm.click('[data-act=preview]');
-  check(!(await pm.locator('.preview').innerText()).includes('Проект на 2027'), 'проект на следующий год не попадает в доклад на совещании');
+  check(!(await pm.locator('.preview').innerText()).includes('Сбор мероприятий ФОП и БИ'), 'проект на следующий год не попадает в доклад на совещании');
   await pm.close();
   await MOUNT(pa, files);
   await pa.click('[data-tab=plan]');
@@ -841,7 +843,7 @@ await page.close();
     const pl = await open('Страницы руководителей/Отчёт — Лазар.html');
     await MOUNT(pl, files);
     const h2 = await pl.locator('main .panel h2').allInnerTexts();
-    check(!h2.some((x) => /Поручения|РОС|проекты|Приложения/i.test(x)) && h2.some((x) => /УПЦ/.test(x)) && h2.some((x) => /Проект на 2027/.test(x)) && !(await pl.locator('#reportDate').count()), 'у него на странице только УПЦ и проект плана, без даты отчёта: ' + h2.join(' | '));
+    check(!h2.some((x) => /Поручения|РОС|проекты|Приложения/i.test(x)) && h2.some((x) => /УПЦ/.test(x)) && h2.some((x) => /Сбор мероприятий ФОП и БИ на 2027/.test(x)) && !(await pl.locator('#reportDate').count()), 'у него на странице только УПЦ и проект плана, без даты отчёта: ' + h2.join(' | '));
     await pl.locator('textarea[data-k^="events|"]').first().fill('Работа идёт по графику');
     await pl.click('[data-act=save]');
     await pl.waitForTimeout(300);
@@ -1070,6 +1072,18 @@ await page.close();
   const bad = await pa.evaluate(() => { try { Base.parseReportText('From: <Saved by Blink>\r\nContent-Type: text/html\r\n\r\n<html><body>Отчёт</body></html>'); return ''; } catch (e) { return e.message; } });
   check(/сохранённая веб-страница/.test(bad), 'настоящая веб-страница без отчёта — понятное сообщение, что нажать');
   await pa.close();
+}
+// ---------- 3к. «Кто обновил»: совещание и сохранение в один день ----------
+{
+  const pg = await open('Директор.html');
+  const r = await pg.evaluate(() => {
+    const at = Date.now();
+    const reg = { settings: { lastMeeting: '2026-11-02', lastMeetingAt: at } };
+    return [Model.freshness(reg, { reportDate: '2026-11-02', savedAt: at + 60000 }), Model.freshness(reg, { reportDate: '2026-11-02', savedAt: at - 60000 }),
+      Model.freshness({ settings: { lastMeeting: '2026-10-28' } }, { reportDate: '2026-11-02' }), Model.freshness({ settings: { lastMeeting: '2026-11-02' } }, { reportDate: '2026-11-02', savedAt: at })];
+  });
+  check(r.join() === 'fresh,stale,fresh,stale', 'отчёт, сохранённый после «Совещание прошло сегодня» в тот же день, — обновлён; до совещания — нет (' + r.join() + ')');
+  await pg.close();
 }
 // ---------- 4. Директор ----------
 page = await open('Директор.html');

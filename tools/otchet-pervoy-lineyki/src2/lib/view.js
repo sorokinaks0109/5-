@@ -35,7 +35,7 @@
   }
   function freshBadge(v) {
     if (v.fresh === 'fresh') return '<span class="badge s-done">отчёт актуален на ' + esc(M().fmtISO(v.reportDate)) + '</span>';
-    if (v.fresh === 'stale') return '<span class="badge s-fail">не обновлён с ' + esc(M().fmtISO(v.reportDate)) + '</span>';
+    if (v.fresh === 'stale') return '<span class="badge s-fail" title="Отчёт считается обновлённым, если дата «актуален на» позже даты последнего совещания">в отчёте ' + esc(M().fmtISO(v.reportDate)) + ' — не позже совещания ' + esc(M().fmtISO(v.lastMeeting)) + '</span>';
     return '<span class="badge s-fail">отчёт не заполнялся</span>';
   }
 
@@ -488,7 +488,7 @@
       const v = M().personView(reg, data, p.id, today);
       const c = v.counts;
       return '<div class="card fr-' + v.fresh + '" data-person="' + esc(p.id) + '"><div class="name">' + esc(p.fio) + (p.onMeeting === false ? ' <span class="muted small">(не на совещании)</span>' : '') + (p.fileMode ? ' <span class="muted small">· через файл</span>' : '') + '</div>' +
-        '<div class="when">' + freshBadge(v) + '</div><div class="nums">' +
+        '<div class="when">' + freshBadge(v) + (v.savedAt ? ' <span class="muted small">сохранён ' + esc(M().fmtDateTime(v.savedAt)) + '</span>' : '') + '</div><div class="nums">' +
         '<span class="badge s-done">выполнено ' + c.done + '</span><span class="badge s-work">в работе ' + c.work + '</span>' +
         (c.fail ? '<span class="badge s-fail">не выполнено ' + c.fail + '</span>' : '') + (c.none ? '<span class="badge s-none">без статуса ' + c.none + '</span>' : '') +
         (c.overdue ? '<span class="late small">срок прошёл: ' + c.overdue + '</span>' : '') + '</div></div>';
