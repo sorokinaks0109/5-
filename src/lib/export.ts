@@ -6,6 +6,10 @@ export interface Sheet {
   name: string;
   header: string[];
   rows: Cell[][];
+  /** Ширина колонок в символах; по умолчанию по длине заголовка */
+  widths?: number[];
+  /** Переносить длинный текст внутри ячейки */
+  wrap?: boolean;
 }
 
 export function downloadBlob(blob: Blob, fileName: string) {
@@ -37,9 +41,17 @@ export async function downloadXlsx(sheets: Sheet[], fileName: string) {
     sheet: s.name.slice(0, 31),
     data: [
       s.header.map((h) => ({ value: h, fontWeight: 'bold' as const })),
-      ...s.rows.map((r) => r.map((v) => (v === null || v === undefined || v === '' ? null : { value: v }))),
+      ...s.rows.map((r) =>
+        r.map((v) =>
+          v === null || v === undefined || v === ''
+            ? null
+            : s.wrap
+              ? { value: v, wrap: true, alignVertical: 'top' as const }
+              : { value: v },
+        ),
+      ),
     ],
-    columns: s.header.map((h) => ({ width: Math.min(60, Math.max(10, h.length + 4)) })),
+    columns: s.header.map((h, i) => ({ width: s.widths?.[i] ?? Math.min(60, Math.max(10, h.length + 4)) })),
   }));
   const blob = await writeXlsxFile(data).toBlob();
   downloadBlob(blob, fileName);
