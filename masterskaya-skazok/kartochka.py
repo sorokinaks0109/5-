@@ -17,8 +17,12 @@ import sys
 from pathlib import Path
 
 FORMY = {
-    "devochka": {"geroy": "девочка", "geroya": "девочку", "a": "а"},
-    "malchik": {"geroy": "мальчик", "geroya": "мальчика", "a": ""},
+    "devochka": {"geroy": "девочка", "geroya": "девочку", "a": "а", "Ego": "Её",
+                 "ego_m": "её", "poyavilsya": "появилась", "kosnulsya": "коснулась",
+                 "spas": "спасла"},
+    "malchik": {"geroy": "мальчик", "geroya": "мальчика", "a": "", "Ego": "Его",
+                "ego_m": "его", "poyavilsya": "появился", "kosnulsya": "коснулся",
+                "spas": "спас"},
 }
 
 STIL = ("Стиль: качественный 3D-анимационный мультфильм, мягкий объёмный свет, "
@@ -26,8 +30,10 @@ STIL = ("Стиль: качественный 3D-анимационный мул
         "волшебная зимняя ночь с северным сиянием.")
 
 
-def podstavit(text, f):
-    return (text.replace("{Geroy}", f["geroy"].capitalize())
+def podstavit(text, f, imya=""):
+    for k in ("Ego", "ego_m", "poyavilsya", "kosnulsya", "spas"):
+        text = text.replace("{" + k + "}", f[k])
+    return (text.replace("{imya}", imya).replace("{Geroy}", f["geroy"].capitalize())
                 .replace("{geroya}", f["geroya"])
                 .replace("{geroy}", f["geroy"])
                 .replace("{a}", f["a"]))
@@ -83,8 +89,14 @@ def kartochka(shablon_dir, zakaz_dir):
         L += ["", "```", podstavit(s["dvizhenie"], f), "```",
               f"Нужно минимум {s['s'] + s['dlit']:.1f} с клипа.", ""]
 
-    L += ["## Шаг 4. Сборка", "",
-          "Положить озвучку в папку заказа как `ozvuchka.m4a` (или .mp3/.wav) и запустить:", "",
+    if sh.get("ozvuchka", {}).get("tekst"):
+        L += ["## Шаг 4. Озвучка (Syntx → клонирование голоса, тот же голос)", "",
+              "```", podstavit(sh["ozvuchka"]["tekst"], f, z["imya"]), "```", "",
+              "Сохранить как `ozvuchka.mp3` в папку заказа. Музыку, если она отдельно, — "
+              "как `muzyka.mp3`: программа подложит её тише голоса.", ""]
+
+    L += ["## Шаг 5. Сборка", "",
+          "Запустить:", "",
           "```",
           f"python3 sobrat.py {shablon_dir} {zakaz_dir}",
           "```", "",

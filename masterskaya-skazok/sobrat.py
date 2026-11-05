@@ -7,7 +7,8 @@
 
 Папка заказа:
     klipy/04.mp4 ... klipy/09.mp4   личные сцены из Seedance (номер = id сцены)
-    ozvuchka.m4a | .mp3 | .wav      готовая озвучка с музыкой (необязательно)
+    ozvuchka.m4a | .mp3 | .wav      озвучка (необязательно)
+    muzyka.m4a | .mp3 | .wav        музыка, подкладывается тише голоса (необязательно)
 
 Запуск:
     python3 sobrat.py shablony/chasy-deda-moroza zakazy/test-nika
@@ -65,9 +66,20 @@ def sobrat(shablon_dir, zakaz_dir, out_path=None):
     filtry.append("".join(f"[v{i}]" for i in range(n)) + f"concat=n={n}:v=1:a=0[v]")
     obshchaya_dlit = sum(sc["dlit"] for _, sc in vhody)
 
-    audio = next((p for p in sorted(zakaz_dir.glob("ozvuchka*"))
-                  if p.suffix.lower() in AUDIO_EXT), None)
-    if audio:
+    def nayti(prefix):
+        return next((p for p in sorted(zakaz_dir.glob(prefix + "*"))
+                     if p.suffix.lower() in AUDIO_EXT), None)
+
+    audio, muzyka = nayti("ozvuchka"), nayti("muzyka")
+    if audio and muzyka:
+        args += ["-i", str(audio), "-i", str(muzyka)]
+        filtry.append(f"[{n}:a]aresample=48000,apad,atrim=duration={obshchaya_dlit}[g]")
+        filtry.append(
+            f"[{n + 1}:a]aresample=48000,apad,atrim=duration={obshchaya_dlit},"
+            f"volume=0.25,afade=t=out:st={obshchaya_dlit - 1.5}:d=1.5[m]")
+        filtry.append("[g][m]amix=inputs=2:normalize=0,"
+                      "loudnorm=I=-14:TP=-1.5:LRA=11[a]")
+    elif audio:
         args += ["-i", str(audio)]
         filtry.append(
             f"[{n}:a]aresample=48000,apad,atrim=duration={obshchaya_dlit},"
@@ -84,7 +96,7 @@ def sobrat(shablon_dir, zakaz_dir, out_path=None):
              "-movflags", "+faststart", "-t", f"{obshchaya_dlit:.3f}", str(out_path)]
     subprocess.run(args, check=True)
     print(f"Готово: {out_path} ({obshchaya_dlit:.1f} с, озвучка: "
-          f"{audio.name if audio else 'нет'})")
+          f"{audio.name if audio else 'нет'}, музыка: {muzyka.name if muzyka else 'нет'})")
     return out_path
 
 

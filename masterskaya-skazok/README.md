@@ -37,7 +37,9 @@
    python3 kartochka.py shablony/chasy-deda-moroza zakazy/<имя>
    ```
 3. По карточке сделать в Syntx персонажа, 6 кадров и 6 клипов. Клипы положить
-   в `zakazy/<имя>/klipy/04.mp4 … 09.mp4`, озвучку — `zakazy/<имя>/ozvuchka.m4a`.
+   в `zakazy/<имя>/klipy/04.mp4 … 09.mp4`. Озвучку по тексту из карточки сделать
+   в Syntx (клонирование голоса, всегда один и тот же голос) и сохранить как
+   `zakazy/<имя>/ozvuchka.mp3`. Музыку, если она отдельно, — `muzyka.mp3`.
 4. Собрать ролик:
    ```
    python3 sobrat.py shablony/chasy-deda-moroza zakazy/<имя>
