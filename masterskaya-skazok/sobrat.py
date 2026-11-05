@@ -8,7 +8,8 @@
 Папка заказа:
     klipy/04.mp4 ... klipy/09.mp4   личные сцены из Seedance (номер = id сцены)
     ozvuchka.m4a | .mp3 | .wav      озвучка (необязательно)
-    muzyka.m4a | .mp3 | .wav        музыка, подкладывается тише голоса (необязательно)
+    muzyka.m4a | .mp3 | .wav        музыка, подкладывается тише голоса (необязательно;
+                                    если нет — берётся muzyka.* из папки шаблона)
 
 Запуск:
     python3 sobrat.py shablony/chasy-deda-moroza zakazy/test-nika
@@ -40,7 +41,8 @@ def sobrat(shablon_dir, zakaz_dir, out_path=None):
         if sc["tip"] == "obshchaya":
             src = shablon_dir / sc["fayl"]
         else:
-            src = zakaz_dir / "klipy" / f"{sc['id']}.mp4"
+            src = next(iter(sorted((zakaz_dir / "klipy").glob(f"{sc['id']}.*"))),
+                       zakaz_dir / "klipy" / f"{sc['id']}.mp4")
         if not src.exists():
             oshibki.append(f"нет клипа для сцены {sc['id']} «{sc['nazvanie']}»: {src}")
             continue
@@ -66,11 +68,16 @@ def sobrat(shablon_dir, zakaz_dir, out_path=None):
     filtry.append("".join(f"[v{i}]" for i in range(n)) + f"concat=n={n}:v=1:a=0[v]")
     obshchaya_dlit = sum(sc["dlit"] for _, sc in vhody)
 
-    def nayti(prefix):
-        return next((p for p in sorted(zakaz_dir.glob(prefix + "*"))
-                     if p.suffix.lower() in AUDIO_EXT), None)
+    def nayti(prefix, *papki):
+        for papka in papki:
+            for p in sorted(papka.glob(prefix + "*")):
+                if p.suffix.lower() in AUDIO_EXT:
+                    return p
+        return None
 
-    audio, muzyka = nayti("ozvuchka"), nayti("muzyka")
+    # музыка заказа важнее общей музыки шаблона
+    audio = nayti("ozvuchka", zakaz_dir)
+    muzyka = nayti("muzyka", zakaz_dir, shablon_dir)
     if audio and muzyka:
         args += ["-i", str(audio), "-i", str(muzyka)]
         filtry.append(f"[{n}:a]aresample=48000,apad,atrim=duration={obshchaya_dlit}[g]")
@@ -91,7 +98,7 @@ def sobrat(shablon_dir, zakaz_dir, out_path=None):
 
     out_path = Path(out_path or zakaz_dir / "gotovyy_multfilm.mp4")
     args += ["-filter_complex", ";".join(filtry), "-map", "[v]", "-map", "[a]",
-             "-c:v", "libx264", "-preset", "medium", "-crf", "18",
+             "-c:v", "libx264", "-preset", "medium", "-crf", "21",
              "-c:a", "aac", "-b:a", "192k", "-ar", "48000",
              "-movflags", "+faststart", "-t", f"{obshchaya_dlit:.3f}", str(out_path)]
     subprocess.run(args, check=True)
