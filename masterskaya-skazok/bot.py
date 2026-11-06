@@ -165,6 +165,22 @@ async def pokazat_zadanie(update, context, z: Zakaz):
                       f"Осталось: {len(pustye)} из {len(e['sloty'])}")
         return
 
+    if e["id"] == "klipy" and z.pravka:
+        pustye = z.pustye_sloty(e)
+        if len(pustye) == len(e["sloty"]):
+            await bot.send_document(chat, Path(z.nayti_fayl("personazh")),
+                                    caption="Персонаж — картинкой-образцом к каждому клипу")
+        for s in pustye:
+            await bot.send_document(
+                chat, SHABLON / s["obrazec"], parse_mode=ParseMode.HTML,
+                caption=f"🎬 Клип {html.escape(s['nazvanie'])}\n{pre(promty.pravka(z.sh, z.d))}"[:1024])
+        await otvetit(update, context,
+                      f"✨ {b('Шаг: правка клипов.')} Syntx → Kling → Omni → Kling 4.0, 9:16. "
+                      f"Для каждого клипа выше: клип как Ref1, персонаж как Ref2, промпт из подписи. "
+                      f"Можно запускать все сразу. Готовые клипы присылай по порядку или с подписью "
+                      f"номера сцены.\n\nОсталось: {len(pustye)} из {len(e['sloty'])}")
+        return
+
     if e["id"] == "klipy":
         pustye = z.pustye_sloty(e)
         for s in pustye:

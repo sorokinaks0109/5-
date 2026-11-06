@@ -65,3 +65,9 @@ def dvizhenie(scena, z):
 def tekst_ozvuchki(sh, z):
     t = sh.get("ozvuchka", {}).get("tekst", "")
     return podstavit(t, z) if t else ""
+
+
+def pravka(sh, z):
+    """Промпт правки готового клипа (Kling Omni): заменить ребёнка, остальное не трогать."""
+    ochki = f"очки: {z['ochki']}" if z.get("ochki") else "без очков"
+    return podstavit(sh["pravka"], z).replace("{ochki}", ochki)

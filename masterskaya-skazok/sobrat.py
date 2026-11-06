@@ -46,12 +46,16 @@ def sobrat(shablon_dir, zakaz_dir, out_path=None):
         if not src.exists():
             oshibki.append(f"нет клипа для сцены {sc['id']} «{sc['nazvanie']}»: {src}")
             continue
-        nado = sc["s"] + sc["dlit"]
         est = dlitelnost(src)
-        if est + 0.05 < nado:
+        sc = dict(sc)
+        if sc["tip"] == "lichnaya" and est + 0.05 < sc["s"] + sc["dlit"]:
+            sc["s"] = 0.0  # прислан уже обрезанный кусок (правка по нарезанному исходнику)
+        nehvatka = sc["s"] + sc["dlit"] - est
+        if nehvatka > 0.5:
             oshibki.append(
                 f"сцена {sc['id']} «{sc['nazvanie']}»: клип {est:.2f} с, "
-                f"а нужно минимум {nado:.2f} с")
+                f"а нужно минимум {sc['dlit']:.2f} с")
+        sc["dotyanut"] = max(0.0, nehvatka)
         vhody.append((src, sc))
     if oshibki:
         raise SystemExit("Не могу собрать ролик:\n  " + "\n  ".join(oshibki))
@@ -61,7 +65,8 @@ def sobrat(shablon_dir, zakaz_dir, out_path=None):
     for i, (src, sc) in enumerate(vhody):
         args += ["-i", str(src)]
         filtry.append(
-            f"[{i}:v]trim=start={sc['s']}:duration={sc['dlit']},setpts=PTS-STARTPTS,"
+            f"[{i}:v]tpad=stop_mode=clone:stop_duration={sc['dotyanut'] + 0.1:.3f},"
+            f"trim=start={sc['s']}:duration={sc['dlit']},setpts=PTS-STARTPTS,"
             f"fps={fps},scale={w}:{h}:force_original_aspect_ratio=increase,"
             f"crop={w}:{h},setsar=1,format=yuv420p[v{i}]")
     n = len(vhody)

@@ -83,6 +83,11 @@ class Zakaz:
         return self.sleduyushchiy_vopros()[0] is None
 
     # ---------- этапы и ячейки ----------
+    @property
+    def pravka(self):
+        """Режим правки готовых клипов (Kling Omni) вместо «кадр + оживление»."""
+        return self.sh.get("rezhim") == "pravka"
+
     def lichnye(self):
         return [s for s in self.sh["sceny"] if s["tip"] == "lichnaya"]
 
@@ -96,8 +101,11 @@ class Zakaz:
                 kadry.append({"yacheyka": f"kadry/{s['id']}_konec",
                               "nazvanie": f"{s['id']}. {s['nazvanie']} — последний кадр",
                               "obrazec": s["posledniy_kadr"], "scena": s["id"], "vid": "kartinka"})
-            klipy.append({"yacheyka": f"klipy/{s['id']}", "nazvanie": f"{s['id']}. {s['nazvanie']}",
-                          "scena": s["id"], "vid": "video"})
+            klip = {"yacheyka": f"klipy/{s['id']}", "nazvanie": f"{s['id']}. {s['nazvanie']}",
+                    "scena": s["id"], "vid": "video"}
+            if self.pravka:
+                klip["obrazec"] = s["ishodnik"]
+            klipy.append(klip)
         return [
             {"id": "foto", "nazvanie": "Фото ребёнка", "sloty": [
                 {"yacheyka": "foto/1", "nazvanie": "Фото ребёнка", "vid": "kartinka"}]},
@@ -105,8 +113,9 @@ class Zakaz:
                 {"yacheyka": "personazh", "nazvanie": "Персонаж", "vid": "kartinka",
                  "obrazec": self.lichnye()[0]["kadr"]}]},
             {"id": "soglasovano", "nazvanie": "Согласование с родителем", "sloty": []},
-            {"id": "kadry", "nazvanie": "Кадры сцен", "sloty": kadry},
-            {"id": "klipy", "nazvanie": "Оживление", "sloty": klipy},
+            *([] if self.pravka else [{"id": "kadry", "nazvanie": "Кадры сцен", "sloty": kadry}]),
+            {"id": "klipy", "nazvanie": "Правка клипов" if self.pravka else "Оживление",
+             "sloty": klipy},
             {"id": "ozvuchka", "nazvanie": "Озвучка", "sloty": [
                 {"yacheyka": "ozvuchka", "nazvanie": "Озвучка", "vid": "audio"}]},
             {"id": "sborka", "nazvanie": "Сборка", "sloty": []},
