@@ -484,6 +484,8 @@ button:focus-visible, [tabindex]:focus-visible { outline-color: var(--orange); }
 #splash { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; align-content: center; gap: 10px; background: var(--bg); transition: opacity .4s ease; cursor: pointer; }
 #splash.out { opacity: 0; pointer-events: none; }
 #splash img { width: 210px; height: auto; }
+#splash img.wave { transform-origin: 50% 96%; animation: sway 1.2s ease-in-out infinite; }
+@keyframes sway { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
 #splash .logo { font-size: 38px; }
 #splash .tag { color: var(--muted); font-weight: 800; }
 
@@ -497,7 +499,7 @@ button:focus-visible, [tabindex]:focus-visible { outline-color: var(--orange); }
 <canvas id="fx" aria-hidden="true"></canvas>
 <div id="buddy" aria-live="polite"></div>
 <input type="file" id="photo-in" accept="image/*" multiple hidden>
-<div id="splash" role="img" aria-label="МурМемо"><img src="img/cat-hello-a.webp" alt="" width="210"><div class="logo"><b>Мур</b><span>Мемо</span></div><div class="tag">Сфоткал — запомнил</div></div>
+<div id="splash" role="img" aria-label="МурМемо"><img class="wave" src="img/cat-hello-b.webp" alt="" width="210"><div class="logo"><b>Мур</b><span>Мемо</span></div><div class="tag">Сфоткал — запомнил</div></div>
 <script>
 /*
   Уроки. Сейчас записаны вручную; потом такой же набор будет присылать нейросеть по фото учебника.
@@ -850,6 +852,10 @@ const HISTORY_GAMES = [
   { id: 'timeline', name: 'Лента времени', sub: 'Событие и его год', icon: 'hourglass', color: 'c-orange', make: makeTimeline },
   { id: 'map', name: 'Карта Смуты', sub: 'Где это было', icon: 'pin', color: 'c-mint', make: makeMap },
   { id: 'truth', name: 'Правда или нет', sub: 'Найди ошибку в фразе', icon: 'eye', color: 'c-sky', make: makeTruth },
+  { id: 'words', name: 'Слова', sub: 'Слово и перевод', icon: 'link', color: 'c-orange',
+    make: (L) => makeMatch(L, { title: 'Слова', hint: 'Нажми на слово, потом на его перевод.', items: L.words.map((w, k) => ({ id: 'w' + k, name: w.word, text: w.translation })) }) },
+  { id: 'wordmemo', name: 'Мемори слов', sub: 'Найди слово и перевод', icon: 'cards', color: 'c-violet',
+    make: (L) => makeMemory(L, { title: 'Мемори слов', labels: ['слово', 'перевод'], items: L.words.map((w, k) => ({ id: 'w' + k, term: w.word, text: w.translation })) }) },
 ];
 const POEM_GAMES = [
   { id: 'frames', name: 'Картинки к строфам', sub: 'Смотри, вспоминай, раскладывай', icon: 'image', color: 'c-yellow', make: makeFrames },
@@ -866,6 +872,7 @@ const gamesOf = (L) => (L.kind === 'poem' ? POEM_GAMES : HISTORY_GAMES.filter((g
   if (g.id === 'timeline') return (L.events || []).length >= 3;
   if (g.id === 'map') return !!L.map;
   if (g.id === 'truth') return (L.facts || []).length >= 3;
+  if (g.id === 'words' || g.id === 'wordmemo') return (L.words || []).length >= 3;
   return true;
 }));
 const bestKey = (L, gid) => L.id + ':' + gid + (L.kind === 'poem' ? ':' + rangeKey() : '');
@@ -991,14 +998,15 @@ function maybeFinish() {
 }
 
 /* ===== История ===== */
-function makeMatch(L) {
-  const g = base(L.persons.length);
-  g.title = 'Соедини';
-  g.rounds = chunk(shuffle(L.persons), 5); g.r = 0; g.doneIds = new Set();
+function makeMatch(L, o = {}) {
+  const items = o.items || L.persons;
+  const g = base(items.length);
+  g.title = o.title || 'Соедини';
+  g.rounds = chunk(shuffle(items), 5); g.r = 0; g.doneIds = new Set();
   const setup = () => { const it = g.rounds[g.r]; g.left = shuffle(it); g.deeds = shuffle(it); g.sel = null; };
   setup();
   g.done = () => g.doneIds.size;
-  g.hint = () => `Нажми на имя, потом на то, что сделал этот человек. Раунд ${g.r + 1} из ${g.rounds.length}`;
+  g.hint = () => `${o.hint || 'Нажми на имя, потом на то, что сделал этот человек.'} Раунд ${g.r + 1} из ${g.rounds.length}`;
   g.body = () => `
     <div class="names">${g.left.filter((p) => !g.doneIds.has(p.id)).map((p) => `<button class="b3 c-violet name-chip${g.sel && g.sel.side === 'l' && g.sel.id === p.id ? ' sel' : ''}" data-act="l" data-id="${p.id}">${esc(p.name)}</button>`).join('')}</div>
     <div class="deeds">${g.deeds.map((p) => {
@@ -1015,34 +1023,35 @@ function makeMatch(L) {
       if (g.rounds[g.r].every((p) => g.doneIds.has(p.id)) && g.r < g.rounds.length - 1) { later(() => { g.r++; setup(); g.just = null; toast('Раунд ' + (g.r + 1)); draw(); }, 700); return; }
       maybeFinish();
     } else {
-      const p = L.persons.find((x) => x.id === name);
+      const p = items.find((x) => x.id === name);
       g.bad(name, p.name, p.text); flash(deed);
     }
   };
   return g;
 }
 
-function makeMemory(L) {
-  const g = base(L.terms.length);
-  g.title = 'Мемори';
-  g.rounds = chunk(shuffle(L.terms), 4); g.r = 0; g.pairs = 0; g.open = []; g.stuck = false;
+function makeMemory(L, o = {}) {
+  const items = o.items || L.terms, [la, lb] = o.labels || ['термин', 'значение'];
+  const g = base(items.length);
+  g.title = o.title || 'Мемори';
+  g.rounds = chunk(shuffle(items), 4); g.r = 0; g.pairs = 0; g.open = []; g.stuck = false;
   const setup = () => { g.cards = shuffle(g.rounds[g.r].flatMap((t) => [{ pid: t.id, type: 'term', text: t.term }, { pid: t.id, type: 'def', text: t.text }])); g.open = []; g.stuck = false; };
   setup();
   g.done = () => g.pairs;
   g.hint = () => g.stuck
     ? ''
-    : `Фиолетовые карточки — термины, голубые — значения. Найди пару. Раунд ${g.r + 1} из ${g.rounds.length}`;
+    : `Фиолетовые карточки — ${la === 'термин' ? 'термины' : 'слова'}, голубые — ${lb === 'значение' ? 'значения' : 'переводы'}. Найди пару. Раунд ${g.r + 1} из ${g.rounds.length}`;
   g.body = () => `
     ${g.stuck ? `<div class="banner pop"><img src="${CAT('think')}" alt=""><span>Не пара. Прочитай обе карточки и нажми на любую, чтобы играть дальше</span></div>` : ''}
     <div class="memo">${g.cards.map((c, i) => {
       const shown = c.matched || g.open.includes(i);
       if (!shown) {
-        return `<button class="mc back b3 ${c.type === 'term' ? 'c-violet' : 'c-sky'}" data-act="card" data-id="${i}" aria-label="${c.type === 'term' ? 'Закрытый термин' : 'Закрытое значение'}">
-          <span class="lbl">${c.type === 'term' ? 'термин' : 'значение'}</span><span class="q">?</span></button>`;
+        return `<button class="mc back b3 ${c.type === 'term' ? 'c-violet' : 'c-sky'}" data-act="card" data-id="${i}" aria-label="Закрытая карточка: ${c.type === 'term' ? la : lb}">
+          <span class="lbl">${c.type === 'term' ? la : lb}</span><span class="q">?</span></button>`;
       }
       const cls = c.matched ? ' done' : g.stuck ? ' miss' : '';
       return `<button class="mc face ${c.type}${cls}${g.just === i ? ' flip' : ''}" data-act="card" data-id="${i}">
-        <span class="lbl">${c.matched ? '✓ ' : ''}${c.type === 'term' ? 'термин' : 'значение'}</span><span class="t">${esc(c.text)}</span></button>`;
+        <span class="lbl">${c.matched ? '✓ ' : ''}${c.type === 'term' ? la : lb}</span><span class="t">${esc(c.text)}</span></button>`;
     }).join('')}</div>`;
   g.on = (act, id) => {
     const i = +id;
@@ -1520,7 +1529,7 @@ function lessonFromServer(x) {
     persons: (x.persons || []).map((p, k) => ({ id: 'p' + k, name: p.name, text: p.text })),
     terms: (x.terms || []).map((t, k) => ({ id: 't' + k, term: t.term, text: t.text })),
     events: (x.events || []).map((e, k) => ({ id: 'e' + k, year: e.year, text: e.text })),
-    facts: x.facts || [], questions: x.questions || [], map: null, fromPhoto: true, created: Date.now() };
+    facts: x.facts || [], words: x.words || [], questions: x.questions || [], map: null, fromPhoto: true, created: Date.now() };
 }
 // Полка: по предмету одна плитка; в предмете — все его уроки, свежие сверху.
 function shelf() {
@@ -1839,10 +1848,11 @@ async function sendPhotos(files) {
   let tick;
   try {
     go('loading', { loadPct: 8, loadNote: '' });
+    const setPct = (v) => { S.loadPct = v; const bar = document.querySelector('#app .prog i'); if (bar && S.screen === 'loading') bar.style.width = v + '%'; };
     const images = [];
     for (const f of list) images.push(await toJpeg(f));
-    S.loadPct = 20; draw();
-    tick = setInterval(() => { S.loadPct = Math.min(92, (S.loadPct || 20) + 3); if (S.screen === 'loading') draw(); }, 1200);
+    setPct(20);
+    tick = setInterval(() => setPct(Math.min(92, (S.loadPct || 20) + 3)), 1200);
     const ctrl = new AbortController(), stop = setTimeout(() => ctrl.abort(), 90000);
     let res, data;
     try {
@@ -1866,14 +1876,10 @@ async function sendPhotos(files) {
 }
 photoIn.addEventListener('change', () => sendPhotos(photoIn.files));
 
-// Заставка: кот машет лапой (два кадра по очереди), потом исчезает сам или по нажатию.
+// Заставка: кот машет лапой и покачивается, потом исчезает сам или по нажатию.
 (function splash() {
   const el = document.getElementById('splash');
-  const img = el.querySelector('img');
-  new Image().src = CAT('hello-b');
-  let k = 0;
-  const t = setInterval(() => { img.src = CAT(++k % 2 ? 'hello-b' : 'hello-a'); }, 340);
-  const hide = () => { clearInterval(t); el.classList.add('out'); setTimeout(() => el.remove(), 450); };
+  const hide = () => { el.classList.add('out'); setTimeout(() => el.remove(), 450); };
   el.addEventListener('click', hide);
   setTimeout(hide, 2300);
 })();

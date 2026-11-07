@@ -44,14 +44,17 @@ const SYSTEM_PROMPT = `Ты помогаешь школьнику готовит
  "scenes":[{"title":"что происходит, 2–5 слов","first":"первая строка сцены, точно как в тексте","picture":"что нарисовать, одна фраза для художника"}]}
 Сцены — смысловые части по 4–8 строк, по порядку, без пропусков.
 
-Для параграфа:
-{"kind":"paragraph","subject":"предмет","title":"тема параграфа",
- "persons":[{"name":"имя как в тексте","text":"что сделал, по тексту, до 15 слов"}],
- "terms":[{"term":"термин как в тексте","text":"определение по тексту, до 15 слов"}],
- "events":[{"year":1612,"text":"событие по тексту, до 12 слов"}],
- "facts":[{"text":"верное утверждение по тексту","false":"то же утверждение, но с одной неверной деталью"}],
+Для параграфа (любой предмет, в том числе иностранный язык):
+{"kind":"paragraph","subject":"предмет по-русски, например «История» или «Английский язык»","title":"тема параграфа",
+ "persons":[{"name":"имя как в тексте","text":"что сделал или чем известен, по тексту, по-русски, до 15 слов"}],
+ "terms":[{"term":"термин или правило как в тексте","text":"определение или смысл по тексту, по-русски, до 15 слов"}],
+ "events":[{"year":1612,"text":"событие по тексту, по-русски, до 12 слов"}],
+ "facts":[{"text":"верное утверждение по тексту, по-русски","false":"то же утверждение, но с одной неверной деталью"}],
+ "words":[{"word":"слово или выражение на иностранном языке точно как в тексте","translation":"перевод на русский"}],
  "questions":["вопросы из конца параграфа, если они есть на фото"]}
-Не больше 10 элементов в каждом списке.`;
+Всех людей из текста — в persons. В facts — 5–8 утверждений о главном в тексте: это игра «правда или ошибка».
+words заполняй только для страницы учебника иностранного языка: 8–15 полезных слов и выражений именно с этой страницы.
+Не больше 10 элементов в списках, кроме words (до 15).`;
 
 /* ---------- Вспомогательное ---------- */
 function cors(origin) {
@@ -135,12 +138,19 @@ function cleanParagraph(raw, source) {
     .filter((f) => f && f.text && f.false && norm(f.text) !== norm(f.false))
     .slice(0, 10).map((f) => ({ text: clip(f.text, 200), false: clip(f.false, 200) }));
   const questions = list(raw.questions).map((q) => clip(q, 200)).filter(Boolean).slice(0, 10);
-  if (persons.length + terms.length + events.length < 3) throw new Error('В тексте мало материала для игр');
+  // Слова иностранного языка: слово обязано быть на странице, перевод — от модели.
+  const seenW = new Set();
+  const words = list(raw.words)
+    .filter((w) => w && w.word && w.translation && mentioned(src, w.word) && norm(w.word) !== norm(w.translation))
+    .filter((w) => !seenW.has(norm(w.word)) && seenW.add(norm(w.word)))
+    .slice(0, 15).map((w) => ({ word: clip(w.word, 60), translation: clip(w.translation, 80) }));
+  const material = persons.length + terms.length + events.length + words.length + (facts.length >= 3 ? facts.length : 0);
+  if (material < 3) throw new Error('В тексте мало материала для игр');
   return {
     kind: 'paragraph',
     subject: clip(raw.subject, 60),
     title: clip(raw.title, 100) || 'Параграф',
-    persons, terms, events, facts, questions,
+    persons, terms, events, facts, words, questions,
   };
 }
 
@@ -224,6 +234,8 @@ const fallbackStore = memoryStore();
 // сравниваем наборы слов. Чтобы быстро найти кандидатов, берём «отпечаток» MinHash и делим его на полосы:
 // достаточно совпасть одной полосе, потом проверяем сходство слов честно.
 const SIG = 16, BANDS = 8, SAME_PAGE = 0.75, MIN_WORDS = 15;
+// Версия формата урока: при изменении задания для нейросети старые готовые уроки не используются.
+const CACHE_V = 'v2';
 function pageWords(text) {
   return [...new Set(norm(text).split(' ').filter((w) => w.length >= 5))];
 }
@@ -236,7 +248,7 @@ function bandKeys(words) {
   const sig = [];
   for (let k = 0; k < SIG; k++) sig.push(Math.min(...words.map((w) => fnv(w, k * 0x9e3779b1))));
   const per = SIG / BANDS, keys = [];
-  for (let b = 0; b < BANDS; b++) keys.push(`index/${b}-${sig.slice(b * per, (b + 1) * per).map((x) => x.toString(36)).join('-')}`);
+  for (let b = 0; b < BANDS; b++) keys.push(`index/${CACHE_V}-${b}-${sig.slice(b * per, (b + 1) * per).map((x) => x.toString(36)).join('-')}`);
   return keys;
 }
 function similarity(a, b) {
@@ -251,7 +263,7 @@ async function findLesson(store, words) {
     const id = await store.get(key);
     if (!id || tried.has(id)) continue;
     tried.add(id);
-    const saved = await store.get(`lessons/${id}.json`);
+    const saved = await store.get(`lessons/${CACHE_V}-${id}.json`);
     if (!saved) continue;
     const rec = JSON.parse(saved);
     if (similarity(rec.words, words) >= SAME_PAGE) return rec.lesson;
@@ -261,7 +273,7 @@ async function findLesson(store, words) {
 async function saveLesson(store, words, lesson) {
   if (words.length < MIN_WORDS) return;
   const id = crypto.createHash('sha1').update(words.slice().sort().join(' ')).digest('hex').slice(0, 20);
-  await store.put(`lessons/${id}.json`, JSON.stringify({ words: words.slice(0, 600), lesson, saved: new Date().toISOString() }));
+  await store.put(`lessons/${CACHE_V}-${id}.json`, JSON.stringify({ words: words.slice(0, 600), lesson, saved: new Date().toISOString() }));
   for (const key of bandKeys(words)) await store.put(key, id);
 }
 

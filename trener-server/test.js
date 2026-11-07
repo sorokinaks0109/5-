@@ -230,3 +230,35 @@ test('обработчик: проверки запроса, CORS и код 429 
     process.env = old;
   }
 });
+
+test('страница английского: слова со страницы и утверждения, выдуманные слова выбрасываются', () => {
+  const page = `Hot wheels. Lewis Hamilton, or 'The Billion Dollar Man', is a very famous racing car driver.
+He comes from the UK. He was born on the 7th of January, 1985. In his free time he enjoys playing the guitar and singing.
+Relative pronouns who, which, that, whose introduce relative clauses.`;
+  const raw = {
+    kind: 'paragraph', subject: 'Английский язык', title: 'Hot wheels', persons: [{ name: 'Lewis Hamilton', text: 'Известный гонщик' }], terms: [], events: [],
+    facts: [
+      { text: 'Хэмилтон родом из Великобритании', false: 'Хэмилтон родом из Финляндии' },
+      { text: 'Он родился в 1985 году', false: 'Он родился в 1979 году' },
+      { text: 'Он любит играть на гитаре', false: 'Он любит играть в хоккей' },
+    ],
+    words: [
+      { word: 'racing car driver', translation: 'гонщик' },
+      { word: 'famous', translation: 'знаменитый' },
+      { word: 'free time', translation: 'свободное время' },
+      { word: 'skateboard', translation: 'скейтборд' },
+      { word: 'famous', translation: 'известный' },
+    ],
+  };
+  const l = cleanLesson(raw, page);
+  assert.deepEqual(l.words.map((w) => w.word), ['racing car driver', 'famous', 'free time'], 'слова нет на странице и повтор — выброшены');
+  assert.equal(l.facts.length, 3);
+});
+
+test('страница только с утверждениями — урок собирается', () => {
+  const page = 'Over 3 million people a day use the Underground or Tube to get around in London. The Tube has 270 stations and 11 lines.';
+  const raw = { kind: 'paragraph', subject: 'Английский язык', title: 'London', persons: [], terms: [], events: [], words: [],
+    facts: [{ text: 'В метро 270 станций', false: 'В метро 70 станций' }, { text: 'В метро 11 линий', false: 'В метро 21 линия' },
+      { text: 'Метро называют Tube', false: 'Метро называют Cab' }] };
+  assert.equal(cleanLesson(raw, page).facts.length, 3);
+});
