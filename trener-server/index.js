@@ -45,16 +45,31 @@ const SYSTEM_PROMPT = `Ты помогаешь школьнику готовит
 Сцены — смысловые части по 4–8 строк, по порядку, без пропусков.
 
 Для параграфа (любой предмет, в том числе иностранный язык):
-{"kind":"paragraph","subject":"предмет по-русски, например «История» или «Английский язык»","title":"тема параграфа",
- "persons":[{"name":"имя как в тексте","text":"что сделал или чем известен, по тексту, по-русски, до 15 слов"}],
- "terms":[{"term":"термин или правило как в тексте","text":"определение или смысл по тексту, по-русски, до 15 слов"}],
- "events":[{"year":1612,"text":"событие по тексту, по-русски, до 12 слов"}],
- "facts":[{"text":"верное утверждение по тексту, по-русски","false":"то же утверждение, но с одной неверной деталью"}],
- "words":[{"word":"слово или выражение на иностранном языке точно как в тексте","translation":"перевод на русский"}],
+{"kind":"paragraph","subject":"предмет по-русски","title":"тема параграфа",
+ "persons":[{"name":"имя как в тексте","text":"что сделал или чем известен, законченной фразой"}],
+ "terms":[{"term":"термин как в тексте","text":"определение по тексту ЗАКОНЧЕННОЙ фразой; можно короче своими словами, но не обрывай"}],
+ "events":[{"year":1612,"text":"событие по тексту, до 12 слов"}],
+ "facts":[{"text":"верное утверждение по тексту","false":"то же утверждение, но с одной неверной деталью"}],
+ "steps":[{"title":"что делаем, например «Как найти Полярную звезду»","items":["шаг 1","шаг 2","шаг 3"]}],
+ "groups":[{"name":"название группы","items":["пример из текста","пример из текста"]}],
+ "quiz":[{"q":"вопрос по тексту","options":["вариант","вариант","вариант"],"answer":0}],
+ "words":[{"word":"слово на иностранном языке точно как в тексте","translation":"перевод на русский"}],
  "questions":["вопросы из конца параграфа, если они есть на фото"]}
-Всех людей из текста — в persons. В facts — 5–8 утверждений о главном в тексте: это игра «правда или ошибка».
-words заполняй только для страницы учебника иностранного языка: 8–15 полезных слов и выражений именно с этой страницы.
-Не больше 10 элементов в списках, кроме words (до 15).`;
+Правила:
+- subject — предмет учебника по содержанию страницы, а не по упоминаниям других курсов
+  (если в учебнике географии написано «вспомните из курса Окружающий мир» — это География).
+  Одно из: История, Обществознание, География, Окружающий мир, Биология, Литература, Русский язык,
+  Математика, Алгебра, Геометрия, Физика, Химия, Информатика, Английский язык, Немецкий язык, Французский язык.
+- Все тексты по-русски, кроме words. Каждое определение и утверждение — законченное предложение.
+- facts: всегда 5–8 утверждений о главном в тексте (игра «правда или ошибка»).
+- steps: если в тексте есть порядок действий, алгоритм, этапы процесса или пункты 1), 2), 3) — перенеси их по порядку,
+  3–8 коротких шагов. Нет порядка — пустой список.
+- groups: если в тексте есть виды, типы, классификация или примеры разных групп — 2–4 группы, в каждой 2–6 примеров;
+  примеры бери из текста дословно (слова, словосочетания, названия). Нет — пустой список.
+- quiz: 4–8 вопросов на понимание. Если на странице есть вопросы с вариантами ответа — возьми их.
+  Вариантов 3–4, один верный, answer — номер верного варианта с нуля. Верный ответ должен следовать из текста.
+- words: только для иностранного языка, 8–15 слов и выражений именно с этой страницы. Для остальных предметов — пустой список.
+- Не больше 10 элементов в списках, кроме words (до 15).`;
 
 /* ---------- Вспомогательное ---------- */
 function cors(origin) {
@@ -69,7 +84,14 @@ function reply(status, data, origin) {
   return { statusCode: status, headers: cors(origin), body: JSON.stringify(data) };
 }
 const norm = (s) => String(s || '').toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9]+/g, ' ').trim();
-const clip = (s, n) => String(s || '').trim().slice(0, n);
+const clip = (s, n) => {
+  const t = String(s || '').trim().replace(/\s+/g, ' ');
+  if (t.length <= n) return t;
+  const cut = t.slice(0, n), sp = cut.lastIndexOf(' ');
+  return (sp > n * 0.6 ? cut.slice(0, sp) : cut).replace(/[,;:\s—-]+$/, '') + '…';
+};
+// Иностранный язык: только тогда пары «слово — перевод».
+const isForeign = (subject) => /англ|немец|француз|испан|китай|иностран/i.test(String(subject || ''));
 
 // JSON из ответа модели: модель иногда оборачивает его в ``` или добавляет фразу.
 function parseModelJson(text) {
@@ -124,10 +146,10 @@ function cleanParagraph(raw, source) {
   const src = String(source);
   const persons = list(raw.persons)
     .filter((p) => p && p.name && p.text && mentioned(src, p.name))
-    .slice(0, 10).map((p) => ({ name: clip(p.name, 60), text: clip(p.text, 160) }));
+    .slice(0, 10).map((p) => ({ name: clip(p.name, 60), text: clip(p.text, 240) }));
   const terms = list(raw.terms)
     .filter((t) => t && t.term && t.text && mentioned(src, t.term))
-    .slice(0, 10).map((t) => ({ term: clip(t.term, 60), text: clip(t.text, 160) }));
+    .slice(0, 10).map((t) => ({ term: clip(t.term, 80), text: clip(t.text, 240) }));
   // Год обязан встречаться в тексте страницы, иначе событие выбрасываем.
   const seen = new Set();
   const events = list(raw.events)
@@ -139,18 +161,46 @@ function cleanParagraph(raw, source) {
     .slice(0, 10).map((f) => ({ text: clip(f.text, 200), false: clip(f.false, 200) }));
   const questions = list(raw.questions).map((q) => clip(q, 200)).filter(Boolean).slice(0, 10);
   // Слова иностранного языка: слово обязано быть на странице, перевод — от модели.
+  // Не язык — пары уходят в термины (без повторов).
   const seenW = new Set();
-  const words = list(raw.words)
+  const foreign = isForeign(raw.subject);
+  if (!foreign) {
+    const have = new Set(terms.map((t) => norm(t.term)));
+    list(raw.words).filter((w) => w && w.word && w.translation && mentioned(src, w.word) && !have.has(norm(w.word)))
+      .forEach((w) => { if (terms.length < 12) { have.add(norm(w.word)); terms.push({ term: clip(w.word, 80), text: clip(w.translation, 240) }); } });
+  }
+  const words = (foreign ? list(raw.words) : [])
     .filter((w) => w && w.word && w.translation && mentioned(src, w.word) && norm(w.word) !== norm(w.translation))
     .filter((w) => !seenW.has(norm(w.word)) && seenW.add(norm(w.word)))
     .slice(0, 15).map((w) => ({ word: clip(w.word, 60), translation: clip(w.translation, 80) }));
-  const material = persons.length + terms.length + events.length + words.length + (facts.length >= 3 ? facts.length : 0);
+  // Порядок действий: 3–8 шагов, хотя бы половина шагов опирается на слова страницы.
+  const srcWords = new Set(norm(src).split(' ').filter((w) => w.length >= 5).map((w) => w.slice(0, 5)));
+  const grounded = (t) => norm(t).split(' ').filter((w) => w.length >= 5).some((w) => srcWords.has(w.slice(0, 5)));
+  const steps = list(raw.steps)
+    .map((x) => ({ title: clip(x && x.title, 100), items: list(x && x.items).map((t) => clip(t, 160)).filter(Boolean).slice(0, 8) }))
+    .filter((x) => x.items.length >= 3 && new Set(x.items.map(norm)).size === x.items.length
+      && x.items.filter(grounded).length * 2 >= x.items.length)
+    .slice(0, 3);
+  // Группы: примеры обязаны быть на странице; в группе ≥2 примера, групп ≥2, пример только в одной группе.
+  const usedItems = new Set();
+  const groups = list(raw.groups)
+    .map((x) => ({ name: clip(x && x.name, 60), items: list(x && x.items).map((t) => clip(t, 80))
+      .filter((t) => t && mentioned(src, t) && !usedItems.has(norm(t)) && usedItems.add(norm(t))).slice(0, 6) }))
+    .filter((x) => x.name && x.items.length >= 2).slice(0, 4);
+  // Вопросы с вариантами: 3–4 разных варианта, номер верного в пределах.
+  const quiz = list(raw.quiz)
+    .map((x) => ({ q: clip(x && x.q, 200), options: list(x && x.options).map((o) => clip(o, 120)).filter(Boolean), answer: parseInt(x && x.answer, 10) }))
+    .filter((x) => x.q && x.options.length >= 3 && x.options.length <= 4 && new Set(x.options.map(norm)).size === x.options.length
+      && x.answer >= 0 && x.answer < x.options.length && grounded(x.q + ' ' + x.options[x.answer]))
+    .slice(0, 8);
+  const material = persons.length + terms.length + events.length + words.length + (facts.length >= 3 ? facts.length : 0)
+    + steps.length * 3 + (groups.length >= 2 ? 3 : 0) + quiz.length;
   if (material < 3) throw new Error('В тексте мало материала для игр');
   return {
     kind: 'paragraph',
     subject: clip(raw.subject, 60),
     title: clip(raw.title, 100) || 'Параграф',
-    persons, terms, events, facts, words, questions,
+    persons, terms, events, facts, words, steps, groups: groups.length >= 2 ? groups : [], quiz, questions,
   };
 }
 
@@ -235,7 +285,7 @@ const fallbackStore = memoryStore();
 // достаточно совпасть одной полосе, потом проверяем сходство слов честно.
 const SIG = 16, BANDS = 8, SAME_PAGE = 0.75, MIN_WORDS = 15;
 // Версия формата урока: при изменении задания для нейросети старые готовые уроки не используются.
-const CACHE_V = 'v2';
+const CACHE_V = 'v3';
 function pageWords(text) {
   return [...new Set(norm(text).split(' ').filter((w) => w.length >= 5))];
 }
@@ -289,7 +339,8 @@ class LimitError extends Error {}
 async function processRequest({ images, clientId, ip, env, fetchFn = fetch, store = fallbackStore, now = Date.now() }) {
   const day = moscowDay(now);
   const num = (v, d) => (v === undefined || v === '' || !Number.isFinite(Number(v)) ? d : Math.max(0, Math.floor(Number(v))));
-  const perPerson = num(env.DAILY_PHOTOS, 10);
+  // На время проверки по умолчанию 30; перед запуском для семей — переменная DAILY_PHOTOS=10.
+  const perPerson = num(env.DAILY_PHOTOS, 30);
   const perIp = num(env.DAILY_PHOTOS_IP, 40);
   // Сам адрес не храним — только его хеш: для лимита достаточно отличать одних от других.
   const ipId = crypto.createHash('sha256').update('murmemo:' + (ip || 'unknown')).digest('hex').slice(0, 16);
