@@ -496,6 +496,7 @@ button:focus-visible, [tabindex]:focus-visible { outline-color: var(--orange); }
 <div id="toast" role="status" aria-live="polite"></div>
 <canvas id="fx" aria-hidden="true"></canvas>
 <div id="buddy" aria-live="polite"></div>
+<input type="file" id="photo-in" accept="image/*" multiple hidden>
 <div id="splash" role="img" aria-label="МурМемо"><img src="img/cat-hello-a.webp" alt="" width="210"><div class="logo"><b>Мур</b><span>Мемо</span></div><div class="tag">Сфоткал — запомнил</div></div>
 <script>
 /*
@@ -572,7 +573,7 @@ const HISTORY = {
   },
 };
 
-const POEM = {
+let POEM = {
   id: 'perchatka', kind: 'poem', color: 'c-violet',
   subject: 'Литература · наизусть',
   title: 'Перчатка',
@@ -642,7 +643,9 @@ const POEM = {
 В лицо перчатку ей
 Он бросил и сказал: «Не требую награды».`,
 };
-const LESSONS = [HISTORY, POEM];
+/* Адрес функции в Яндекс Облаке, которая превращает фото страницы в урок. Пусто — кнопка фото не работает. */
+const API_URL = 'https://functions.yandexcloud.net/d4e9j0hki8s31hujt5ph';
+const PERCHATKA = POEM;
 
 /* Кадры к «Перчатке». Сейчас нарисованы вручную как заглушка;
    в приложении картинку к каждому кадру будет рисовать нейросеть (YandexART). */
@@ -673,7 +676,7 @@ function closeup(body) {
   return `<svg viewBox="0 0 320 200" role="img" aria-hidden="true"><rect width="320" height="200" fill="#c99566"/>${arches}
     <rect y="160" width="320" height="40" fill="#f3e3c3"/>${Array.from({ length: 21 }, (_, k) => `<rect x="${k * 16 + 2}" y="160" width="5" height="40" fill="#d8c29a"/>`).join('')}${body}</svg>`;
 }
-const SCENES = [
+const PERCHATKA_SCENES = [
   { title: 'Король и двор на балконе', a: 0, b: 7, svg: () => stage({
     people: EM('🧔', 26, 34, 24) + EM('🧔', 58, 34, 24) + EM('🤴', 112, 30, 32) + EM('👸', 168, 34, 26) + EM('💃', 204, 34, 26) + EM('👸', 240, 34, 26) + EM('💃', 276, 34, 26),
     arena: '<text x="160" y="150" font-size="14" font-weight="900" text-anchor="middle" fill="#b8893f" font-family="Unbounded, sans-serif" letter-spacing="2">ЗВЕРИНЕЦ</text>' }) },
@@ -797,9 +800,29 @@ function confetti() {
 }
 
 /* ---------- Стихотворение: строки ---------- */
-const LINES = [];
-POEM.text.split(/\n\s*\n/).forEach((st, si) => st.split('\n').forEach((t) => LINES.push({ t: t.trim(), st: si })));
-LINES.forEach((l, i) => { l.i = i; });
+// Картинка-заглушка к сцене стиха, пока сцены не рисует нейросеть: кот с пером и название сцены.
+function sceneCard(title, k) {
+  const words = String(title).split(' '), rows = [];
+  words.forEach((w) => { const last = rows[rows.length - 1]; if (last && (last + ' ' + w).length <= 16) rows[rows.length - 1] = last + ' ' + w; else rows.push(w); });
+  const bg = ['#fff3e3', '#eee8ff', '#e2f1ff', '#dff5ea', '#ffe6e9'][k % 5];
+  return `<svg viewBox="0 0 320 200" role="img" aria-hidden="true"><rect width="320" height="200" fill="${bg}"/>
+    <text x="22" y="44" font-family="Nunito, sans-serif" font-weight="900" font-size="34" fill="#f58a1f">${k + 1}</text>
+    ${rows.slice(0, 4).map((r, i) => `<text x="22" y="${84 + i * 26}" font-family="Nunito, sans-serif" font-weight="900" font-size="22" fill="#1b2a4a">${esc(r)}</text>`).join('')}
+    <image href="${CAT('literature')}" x="196" y="40" width="120" height="156"/></svg>`;
+}
+let LINES = [], SCENES = [];
+// Делает стих текущим: строки, сцены и выбранный отрывок берутся из него.
+function usePoem(L) {
+  POEM = L;
+  LINES = [];
+  L.text.split(/\n\s*\n/).forEach((st, si) => st.split('\n').forEach((t) => { if (t.trim()) LINES.push({ t: t.trim(), st: si }); }));
+  LINES.forEach((l, i) => { l.i = i; });
+  SCENES = L === PERCHATKA ? PERCHATKA_SCENES
+    : (L.scenes || []).map((x, k) => ({ title: x.title, a: x.a, b: Math.min(x.b, LINES.length - 1), svg: () => sceneCard(x.title, k) }));
+  range = store.get(rangeStoreKey(L));
+  if (range && range.b >= LINES.length) range = null;
+}
+const rangeStoreKey = (L) => (L === PERCHATKA ? 'range' : 'range:' + L.id);
 const WORD = /[А-Яа-яЁёA-Za-z]+(?:-[А-Яа-яЁё]+)*/g;
 function tokens(line) {
   const out = []; let last = 0;
@@ -809,7 +832,7 @@ function tokens(line) {
 }
 const wordsOf = (line) => line.match(WORD) || [];
 const norm = (w) => w.toLowerCase().replace(/ё/g, 'е');
-let range = store.get('range'); // {a, b} — номера первой и последней строки отрывка
+let range = null; // {a, b} — номера первой и последней строки отрывка текущего стиха
 let taskRange = null; // отрывок задания из плана, пока оно открыто
 const curRange = () => taskRange || range;
 const selLines = () => { const r = curRange(); return r ? LINES.slice(r.a, r.b + 1) : []; };
@@ -826,6 +849,7 @@ const HISTORY_GAMES = [
   { id: 'memory', name: 'Мемори', sub: 'Термин и его значение', icon: 'cards', color: 'c-violet', make: makeMemory },
   { id: 'timeline', name: 'Лента времени', sub: 'Событие и его год', icon: 'hourglass', color: 'c-orange', make: makeTimeline },
   { id: 'map', name: 'Карта Смуты', sub: 'Где это было', icon: 'pin', color: 'c-mint', make: makeMap },
+  { id: 'truth', name: 'Правда или нет', sub: 'Найди ошибку в фразе', icon: 'eye', color: 'c-sky', make: makeTruth },
 ];
 const POEM_GAMES = [
   { id: 'frames', name: 'Картинки к строфам', sub: 'Смотри, вспоминай, раскладывай', icon: 'image', color: 'c-yellow', make: makeFrames },
@@ -835,7 +859,15 @@ const POEM_GAMES = [
   { id: 'gap', name: 'Пропущенное слово', sub: 'Какое слово выпало', icon: 'gap', color: 'c-pink', make: makeGap },
   { id: 'recite', name: 'Расскажи наизусть', sub: 'Сам, с проверкой по строкам', icon: 'mic', color: 'c-mint', make: makeRecite },
 ];
-const gamesOf = (L) => (L.kind === 'poem' ? POEM_GAMES : HISTORY_GAMES);
+// Игры параграфа: показываем только те, для которых на странице хватило материала.
+const gamesOf = (L) => (L.kind === 'poem' ? POEM_GAMES : HISTORY_GAMES.filter((g) => {
+  if (g.id === 'match') return (L.persons || []).length >= 3;
+  if (g.id === 'memory') return (L.terms || []).length >= 2;
+  if (g.id === 'timeline') return (L.events || []).length >= 3;
+  if (g.id === 'map') return !!L.map;
+  if (g.id === 'truth') return (L.facts || []).length >= 3;
+  return true;
+}));
 const bestKey = (L, gid) => L.id + ':' + gid + (L.kind === 'poem' ? ':' + rangeKey() : '');
 const best = () => store.get('best') || {};
 
@@ -889,9 +921,10 @@ function makePlan(due) {
   const finalDay = n >= 2 ? { date: addDays(start, n - 1), tasks: [] } : days[0];
   finalDay.tasks.push(T(finalDay.date, 'gap', r.a, r.b, 'final'), T(finalDay.date, 'recite', r.a, r.b, 'final'));
   if (n >= 2) days.push(finalDay);
-  plan = { due, a: r.a, b: r.b, days };
+  plan = { lesson: POEM.id, due, a: r.a, b: r.b, days };
   store.set('plan', plan);
 }
+const planLesson = () => (plan && lessonById(plan.lesson || 'perchatka')) || PERCHATKA;
 function todayPlan() {
   if (!plan) return null;
   const t = todayYmd();
@@ -1121,6 +1154,34 @@ function makeMap(L) {
       g.ok(id); g.qi++; g.okFlash = id; toast(name(id) + ' — верно!'); draw();
       later(() => { g.okFlash = null; draw(); }, 700); maybeFinish();
     } else { g.bad('q:' + q.point, q.q, name(q.point)); flash(id); }
+  };
+  return g;
+}
+
+function makeTruth(L) {
+  const items = shuffle(L.facts).map((f) => { const t = Math.random() < 0.5; return { text: t ? f.text : f.false, truth: t, right: f.text }; });
+  const g = base(items.length);
+  g.title = 'Правда или нет';
+  g.items = items; g.k = 0; g.shown = null;
+  g.done = () => g.k;
+  g.hint = () => 'Так написано в параграфе или здесь ошибка?';
+  g.body = () => {
+    const it = g.items[g.k];
+    if (!it) return '';
+    return `<div class="ask b3 c-sky" style="cursor:default;box-shadow:0 6px 0 var(--sky-d)"><div class="lbl">${g.k + 1} из ${g.items.length}</div><p class="pop">${esc(it.text)}</p></div>
+      ${g.shown ? `<div class="banner pop"><img src="${CAT(g.shown.ok ? 'happy' : 'think')}" alt=""><span>${g.shown.ok ? 'Верно!' : 'Не так.'} ${it.truth ? 'Это правда.' : 'Правильно: ' + esc(it.right)}</span></div>` : ''}
+      <div class="row2"><button class="b3 c-mint btn" data-act="ans" data-id="1" ${g.shown ? 'disabled' : ''}>Правда</button><button class="b3 c-pink btn" data-act="ans" data-id="0" ${g.shown ? 'disabled' : ''}>Ошибка</button></div>
+      ${g.shown ? '<button class="b3 c-yellow btn" data-act="next-q">Дальше</button>' : ''}`;
+  };
+  g.on = (act, id) => {
+    const it = g.items[g.k];
+    if (!it) return;
+    if (act === 'ans' && !g.shown) {
+      const ok = (id === '1') === it.truth;
+      if (ok) g.ok(null); else g.bad('t' + g.k, it.text, it.truth ? 'Это правда' : it.right);
+      g.shown = { ok }; return draw();
+    }
+    if (act === 'next-q' && g.shown) { g.shown = null; g.k++; if (g.k < g.items.length) draw(); else maybeFinish(); }
   };
   return g;
 }
@@ -1407,11 +1468,12 @@ function lessonStars(L) { const b = best(); return gamesOf(L).reduce((s, x) => s
 function todayCard() {
   const tp = todayPlan();
   if (!tp) return '';
+  const PL = planLesson();
   const done = tp.tasks.filter((x) => doneTasks[x.id]).length;
   const head = tp.due ? 'Сегодня рассказываешь!' : done === tp.tasks.length ? 'На сегодня всё сделано!' : 'Задание на сегодня';
   const sub = tp.due ? 'Повтори один раз целиком — и вперёд' : `Сдавать: ${shortDate(plan.due)} · ${linesTxt(plan.a, plan.b)}`;
   return `<div class="today">
-    <div class="top"><div><div class="lbl">${head}</div><h2>«${esc(POEM.title)}»</h2><div class="sub">${sub}</div></div>${!tp.due && done === tp.tasks.length ? `<img class="today-cat" src="${CAT('sleep')}" alt="">` : ring(done, tp.tasks.length)}</div>
+    <div class="top"><div><div class="lbl">${head}</div><h2>«${esc(PL.title)}»</h2><div class="sub">${sub}</div></div>${!tp.due && done === tp.tasks.length ? `<img class="today-cat" src="${CAT('sleep')}" alt="">` : ring(done, tp.tasks.length)}</div>
     <div class="tasks">${tp.tasks.map(taskHtml).join('')}</div>
     <button class="link" data-act="plan">Весь план</button>
   </div>`;
@@ -1431,13 +1493,45 @@ const SUBJECTS = {
   physics:    { name: 'Физика',      pic: 'book',       bg: '#e6f4f1' },
   chemistry:  { name: 'Химия',       pic: 'book',       bg: '#f5e8ff' },
 };
-const SHELF = [
-  { subject: 'history', lesson: 'smuta', sub: 'Смутное время', L: HISTORY, games: 4 },
-  { subject: 'literature', lesson: 'perchatka', sub: '«Перчатка»', L: POEM, games: 6 },
-];
+/* Уроки с фото хранятся на этом устройстве. Примеры (Смута, «Перчатка») — встроенные. */
+let myLessons = store.get('lessons') || [];
+const allLessons = () => [HISTORY, PERCHATKA, ...myLessons];
+const lessonById = (id) => allLessons().find((x) => x.id === id);
+HISTORY.subjectKey = 'history'; PERCHATKA.subjectKey = 'literature';
+function subjectKeyOf(name, kind) {
+  if (kind === 'poem') return 'literature';
+  const n = String(name || '').toLowerCase();
+  const table = [['истор', 'history'], ['литер', 'literature'], ['геогр', 'geography'], ['биол', 'biology'], ['матем', 'math'], ['алгебр', 'math'],
+    ['геометр', 'math'], ['русск', 'russian'], ['англ', 'english'], ['обществ', 'social'], ['физик', 'physics'], ['хим', 'chemistry']];
+  const hit = table.find(([k]) => n.includes(k));
+  return hit ? hit[1] : 'other';
+}
+const subjectOf = (key, L) => SUBJECTS[key] || { name: (L && L.subjectName) || 'Другое', pic: 'book', bg: '#f1ebe2' };
+// Урок с сервера → урок приложения.
+function lessonFromServer(x) {
+  const id = 'u' + Date.now().toString(36);
+  if (x.kind === 'poem') {
+    return { id, kind: 'poem', color: 'c-violet', subjectKey: 'literature', subject: 'Литература · наизусть', title: x.title, author: x.author || '', translator: x.translator || '',
+      text: x.text, scenes: x.scenes || [], fromPhoto: true, created: Date.now() };
+  }
+  const key = subjectKeyOf(x.subject, x.kind), years = (x.events || []).map((e) => e.year);
+  return { id, kind: 'history', color: 'c-pink', subjectKey: key, subjectName: x.subject, subject: subjectOf(key).name === 'Другое' ? (x.subject || 'Параграф') : subjectOf(key).name,
+    title: x.title, years: years.length ? (years.length > 1 ? `${Math.min(...years)}–${Math.max(...years)}` : String(years[0])) : '',
+    persons: (x.persons || []).map((p, k) => ({ id: 'p' + k, name: p.name, text: p.text })),
+    terms: (x.terms || []).map((t, k) => ({ id: 't' + k, term: t.term, text: t.text })),
+    events: (x.events || []).map((e, k) => ({ id: 'e' + k, year: e.year, text: e.text })),
+    facts: x.facts || [], questions: x.questions || [], map: null, fromPhoto: true, created: Date.now() };
+}
+// Полка: по предмету одна плитка; в предмете — все его уроки, свежие сверху.
+function shelf() {
+  const by = {};
+  allLessons().forEach((L) => { (by[L.subjectKey] = by[L.subjectKey] || []).push(L); });
+  return Object.entries(by).map(([key, list]) => ({ key, list: list.sort((a, b) => (b.created || 0) - (a.created || 0)) }));
+}
 
 function vHome() {
-  const total = LESSONS.reduce((s, L) => s + lessonStars(L), 0);
+  const total = allLessons().reduce((s, L) => s + lessonStars(L), 0);
+  const SH = shelf();
   return `<div class="screen">
     <div class="home-top"><div class="logo"><b>Мур</b><span>Мемо</span></div>
       <div class="r"><span class="total">${star(true)} ${total}</span>${soundBtn()}</div></div>
@@ -1446,10 +1540,11 @@ function vHome() {
       <button class="catbtn" data-act="pet" aria-label="Погладить кота">${catImg('book')}</button>
     </div>
     ${todayCard()}
-    <button class="photo-btn" data-act="soon"><img src="${CAT('camera')}" alt=""><span><b>Сфотографировать, что задали</b><small>Скоро: игры по фото твоего учебника</small></span></button>
+    <button class="photo-btn" data-act="photo"><img src="${CAT('camera')}" alt=""><span><b>Сфотографировать, что задали</b><small>Параграф или стих — 1–4 страницы</small></span></button>
     <div class="h3">Мои предметы</div>
-    ${SHELF.length ? `<div class="subj">${SHELF.map((x) => { const sj = SUBJECTS[x.subject]; return `<button class="s" data-act="lesson" data-id="${x.lesson}">
-      <span class="pic" style="background:${sj.bg}"><img src="${CAT(sj.pic)}" alt=""></span><b>${sj.name}</b><small>${x.sub}</small>${stars(Math.min(3, Math.round(lessonStars(x.L) / x.games)))}</button>`; }).join('')}</div>
+    ${SH.length ? `<div class="subj">${SH.map((x) => { const sj = subjectOf(x.key, x.list[0]); const one = x.list.length === 1;
+      return `<button class="s" data-act="${one ? 'lesson' : 'subject'}" data-id="${one ? x.list[0].id : x.key}">
+      <span class="pic" style="background:${sj.bg}"><img src="${CAT(sj.pic)}" alt=""></span><b>${esc(sj.name)}</b><small>${one ? esc(x.list[0].title) : x.list.length + ' ' + plural(x.list.length, 'урок', 'урока', 'уроков')}</small></button>`; }).join('')}</div>
       <div class="shelf-note">Новый предмет появится сам, когда сфотографируешь страницу</div>`
       : `<div class="shelf-empty"><img src="${CAT('sit')}" alt=""><span>Здесь появятся предметы, которые ты учишь. Сфоткай первую страницу!</span></div>`}
   </div>`;
@@ -1461,8 +1556,9 @@ function vLesson() {
     <div class="grow"><div class="crumb">${esc(L.subject)}</div></div>${soundBtn()}</div>`;
   if (L.kind === 'history') {
     return `<div class="screen">${top}
-      <div class="lesson-head"><div><h1 class="lesson-h1">${esc(L.title)}</h1><div class="lesson-sub">${L.years}</div></div>${catImg('history')}</div>
-      <div class="tiles">${HISTORY_GAMES.map((x) => `
+      <div class="lesson-head"><div><h1 class="lesson-h1">${esc(L.title)}</h1><div class="lesson-sub">${esc(L.years || '')}</div></div>${catImg(subjectOf(L.subjectKey, L).pic)}</div>
+      ${gamesOf(L).length ? '' : '<div class="shelf-empty"><img src="' + CAT('think') + '" alt=""><span>На этой странице мало материала для игр. Попробуй сфотографировать параграф целиком.</span></div>'}
+      <div class="tiles">${gamesOf(L).map((x) => `
         <button class="b3 ${x.color} tile" data-act="play" data-id="${x.id}">
           <span class="ico">${icon(x.icon)}</span>
           <span><span class="name">${x.name}</span><span class="sub" style="display:block">${x.sub}</span></span>
@@ -1472,20 +1568,53 @@ function vLesson() {
   }
   const lines = selLines();
   return `<div class="screen">${top}
-    <div class="lesson-head"><div><h1 class="lesson-h1">${esc(L.title)}</h1><div class="lesson-sub">${esc(L.author)}, ${esc(L.translator)}</div></div>${catImg('literature')}</div>
+    <div class="lesson-head"><div><h1 class="lesson-h1">${esc(L.title)}</h1><div class="lesson-sub">${esc([L.author, L.translator].filter(Boolean).join(', '))}</div></div>${catImg('literature')}</div>
     <div class="frag">
       <div class="lbl">Мой отрывок</div>
       <div class="q">${esc(lines[0].t)}<br>…<br>${esc(lines[lines.length - 1].t)}</div>
       <div class="row"><span class="n">${lines.length} ${plural(lines.length, 'строка', 'строки', 'строк')}</span>
         <button class="b3 c-card btn" style="padding:10px 16px;font-size:15px" data-act="pick">Изменить</button></div>
     </div>
-    ${plan ? `<button class="plan-row" data-act="plan"><span class="t">План до ${esc(shortDate(plan.due))}<small>${linesTxt(plan.a, plan.b)} · по дням</small></span>${icon('next')}</button>`
+    ${plan && planLesson() === L ? `<button class="plan-row" data-act="plan"><span class="t">План до ${esc(shortDate(plan.due))}<small>${linesTxt(plan.a, plan.b)} · по дням</small></span>${icon('next')}</button>`
       : `<button class="b3 c-yellow btn" data-act="due">Когда рассказывать? Составить план</button>`}
     <div class="path">${POEM_GAMES.map((x, k) => `
       <button class="step" data-act="play" data-id="${x.id}">
         <span class="node b3 ${x.color}">${icon(x.icon)}</span>
         <span class="txt"><span class="num">Шаг ${k + 1} ${stars(b[bestKey(L, x.id)] || 0)}</span><span class="name">${x.name}</span><span class="sub">${x.sub}</span></span>
       </button>`).join('')}</div>
+  </div>`;
+}
+
+function vSubject() {
+  const sj = subjectOf(S.subjectKey), list = (shelf().find((x) => x.key === S.subjectKey) || { list: [] }).list;
+  return `<div class="screen">
+    <div class="bar-top"><button class="round" data-act="home" aria-label="На главную">${icon('back')}</button><div class="grow"></div>${soundBtn()}</div>
+    <div class="lesson-head"><div><h1 class="lesson-h1">${esc(sj.name)}</h1><div class="lesson-sub">${list.length} ${plural(list.length, 'урок', 'урока', 'уроков')}</div></div>${catImg(sj.pic)}</div>
+    <div class="tasks">${list.map((L) => `<button class="task" data-act="lesson" data-id="${L.id}">
+      <span class="ti b3 ${L.kind === 'poem' ? 'c-violet' : 'c-pink'}">${icon(L.kind === 'poem' ? 'feather' : 'cards')}</span>
+      <span><span class="tn" style="display:block">${esc(L.title)}</span><span class="ts">${L.fromPhoto ? 'по фото' : 'пример'}${L.kind === 'poem' ? ' · стих' : ''}</span></span>
+      <span class="tick" style="border:0">›</span></button>`).join('')}</div>
+  </div>`;
+}
+
+function vLoading() {
+  return `<div class="screen result">
+    <div class="res-cat">${catImg('camera', 'jump-in')}</div>
+    <h2>Читаю страницу…</h2>
+    <div class="stat">${S.loadNote || 'Обычно это 20–40 секунд. Не закрывай приложение.'}</div>
+    <div class="prog" style="width:100%"><i style="width:${S.loadPct || 10}%"></i></div>
+  </div>`;
+}
+
+function vPhotoErr() {
+  return `<div class="screen result">
+    <div class="res-cat">${catImg('oops', 'jump-in')}</div>
+    <h2>Не получилось</h2>
+    <div class="stat">${esc(S.photoErr || 'Что-то пошло не так')}</div>
+    <div class="actions">
+      <button class="b3 c-yellow btn" data-act="photo">Сфотографировать ещё раз</button>
+      <button class="b3 c-card btn" data-act="home">На главную</button>
+    </div>
   </div>`;
 }
 
@@ -1596,7 +1725,7 @@ function vResult() {
 }
 
 function draw() {
-  const v = { home: vHome, lesson: vLesson, pick: vPick, game: vGame, result: vResult, due: vDue, plan: vPlan }[S.screen];
+  const v = { home: vHome, lesson: vLesson, pick: vPick, game: vGame, result: vResult, due: vDue, plan: vPlan, subject: vSubject, loading: vLoading, photoerr: vPhotoErr }[S.screen];
   $app.innerHTML = v();
   $app.classList.toggle('enter', S.enter);
   S.enter = false;
@@ -1610,10 +1739,14 @@ $app.addEventListener('click', (e) => {
   switch (a) {
     case 'home': taskRange = null; return go('home', { lesson: null, game: null, task: null });
     case 'pet': { const c = el.querySelector('.cat'); c.classList.remove('jump'); void c.offsetWidth; c.classList.add('jump'); sfx('ok'); return; }
-    case 'soon': toast('Скоро: подключаем распознавание фото'); return;
+    case 'soon': toast('Скоро'); return;
+    case 'photo': return pickPhotos();
+    case 'subject': return go('subject', { subjectKey: id });
     case 'sound': soundOn = !soundOn; store.set('sound', soundOn); if (soundOn) sfx('ok'); return draw();
     case 'lesson': {
-      const L = LESSONS.find((x) => x.id === id);
+      const L = lessonById(id);
+      if (!L) return;
+      if (L.kind === 'poem') usePoem(L);
       if (L.kind === 'poem' && !range) return go('pick', { lesson: L, pick: { a: null, b: null } });
       return go('lesson', { lesson: L });
     }
@@ -1625,11 +1758,13 @@ $app.addEventListener('click', (e) => {
     case 'due-done': makePlan(S.due); S.planFrom = 'lesson'; sfx('win'); toast('План готов!'); return go('plan', { lesson: POEM });
     case 'plan':
       if (S.screen === 'home' || S.screen === 'lesson') S.planFrom = S.screen;
+      usePoem(planLesson());
       taskRange = null; return go('plan', { lesson: POEM, game: null, task: null });
     case 'plan-del':
       if (!S.confirmDel) { S.confirmDel = true; toast('Нажми ещё раз, чтобы удалить план'); setTimeout(() => { S.confirmDel = false; }, 2500); return; }
       S.confirmDel = false; plan = null; store.set('plan', null); return go('lesson', { lesson: POEM });
     case 'task': {
+      usePoem(planLesson());
       const x = findTask(id); if (!x) return;
       taskRange = { a: x.a, b: x.b };
       const gm = POEM_GAMES.find((q) => q.id === x.game), g = gm.make(POEM); g.id = x.game;
@@ -1644,7 +1779,7 @@ $app.addEventListener('click', (e) => {
     case 'all': S.pick = { a: 0, b: LINES.length - 1 }; sfx('tap'); return draw();
     case 'pick-done': {
       const p = S.pick, b = p.b == null ? p.a : p.b;
-      range = { a: Math.min(p.a, b), b: Math.max(p.a, b) }; store.set('range', range);
+      range = { a: Math.min(p.a, b), b: Math.max(p.a, b) }; store.set(rangeStoreKey(POEM), range);
       return go('lesson');
     }
     case 'play': {
@@ -1665,6 +1800,72 @@ $app.addEventListener('keydown', (e) => {
   if (el) { e.preventDefault(); el.dispatchEvent(new MouseEvent('click', { bubbles: true })); }
 });
 
+/* ---------- Фото страницы → урок ---------- */
+const photoIn = document.getElementById('photo-in');
+function clientId() {
+  let id = store.get('client');
+  if (!id) {
+    const a = new Uint8Array(12); (window.crypto || {}).getRandomValues ? crypto.getRandomValues(a) : a.forEach((_, i) => { a[i] = Math.random() * 256; });
+    id = 'c' + [...a].map((x) => x.toString(16).padStart(2, '0')).join('');
+    store.set('client', id);
+  }
+  return id;
+}
+function pickPhotos() {
+  if (!API_URL) return toast('Скоро: подключаем распознавание фото');
+  photoIn.value = '';
+  photoIn.click();
+}
+// Сжимаем фото до 1600 точек по длинной стороне: текст читается, а запрос лёгкий.
+function toJpeg(file, max = 1600) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL('image/jpeg', 0.85).split(',')[1]);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Не получилось открыть фото. Попробуй сфотографировать ещё раз')); };
+    img.src = url;
+  });
+}
+async function sendPhotos(files) {
+  const list = [...files].slice(0, 4);
+  if (!list.length) return;
+  if (files.length > 4) toast('Беру первые 4 фото');
+  let tick;
+  try {
+    go('loading', { loadPct: 8, loadNote: '' });
+    const images = [];
+    for (const f of list) images.push(await toJpeg(f));
+    S.loadPct = 20; draw();
+    tick = setInterval(() => { S.loadPct = Math.min(92, (S.loadPct || 20) + 3); if (S.screen === 'loading') draw(); }, 1200);
+    const ctrl = new AbortController(), stop = setTimeout(() => ctrl.abort(), 90000);
+    let res, data;
+    try {
+      res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ images, clientId: clientId() }), signal: ctrl.signal });
+      data = await res.json().catch(() => ({}));
+    } catch (e) {
+      throw new Error(e.name === 'AbortError' ? 'Страница читалась слишком долго. Попробуй ещё раз' : 'Нет связи с сервером. Проверь интернет и попробуй ещё раз');
+    } finally { clearTimeout(stop); }
+    if (!res.ok || !data.lesson) throw new Error(data.error || 'Сервер не смог прочитать страницу');
+    const L = lessonFromServer(data.lesson);
+    myLessons.push(L); store.set('lessons', myLessons);
+    clearInterval(tick);
+    sfx('win');
+    toast(data.cached ? 'Эту страницу уже разбирали — урок готов!' : `Готово!${typeof data.left === 'number' ? ' Новых фото на сегодня: ' + data.left : ''}`);
+    if (L.kind === 'poem') { usePoem(L); return go('pick', { lesson: L, pick: { a: null, b: null } }); }
+    return go('lesson', { lesson: L });
+  } catch (e) {
+    clearInterval(tick);
+    go('photoerr', { photoErr: e.message });
+  }
+}
+photoIn.addEventListener('change', () => sendPhotos(photoIn.files));
+
 // Заставка: кот машет лапой (два кадра по очереди), потом исчезает сам или по нажатию.
 (function splash() {
   const el = document.getElementById('splash');
@@ -1677,6 +1878,7 @@ $app.addEventListener('keydown', (e) => {
   setTimeout(hide, 2300);
 })();
 
+usePoem(PERCHATKA);
 draw();
 </script>
 </body>
