@@ -1,4 +1,5 @@
 'use strict';
+const crypto = require('node:crypto');
 /*
   «Учу играя»: функция для Yandex Cloud Functions.
   Получает фото страниц учебника, распознаёт текст (Vision OCR),
@@ -8,8 +9,18 @@
   Переменные окружения функции:
     YC_API_KEY      — API-ключ сервисного аккаунта (роли ai.vision.user и ai.languageModels.user);
     YC_FOLDER_ID    — идентификатор каталога в Яндекс Облаке;
-    YC_MODEL        — модель, по умолчанию yandexgpt/latest (можно yandexgpt-lite/latest — дешевле);
+    YC_MODEL        — основная модель, по умолчанию yandexgpt-lite/latest (дешёвая);
+    YC_MODEL_BACKUP — запасная, по умолчанию yandexgpt/latest (Pro): зовём, только если основная
+                      ответила криво или её ответ не прошёл проверку на выдумки;
+    CACHE_BUCKET    — бакет Object Storage для готовых уроков и счётчиков (без него — память функции);
+    DAILY_PHOTOS    — сколько новых фото в день можно одному человеку (по умолчанию 10);
+    DAILY_PHOTOS_IP — сколько фото в день с одного адреса, включая повторные (по умолчанию 40);
     ALLOWED_ORIGIN  — адрес сайта, которому можно обращаться к функции (по умолчанию *).
+
+  Порядок работы с одним запросом:
+    1) лимит по адресу → 2) распознаём текст → 3) ищем готовый урок по тексту страницы
+    (ребёнок ничего не выбирает: если эту страницу уже кто-то фотографировал, урок отдаётся сразу
+    и в лимит не считается) → 4) лимит на человека → 5) Lite, при неудаче Pro → 6) сохраняем урок.
 */
 
 const OCR_URL = 'https://ocr.api.cloud.yandex.net/ocr/v1/recognizeText';
@@ -158,8 +169,7 @@ async function recognize(fetchFn, env, imageB64) {
   return String(ann.fullText || '');
 }
 
-async function askModel(fetchFn, env, pageText) {
-  const model = env.YC_MODEL || 'yandexgpt/latest';
+async function askModel(fetchFn, env, pageText, model) {
   const data = await callJson(fetchFn, LLM_URL, {
     modelUri: `gpt://${env.YC_FOLDER_ID}/${model}`,
     completionOptions: { stream: false, temperature: 0.1, maxTokens: '4000' },
@@ -169,17 +179,140 @@ async function askModel(fetchFn, env, pageText) {
   return alt && alt.message ? alt.message.text : '';
 }
 
-/* ---------- Главная функция ---------- */
-async function buildLesson({ images, env, fetchFn = fetch }) {
+// Основная модель — Lite. Если её ответ не разобрался или не прошёл проверку на выдумки, пробуем Pro.
+async function generate(fetchFn, env, pageText) {
+  const models = [env.YC_MODEL || 'yandexgpt-lite/latest', env.YC_MODEL_BACKUP || 'yandexgpt/latest']
+    .filter((m, k, all) => m && all.indexOf(m) === k);
+  let lastError;
+  for (const model of models) {
+    try {
+      const answer = await askModel(fetchFn, env, pageText.slice(0, 12000), model);
+      return { lesson: cleanLesson(parseModelJson(answer), pageText), model };
+    } catch (e) {
+      lastError = e;
+    }
+  }
+  throw lastError;
+}
+
+/* ---------- Хранилище: готовые уроки и счётчики ---------- */
+// Object Storage с токеном сервисного аккаунта функции; без бакета — память (живёт, пока функция «тёплая»).
+function memoryStore() {
+  const m = new Map();
+  return { async get(k) { return m.has(k) ? m.get(k) : null; }, async put(k, v) { m.set(k, v); } };
+}
+function bucketStore(fetchFn, bucket, token) {
+  const url = (k) => `https://storage.yandexcloud.net/${bucket}/${k.split('/').map(encodeURIComponent).join('/')}`;
+  const headers = { 'X-YaCloud-SubjectToken': token };
+  return {
+    async get(k) {
+      const res = await fetchFn(url(k), { headers });
+      if (res.status === 404) return null;
+      if (!res.ok) throw new Error(`Хранилище ответило ${res.status}`);
+      return res.text();
+    },
+    async put(k, v) {
+      const res = await fetchFn(url(k), { method: 'PUT', headers: { ...headers, 'Content-Type': 'application/json' }, body: v });
+      if (!res.ok) throw new Error(`Хранилище ответило ${res.status}`);
+    },
+  };
+}
+const fallbackStore = memoryStore();
+
+/* ---------- Узнаём страницу по тексту ---------- */
+// Два фото одной страницы распознаются чуть по-разному, поэтому точного совпадения текста не ждём:
+// сравниваем наборы слов. Чтобы быстро найти кандидатов, берём «отпечаток» MinHash и делим его на полосы:
+// достаточно совпасть одной полосе, потом проверяем сходство слов честно.
+const SIG = 16, BANDS = 8, SAME_PAGE = 0.75, MIN_WORDS = 15;
+function pageWords(text) {
+  return [...new Set(norm(text).split(' ').filter((w) => w.length >= 5))];
+}
+function fnv(str, seed) {
+  let h = (2166136261 ^ seed) >>> 0;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+  return h;
+}
+function bandKeys(words) {
+  const sig = [];
+  for (let k = 0; k < SIG; k++) sig.push(Math.min(...words.map((w) => fnv(w, k * 0x9e3779b1))));
+  const per = SIG / BANDS, keys = [];
+  for (let b = 0; b < BANDS; b++) keys.push(`index/${b}-${sig.slice(b * per, (b + 1) * per).map((x) => x.toString(36)).join('-')}`);
+  return keys;
+}
+function similarity(a, b) {
+  const A = new Set(a); let common = 0;
+  for (const w of b) if (A.has(w)) common++;
+  return common / (A.size + b.length - common || 1);
+}
+async function findLesson(store, words) {
+  if (words.length < MIN_WORDS) return null;
+  const tried = new Set();
+  for (const key of bandKeys(words)) {
+    const id = await store.get(key);
+    if (!id || tried.has(id)) continue;
+    tried.add(id);
+    const saved = await store.get(`lessons/${id}.json`);
+    if (!saved) continue;
+    const rec = JSON.parse(saved);
+    if (similarity(rec.words, words) >= SAME_PAGE) return rec.lesson;
+  }
+  return null;
+}
+async function saveLesson(store, words, lesson) {
+  if (words.length < MIN_WORDS) return;
+  const id = crypto.createHash('sha1').update(words.slice().sort().join(' ')).digest('hex').slice(0, 20);
+  await store.put(`lessons/${id}.json`, JSON.stringify({ words: words.slice(0, 600), lesson, saved: new Date().toISOString() }));
+  for (const key of bandKeys(words)) await store.put(key, id);
+}
+
+/* ---------- Лимиты на день ---------- */
+const moscowDay = (now) => new Date(now + 3 * 3600e3).toISOString().slice(0, 10);
+async function counter(store, key) {
+  const v = await store.get(key);
+  return v ? parseInt(v, 10) || 0 : 0;
+}
+class LimitError extends Error {}
+
+/* ---------- Обработка одного запроса ---------- */
+async function processRequest({ images, clientId, ip, env, fetchFn = fetch, store = fallbackStore, now = Date.now() }) {
+  const day = moscowDay(now);
+  const num = (v, d) => (v === undefined || v === '' || !Number.isFinite(Number(v)) ? d : Math.max(0, Math.floor(Number(v))));
+  const perPerson = num(env.DAILY_PHOTOS, 10);
+  const perIp = num(env.DAILY_PHOTOS_IP, 40);
+  // Сам адрес не храним — только его хеш: для лимита достаточно отличать одних от других.
+  const ipId = crypto.createHash('sha256').update('murmemo:' + (ip || 'unknown')).digest('hex').slice(0, 16);
+  const who = /^[A-Za-z0-9_-]{8,64}$/.test(clientId || '') ? clientId : 'ip-' + ipId;
+  const ipKey = `limits/${day}/ip-${ipId}`;
+  const personKey = `limits/${day}/${who}`;
+
+  // 1. Адрес: считаем все фото, даже повторные, — это защита от перебора и лишних трат на распознавание.
+  const ipUsed = await counter(store, ipKey);
+  if (ipUsed + images.length > perIp) throw new LimitError('С этого адреса сегодня уже прислали много фото. Попробуй завтра');
+  await store.put(ipKey, String(ipUsed + images.length));
+
+  // 2. Распознаём текст.
   const texts = [];
   for (const img of images) texts.push(await recognize(fetchFn, env, img));
   const pageText = texts.join('\n\n').trim();
   if (pageText.length < 40) throw new Error('На фото не видно текста. Сними страницу ровно и при хорошем свете');
-  const answer = await askModel(fetchFn, env, pageText.slice(0, 12000));
-  return cleanLesson(parseModelJson(answer), pageText);
+
+  // 3. Эту страницу уже фотографировали — отдаём готовый урок, в лимит не считаем.
+  const words = pageWords(pageText);
+  const used = await counter(store, personKey);
+  const cached = await findLesson(store, words).catch(() => null);
+  if (cached) return { lesson: cached, cached: true, left: Math.max(0, perPerson - used) };
+
+  // 4. Новая страница: проверяем лимит человека.
+  if (used + images.length > perPerson) throw new LimitError(`На сегодня новые фото закончились (${perPerson} в день). Готовые уроки работают, новые — завтра`);
+  await store.put(personKey, String(used + images.length));
+
+  // 5–6. Собираем урок и сохраняем, чтобы следующий раз отдать без нейросети.
+  const { lesson, model } = await generate(fetchFn, env, pageText);
+  await saveLesson(store, words, lesson).catch(() => {});
+  return { lesson, cached: false, model, left: Math.max(0, perPerson - used - images.length) };
 }
 
-module.exports.handler = async function handler(event) {
+module.exports.handler = async function handler(event, context) {
   const env = process.env, origin = env.ALLOWED_ORIGIN || '*';
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: cors(origin), body: '' };
   if (event.httpMethod !== 'POST') return reply(405, { error: 'Нужен POST' }, origin);
@@ -193,12 +326,15 @@ module.exports.handler = async function handler(event) {
   const images = Array.isArray(body && body.images) ? body.images : [];
   if (!images.length || images.length > MAX_IMAGES) return reply(400, { error: `Нужно от 1 до ${MAX_IMAGES} фото` }, origin);
   if (images.some((x) => typeof x !== 'string' || x.length * 0.75 > MAX_IMAGE_BYTES)) return reply(400, { error: 'Фото слишком большое' }, origin);
+  const token = context && context.token && context.token.access_token;
+  const store = env.CACHE_BUCKET && token ? bucketStore(fetch, env.CACHE_BUCKET, token) : fallbackStore;
+  const ip = event.requestContext && event.requestContext.identity && event.requestContext.identity.sourceIp;
   try {
-    const lesson = await buildLesson({ images, env });
-    return reply(200, { lesson }, origin);
+    const result = await processRequest({ images, clientId: body.clientId, ip, env, store });
+    return reply(200, result, origin);
   } catch (e) {
-    return reply(422, { error: e.message }, origin);
+    return reply(e instanceof LimitError ? 429 : 422, { error: e.message }, origin);
   }
 };
 
-module.exports._test = { parseModelJson, cleanLesson, mentioned, buildLesson };
+module.exports._test = { parseModelJson, cleanLesson, mentioned, processRequest, memoryStore, pageWords, similarity, bandKeys };
