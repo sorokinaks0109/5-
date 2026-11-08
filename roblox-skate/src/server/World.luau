@@ -179,41 +179,83 @@ local function star(parent, pos, value)
 	return s
 end
 
+-- ---------- красивые модели из Toolbox ----------
+-- Положи модель в ReplicatedStorage → SkateAssets с нужным именем
+-- (например Tree_sakura, Palm, Lollipop, Cloud), и игра поставит её
+-- вместо простой фигуры. Имена — в инструкции.
+local function asset(name, cf, parent, ground)
+	local folder = game:GetService("ReplicatedStorage"):FindFirstChild("SkateAssets")
+	local src = folder and folder:FindFirstChild(name)
+	if not src or not (src:IsA("Model") or src:IsA("BasePart")) then
+		return false
+	end
+	local c = src:Clone()
+	if c:IsA("BasePart") then
+		c.Anchored = true
+		c.CFrame = cf
+		if ground then
+			c.CFrame = cf + Vector3.new(0, c.Size.Y / 2, 0)
+		end
+	else
+		for _, d in ipairs(c:GetDescendants()) do
+			if d:IsA("BasePart") then
+				d.Anchored = true
+			end
+		end
+		c:PivotTo(cf)
+		if ground then
+			local bcf, size = c:GetBoundingBox()
+			c:PivotTo(c:GetPivot() + Vector3.new(0, cf.Position.Y - (bcf.Position.Y - size.Y / 2), 0))
+		end
+	end
+	c.Parent = parent
+	return true
+end
+
 -- ---------- декор ----------
 
 local function cloud(parent, pos, rng)
-	for k = 1, 5 do
+	if asset("Cloud", CFrame.new(pos) * CFrame.Angles(0, rng:NextNumber(0, 6), 0), parent, false) then
+		return
+	end
+	for k = 1, 6 do
 		local r = rng:NextNumber(10, 22)
 		deco({ Name = "Cloud", Shape = Enum.PartType.Ball, Size = Vector3.new(r, r, r), CFrame = CFrame.new(pos + Vector3.new(rng:NextNumber(-16, 16), rng:NextNumber(-3, 4), rng:NextNumber(-8, 8))), Color = Color3.new(1, 1, 1), CastShadow = false }, parent)
 	end
 end
 
-local function blockTree(parent, x, z, rng, leafColors, trunkColor, petals)
+local function blockTree(parent, x, z, rng, leafColors, trunkColor, petals, assetName)
+	if asset(assetName or "Tree_sakura", CFrame.new(x, 0, z) * CFrame.Angles(0, rng:NextNumber(0, 6), 0), parent, true) then
+		return
+	end
 	local h = rng:NextNumber(10, 16)
-	local y = 0
-	-- ступенчатый ствол
+	-- круглый изогнутый ствол
+	local lean = rng:NextNumber(-0.15, 0.15)
 	for k = 1, 3 do
 		local seg = h / 3
-		deco({ Name = "Trunk", Size = Vector3.new(2.4 - k * 0.4, seg, 2.4 - k * 0.4), CFrame = CFrame.new(x + (k - 2) * 0.4, y + seg / 2, z), Color = trunkColor, CanCollide = k == 1 }, parent)
-		y += seg
+		deco({ Name = "Trunk", Shape = Enum.PartType.Cylinder, Size = Vector3.new(seg + 0.6, 2.2 - k * 0.35, 2.2 - k * 0.35), CFrame = CFrame.new(x + lean * k * 2, (k - 0.5) * seg, z) * CFrame.Angles(0, 0, math.rad(90) + lean * k), Color = trunkColor, CanCollide = k == 1 }, parent)
 	end
 	-- ветки
 	for _, side in ipairs({ -1, 1 }) do
-		deco({ Name = "Branch", Size = Vector3.new(5, 1, 1), CFrame = CFrame.new(x + side * 2.2, h - 1, z) * CFrame.Angles(0, 0, side * math.rad(30)), Color = trunkColor }, parent)
+		deco({ Name = "Branch", Shape = Enum.PartType.Cylinder, Size = Vector3.new(5, 0.8, 0.8), CFrame = CFrame.new(x + side * 2.2 + lean * 6, h - 1, z) * CFrame.Angles(0, 0, side * math.rad(35)), Color = trunkColor }, parent)
 	end
-	-- крона из кубиков
+	-- пышная круглая крона
 	local canopy
-	for k = 1, 7 do
-		local s = rng:NextNumber(4, 7.5)
+	local cx = x + lean * 6
+	for k = 1, 9 do
+		local s = rng:NextNumber(5, 9)
+		local ang = k / 9 * math.pi * 2
 		local c = deco({
 			Name = "Leaves",
-			Size = Vector3.new(s, s * 0.8, s),
-			CFrame = CFrame.new(x + rng:NextNumber(-4.5, 4.5), h + rng:NextNumber(0, 4), z + rng:NextNumber(-4.5, 4.5)) * CFrame.Angles(0, rng:NextNumber(0, 1.5), 0),
+			Shape = Enum.PartType.Ball,
+			Size = Vector3.new(s, s, s),
+			CFrame = CFrame.new(cx + math.cos(ang) * rng:NextNumber(2, 5), h + 1.5 + rng:NextNumber(-1, 3.5), z + math.sin(ang) * rng:NextNumber(2, 5)),
 			Color = leafColors[rng:NextInteger(1, #leafColors)],
-			Material = Enum.Material.SmoothPlastic,
+			CastShadow = true,
 		}, parent)
 		canopy = canopy or c
 	end
+	deco({ Name = "LeavesTop", Shape = Enum.PartType.Ball, Size = Vector3.new(8, 8, 8), CFrame = CFrame.new(cx, h + 5, z), Color = leafColors[1]:Lerp(Color3.new(1, 1, 1), 0.2) }, parent)
 	if petals and canopy then
 		local e = Instance.new("ParticleEmitter")
 		e.Color = ColorSequence.new(leafColors[1])
@@ -268,6 +310,9 @@ local function donutArch(parent, z, rng)
 end
 
 local function lollipop(parent, x, z, rng)
+	if asset("Lollipop", CFrame.new(x, 0, z) * CFrame.Angles(0, rng:NextNumber(0, 6), 0), parent, true) then
+		return
+	end
 	local h = rng:NextNumber(14, 22)
 	deco({ Name = "Stick", Shape = Enum.PartType.Cylinder, Size = Vector3.new(h, 1, 1), CFrame = CFrame.new(x, h / 2, z) * CFrame.Angles(0, 0, math.rad(90)), Color = Color3.new(1, 1, 1), CanCollide = true }, parent)
 	local c1 = ({ Color3.fromRGB(255, 80, 150), Color3.fromRGB(255, 200, 0), Color3.fromRGB(80, 220, 255), Color3.fromRGB(170, 100, 255) })[rng:NextInteger(1, 4)]
@@ -276,6 +321,9 @@ local function lollipop(parent, x, z, rng)
 end
 
 local function candyCane(parent, x, z)
+	if asset("CandyCane", CFrame.new(x, 0, z), parent, true) then
+		return
+	end
 	for k = 0, 7 do
 		deco({ Name = "Cane", Size = Vector3.new(2, 2, 2), CFrame = CFrame.new(x, 1 + k * 2, z), Color = (k % 2 == 0) and Color3.fromRGB(255, 50, 70) or Color3.new(1, 1, 1), CanCollide = true }, parent)
 	end
@@ -291,6 +339,9 @@ local function gumdrop(parent, x, z, rng)
 end
 
 local function palm(parent, x, z, rng)
+	if asset("Palm", CFrame.new(x, 0, z) * CFrame.Angles(0, rng:NextNumber(0, 6), 0), parent, true) then
+		return
+	end
 	local h = rng:NextNumber(14, 20)
 	local lean = rng:NextNumber(-0.15, 0.15)
 	for k = 0, 5 do
@@ -305,6 +356,9 @@ local function palm(parent, x, z, rng)
 end
 
 local function umbrella(parent, x, z, rng)
+	if asset("Umbrella", CFrame.new(x, 0, z), parent, true) then
+		return
+	end
 	deco({ Name = "Pole", Size = Vector3.new(0.5, 9, 0.5), CFrame = CFrame.new(x, 4.5, z), Color = Color3.new(1, 1, 1) }, parent)
 	local c = ({ Color3.fromRGB(255, 80, 80), Color3.fromRGB(0, 180, 255), Color3.fromRGB(255, 200, 0) })[rng:NextInteger(1, 3)]
 	deco({ Name = "Umbrella", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1, 12, 12), CFrame = CFrame.new(x, 9, z) * CFrame.Angles(0, 0, math.rad(90)), Color = c }, parent)
@@ -334,11 +388,17 @@ local function neonArch(parent, z, color)
 end
 
 local function crystal(parent, x, z, rng)
+	if asset("Crystal", CFrame.new(x, 0, z) * CFrame.Angles(0, rng:NextNumber(0, 6), 0), parent, true) then
+		return
+	end
 	local h = rng:NextNumber(10, 26)
 	deco({ Name = "Crystal", Size = Vector3.new(h * 0.3, h, h * 0.3), CFrame = CFrame.new(x, h / 2 - 1, z) * CFrame.Angles(math.rad(rng:NextNumber(-20, 20)), rng:NextNumber(0, 6), math.rad(rng:NextNumber(-20, 20))), Color = Color3.fromRGB(140, 220, 255), Material = Enum.Material.Glass, Transparency = 0.2, CanCollide = true }, parent)
 end
 
 local function snowman(parent, x, z)
+	if asset("Snowman", CFrame.new(x, 0, z), parent, true) then
+		return
+	end
 	local y = 0
 	for k, s in ipairs({ 8, 6, 4 }) do
 		y += s / 2
@@ -349,6 +409,9 @@ local function snowman(parent, x, z)
 end
 
 local function rock(parent, x, z, rng, color)
+	if asset("Rock", CFrame.new(x, 0, z) * CFrame.Angles(0, rng:NextNumber(0, 6), 0), parent, true) then
+		return
+	end
 	local s = rng:NextNumber(6, 15)
 	deco({ Name = "Rock", Size = Vector3.new(s, s * 0.8, s), CFrame = CFrame.new(x, s * 0.3, z) * CFrame.Angles(rng:NextNumber(0, 1), rng:NextNumber(0, 6), rng:NextNumber(0, 1)), Color = color, Material = Enum.Material.Slate, CanCollide = true }, parent)
 end
@@ -550,6 +613,19 @@ local function buildZone(i)
 		end
 	end
 
+	-- дорога посередине со стрелками «вперёд», чтобы было видно, куда ехать
+	local road = zone.floor:Lerp(Color3.new(0, 0, 0), 0.45)
+	deco({ Name = "Road", Size = Vector3.new(30, 0.08, L), CFrame = CFrame.new(0, 0.04, z0 - L / 2), Color = road, CastShadow = false }, folder)
+	for _, side in ipairs({ -1, 1 }) do
+		deco({ Name = "RoadLine", Size = Vector3.new(1, 0.1, L), CFrame = CFrame.new(side * 15.5, 0.05, z0 - L / 2), Color = Color3.new(1, 1, 1), Material = Enum.Material.Neon, CastShadow = false }, folder)
+	end
+	for k = 1, math.floor(L / 30) - 1 do
+		local az = z0 - k * 30
+		for _, side in ipairs({ -1, 1 }) do
+			deco({ Name = "RoadArrow", Size = Vector3.new(1.4, 0.12, 7), CFrame = CFrame.new(side * 2.5, 0.06, az) * CFrame.Angles(0, side * math.rad(35), 0), Color = Color3.new(1, 1, 1), Material = Enum.Material.Neon, CastShadow = false }, folder)
+		end
+	end
+
 	-- табличка с названием зоны над въездом
 	local sign = deco({ Name = "ZoneSign", Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(0, 34, z0 - 6), Transparency = 1 }, folder)
 	billboard(sign, zone.name, Vector2.new(60, 10), 0, zone.accent:Lerp(Color3.new(1, 1, 1), 0.4))
@@ -697,20 +773,20 @@ local function setupLighting()
 		return o
 	end
 	local atm = ensure("Atmosphere", "SkateAtmosphere")
-	atm.Density = 0.28
-	atm.Offset = 0.2
-	atm.Color = Color3.fromRGB(255, 230, 245)
-	atm.Decay = Color3.fromRGB(180, 150, 220)
-	atm.Glare = 0.3
-	atm.Haze = 1.2
+	atm.Density = 0.22
+	atm.Offset = 0.1
+	atm.Color = Color3.fromRGB(230, 225, 245)
+	atm.Decay = Color3.fromRGB(150, 140, 200)
+	atm.Glare = 0
+	atm.Haze = 0.6
 	local bloom = ensure("BloomEffect", "SkateBloom")
-	bloom.Intensity = 0.6
-	bloom.Size = 30
-	bloom.Threshold = 1.3
+	bloom.Intensity = 0.35
+	bloom.Size = 24
+	bloom.Threshold = 2.2
 	local cc = ensure("ColorCorrectionEffect", "SkateColor")
-	cc.Saturation = 0.2
-	cc.Contrast = 0.08
-	cc.Brightness = 0.03
+	cc.Saturation = 0.25
+	cc.Contrast = 0.15
+	cc.Brightness = -0.02
 	local rays = ensure("SunRaysEffect", "SkateSunRays")
 	rays.Intensity = 0.05
 	rays.Spread = 0.6

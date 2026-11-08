@@ -43,6 +43,7 @@ function Data.default()
 		trail = "board",
 		firstJoin = 0,
 		starterBought = false,
+		quest = 1,
 		settings = { music = true, sfx = true, speedLimit = 100 },
 	}
 end

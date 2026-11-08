@@ -96,6 +96,50 @@ local function yawOnly(cf)
 	return CFrame.lookAt(Vector3.zero, look.Unit)
 end
 
+-- ---------- задания ----------
+local questBusy = false
+local function questEvent(kind)
+	local data = state.data
+	if not data or questBusy then
+		return
+	end
+	local q = Config.Quests[data.quest or 1]
+	if not q or q.kind ~= kind then
+		return
+	end
+	questBusy = true
+	task.spawn(function()
+		local ok = request("QuestDone", data.quest)
+		if ok then
+			Sounds.play("LevelUp", 1.1)
+		end
+		questBusy = false
+	end)
+end
+
+local function questFromData()
+	local data = state.data
+	if not data then
+		return
+	end
+	local q = Config.Quests[data.quest or 1]
+	if not q then
+		return
+	end
+	local n = 0
+	for _ in pairs(data.boards) do
+		n += 1
+	end
+	local done = (q.kind == "speed" and data.speedLevel >= 1)
+		or (q.kind == "level4" and data.level >= 4)
+		or (q.kind == "zone2" and data.maxZone >= 2)
+		or (q.kind == "zone3" and data.maxZone >= 3)
+		or (q.kind == "board" and (n >= 2 or data.equipped == "gold"))
+	if done then
+		questEvent(q.kind)
+	end
+end
+
 -- ---------- комбо ----------
 local function estimate(entries)
 	local base, mult = Config.comboScore(entries)
@@ -208,6 +252,7 @@ local function completeTrick()
 		root.CFrame = CFrame.new(root.Position) * tr.yaw
 	end
 	addEntryChecked(tr.name)
+	questEvent("trick")
 end
 
 local function updateTrick(dt)
@@ -280,7 +325,9 @@ local function launch(kick)
 	root.AssemblyLinearVelocity = horiz + Vector3.new(0, power, 0)
 	Sounds.play("Jump", 0.8)
 	addEntryChecked("Air")
+	questEvent("kick")
 	if kick:GetAttribute("Mega") then
+		questEvent("mega")
 		UI.floatText("МЕГА-ПРЫЖОК!", Color3.fromRGB(255, 80, 200))
 	end
 end
@@ -478,6 +525,13 @@ local function onCharacter(c)
 	state.inAir = false
 	state.speed = 0
 	UI.comboEnd(nil)
+	-- выключаем стандартную анимацию бега: на доске её заменяет поза скейтера
+	task.spawn(function()
+		local animate = c:WaitForChild("Animate", 10)
+		if animate and animate:IsA("LocalScript") then
+			animate.Enabled = false
+		end
+	end)
 	-- выключаем стандартный звук шагов: мы же на доске
 	task.spawn(function()
 		local running = root:WaitForChild("Running", 10)
@@ -596,6 +650,7 @@ RunService.Heartbeat:Connect(function(dt)
 			state.grinding = true
 			state.grindTick = 0
 			addEntryChecked("Rail")
+			questEvent("rail")
 		end
 		state.grindTick += dt
 		if state.grindTick >= 0.25 then
@@ -711,6 +766,7 @@ remotes.DataChanged.OnClientEvent:Connect(function(snap)
 	UI.setData(snap)
 	refreshGates()
 	refreshStands()
+	task.defer(questFromData)
 	if snap.settings then
 		Sounds.setEnabled(snap.settings.sfx ~= false, snap.settings.music ~= false)
 	end
@@ -724,6 +780,12 @@ end)
 
 remotes.ComboResult.OnClientEvent:Connect(function(coins, xp, record, mult)
 	UI.comboResult(coins, xp, record, mult)
+	if mult and mult >= 2 then
+		questEvent("combo2")
+	end
+	if mult and mult >= 5 then
+		questEvent("combo5")
+	end
 	Sounds.play("Coin", 1 + math.clamp((mult or 1) / 20, 0, 0.5))
 end)
 

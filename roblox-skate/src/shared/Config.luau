@@ -91,12 +91,12 @@ Config.Zones = {
 		level = 1,
 		cost = 0,
 		mult = 1,
-		floor = Color3.fromRGB(255, 225, 235),
-		floor2 = Color3.fromRGB(255, 245, 250),
+		floor = Color3.fromRGB(196, 214, 120),
+		floor2 = Color3.fromRGB(255, 225, 238),
 		cliff = Color3.fromRGB(120, 200, 110),
 		cliff2 = Color3.fromRGB(255, 170, 200),
 		accent = Color3.fromRGB(255, 105, 180),
-		light = { clock = 13, brightness = 3, fog = Color3.fromRGB(255, 225, 240), fogEnd = 1400, ambient = Color3.fromRGB(150, 130, 150), haze = 1.2, tint = Color3.fromRGB(255, 245, 250) },
+		light = { clock = 14.5, brightness = 2.2, fog = Color3.fromRGB(255, 225, 240), fogEnd = 1400, ambient = Color3.fromRGB(150, 130, 150), haze = 1.2, tint = Color3.fromRGB(255, 245, 250) },
 		gravity = 196.2,
 	},
 	{
@@ -105,12 +105,12 @@ Config.Zones = {
 		level = 4,
 		cost = 600,
 		mult = 2,
-		floor = Color3.fromRGB(255, 160, 200),
-		floor2 = Color3.fromRGB(255, 235, 140),
+		floor = Color3.fromRGB(230, 130, 180),
+		floor2 = Color3.fromRGB(255, 225, 120),
 		cliff = Color3.fromRGB(190, 120, 255),
 		cliff2 = Color3.fromRGB(255, 200, 230),
 		accent = Color3.fromRGB(170, 80, 255),
-		light = { clock = 14, brightness = 3, fog = Color3.fromRGB(255, 210, 240), fogEnd = 1300, ambient = Color3.fromRGB(160, 120, 170), haze = 1.5, tint = Color3.fromRGB(255, 240, 255) },
+		light = { clock = 14.5, brightness = 2.2, fog = Color3.fromRGB(255, 210, 240), fogEnd = 1300, ambient = Color3.fromRGB(160, 120, 170), haze = 1.5, tint = Color3.fromRGB(255, 240, 255) },
 		gravity = 196.2,
 	},
 	{
@@ -119,12 +119,12 @@ Config.Zones = {
 		level = 9,
 		cost = 5000,
 		mult = 3.5,
-		floor = Color3.fromRGB(255, 225, 160),
+		floor = Color3.fromRGB(235, 200, 135),
 		floor2 = Color3.fromRGB(255, 240, 200),
 		cliff = Color3.fromRGB(240, 200, 130),
 		cliff2 = Color3.fromRGB(110, 200, 120),
 		accent = Color3.fromRGB(0, 200, 230),
-		light = { clock = 15.5, brightness = 3.2, fog = Color3.fromRGB(200, 235, 255), fogEnd = 1500, ambient = Color3.fromRGB(150, 140, 120), haze = 1, tint = Color3.fromRGB(255, 250, 235) },
+		light = { clock = 15.5, brightness = 2.4, fog = Color3.fromRGB(200, 235, 255), fogEnd = 1500, ambient = Color3.fromRGB(150, 140, 120), haze = 1, tint = Color3.fromRGB(255, 250, 235) },
 		gravity = 196.2,
 	},
 	{
@@ -147,7 +147,7 @@ Config.Zones = {
 		level = 23,
 		cost = 200000,
 		mult = 10,
-		floor = Color3.fromRGB(215, 240, 255),
+		floor = Color3.fromRGB(165, 205, 235),
 		floor2 = Color3.fromRGB(240, 250, 255),
 		cliff = Color3.fromRGB(170, 215, 245),
 		cliff2 = Color3.fromRGB(255, 255, 255),
@@ -300,6 +300,24 @@ Config.Sounds = {
 	LevelUp = "rbxasset://sounds/electronicpingshort.wav",
 	Roll = "", -- звук колёс (зацикленный). Найди в Toolbox «skateboard» и вставь сюда
 	Music = { "", "", "", "", "", "", "" },
+}
+
+-- ------------------------------------------------------------
+--  ЗАДАНИЯ для новичков (видны внизу экрана, идут по порядку)
+--  kind — что нужно сделать, reward — монеты за выполнение
+-- ------------------------------------------------------------
+Config.Quests = {
+	{ kind = "kick", text = "Разгонись и прыгни с трамплина со стрелками", reward = 100 },
+	{ kind = "trick", text = "В прыжке сделай трюк (E, Q, R или F)", reward = 150 },
+	{ kind = "rail", text = "Запрыгни на перила и проедь по ним", reward = 200 },
+	{ kind = "combo2", text = "Сделай комбо x2: два трюка подряд", reward = 300 },
+	{ kind = "speed", text = "Прокачай скорость (кнопка ⚡ слева)", reward = 300 },
+	{ kind = "mega", text = "Прыгни с МЕГА-ТРАМПЛИНА в середине зоны", reward = 500 },
+	{ kind = "level4", text = "Дойди до 4 уровня", reward = 500 },
+	{ kind = "zone2", text = "Открой Конфетную страну (ворота в конце зоны)", reward = 800 },
+	{ kind = "board", text = "Купи новую доску (в лобби или меню 🛹)", reward = 1000 },
+	{ kind = "combo5", text = "Сделай комбо x5", reward = 2000 },
+	{ kind = "zone3", text = "Открой Солнечный пляж", reward = 5000 },
 }
 
 -- Надписи после комбо (по множителю)

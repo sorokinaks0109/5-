@@ -142,6 +142,7 @@ local function snapshot(player)
 			end
 			return list
 		end)(),
+		quest = data.quest,
 		starterLeft = data.starterBought and 0 or math.max(0, data.firstJoin + Config.StarterOfferMinutes * 60 - os.time()),
 	}
 end
@@ -283,25 +284,67 @@ local function attachBoard(player)
 		return p
 	end
 
-	local deck = bpart("Deck", Vector3.new(1.7, 0.2, 4.4), cfg.deck, Enum.Material.SmoothPlastic)
-	model.PrimaryPart = deck
-	local stripe = bpart("Stripe", Vector3.new(0.5, 0.22, 4.2), cfg.stripe, cfg.neon and Enum.Material.Neon or Enum.Material.SmoothPlastic)
-	stripe.CFrame = deck.CFrame
-	local nose = bpart("Nose", Vector3.new(1.7, 0.2, 0.7), cfg.deck, Enum.Material.SmoothPlastic)
-	nose.CFrame = deck.CFrame * CFrame.new(0, 0.12, -2.45) * CFrame.Angles(math.rad(20), 0, 0)
-	local tail = bpart("Tail", Vector3.new(1.7, 0.2, 0.7), cfg.deck, Enum.Material.SmoothPlastic)
-	tail.CFrame = deck.CFrame * CFrame.new(0, 0.12, 2.45) * CFrame.Angles(math.rad(-20), 0, 0)
-	for _, pos in ipairs({ Vector3.new(-0.65, -0.3, -1.5), Vector3.new(0.65, -0.3, -1.5), Vector3.new(-0.65, -0.3, 1.5), Vector3.new(0.65, -0.3, 1.5) }) do
-		local w = bpart("Wheel", Vector3.new(0.3, 0.42, 0.42), cfg.stripe, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
-		w.CFrame = deck.CFrame * CFrame.new(pos)
+	local deck
+	-- Красивая модель доски из Toolbox: ReplicatedStorage → SkateAssets → Board_<id> или Board
+	local assets = ReplicatedStorage:FindFirstChild("SkateAssets")
+	local custom = assets and (assets:FindFirstChild("Board_" .. cfg.id) or assets:FindFirstChild("Board"))
+	if custom and custom:IsA("Model") then
+		local clone = custom:Clone()
+		deck = clone.PrimaryPart or clone:FindFirstChildWhichIsA("BasePart", true)
+		if deck then
+			for _, d in ipairs(clone:GetDescendants()) do
+				if d:IsA("BasePart") then
+					d.Anchored = false
+					d.CanCollide = false
+					d.CanQuery = false
+					d.CanTouch = false
+					d.Massless = true
+					if d ~= deck then
+						local w = Instance.new("Weld")
+						w.Part0 = deck
+						w.Part1 = d
+						w.C0 = deck.CFrame:Inverse() * d.CFrame
+						w.Parent = d
+					end
+				end
+			end
+			deck.Name = "Deck"
+			for _, ch in ipairs(clone:GetChildren()) do
+				ch.Parent = model
+			end
+			clone:Destroy()
+			model.PrimaryPart = deck
+		end
 	end
-	for _, p in ipairs(model:GetChildren()) do
-		if p ~= deck and p:IsA("BasePart") then
-			local w = Instance.new("Weld")
-			w.Part0 = deck
-			w.Part1 = p
-			w.C0 = deck.CFrame:Inverse() * p.CFrame
-			w.Parent = p
+	if not deck then
+		deck = bpart("Deck", Vector3.new(1.7, 0.2, 3.6), cfg.deck, cfg.neon and Enum.Material.Glass or Enum.Material.SmoothPlastic)
+		model.PrimaryPart = deck
+		-- круглые нос и хвост (диски), чуть загнутые вверх
+		for _, sign in ipairs({ -1, 1 }) do
+			local cap = bpart("End", Vector3.new(0.2, 1.7, 1.7), cfg.deck, deck.Material, Enum.PartType.Cylinder)
+			cap.CFrame = deck.CFrame * CFrame.new(0, 0.12, sign * 1.95) * CFrame.Angles(sign * math.rad(-18), 0, 0) * CFrame.Angles(0, 0, math.rad(90))
+		end
+		local stripe = bpart("Stripe", Vector3.new(0.5, 0.22, 3.4), cfg.stripe, cfg.neon and Enum.Material.Neon or Enum.Material.SmoothPlastic)
+		stripe.CFrame = deck.CFrame
+		local grip = bpart("Grip", Vector3.new(1.5, 0.05, 3.4), Color3.fromRGB(35, 35, 40), Enum.Material.Sand)
+		grip.CFrame = deck.CFrame * CFrame.new(0, 0.11, 0)
+		-- подвески и колёса
+		for _, zpos in ipairs({ -1.35, 1.35 }) do
+			local truck = bpart("Truck", Vector3.new(1.3, 0.18, 0.3), Color3.fromRGB(190, 195, 205), Enum.Material.Metal)
+			truck.CFrame = deck.CFrame * CFrame.new(0, -0.2, zpos)
+			for _, xpos in ipairs({ -0.68, 0.68 }) do
+				local w = bpart("Wheel", Vector3.new(0.32, 0.46, 0.46), cfg.stripe, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
+				w.CFrame = deck.CFrame * CFrame.new(xpos, -0.32, zpos)
+			end
+		end
+		for _, p in ipairs(model:GetChildren()) do
+			if p ~= deck and p:IsA("BasePart") then
+				local w = Instance.new("Weld")
+				w.Part0 = deck
+				w.Part1 = p
+				w.C0 = deck.CFrame:Inverse() * p.CFrame
+				w.Parent = p
+			end
 		end
 	end
 
@@ -872,6 +915,43 @@ function handlers.ClaimGift(player, data, index)
 	local c = g.coins * zoneMult(data.maxZone)
 	addCoins(player, c)
 	return true, "🎁 +" .. Config.formatNumber(c) .. " 💰"
+end
+
+-- Задания: те, что можно проверить по данным, сервер проверяет сам
+local QUEST_CHECK = {
+	speed = function(data)
+		return data.speedLevel >= 1
+	end,
+	level4 = function(data)
+		return data.level >= 4
+	end,
+	zone2 = function(data)
+		return data.maxZone >= 2
+	end,
+	zone3 = function(data)
+		return data.maxZone >= 3
+	end,
+	board = function(data)
+		local n = 0
+		for _ in pairs(data.boards) do
+			n += 1
+		end
+		return n >= 2 or data.equipped == "gold"
+	end,
+}
+
+function handlers.QuestDone(player, data, index)
+	local q = Config.Quests[data.quest]
+	if type(index) ~= "number" or index ~= data.quest or not q then
+		return false
+	end
+	local check = QUEST_CHECK[q.kind]
+	if check and not check(data) then
+		return false
+	end
+	data.quest += 1
+	addCoins(player, q.reward)
+	return true, "✅ Задание выполнено! +" .. Config.formatNumber(q.reward) .. " 💰"
 end
 
 function handlers.SaveSettings(player, data, settings)

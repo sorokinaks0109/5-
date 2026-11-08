@@ -180,7 +180,7 @@ end
 
 function Rider.step(dt)
 	local me = Players.LocalPlayer
-	local alpha = 1 - math.exp(-dt * 14)
+	local alpha = dt > 0 and (1 - math.exp(-dt * 14)) or 0
 	for _, player in ipairs(Players:GetPlayers()) do
 		local char = player.Character
 		if char and char:FindFirstChild("Skateboard") then
@@ -199,10 +199,31 @@ function Rider.step(dt)
 	end
 end
 
--- Позу ставим после того, как стандартные анимации Roblox отработали,
--- поэтому персонаж больше не «бежит» по доске.
+-- Стандартный бег Roblox выключаем совсем, пока игрок на доске:
+-- останавливаем все его анимации каждый кадр.
+local function stopDefaultAnimations()
+	for _, player in ipairs(Players:GetPlayers()) do
+		local char = player.Character
+		if char and char:FindFirstChild("Skateboard") then
+			local hum = char:FindFirstChildOfClass("Humanoid")
+			local animator = hum and hum:FindFirstChildOfClass("Animator")
+			if animator then
+				for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+					track:Stop(0)
+				end
+			end
+		end
+	end
+end
+
+-- Позу ставим и до физики, и прямо перед отрисовкой кадра,
+-- чтобы стандартные анимации точно не перебили её.
 RunService.Stepped:Connect(function(_, dt)
+	stopDefaultAnimations()
 	Rider.step(dt)
+end)
+RunService:BindToRenderStep("SkateRiderPose", Enum.RenderPriority.Character.Value + 5, function()
+	Rider.step(0)
 end)
 
 return Rider

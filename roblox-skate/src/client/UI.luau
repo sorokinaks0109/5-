@@ -779,8 +779,24 @@ function UI.setData(snap)
 		refs.mult.Text = string.format("монеты x%s", (snap.coinMult % 1 == 0) and tostring(snap.coinMult) or string.format("%.1f", snap.coinMult))
 		refs.dailyDot.Visible = snap.dailyReady
 	end
+	updateQuest()
 	if openWindowRefresh and not refs.windowManual then
 		openWindowRefresh()
+	end
+end
+
+local function updateQuest()
+	if not refs.quest or not data then
+		return
+	end
+	local q = Config.Quests[data.quest or 1]
+	refs.quest.Visible = q ~= nil
+	if q then
+		local text = "🎯 " .. q.text .. "   •   +" .. fmt(q.reward) .. " 💰"
+		if refs.questText.Text ~= text then
+			refs.questText.Text = text
+			pop(refs.quest, 1.15)
+		end
 	end
 end
 
@@ -894,6 +910,10 @@ local function buildHud()
 		refs.bail.Visible = false
 		ctx.buy("product", "SaveCombo")
 	end)
+
+	-- текущее задание (внизу по центру)
+	refs.quest = new("Frame", { Size = UDim2.fromOffset(640, 46), AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -46), BackgroundColor3 = C.panel, BackgroundTransparency = 0.15, Visible = false, Parent = gui }, { corner(14), stroke(C.gold, 2) })
+	refs.questText = textStroke(label({ Text = "", Size = UDim2.new(1, -20, 1, -10), Position = UDim2.fromOffset(10, 5), MaxText = 20, Parent = refs.quest }), 1)
 
 	-- спидометр
 	local speedBox = new("Frame", { Size = UDim2.fromOffset(140, 70), AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 16, 1, -16), BackgroundColor3 = C.panel, BackgroundTransparency = 0.25, Parent = gui }, { corner(14), stroke(C.blue, 2) })
