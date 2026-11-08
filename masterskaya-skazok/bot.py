@@ -475,6 +475,19 @@ async def fayl(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await otvetit(update, context, f"Осталось на этом шаге: {ostalos}")
 
 
+async def oshibka(update, context: ContextTypes.DEFAULT_TYPE):
+    """Любая ошибка: пишем в окно и коротко сообщаем в чат, чтобы бот не «молчал»."""
+    log.error("Ошибка при обработке сообщения", exc_info=context.error)
+    chat = getattr(update, "effective_chat", None) if update else None
+    if chat:
+        try:
+            await context.bot.send_message(
+                chat.id, f"⚠️ Ошибка: {type(context.error).__name__}: {context.error}\n"
+                         f"Пришли это сообщение разработчику. /gde — продолжить.")
+        except Exception:  # noqa: BLE001
+            pass
+
+
 def nayti_proksi():
     """Прокси для Telegram: из .env (PROXY или ALL_PROXY) или системный прокси VPN.
 
@@ -508,6 +521,7 @@ def main():
         log.info("Подключаюсь к Telegram через прокси %s", proksi)
         builder = builder.proxy(proksi).get_updates_proxy(proksi)
     app = builder.build()
+    app.add_error_handler(oshibka)
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("new", novyy))
     app.add_handler(CommandHandler("gde", gde))
