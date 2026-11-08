@@ -679,12 +679,12 @@ local function buildLobby()
 	local rng = Random.new(42)
 	local zone = Config.Zones[1]
 
-	part({ Name = "LobbyFloor", Size = Vector3.new(W, 4, LOBBY), CFrame = CFrame.new(0, -2, LOBBY / 2), Color = Color3.fromRGB(245, 240, 255) }, folder)
+	part({ Name = "LobbyFloor", Size = Vector3.new(W, 4, LOBBY), CFrame = CFrame.new(0, -2, LOBBY / 2), Color = Color3.fromRGB(150, 140, 200) }, folder)
 	-- шахматный пол площади
 	for gx = -3, 3 do
 		for gz = 1, 6 do
 			if (gx + gz) % 2 == 0 then
-				deco({ Name = "PlazaTile", Size = Vector3.new(14, 0.1, 14), CFrame = CFrame.new(gx * 14, 0.03, 40 + gz * 14), Color = Color3.fromRGB(255, 215, 235), CastShadow = false }, folder)
+				deco({ Name = "PlazaTile", Size = Vector3.new(14, 0.1, 14), CFrame = CFrame.new(gx * 14, 0.03, 40 + gz * 14), Color = Color3.fromRGB(235, 150, 195), CastShadow = false }, folder)
 			end
 		end
 	end
@@ -773,24 +773,27 @@ local function setupLighting()
 		return o
 	end
 	local atm = ensure("Atmosphere", "SkateAtmosphere")
-	atm.Density = 0.22
+	atm.Density = 0.12
 	atm.Offset = 0.1
 	atm.Color = Color3.fromRGB(230, 225, 245)
 	atm.Decay = Color3.fromRGB(150, 140, 200)
 	atm.Glare = 0
 	atm.Haze = 0.6
 	local bloom = ensure("BloomEffect", "SkateBloom")
-	bloom.Intensity = 0.35
-	bloom.Size = 24
-	bloom.Threshold = 2.2
+	bloom.Intensity = 0.2
+	bloom.Size = 20
+	bloom.Threshold = 2.6
 	local cc = ensure("ColorCorrectionEffect", "SkateColor")
 	cc.Saturation = 0.25
 	cc.Contrast = 0.15
 	cc.Brightness = -0.02
-	local rays = ensure("SunRaysEffect", "SkateSunRays")
-	rays.Intensity = 0.05
-	rays.Spread = 0.6
+	local rays = Lighting:FindFirstChild("SkateSunRays")
+	if rays then
+		rays:Destroy()
+	end
 	Lighting.GlobalShadows = true
+	Lighting.ExposureCompensation = -0.35
+	Lighting.Brightness = 2
 	Lighting.EnvironmentDiffuseScale = 0.5
 	Lighting.EnvironmentSpecularScale = 0.5
 end

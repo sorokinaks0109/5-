@@ -20,6 +20,7 @@ local Rider = require(script:WaitForChild("Rider"))
 local Sounds = require(script:WaitForChild("Sounds"))
 
 local TWO_PI = math.pi * 2
+print("[SkateRush] Клиент запущен, версия", Config.Version)
 
 local char, hum, root
 local state = {

@@ -7,6 +7,7 @@
 local Config = {}
 
 Config.GameName = "Skate Rush"
+Config.Version = "v3" -- видно в углу экрана: так легко проверить, что открыта новая версия
 
 -- ------------------------------------------------------------
 --  ДОНАТ (робуксы)
@@ -96,7 +97,7 @@ Config.Zones = {
 		cliff = Color3.fromRGB(120, 200, 110),
 		cliff2 = Color3.fromRGB(255, 170, 200),
 		accent = Color3.fromRGB(255, 105, 180),
-		light = { clock = 14.5, brightness = 2.2, fog = Color3.fromRGB(255, 225, 240), fogEnd = 1400, ambient = Color3.fromRGB(150, 130, 150), haze = 1.2, tint = Color3.fromRGB(255, 245, 250) },
+		light = { clock = 14.5, brightness = 1.8, fog = Color3.fromRGB(255, 225, 240), fogEnd = 1400, ambient = Color3.fromRGB(150, 130, 150), haze = 0.3, tint = Color3.fromRGB(255, 245, 250) },
 		gravity = 196.2,
 	},
 	{
@@ -110,7 +111,7 @@ Config.Zones = {
 		cliff = Color3.fromRGB(190, 120, 255),
 		cliff2 = Color3.fromRGB(255, 200, 230),
 		accent = Color3.fromRGB(170, 80, 255),
-		light = { clock = 14.5, brightness = 2.2, fog = Color3.fromRGB(255, 210, 240), fogEnd = 1300, ambient = Color3.fromRGB(160, 120, 170), haze = 1.5, tint = Color3.fromRGB(255, 240, 255) },
+		light = { clock = 14.5, brightness = 1.8, fog = Color3.fromRGB(255, 210, 240), fogEnd = 1300, ambient = Color3.fromRGB(160, 120, 170), haze = 0.4, tint = Color3.fromRGB(255, 240, 255) },
 		gravity = 196.2,
 	},
 	{
@@ -124,7 +125,7 @@ Config.Zones = {
 		cliff = Color3.fromRGB(240, 200, 130),
 		cliff2 = Color3.fromRGB(110, 200, 120),
 		accent = Color3.fromRGB(0, 200, 230),
-		light = { clock = 15.5, brightness = 2.4, fog = Color3.fromRGB(200, 235, 255), fogEnd = 1500, ambient = Color3.fromRGB(150, 140, 120), haze = 1, tint = Color3.fromRGB(255, 250, 235) },
+		light = { clock = 15.5, brightness = 2, fog = Color3.fromRGB(200, 235, 255), fogEnd = 1500, ambient = Color3.fromRGB(150, 140, 120), haze = 0.3, tint = Color3.fromRGB(255, 250, 235) },
 		gravity = 196.2,
 	},
 	{
@@ -138,7 +139,7 @@ Config.Zones = {
 		cliff = Color3.fromRGB(30, 25, 55),
 		cliff2 = Color3.fromRGB(50, 40, 90),
 		accent = Color3.fromRGB(255, 0, 200),
-		light = { clock = 20.8, brightness = 1.5, fog = Color3.fromRGB(70, 30, 110), fogEnd = 900, ambient = Color3.fromRGB(140, 100, 190), haze = 2, tint = Color3.fromRGB(235, 220, 255) },
+		light = { clock = 20.8, brightness = 1.5, fog = Color3.fromRGB(70, 30, 110), fogEnd = 900, ambient = Color3.fromRGB(140, 100, 190), haze = 1, tint = Color3.fromRGB(235, 220, 255) },
 		gravity = 196.2,
 	},
 	{
@@ -152,7 +153,7 @@ Config.Zones = {
 		cliff = Color3.fromRGB(170, 215, 245),
 		cliff2 = Color3.fromRGB(255, 255, 255),
 		accent = Color3.fromRGB(60, 190, 255),
-		light = { clock = 10, brightness = 2.6, fog = Color3.fromRGB(225, 245, 255), fogEnd = 900, ambient = Color3.fromRGB(150, 170, 200), haze = 2, tint = Color3.fromRGB(235, 245, 255) },
+		light = { clock = 10, brightness = 2, fog = Color3.fromRGB(225, 245, 255), fogEnd = 900, ambient = Color3.fromRGB(150, 170, 200), haze = 0.8, tint = Color3.fromRGB(235, 245, 255) },
 		gravity = 196.2,
 	},
 	{
@@ -166,7 +167,7 @@ Config.Zones = {
 		cliff = Color3.fromRGB(60, 40, 40),
 		cliff2 = Color3.fromRGB(100, 55, 45),
 		accent = Color3.fromRGB(255, 90, 0),
-		light = { clock = 18.2, brightness = 1.8, fog = Color3.fromRGB(150, 50, 20), fogEnd = 700, ambient = Color3.fromRGB(170, 90, 70), haze = 2.5, tint = Color3.fromRGB(255, 225, 205) },
+		light = { clock = 18.2, brightness = 1.8, fog = Color3.fromRGB(150, 50, 20), fogEnd = 700, ambient = Color3.fromRGB(170, 90, 70), haze = 1.5, tint = Color3.fromRGB(255, 225, 205) },
 		gravity = 196.2,
 	},
 	{

@@ -110,6 +110,16 @@ local function pushPose(phase)
 	return base
 end
 
+-- Суставы старых аватаров R6 (у них нет коленей и локтей)
+local JOINTS_R6 = {
+	Root = { "HumanoidRootPart", "RootJoint" },
+	Neck = { "Torso", "Neck" },
+	LeftHip = { "Torso", "Left Hip" },
+	RightHip = { "Torso", "Right Hip" },
+	LeftShoulder = { "Torso", "Left Shoulder" },
+	RightShoulder = { "Torso", "Right Shoulder" },
+}
+
 -- ---------- состояние по персонажам ----------
 local rigs = {} -- [character] = { motors = {}, current = {}, phase = 0 }
 
@@ -119,21 +129,41 @@ local function getRig(char)
 		return r
 	end
 	local hum = char:FindFirstChildOfClass("Humanoid")
-	if not hum or hum.RigType ~= Enum.HumanoidRigType.R15 then
+	if not hum then
 		return nil
 	end
+	local isR6 = hum.RigType == Enum.HumanoidRigType.R6
 	local motors = {}
-	for joint, partName in pairs(JOINTS) do
-		local p = char:FindFirstChild(partName)
-		local m = p and p:FindFirstChild(joint)
-		if m and m:IsA("Motor6D") then
-			motors[joint] = m
+	if isR6 then
+		for joint, path in pairs(JOINTS_R6) do
+			local p = char:FindFirstChild(path[1])
+			local m = p and p:FindFirstChild(path[2])
+			if m and m:IsA("Motor6D") then
+				motors[joint] = m
+			end
+		end
+	else
+		for joint, partName in pairs(JOINTS) do
+			local p = char:FindFirstChild(partName)
+			local m = p and p:FindFirstChild(joint)
+			if m and m:IsA("Motor6D") then
+				motors[joint] = m
+			end
 		end
 	end
 	if not motors.Root then
 		return nil
 	end
-	r = { motors = motors, current = {}, phase = 0, hum = hum }
+	-- запоминаем исходное положение суставов: позу ставим через C0,
+	-- его стандартные анимации Roblox никогда не трогают
+	local orig, rot, rotInv = {}, {}, {}
+	for joint, m in pairs(motors) do
+		orig[joint] = m.C0
+		rot[joint] = m.C0.Rotation
+		rotInv[joint] = m.C0.Rotation:Inverse()
+	end
+	print("[SkateRush] Поза скейтера включена, тип аватара:", isR6 and "R6" or "R15")
+	r = { motors = motors, current = {}, phase = 0, hum = hum, isR6 = isR6, orig = orig, rot = rot, rotInv = rotInv }
 	rigs[char] = r
 	char.AncestryChanged:Connect(function(_, parent)
 		if not parent then
@@ -189,10 +219,16 @@ function Rider.step(dt)
 				local target = targetFor(char, r, player == me, dt)
 				for joint, m in pairs(r.motors) do
 					local goal = target[joint] or CFrame.new()
+					if r.isR6 then
+						-- у R6 нет коленей: не опускаем таз, только наклоны
+						goal = goal.Rotation
+					end
 					local cur = r.current[joint] or CFrame.new()
 					cur = cur:Lerp(goal, alpha)
 					r.current[joint] = cur
-					m.Transform = cur
+					-- поворот задан в осях тела, переводим в оси сустава
+					m.C0 = r.orig[joint] * (r.rotInv[joint] * cur * r.rot[joint])
+					m.Transform = CFrame.new()
 				end
 			end
 		end

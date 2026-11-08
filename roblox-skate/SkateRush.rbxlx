@@ -7,6 +7,7 @@
 local Config = {}
 
 Config.GameName = "Skate Rush"
+Config.Version = "v3" -- видно в углу экрана: так легко проверить, что открыта новая версия
 
 -- ------------------------------------------------------------
 --  ДОНАТ (робуксы)
@@ -96,7 +97,7 @@ Config.Zones = {
 		cliff = Color3.fromRGB(120, 200, 110),
 		cliff2 = Color3.fromRGB(255, 170, 200),
 		accent = Color3.fromRGB(255, 105, 180),
-		light = { clock = 14.5, brightness = 2.2, fog = Color3.fromRGB(255, 225, 240), fogEnd = 1400, ambient = Color3.fromRGB(150, 130, 150), haze = 1.2, tint = Color3.fromRGB(255, 245, 250) },
+		light = { clock = 14.5, brightness = 1.8, fog = Color3.fromRGB(255, 225, 240), fogEnd = 1400, ambient = Color3.fromRGB(150, 130, 150), haze = 0.3, tint = Color3.fromRGB(255, 245, 250) },
 		gravity = 196.2,
 	},
 	{
@@ -110,7 +111,7 @@ Config.Zones = {
 		cliff = Color3.fromRGB(190, 120, 255),
 		cliff2 = Color3.fromRGB(255, 200, 230),
 		accent = Color3.fromRGB(170, 80, 255),
-		light = { clock = 14.5, brightness = 2.2, fog = Color3.fromRGB(255, 210, 240), fogEnd = 1300, ambient = Color3.fromRGB(160, 120, 170), haze = 1.5, tint = Color3.fromRGB(255, 240, 255) },
+		light = { clock = 14.5, brightness = 1.8, fog = Color3.fromRGB(255, 210, 240), fogEnd = 1300, ambient = Color3.fromRGB(160, 120, 170), haze = 0.4, tint = Color3.fromRGB(255, 240, 255) },
 		gravity = 196.2,
 	},
 	{
@@ -124,7 +125,7 @@ Config.Zones = {
 		cliff = Color3.fromRGB(240, 200, 130),
 		cliff2 = Color3.fromRGB(110, 200, 120),
 		accent = Color3.fromRGB(0, 200, 230),
-		light = { clock = 15.5, brightness = 2.4, fog = Color3.fromRGB(200, 235, 255), fogEnd = 1500, ambient = Color3.fromRGB(150, 140, 120), haze = 1, tint = Color3.fromRGB(255, 250, 235) },
+		light = { clock = 15.5, brightness = 2, fog = Color3.fromRGB(200, 235, 255), fogEnd = 1500, ambient = Color3.fromRGB(150, 140, 120), haze = 0.3, tint = Color3.fromRGB(255, 250, 235) },
 		gravity = 196.2,
 	},
 	{
@@ -138,7 +139,7 @@ Config.Zones = {
 		cliff = Color3.fromRGB(30, 25, 55),
 		cliff2 = Color3.fromRGB(50, 40, 90),
 		accent = Color3.fromRGB(255, 0, 200),
-		light = { clock = 20.8, brightness = 1.5, fog = Color3.fromRGB(70, 30, 110), fogEnd = 900, ambient = Color3.fromRGB(140, 100, 190), haze = 2, tint = Color3.fromRGB(235, 220, 255) },
+		light = { clock = 20.8, brightness = 1.5, fog = Color3.fromRGB(70, 30, 110), fogEnd = 900, ambient = Color3.fromRGB(140, 100, 190), haze = 1, tint = Color3.fromRGB(235, 220, 255) },
 		gravity = 196.2,
 	},
 	{
@@ -152,7 +153,7 @@ Config.Zones = {
 		cliff = Color3.fromRGB(170, 215, 245),
 		cliff2 = Color3.fromRGB(255, 255, 255),
 		accent = Color3.fromRGB(60, 190, 255),
-		light = { clock = 10, brightness = 2.6, fog = Color3.fromRGB(225, 245, 255), fogEnd = 900, ambient = Color3.fromRGB(150, 170, 200), haze = 2, tint = Color3.fromRGB(235, 245, 255) },
+		light = { clock = 10, brightness = 2, fog = Color3.fromRGB(225, 245, 255), fogEnd = 900, ambient = Color3.fromRGB(150, 170, 200), haze = 0.8, tint = Color3.fromRGB(235, 245, 255) },
 		gravity = 196.2,
 	},
 	{
@@ -166,7 +167,7 @@ Config.Zones = {
 		cliff = Color3.fromRGB(60, 40, 40),
 		cliff2 = Color3.fromRGB(100, 55, 45),
 		accent = Color3.fromRGB(255, 90, 0),
-		light = { clock = 18.2, brightness = 1.8, fog = Color3.fromRGB(150, 50, 20), fogEnd = 700, ambient = Color3.fromRGB(170, 90, 70), haze = 2.5, tint = Color3.fromRGB(255, 225, 205) },
+		light = { clock = 18.2, brightness = 1.8, fog = Color3.fromRGB(150, 50, 20), fogEnd = 700, ambient = Color3.fromRGB(170, 90, 70), haze = 1.5, tint = Color3.fromRGB(255, 225, 205) },
 		gravity = 196.2,
 	},
 	{
@@ -429,6 +430,7 @@ local Config = require(Shared:WaitForChild("Config"))
 local Data = require(script:WaitForChild("Data"))
 local World = require(script:WaitForChild("World"))
 
+print("[SkateRush] Сервер запущен, версия", Config.Version)
 local okWorld, worldErr = pcall(World.build)
 if not okWorld then
 	warn("[SkateRush] Ошибка при постройке карты:", worldErr)
@@ -2307,12 +2309,12 @@ local function buildLobby()
 	local rng = Random.new(42)
 	local zone = Config.Zones[1]
 
-	part({ Name = "LobbyFloor", Size = Vector3.new(W, 4, LOBBY), CFrame = CFrame.new(0, -2, LOBBY / 2), Color = Color3.fromRGB(245, 240, 255) }, folder)
+	part({ Name = "LobbyFloor", Size = Vector3.new(W, 4, LOBBY), CFrame = CFrame.new(0, -2, LOBBY / 2), Color = Color3.fromRGB(150, 140, 200) }, folder)
 	-- шахматный пол площади
 	for gx = -3, 3 do
 		for gz = 1, 6 do
 			if (gx + gz) % 2 == 0 then
-				deco({ Name = "PlazaTile", Size = Vector3.new(14, 0.1, 14), CFrame = CFrame.new(gx * 14, 0.03, 40 + gz * 14), Color = Color3.fromRGB(255, 215, 235), CastShadow = false }, folder)
+				deco({ Name = "PlazaTile", Size = Vector3.new(14, 0.1, 14), CFrame = CFrame.new(gx * 14, 0.03, 40 + gz * 14), Color = Color3.fromRGB(235, 150, 195), CastShadow = false }, folder)
 			end
 		end
 	end
@@ -2401,24 +2403,27 @@ local function setupLighting()
 		return o
 	end
 	local atm = ensure("Atmosphere", "SkateAtmosphere")
-	atm.Density = 0.22
+	atm.Density = 0.12
 	atm.Offset = 0.1
 	atm.Color = Color3.fromRGB(230, 225, 245)
 	atm.Decay = Color3.fromRGB(150, 140, 200)
 	atm.Glare = 0
 	atm.Haze = 0.6
 	local bloom = ensure("BloomEffect", "SkateBloom")
-	bloom.Intensity = 0.35
-	bloom.Size = 24
-	bloom.Threshold = 2.2
+	bloom.Intensity = 0.2
+	bloom.Size = 20
+	bloom.Threshold = 2.6
 	local cc = ensure("ColorCorrectionEffect", "SkateColor")
 	cc.Saturation = 0.25
 	cc.Contrast = 0.15
 	cc.Brightness = -0.02
-	local rays = ensure("SunRaysEffect", "SkateSunRays")
-	rays.Intensity = 0.05
-	rays.Spread = 0.6
+	local rays = Lighting:FindFirstChild("SkateSunRays")
+	if rays then
+		rays:Destroy()
+	end
 	Lighting.GlobalShadows = true
+	Lighting.ExposureCompensation = -0.35
+	Lighting.Brightness = 2
 	Lighting.EnvironmentDiffuseScale = 0.5
 	Lighting.EnvironmentSpecularScale = 0.5
 end
@@ -2463,6 +2468,7 @@ local Rider = require(script:WaitForChild("Rider"))
 local Sounds = require(script:WaitForChild("Sounds"))
 
 local TWO_PI = math.pi * 2
+print("[SkateRush] Клиент запущен, версия", Config.Version)
 
 local char, hum, root
 local state = {
@@ -4159,6 +4165,9 @@ local function buildHud()
 		ctx.buy("product", "SaveCombo")
 	end)
 
+	-- номер версии в углу
+	label({ Text = Config.GameName .. " " .. (Config.Version or ""), AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -8, 1, -4), Size = UDim2.fromOffset(200, 18), Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1), TextTransparency = 0.3, TextXAlignment = Enum.TextXAlignment.Right, MaxText = 14, Parent = gui })
+
 	-- текущее задание (внизу по центру)
 	refs.quest = new("Frame", { Size = UDim2.fromOffset(640, 46), AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -46), BackgroundColor3 = C.panel, BackgroundTransparency = 0.15, Visible = false, Parent = gui }, { corner(14), stroke(C.gold, 2) })
 	refs.questText = textStroke(label({ Text = "", Size = UDim2.new(1, -20, 1, -10), Position = UDim2.fromOffset(10, 5), MaxText = 20, Parent = refs.quest }), 1)
@@ -4415,6 +4424,16 @@ local function pushPose(phase)
 	return base
 end
 
+-- Суставы старых аватаров R6 (у них нет коленей и локтей)
+local JOINTS_R6 = {
+	Root = { "HumanoidRootPart", "RootJoint" },
+	Neck = { "Torso", "Neck" },
+	LeftHip = { "Torso", "Left Hip" },
+	RightHip = { "Torso", "Right Hip" },
+	LeftShoulder = { "Torso", "Left Shoulder" },
+	RightShoulder = { "Torso", "Right Shoulder" },
+}
+
 -- ---------- состояние по персонажам ----------
 local rigs = {} -- [character] = { motors = {}, current = {}, phase = 0 }
 
@@ -4424,21 +4443,41 @@ local function getRig(char)
 		return r
 	end
 	local hum = char:FindFirstChildOfClass("Humanoid")
-	if not hum or hum.RigType ~= Enum.HumanoidRigType.R15 then
+	if not hum then
 		return nil
 	end
+	local isR6 = hum.RigType == Enum.HumanoidRigType.R6
 	local motors = {}
-	for joint, partName in pairs(JOINTS) do
-		local p = char:FindFirstChild(partName)
-		local m = p and p:FindFirstChild(joint)
-		if m and m:IsA("Motor6D") then
-			motors[joint] = m
+	if isR6 then
+		for joint, path in pairs(JOINTS_R6) do
+			local p = char:FindFirstChild(path[1])
+			local m = p and p:FindFirstChild(path[2])
+			if m and m:IsA("Motor6D") then
+				motors[joint] = m
+			end
+		end
+	else
+		for joint, partName in pairs(JOINTS) do
+			local p = char:FindFirstChild(partName)
+			local m = p and p:FindFirstChild(joint)
+			if m and m:IsA("Motor6D") then
+				motors[joint] = m
+			end
 		end
 	end
 	if not motors.Root then
 		return nil
 	end
-	r = { motors = motors, current = {}, phase = 0, hum = hum }
+	-- запоминаем исходное положение суставов: позу ставим через C0,
+	-- его стандартные анимации Roblox никогда не трогают
+	local orig, rot, rotInv = {}, {}, {}
+	for joint, m in pairs(motors) do
+		orig[joint] = m.C0
+		rot[joint] = m.C0.Rotation
+		rotInv[joint] = m.C0.Rotation:Inverse()
+	end
+	print("[SkateRush] Поза скейтера включена, тип аватара:", isR6 and "R6" or "R15")
+	r = { motors = motors, current = {}, phase = 0, hum = hum, isR6 = isR6, orig = orig, rot = rot, rotInv = rotInv }
 	rigs[char] = r
 	char.AncestryChanged:Connect(function(_, parent)
 		if not parent then
@@ -4494,10 +4533,16 @@ function Rider.step(dt)
 				local target = targetFor(char, r, player == me, dt)
 				for joint, m in pairs(r.motors) do
 					local goal = target[joint] or CFrame.new()
+					if r.isR6 then
+						-- у R6 нет коленей: не опускаем таз, только наклоны
+						goal = goal.Rotation
+					end
 					local cur = r.current[joint] or CFrame.new()
 					cur = cur:Lerp(goal, alpha)
 					r.current[joint] = cur
-					m.Transform = cur
+					-- поворот задан в осях тела, переводим в оси сустава
+					m.C0 = r.orig[joint] * (r.rotInv[joint] * cur * r.rot[joint])
+					m.Transform = CFrame.new()
 				end
 			end
 		end

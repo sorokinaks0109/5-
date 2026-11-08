@@ -911,6 +911,9 @@ local function buildHud()
 		ctx.buy("product", "SaveCombo")
 	end)
 
+	-- номер версии в углу
+	label({ Text = Config.GameName .. " " .. (Config.Version or ""), AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -8, 1, -4), Size = UDim2.fromOffset(200, 18), Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1), TextTransparency = 0.3, TextXAlignment = Enum.TextXAlignment.Right, MaxText = 14, Parent = gui })
+
 	-- текущее задание (внизу по центру)
 	refs.quest = new("Frame", { Size = UDim2.fromOffset(640, 46), AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -46), BackgroundColor3 = C.panel, BackgroundTransparency = 0.15, Visible = false, Parent = gui }, { corner(14), stroke(C.gold, 2) })
 	refs.questText = textStroke(label({ Text = "", Size = UDim2.new(1, -20, 1, -10), Position = UDim2.fromOffset(10, 5), MaxText = 20, Parent = refs.quest }), 1)
