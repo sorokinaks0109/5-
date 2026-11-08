@@ -54,6 +54,7 @@ const SYSTEM_PROMPT = `Ты помогаешь школьнику готовит
  "groups":[{"name":"название группы","items":["пример из текста","пример из текста"]}],
  "quiz":[{"q":"вопрос по тексту","options":["вариант","вариант","вариант"],"answer":0}],
  "words":[{"word":"слово на иностранном языке точно как в тексте","translation":"перевод на русский"}],
+ "mathTopics":["nok"],
  "questions":["вопросы из конца параграфа, если они есть на фото"]}
 Правила:
 - subject — предмет учебника по содержанию страницы, а не по упоминаниям других курсов
@@ -69,6 +70,11 @@ const SYSTEM_PROMPT = `Ты помогаешь школьнику готовит
 - quiz: 4–8 вопросов на понимание. Если на странице есть вопросы с вариантами ответа — возьми их.
   Вариантов 3–4, один верный, answer — номер верного варианта с нуля. Верный ответ должен следовать из текста.
 - words: только для иностранного языка, 8–15 слов и выражений именно с этой страницы. Для остальных предметов — пустой список.
+- mathTopics: только для математики — темы этой страницы из списка (коды):
+  nok — наименьшее общее кратное; nod — наибольший общий делитель; reduce — сокращение дробей;
+  common-denominator — приведение дробей к общему знаменателю; to-decimal — запись обыкновенной дроби десятичной.
+  Нет подходящих — пустой список. Решения задач не пиши.
+- В steps не пиши номера шагов («1)», «2.», «а)») — только сам шаг.
 - Не больше 10 элементов в списках, кроме words (до 15).`;
 
 /* ---------- Вспомогательное ---------- */
@@ -90,6 +96,9 @@ const clip = (s, n) => {
   const cut = t.slice(0, n), sp = cut.lastIndexOf(' ');
   return (sp > n * 0.6 ? cut.slice(0, sp) : cut).replace(/[,;:\s—-]+$/, '') + '…';
 };
+// Номер в начале шага («1)», «2.», «а)», «•») подсказывает порядок — убираем.
+const stripNum = (t) => String(t || '').replace(/^\s*(?:[0-9]{1,2}|[а-яa-z])\s*[).:]\s*|^\s*[•\-–—]\s*/i, '').trim();
+const MATH_TOPICS = ['nok', 'nod', 'reduce', 'common-denominator', 'to-decimal'];
 // Иностранный язык: только тогда пары «слово — перевод».
 const isForeign = (subject) => /англ|немец|француз|испан|китай|иностран/i.test(String(subject || ''));
 
@@ -177,7 +186,7 @@ function cleanParagraph(raw, source) {
   const srcWords = new Set(norm(src).split(' ').filter((w) => w.length >= 5).map((w) => w.slice(0, 5)));
   const grounded = (t) => norm(t).split(' ').filter((w) => w.length >= 5).some((w) => srcWords.has(w.slice(0, 5)));
   const steps = list(raw.steps)
-    .map((x) => ({ title: clip(x && x.title, 100), items: list(x && x.items).map((t) => clip(t, 160)).filter(Boolean).slice(0, 8) }))
+    .map((x) => ({ title: clip(x && x.title, 100), items: list(x && x.items).map((t) => clip(stripNum(t), 160)).filter(Boolean).slice(0, 8) }))
     .filter((x) => x.items.length >= 3 && new Set(x.items.map(norm)).size === x.items.length
       && x.items.filter(grounded).length * 2 >= x.items.length)
     .slice(0, 3);
@@ -193,14 +202,15 @@ function cleanParagraph(raw, source) {
     .filter((x) => x.q && x.options.length >= 3 && x.options.length <= 4 && new Set(x.options.map(norm)).size === x.options.length
       && x.answer >= 0 && x.answer < x.options.length && grounded(x.q + ' ' + x.options[x.answer]))
     .slice(0, 8);
-  const material = persons.length + terms.length + events.length + words.length + (facts.length >= 3 ? facts.length : 0)
+  const mathTopics = [...new Set(list(raw.mathTopics).map((x) => String(x).trim()).filter((x) => MATH_TOPICS.includes(x)))];
+  const material = mathTopics.length * 3 + persons.length + terms.length + events.length + words.length + (facts.length >= 3 ? facts.length : 0)
     + steps.length * 3 + (groups.length >= 2 ? 3 : 0) + quiz.length;
   if (material < 3) throw new Error('В тексте мало материала для игр');
   return {
     kind: 'paragraph',
     subject: clip(raw.subject, 60),
     title: clip(raw.title, 100) || 'Параграф',
-    persons, terms, events, facts, words, steps, groups: groups.length >= 2 ? groups : [], quiz, questions,
+    persons, terms, events, facts, words, steps, groups: groups.length >= 2 ? groups : [], quiz, mathTopics, questions,
   };
 }
 
@@ -285,7 +295,7 @@ const fallbackStore = memoryStore();
 // достаточно совпасть одной полосе, потом проверяем сходство слов честно.
 const SIG = 16, BANDS = 8, SAME_PAGE = 0.75, MIN_WORDS = 15;
 // Версия формата урока: при изменении задания для нейросети старые готовые уроки не используются.
-const CACHE_V = 'v3';
+const CACHE_V = 'v4';
 function pageWords(text) {
   return [...new Set(norm(text).split(' ').filter((w) => w.length >= 5))];
 }

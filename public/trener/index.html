@@ -474,6 +474,43 @@ button:focus-visible, [tabindex]:focus-visible { outline-color: var(--orange); }
 .card-pic { display: block; width: 100%; max-width: 260px; justify-self: center; border-radius: 22px; box-shadow: 0 4px 0 var(--shadow); }
 .res-cat .cat { width: 170px; height: auto; margin-inline: auto; }
 
+/* Математика: решение по шагам */
+.fr { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; font-variant-numeric: tabular-nums; line-height: 1.05; margin: 0 2px; }
+.fr > span { padding: 0 3px; min-width: 1.2em; text-align: center; }
+.fr > span:first-child { border-bottom: 2.5px solid currentColor; }
+.fr .mul { color: var(--orange-d); background: #fff1dc; border-radius: 4px; padding: 0 2px; }
+.mtask { padding: 16px; border-radius: 20px; background: var(--navy); color: #fff; box-shadow: 0 5px 0 var(--navy-d); }
+.mtask .lbl { font-size: 12px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; color: #ffb36b; }
+.mtask .q { margin-top: 6px; font-size: 19px; font-weight: 800; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.mtask .fr { font-size: 24px; }
+.levels { display: flex; gap: 8px; }
+.levels button { flex: 1; padding: 9px 6px; border-radius: 12px; background: #fff; box-shadow: 0 3px 0 var(--shadow); font-size: 14px; font-weight: 800; }
+.levels button.on { background: var(--navy); color: #fff; box-shadow: 0 3px 0 var(--navy-d); }
+.msol { display: grid; gap: 8px; }
+.mst { display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 16px; background: #fff; box-shadow: 0 3px 0 var(--shadow); }
+.mst .n { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: #f0e4d3; font-weight: 900; }
+.mst.done .n { background: var(--mint); color: #fff; }
+.mst.cur { box-shadow: 0 0 0 3px var(--orange), 0 3px 0 var(--shadow); }
+.mst.wait { opacity: .45; }
+.mst .what { font-size: 13.5px; color: var(--muted); font-weight: 700; }
+.mst .math { font-size: 19px; font-weight: 800; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-variant-numeric: tabular-nums; }
+.mst .math .fr { font-size: 19px; }
+.mslot { display: inline-grid; place-items: center; min-width: 2.2em; height: 1.6em; padding: 0 6px; border-radius: 8px; border: 2.5px dashed var(--orange); color: var(--orange-d); background: #fff8ee; }
+.mslot.filled { border-style: solid; }
+.mslot.bad { border-color: var(--bad); color: var(--bad-d); background: #ffe9ea; animation: shake .35s; }
+.mans { color: var(--mint-d); }
+.mhint { display: grid; grid-template-columns: 64px 1fr; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 16px; background: #fff3e3; font-weight: 700; }
+.mhint img { width: 64px; height: auto; }
+.mhint .mults { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.mhint .mults span { padding: 2px 7px; border-radius: 8px; background: #fff; font-variant-numeric: tabular-nums; }
+.mhint .mults span.hit { background: var(--mint); color: #fff; }
+.mpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.mpad button { padding: 13px 0; font-size: 22px; font-weight: 900; }
+.mpad .help { font-size: 15px; }
+.mdone { display: grid; gap: 12px; justify-items: center; text-align: center; padding: 16px; border-radius: 20px; background: #fff; box-shadow: 0 4px 0 var(--shadow); }
+.mdone img { width: 110px; height: auto; }
+.mdone .final { font-size: 20px; font-weight: 800; }
+
 /* Снятые страницы */
 .shots { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
 .shot { position: relative; border-radius: 16px; overflow: hidden; background: #fff; box-shadow: 0 4px 0 var(--shadow); aspect-ratio: 3 / 4; max-width: 100%; }
@@ -504,7 +541,7 @@ button:focus-visible, [tabindex]:focus-visible { outline-color: var(--orange); }
 #splash { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; align-content: center; gap: 10px; background: var(--bg); transition: opacity .4s ease; cursor: pointer; }
 #splash.out { opacity: 0; pointer-events: none; }
 #splash img { width: 210px; height: auto; }
-#splash img.wave { transform-origin: 50% 96%; animation: sway 1.2s ease-in-out infinite; }
+#splash img.wave { transform-origin: 50% 96%; }
 @keyframes sway { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
 #splash .logo { font-size: 38px; }
 #splash .tag { color: var(--muted); font-weight: 800; }
@@ -867,12 +904,16 @@ function verseHtml(lines, renderLine) {
 }
 
 /* ---------- Каталог игр ---------- */
+// Названия математических тренажёров (сами генераторы — ниже, в MATH).
+const MATH_META = { 'common-denominator': { name: 'Общий знаменатель', sub: 'Приведи дроби к наименьшему' }, reduce: { name: 'Сократи дробь', sub: 'Через НОД' },
+  nok: { name: 'НОК', sub: 'Наименьшее общее кратное' }, nod: { name: 'НОД', sub: 'Наибольший общий делитель' }, 'to-decimal': { name: 'В десятичную', sub: 'Обыкновенная → десятичная' } };
 const HISTORY_GAMES = [
   { id: 'match', name: 'Соедини', sub: 'Кто что сделал', icon: 'link', color: 'c-pink', make: makeMatch },
   { id: 'memory', name: 'Мемори', sub: 'Термин и его значение', icon: 'cards', color: 'c-violet', make: makeMemory },
   { id: 'timeline', name: 'Лента времени', sub: 'Событие и его год', icon: 'hourglass', color: 'c-orange', make: makeTimeline },
   { id: 'map', name: 'Карта Смуты', sub: 'Где это было', icon: 'pin', color: 'c-mint', make: makeMap },
   { id: 'truth', name: 'Правда или нет', sub: 'Найди ошибку в фразе', icon: 'eye', color: 'c-sky', make: makeTruth },
+  ...Object.entries(MATH_META).map(([id, m], k) => ({ id: 'm-' + id, name: m.name, sub: m.sub, icon: ['blocks', 'gap', 'link', 'cards', 'next'][k], color: ['c-sky', 'c-orange', 'c-pink', 'c-mint', 'c-violet'][k], make: (L) => makeMath(L, id) })),
   { id: 'quiz', name: 'Вопрос — ответ', sub: 'Выбери правильный ответ', icon: 'gap', color: 'c-violet', make: makeQuiz },
   { id: 'steps', name: 'Порядок действий', sub: 'Что сначала, что потом', icon: 'next', color: 'c-orange', make: makeSteps },
   { id: 'groups', name: 'Разложи по группам', sub: 'К какой группе относится', icon: 'blocks', color: 'c-mint', make: makeGroups },
@@ -899,6 +940,7 @@ const gamesOf = (L) => (L.kind === 'poem' ? POEM_GAMES : HISTORY_GAMES.filter((g
   if (g.id === 'map') return !!L.map;
   if (g.id === 'truth') return (L.facts || []).length >= 3;
   if (g.id === 'words' || g.id === 'wordmemo') return (L.words || []).length >= 3;
+  if (g.id.startsWith('m-')) return (L.mathTopics || []).includes(g.id.slice(2));
   if (g.id === 'quiz') return (L.quiz || []).length >= 2;
   if (g.id === 'steps') return (L.steps || []).some((x) => x.items && x.items.length >= 3);
   if (g.id === 'groups') return (L.groups || []).length >= 2;
@@ -1194,6 +1236,145 @@ function makeMap(L) {
       later(() => { g.okFlash = null; draw(); }, 700); maybeFinish();
     } else { g.bad('q:' + q.point, q.q, name(q.point)); flash(id); }
   };
+  return g;
+}
+
+/* ===== Математика: примеры придумывает и проверяет программа, нейросеть только называет тему ===== */
+const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+const lcm = (a, b) => (a / gcd(a, b)) * b;
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const fr = (n, d) => `<span class="fr"><span>${n}</span><span>${d}</span></span>`;
+const dec = (x) => String(+x.toFixed(6)).replace('.', ',');
+// Пара чисел с общим множителем k и взаимно простыми m1, m2 — чтобы НОК был меньше произведения.
+function pairK(level) {
+  const K = [[2, 3], [2, 6], [4, 12]][level], M = [[2, 5], [2, 7], [3, 9]][level];
+  for (;;) { const k = rnd(...K), m1 = rnd(...M), m2 = rnd(...M); if (m1 !== m2 && gcd(m1, m2) === 1 && k * m1 * m2 <= 400) return { k, m1, m2, a: k * m1, b: k * m2 }; }
+}
+const coprime = (den) => { for (;;) { const n = rnd(1, den - 1); if (gcd(n, den) === 1) return n; } };
+const multsHint = (a, b) => {
+  const big = Math.max(a, b), small = Math.min(a, b), N = lcm(a, b), list = [];
+  for (let i = 1; i <= N / big + 1; i++) list.push(big * i);
+  return { text: `Перебирай числа, кратные большему числу ${big}. Какое первым делится на ${small}?`, list, hit: N };
+};
+const divsHint = (a, b) => {
+  const small = Math.min(a, b), list = [];
+  for (let i = small; i >= 1; i--) if (small % i === 0) list.push(i);
+  return { text: `Перебирай делители меньшего числа ${small}, начиная с самого большого. Какой первым делит и ${Math.max(a, b)}?`, list, hit: gcd(a, b) };
+};
+const MATH = {
+  nok: { name: 'НОК', sub: 'Наименьшее общее кратное', title: 'Найди наименьшее общее кратное',
+    make(level) { const { a, b } = pairK(level); const N = lcm(a, b);
+      return { q: `Найди НОК(${a}, ${b})`, final: `НОК(${a}, ${b}) = ${N}`, steps: [
+        { title: 'НОК', what: 'Наименьшее число, которое делится и на одно, и на другое', show: (v) => `НОК(${a}, ${b}) = ${v}`, answer: N, hint: multsHint(a, b) }] }; } },
+  nod: { name: 'НОД', sub: 'Наибольший общий делитель', title: 'Найди наибольший общий делитель',
+    make(level) { const { a, b, k } = pairK(level);
+      return { q: `Найди НОД(${a}, ${b})`, final: `НОД(${a}, ${b}) = ${k}`, steps: [
+        { title: 'НОД', what: 'Самое большое число, на которое делятся оба', show: (v) => `НОД(${a}, ${b}) = ${v}`, answer: gcd(a, b), hint: divsHint(a, b) }] }; } },
+  reduce: { name: 'Сократи дробь', sub: 'Через наибольший общий делитель', title: 'Сократи дробь',
+    make(level) { const k = rnd(...[[2, 5], [3, 9], [6, 15]][level]); let p, q;
+      do { q = rnd(...[[3, 9], [4, 12], [5, 16]][level]); p = rnd(1, q - 1); } while (gcd(p, q) !== 1);
+      const n = p * k, d = q * k;
+      return { q: `Сократи ${fr(n, d)}`, final: `${fr(n, d)} = ${fr(p, q)}`, steps: [
+        { title: 'Наибольший общий делитель', what: 'На какое самое большое число делятся и числитель, и знаменатель?', show: (v) => `НОД(${n}, ${d}) = ${v}`, answer: k, hint: divsHint(n, d) },
+        { title: 'Новый числитель', what: 'Раздели числитель на НОД', show: (v) => `${n} : ${k} = ${v}`, answer: p, hint: { text: `${k} · ? = ${n}` } },
+        { title: 'Новый знаменатель', what: 'Раздели знаменатель на НОД', show: (v) => `${d} : ${k} = ${v}`, answer: q, hint: { text: `${k} · ? = ${d}` } }] }; } },
+  'common-denominator': { name: 'Общий знаменатель', sub: 'Приведи дроби к наименьшему', title: 'Приведи к наименьшему общему знаменателю',
+    make(level) { const { a: b, b: d } = pairK(level); const N = lcm(b, d), x = N / b, y = N / d, a = coprime(b), c = coprime(d);
+      return { q: `Приведи ${fr(a, b)} и ${fr(c, d)} к наименьшему общему знаменателю`, final: `${fr(a, b)} = ${fr(a * x, N)}, &nbsp;${fr(c, d)} = ${fr(c * y, N)}`, steps: [
+        { title: 'Наименьший общий знаменатель', what: 'Найди наименьшее общее кратное знаменателей — это и есть наименьший общий знаменатель', show: (v) => `НОК(${b}, ${d}) = ${v}`, answer: N, hint: multsHint(b, d) },
+        { title: 'Дополнительный множитель для первой дроби', what: `Дополнительный множитель для первой дроби: делим ${N} на её знаменатель`, show: (v) => `${N} : ${b} = ${v}`, answer: x, hint: { text: `${b} · ? = ${N}` } },
+        { title: 'Дополнительный множитель для второй дроби', what: 'Дополнительный множитель для второй дроби', show: (v) => `${N} : ${d} = ${v}`, answer: y, hint: { text: `${d} · ? = ${N}` } },
+        { title: 'Новая первая дробь', what: 'Умножь числитель и знаменатель первой дроби на её множитель', show: (v) => `${fr(a, b)} = ${fr(`${a}·<span class="mul">${x}</span>`, `${b}·<span class="mul">${x}</span>`)} = ${fr(v, N)}`, answer: a * x, hint: { text: `${a} · ${x} = ?` } },
+        { title: 'Новая вторая дробь', what: 'То же для второй дроби', show: (v) => `${fr(c, d)} = ${fr(`${c}·<span class="mul">${y}</span>`, `${d}·<span class="mul">${y}</span>`)} = ${fr(v, N)}`, answer: c * y, hint: { text: `${c} · ${y} = ?` } }] }; } },
+  'to-decimal': { name: 'В десятичную', sub: 'Обыкновенная дробь → десятичная', title: 'Запиши в виде десятичной дроби',
+    make(level) { const D = [[2, 4, 5, 10, 20, 25, 50], [4, 5, 8, 20, 25, 40, 50], [8, 16, 40, 125, 250, 200]][level];
+      const d = D[rnd(0, D.length - 1)], n = coprime(d); let T = 10; while (T % d) T *= 10;
+      const m = T / d, val = n / d;
+      return { q: `Запиши ${fr(n, d)} в виде десятичной дроби`, final: `${fr(n, d)} = ${dec(val)}`, steps: [
+        { title: 'Новый знаменатель', what: 'До какого знаменателя дополним: 10, 100 или 1000? Он должен делиться на ' + d, show: (v) => `знаменатель ${d} → ${v}`, answer: T, hint: { text: `Проверь по очереди: делится ли 10 на ${d}? А 100? А 1000?` } },
+        { title: 'Дополнительный множитель', what: `Во сколько раз ${T} больше ${d}?`, show: (v) => `${T} : ${d} = ${v}`, answer: m, hint: { text: `${d} · ? = ${T}` } },
+        { title: 'Новая дробь', what: 'Умножь числитель на этот множитель', show: (v) => `${fr(n, d)} = ${fr(`${n}·<span class="mul">${m}</span>`, `${d}·<span class="mul">${m}</span>`)} = ${fr(v, T)}`, answer: n * m, hint: { text: `${n} · ${m} = ?` } },
+        { title: 'Десятичная дробь', what: `Запиши ${fr(n * m, T)} десятичной дробью: после запятой столько цифр, сколько нулей в ${T}`, show: (v) => `${fr(n * m, T)} = ${v}`, answer: val, decimal: true, hint: { text: `В ${T} ${String(T).length - 1} ${plural(String(T).length - 1, 'нуль', 'нуля', 'нулей')} — значит, после запятой ${String(T).length - 1} ${plural(String(T).length - 1, 'цифра', 'цифры', 'цифр')}` } }] }; } },
+};
+let mathLevel = store.get('mlevel') || 0;
+function makeMath(L, topic) {
+  const T = MATH[topic];
+  const g = base(5);
+  g.title = T.title; g.math = true; g.solved = 0; g.n = 0;
+  const setup = () => { g.ex = T.make(mathLevel); g.k = 0; g.input = ''; g.tries = 0; g.showHint = false; g.clean = true; g.bad = false; };
+  setup();
+  g.done = () => g.solved;
+  g.hint = () => '';
+  const slotH = (v) => `<span class="mslot${v !== '' ? ' filled' : ''}${g.bad ? ' bad' : ''}">${v === '' ? '?' : v}</span>`;
+  g.body = () => {
+    const ex = g.ex, last = g.k >= ex.steps.length, st = ex.steps[g.k];
+    const levels = `<div class="levels">${['Легко', 'Средне', 'Трудно'].map((t, i) => `<button class="${i === mathLevel ? 'on' : ''}" data-act="mlvl" data-id="${i}">${t}</button>`).join('')}</div>`;
+    const task = `<div class="mtask"><div class="lbl">Пример ${g.n + 1} из ${g.total}</div><div class="q">${ex.q}</div></div>`;
+    const sol = ex.steps.length > 1 || last ? `<div class="msol">${ex.steps.map((s2, i) => {
+      if (i > g.k) return `<div class="mst wait"><span class="n">${i + 1}</span><div class="what">${s2.title}</div></div>`;
+      const val = i < g.k ? `<span class="mans">${dec(s2.answer)}</span>` : slotH(g.input);
+      return `<div class="mst ${i < g.k ? 'done' : 'cur'}"><span class="n">${i < g.k ? '✓' : i + 1}</span><div>${i === g.k ? `<div class="what">${s2.what}</div>` : ''}<div class="math">${s2.show(val)}</div></div></div>`;
+    }).join('')}</div>` : `<div class="msol"><div class="mst cur"><span class="n">?</span><div><div class="what">${st.what}</div><div class="math">${st.show(slotH(g.input))}</div></div></div></div>`;
+    if (last) {
+      return levels + task + sol + `<div class="mdone"><img src="${CAT('happy')}" alt=""><div class="final">${ex.final}</div>
+        <button class="b3 c-orange btn" style="width:100%" data-act="mnext">${g.n + 1 < g.total ? 'Следующий пример' : 'Готово'}</button></div>`;
+    }
+    let hint = '';
+    if (g.showHint) {
+      const h = st.hint || { text: '' };
+      hint = `<div class="mhint"><img src="${CAT('think')}" alt=""><div>${h.text}${h.list ? `<div class="mults">${h.list.map((v) => `<span class="${g.tries >= 2 && v === h.hit ? 'hit' : ''}">${v}</span>`).join('')}</div>` : ''}</div></div>`;
+    }
+    const pad = `<div class="mpad">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => `<button class="b3 c-card" data-act="md" data-id="${d}">${d}</button>`).join('')}
+      ${st.decimal ? '<button class="b3 c-card" data-act="md" data-id=",">,</button>' : '<button class="b3 c-card help" data-act="mhelp">Подсказка</button>'}
+      <button class="b3 c-card" data-act="md" data-id="0">0</button><button class="b3 c-card" data-act="mdel" aria-label="Стереть">⌫</button>
+      ${st.decimal ? '<button class="b3 c-card help" data-act="mhelp" style="grid-column:1 / -1">Подсказка</button>' : ''}
+      <button class="b3 c-orange btn" data-act="mok" style="grid-column:1 / -1">Проверить</button></div>`;
+    return levels + task + sol + hint + pad;
+  };
+  const check = () => {
+    const st = g.ex.steps[g.k];
+    if (g.input === '' || g.input === ',') return;
+    const v = parseFloat(g.input.replace(',', '.'));
+    if (Math.abs(v - st.answer) < 1e-9) {
+      g.score += g.tries ? 5 : 10; g.bumped = true; sfx('ok');
+      g.k++; g.input = ''; g.tries = 0; g.showHint = false; return draw();
+    }
+    g.tries++; g.clean = false; g.bad = true; g.showHint = true;
+    if (!g.missed.has('m' + g.n)) g.missed.set('m' + g.n, { q: g.ex.q.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' '), right: g.ex.final.replace(/<span class="fr"><span>([^<]*)<\/span><span>([^<]*)<\/span><\/span>/g, '$1/$2').replace(/&nbsp;/g, ' ').replace(/<[^>]+>/g, '') });
+    g.wrong++; g.combo = 0; sfx('bad'); buzz(); draw();
+    const g0 = g;
+    setTimeout(() => {
+      if (S.game !== g0) return;
+      g.bad = false;
+      if (g.tries >= 3) { g.input = ''; g.k++; g.tries = 0; g.showHint = false; toast('Ответ: ' + dec(st.answer)); } else g.input = '';
+      draw();
+    }, g.tries >= 3 ? 900 : 450);
+  };
+  g.key = (k) => {
+    if (g.k >= g.ex.steps.length) return;
+    if (/^[0-9]$/.test(k) && g.input.length < 6) g.input += k;
+    else if ((k === ',' || k === '.') && g.ex.steps[g.k].decimal && !g.input.includes(',')) g.input += ',';
+    else if (k === 'Backspace') g.input = g.input.slice(0, -1);
+    else if (k === 'Enter') return check();
+    else return;
+    draw();
+  };
+  g.on = (act, id) => {
+    if (act === 'md') return g.key(id);
+    if (act === 'mdel') return g.key('Backspace');
+    if (act === 'mok') return check();
+    if (act === 'mhelp') { g.showHint = true; return draw(); }
+    if (act === 'mlvl') { mathLevel = +id; store.set('mlevel', mathLevel); setup(); return draw(); }
+    if (act === 'mnext' && g.k >= g.ex.steps.length) {
+      g.solved++; g.n++;
+      if (g.clean) { g.right++; g.combo++; }
+      if (g.n >= g.total) { draw(); return maybeFinish(); }
+      setup(); window.scrollTo(0, 0); return draw();
+    }
+  };
+  g.stat = () => `Без ошибок: ${g.total - g.missed.size} из ${g.total}`;
+  g.review = () => [...g.missed.values()];
+  g.reviewTitle = 'Где были ошибки';
   return g;
 }
 
@@ -1619,7 +1800,8 @@ const SUBJECTS = {
   world:      { name: 'Окружающий мир', pic: 'geography', bg: '#e3f5dc' },
 };
 /* Уроки с фото хранятся на этом устройстве. Примеры (Смута, «Перчатка») — встроенные. */
-let myLessons = store.get('lessons') || [];
+const stripNum = (t) => String(t || '').replace(/^\s*(?:[0-9]{1,2}|[а-яa-z])\s*[).:]\s*|^\s*[•\-–—]\s*/i, '').trim();
+let myLessons = (store.get('lessons') || []).map((L) => (L.steps ? { ...L, steps: L.steps.map((st) => ({ ...st, items: (st.items || []).map(stripNum) })) } : L));
 const allLessons = () => [HISTORY, PERCHATKA, ...myLessons];
 const lessonById = (id) => allLessons().find((x) => x.id === id);
 HISTORY.subjectKey = 'history'; PERCHATKA.subjectKey = 'literature';
@@ -1645,7 +1827,7 @@ function lessonFromServer(x) {
     persons: (x.persons || []).map((p, k) => ({ id: 'p' + k, name: p.name, text: p.text })),
     terms: (x.terms || []).map((t, k) => ({ id: 't' + k, term: t.term, text: t.text })),
     events: (x.events || []).map((e, k) => ({ id: 'e' + k, year: e.year, text: e.text })),
-    facts: x.facts || [], words: x.words || [], steps: x.steps || [], groups: x.groups || [], quiz: x.quiz || [], questions: x.questions || [], map: null, fromPhoto: true, created: Date.now() };
+    facts: x.facts || [], words: x.words || [], steps: (x.steps || []).map((st) => ({ ...st, items: (st.items || []).map(stripNum) })), groups: x.groups || [], quiz: x.quiz || [], mathTopics: x.mathTopics || [], questions: x.questions || [], map: null, fromPhoto: true, created: Date.now() };
 }
 // Полка: по предмету одна плитка; в предмете — все его уроки, свежие сверху.
 function shelf() {
@@ -1923,6 +2105,9 @@ $app.addEventListener('click', (e) => {
 });
 $app.addEventListener('change', (e) => {
   if (e.target.id === 'due-date' && e.target.value) { S.due = e.target.value; draw(); }
+});
+document.addEventListener('keydown', (e) => {
+  if (S.screen === 'game' && S.game && S.game.math && !S.game.finished && (/^[0-9.,]$/.test(e.key) || e.key === 'Backspace' || e.key === 'Enter')) { e.preventDefault(); S.game.key(e.key); }
 });
 $app.addEventListener('keydown', (e) => {
   if (e.key !== 'Enter' && e.key !== ' ') return;
