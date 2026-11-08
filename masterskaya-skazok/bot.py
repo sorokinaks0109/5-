@@ -475,6 +475,26 @@ async def fayl(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await otvetit(update, context, f"Осталось на этом шаге: {ostalos}")
 
 
+def nayti_proksi():
+    """Прокси для Telegram: из .env (PROXY или ALL_PROXY) или системный прокси VPN.
+
+    Некоторые VPN на Windows выставляют системный прокси socks4://, которого
+    библиотека не понимает. Тот же порт обычно принимает socks5 — подставляем его.
+    """
+    import urllib.request
+    yavnyy = os.environ.get("PROXY") or os.environ.get("ALL_PROXY") or os.environ.get("all_proxy")
+    if yavnyy:
+        return yavnyy.replace("socks4://", "socks5://", 1)
+    sistemnye = urllib.request.getproxies()
+    for klyuch in ("https", "all", "http"):
+        url = sistemnye.get(klyuch)
+        if url:
+            if "://" not in url:
+                url = "http://" + url
+            return url.replace("socks4://", "socks5://", 1).replace("socks://", "socks5://", 1)
+    return None
+
+
 def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     token = os.environ.get("BOT_TOKEN")
@@ -482,7 +502,12 @@ def main():
         raise SystemExit("Не задан BOT_TOKEN в файле .env")
     if not RAZRESHENO:
         log.warning("RAZRESHENO пуст — бот никого не пустит, но покажет ID при /start")
-    app = Application.builder().token(token).build()
+    builder = Application.builder().token(token)
+    proksi = nayti_proksi()
+    if proksi:
+        log.info("Подключаюсь к Telegram через прокси %s", proksi)
+        builder = builder.proxy(proksi).get_updates_proxy(proksi)
+    app = builder.build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("new", novyy))
     app.add_handler(CommandHandler("gde", gde))
