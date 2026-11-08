@@ -49,7 +49,8 @@ def sobrat(shablon_dir, zakaz_dir, out_path=None):
         est = dlitelnost(src)
         sc = dict(sc)
         if sc["tip"] == "lichnaya" and est + 0.05 < sc["s"] + sc["dlit"]:
-            sc["s"] = 0.0  # прислан уже обрезанный кусок (правка по нарезанному исходнику)
+            # прислан уже обрезанный кусок (правка по нарезанному исходнику)
+            sc["s"] = sc.get("ishodnik_s", 0.0)
         nehvatka = sc["s"] + sc["dlit"] - est
         if nehvatka > 0.5:
             oshibki.append(
