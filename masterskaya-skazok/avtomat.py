@@ -21,6 +21,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 import urllib.request
 from pathlib import Path
 
@@ -124,7 +125,7 @@ def prompt_klipa(z):
             f"lighting, background, snow, text. 3D animated cartoon style.")
 
 
-def shag_klipy(papka, model=M_KLIP):
+def shag_klipy(papka, model=M_KLIP, potokov=2):
     papka, z = zakaz(papka)
     sh = promty.zagruzit_shablon(SHABLON)
     personazh = nayti(papka, "personazh")
@@ -141,15 +142,31 @@ def shag_klipy(papka, model=M_KLIP):
     def odin(s):
         url_v = zagruzit(SHABLON / s["ishodnik"])
         log(f"  → {s['id']} {s['nazvanie']}: отправлен в Kling")
-        r = fal_client.subscribe(model, arguments={
-            "prompt": prompt, "video_url": url_v, "image_urls": [url_p], "resolution": "720p"})
+        p = prompt
+        if s["id"] == "04":
+            # крупный портрет в книге модерация принимает за фото ребёнка — уточняем, что это рисунок
+            p = ("This is a 3D animated cartoon. The illustration on the book page shows a cartoon girl; "
+                 "replace her with the cartoon " + ("boy" if z["pol"] == "malchik" else "girl")
+                 + " character from @Image1. " + prompt)
+        args = {"prompt": p, "video_url": url_v, "image_urls": [url_p], "resolution": "720p"}
+        for popytka in range(3):
+            try:
+                r = fal_client.subscribe(model, arguments=args)
+                break
+            except Exception as e:  # noqa: BLE001
+                if "Exhausted balance" in str(e) and popytka < 2:
+                    log(f"  … {s['id']}: fal занял баланс под другие задания, жду минуту")
+                    time.sleep(60)
+                    continue
+                raise
         put = skachat(r["video"]["url"], papka / "klipy" / f"{s['id']}.mp4")
         log(f"  ✓ {s['id']} готов")
         return put
 
-    log(f"Kling: {len(sceny)} клипов параллельно, это 5–15 минут…")
+    log(f"Kling: {len(sceny)} клипов, по {potokov} одновременно, это 10–20 минут…")
     oshibki = []
-    with cf.ThreadPoolExecutor(max_workers=6) as ex:
+    # fal резервирует деньги под каждое задание, поэтому не больше 2 одновременно
+    with cf.ThreadPoolExecutor(max_workers=potokov) as ex:
         bud = {ex.submit(odin, s): s for s in sceny}
         for f in cf.as_completed(bud):
             try:
@@ -181,9 +198,9 @@ def shag_ozvuchka(papka):
     voice = nastroyki().get("voice_id")
     if not voice:
         raise SystemExit("Нет голоса. Один раз: python3 avtomat.py golos <аудио>")
-    tekst = promty.tekst_ozvuchki(sh, z).replace("\n\n", " <#0.6#> ").replace("…", "… <#0.3#>")
+    tekst = promty.tekst_ozvuchki(sh, z).replace("\n\n", " <#0.25#> ")
     dlit_rolika = sum(s["dlit"] for s in sh["sceny"]) - 0.8
-    speed = 0.95
+    speed = 1.1
     for _ in range(3):
         r = fal_client.subscribe(M_RECH, arguments={
             "prompt": tekst, "language_boost": "Russian", "output_format": "url",
@@ -193,7 +210,7 @@ def shag_ozvuchka(papka):
         log(f"Озвучка: {d:.1f} с при скорости {speed}")
         if d <= dlit_rolika:
             return put
-        speed = round(min(1.3, speed * d / dlit_rolika + 0.02), 2)
+        speed = round(min(1.25, speed * d / dlit_rolika + 0.02), 2)
     log("Озвучка чуть длиннее ролика — конец может обрезаться.")
     return put
 
