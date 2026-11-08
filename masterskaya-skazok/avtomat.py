@@ -39,6 +39,7 @@ M_GOLOS_KLON = "fal-ai/minimax/voice-clone"
 M_RECH = "fal-ai/minimax/speech-2.8-hd"
 
 OBRAZEC_ODEZHDY = "kadry/06_start.png"  # кадр, где ребёнок в полный рост в нужной одежде
+OBRAZEC_STILYA = "kadry/04_original.jpg"  # крупный план ребёнка в стиле мультфильма
 
 os.environ.setdefault("FAL_KEY", "proxy-injected")
 
@@ -86,10 +87,9 @@ def shag_personazh(papka):
     foto = nayti(papka, "foto")
     if not foto:
         raise SystemExit("Нет фото ребёнка (foto.jpg) в папке заказа")
-    log("Загружаю фото и образец одежды…")
-    urls = [zagruzit(foto), zagruzit(SHABLON / OBRAZEC_ODEZHDY)]
-    prompt = (promty.personazh(sh, z).replace("на втором изображении", "как у ребёнка на втором изображении")
-              + " Используй первое изображение только как образец лица ребёнка.")
+    log("Загружаю фото, образец одежды и образец стиля…")
+    urls = [zagruzit(foto), zagruzit(SHABLON / OBRAZEC_ODEZHDY), zagruzit(SHABLON / OBRAZEC_STILYA)]
+    prompt = prompt_personazha(z, sh)
     log("Рисую персонажа (GPT Image 2.6)…")
     r = fal_client.subscribe(M_PERSONAZH, arguments={
         "prompt": prompt, "image_urls": urls, "quality": "medium",
@@ -97,6 +97,19 @@ def shag_personazh(papka):
     put = skachat(r["images"][0]["url"], papka / "personazh.png")
     log(f"Персонаж: {put}")
     return put
+
+
+def prompt_personazha(z, sh):
+    pol = "boy" if z["pol"] == "malchik" else "girl"
+    ochki = f"wearing {z['ochki']}" if z.get("ochki") else "no glasses"
+    return (f"Create a 3D animated cartoon character of this {z['vozrast']}-year-old {pol} in exactly the "
+            f"same art style as the cartoon girl in image 3 and image 2: stylized 3D animated feature film "
+            f"look, big expressive eyes, soft smooth skin, slightly simplified features, cinematic soft light. "
+            f"NOT photorealistic, NOT a photo. The face must clearly resemble the child in image 1 "
+            f"(face shape, nose, mouth, eye color {z['glaza']}, hair: {z['volosy']}, ears), {ochki}. "
+            f"Image 1 is only a face reference. Clothes exactly like the child in image 2: "
+            f"{sh['odezhda']}. Show the full-body character standing, front view, and a large close-up "
+            f"portrait of the face next to it, on a plain light background.")
 
 
 def prompt_klipa(z):
