@@ -12,6 +12,12 @@ if not exist .venv (
 )
 call .venv\Scripts\activate.bat
 python -m pip install -q -r requirements.txt
+if errorlevel 1 (
+  echo.
+  echo Could not install packages. Turn OFF the VPN on this computer and run this file again.
+  pause
+  exit /b
+)
 if not exist .env (
   copy .env.example .env >nul
   echo Paste the bot token into .env file, save it and run this file again.
