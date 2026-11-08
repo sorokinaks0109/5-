@@ -511,6 +511,65 @@ button:focus-visible, [tabindex]:focus-visible { outline-color: var(--orange); }
 .mdone img { width: 110px; height: auto; }
 .mdone .final { font-size: 20px; font-weight: 800; }
 
+/* Разложение, НОД, НОК и объяснения кота */
+.xrule { padding: 10px 14px; border-radius: 14px; background: #fff; border-left: 5px solid var(--orange); font-size: 14px; color: var(--muted); font-weight: 700; }
+.xrule b { color: var(--ink); }
+.xrule ol { margin: 4px 0 0; padding-left: 20px; }
+.xrule li.now { color: var(--ink); font-weight: 900; }
+.xrule li.ok { color: var(--mint-d); }
+.xbar { display: grid; grid-template-columns: auto auto; justify-content: center; font-size: 24px; font-weight: 900; font-variant-numeric: tabular-nums; padding: 12px 0; background: #fff; border-radius: 18px; box-shadow: 0 3px 0 var(--shadow); }
+.xbar.flat { box-shadow: none; padding: 0; }
+.xbar > span { padding: 2px 14px; min-height: 40px; display: flex; align-items: center; }
+.xbar .l { justify-content: flex-end; border-right: 3px solid var(--ink); }
+.xbar .r { color: var(--orange-d); }
+.xbar .cur { background: #fff1dc; border-radius: 8px 0 0 8px; }
+.xresult { text-align: center; font-size: 20px; font-weight: 900; padding: 10px; border-radius: 14px; background: #e6f8f0; color: var(--mint-d); }
+.xnote { color: var(--muted); font-size: 14px; text-align: center; font-weight: 700; }
+.xfact { display: grid; gap: 10px; }
+.xfrow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 12px; border-radius: 16px; background: #fff; box-shadow: 0 3px 0 var(--shadow); font-size: 20px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.xfrow.pick { cursor: pointer; box-shadow: 0 0 0 2px #f6c48f, 0 3px 0 var(--shadow); }
+.xfrow .eq, .xdot { color: var(--muted); }
+.xchip { min-width: 40px; padding: 4px 8px; border-radius: 10px; background: #f6efe4; font-size: 20px; font-weight: 900; border-bottom: 4px solid transparent; text-align: center; }
+.xchip.marked { background: #fff1dc; border-bottom-color: var(--orange); color: var(--orange-d); }
+.xchip.used { opacity: .35; }
+.xres { min-height: 54px; border: 2.5px dashed var(--orange); background: #fffaf2; }
+.xres .from-b { background: #e8f1ff; }
+.xres .added { background: #fff1dc; color: var(--orange-d); }
+.xprimes { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+.xprimes button { padding: 12px 0; font-size: 21px; font-weight: 900; }
+.mhint.err { background: #ffecec; }
+.xhow { align-self: start; padding: 8px 14px; font-size: 14.5px; font-weight: 900; border-radius: 12px; }
+.xexplain { display: grid; gap: 12px; }
+.xsay { display: grid; grid-template-columns: 84px 1fr; gap: 10px; align-items: end; }
+.xsay img { width: 84px; height: auto; }
+.xbubble { padding: 14px 16px; border-radius: 18px 18px 18px 4px; background: #fff; box-shadow: 0 3px 0 var(--shadow); font-size: 16.5px; line-height: 1.45; font-weight: 700; }
+.xbubble b { color: var(--orange-d); }
+.xboard { padding: 14px; border-radius: 18px; background: #fff; box-shadow: 0 3px 0 var(--shadow); display: grid; gap: 8px; justify-items: center; font-size: 20px; font-weight: 900; font-variant-numeric: tabular-nums; text-align: center; }
+.xboard .ln { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; }
+.xboard .u { border-bottom: 4px solid var(--orange); color: var(--orange-d); padding: 0 3px; }
+.xboard .x { color: #c9bfb2; text-decoration: line-through; }
+.xboard .g { color: var(--mint-d); }
+.xboard .muted { color: var(--muted); font-size: 15px; font-weight: 700; }
+.xboard .fr { font-size: 20px; }
+.xpair { display: grid; gap: 6px; justify-items: center; font-size: 16px; }
+.xpair span { padding: 8px 12px; border-radius: 12px; background: #f6efe4; }
+.xpair span:first-child { background: var(--navy); color: #fff; }
+.xpair i { font-style: normal; color: var(--orange-d); }
+.xcards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; font-size: 15px; }
+.xcards span { padding: 12px 8px; border-radius: 12px; color: #fff; display: grid; place-items: center; }
+.xcards .v { background: var(--violet); } .xcards .s { background: var(--sky); }
+.xtruth { width: 100%; text-align: left; font-size: 15px; font-weight: 700; display: grid; gap: 4px; }
+.xtruth span { justify-self: start; padding: 2px 8px; border-radius: 8px; color: #fff; font-size: 12.5px; font-weight: 900; }
+.xtruth .ok { background: var(--mint-d); } .xtruth .no { background: var(--bad); }
+.xlist { display: grid; gap: 6px; width: 100%; text-align: left; font-size: 15px; font-weight: 700; }
+.xlist div { display: grid; grid-template-columns: 26px 1fr; gap: 8px; align-items: start; }
+.xlist b { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--orange); color: #fff; font-size: 13px; }
+.xtag { padding: 6px 12px; border-radius: 99px; background: #f6efe4; font-size: 15px; }
+.xverse { font: 500 18px/1.5 var(--f-verse); }
+.xdots { display: flex; gap: 6px; justify-content: center; }
+.xdots i { width: 8px; height: 8px; border-radius: 50%; background: #e6d9c6; }
+.xdots i.on { background: var(--orange); }
+
 /* Снятые страницы */
 .shots { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
 .shot { position: relative; border-radius: 16px; overflow: hidden; background: #fff; box-shadow: 0 4px 0 var(--shadow); aspect-ratio: 3 / 4; max-width: 100%; }
@@ -905,15 +964,16 @@ function verseHtml(lines, renderLine) {
 
 /* ---------- Каталог игр ---------- */
 // Названия математических тренажёров (сами генераторы — ниже, в MATH).
-const MATH_META = { 'common-denominator': { name: 'Общий знаменатель', sub: 'Приведи дроби к наименьшему' }, reduce: { name: 'Сократи дробь', sub: 'Через НОД' },
-  nok: { name: 'НОК', sub: 'Наименьшее общее кратное' }, nod: { name: 'НОД', sub: 'Наибольший общий делитель' }, 'to-decimal': { name: 'В десятичную', sub: 'Обыкновенная → десятичная' } };
+const MATH_META = { factor: { name: 'Разложение', sub: 'На простые множители' }, nod: { name: 'НОД', sub: 'Наибольший общий делитель' }, nok: { name: 'НОК', sub: 'Наименьшее общее кратное' },
+  'common-denominator': { name: 'Общий знаменатель', sub: 'Приведи дроби к наименьшему' }, reduce: { name: 'Сократи дробь', sub: 'Через НОД' },
+  'to-decimal': { name: 'В десятичную', sub: 'Обыкновенная → десятичная' } };
 const HISTORY_GAMES = [
   { id: 'match', name: 'Соедини', sub: 'Кто что сделал', icon: 'link', color: 'c-pink', make: makeMatch },
   { id: 'memory', name: 'Мемори', sub: 'Термин и его значение', icon: 'cards', color: 'c-violet', make: makeMemory },
   { id: 'timeline', name: 'Лента времени', sub: 'Событие и его год', icon: 'hourglass', color: 'c-orange', make: makeTimeline },
   { id: 'map', name: 'Карта Смуты', sub: 'Где это было', icon: 'pin', color: 'c-mint', make: makeMap },
   { id: 'truth', name: 'Правда или нет', sub: 'Найди ошибку в фразе', icon: 'eye', color: 'c-sky', make: makeTruth },
-  ...Object.entries(MATH_META).map(([id, m], k) => ({ id: 'm-' + id, name: m.name, sub: m.sub, icon: ['blocks', 'gap', 'link', 'cards', 'next'][k], color: ['c-sky', 'c-orange', 'c-pink', 'c-mint', 'c-violet'][k], make: (L) => makeMath(L, id) })),
+  ...Object.entries(MATH_META).map(([id, m], k) => ({ id: 'm-' + id, name: m.name, sub: m.sub, icon: ['blocks', 'link', 'cards', 'gap', 'next', 'eye'][k], color: ['c-orange', 'c-sky', 'c-pink', 'c-mint', 'c-violet', 'c-yellow'][k], make: (L) => (['factor', 'nod', 'nok'].includes(id) ? makeFactorGame(L, id) : makeMath(L, id)) })),
   { id: 'quiz', name: 'Вопрос — ответ', sub: 'Выбери правильный ответ', icon: 'gap', color: 'c-violet', make: makeQuiz },
   { id: 'steps', name: 'Порядок действий', sub: 'Что сначала, что потом', icon: 'next', color: 'c-orange', make: makeSteps },
   { id: 'groups', name: 'Разложи по группам', sub: 'К какой группе относится', icon: 'blocks', color: 'c-mint', make: makeGroups },
@@ -940,6 +1000,7 @@ const gamesOf = (L) => (L.kind === 'poem' ? POEM_GAMES : HISTORY_GAMES.filter((g
   if (g.id === 'map') return !!L.map;
   if (g.id === 'truth') return (L.facts || []).length >= 3;
   if (g.id === 'words' || g.id === 'wordmemo') return (L.words || []).length >= 3;
+  if (g.id === 'm-factor') return (L.mathTopics || []).some((t) => ['factor', 'nod', 'nok'].includes(t));
   if (g.id.startsWith('m-')) return (L.mathTopics || []).includes(g.id.slice(2));
   if (g.id === 'quiz') return (L.quiz || []).length >= 2;
   if (g.id === 'steps') return (L.steps || []).some((x) => x.items && x.items.length >= 3);
@@ -1251,37 +1312,19 @@ function pairK(level) {
   for (;;) { const k = rnd(...K), m1 = rnd(...M), m2 = rnd(...M); if (m1 !== m2 && gcd(m1, m2) === 1 && k * m1 * m2 <= 400) return { k, m1, m2, a: k * m1, b: k * m2 }; }
 }
 const coprime = (den) => { for (;;) { const n = rnd(1, den - 1); if (gcd(n, den) === 1) return n; } };
-const multsHint = (a, b) => {
-  const big = Math.max(a, b), small = Math.min(a, b), N = lcm(a, b), list = [];
-  for (let i = 1; i <= N / big + 1; i++) list.push(big * i);
-  return { text: `Перебирай числа, кратные большему числу ${big}. Какое первым делится на ${small}?`, list, hit: N };
-};
-const divsHint = (a, b) => {
-  const small = Math.min(a, b), list = [];
-  for (let i = small; i >= 1; i--) if (small % i === 0) list.push(i);
-  return { text: `Перебирай делители меньшего числа ${small}, начиная с самого большого. Какой первым делит и ${Math.max(a, b)}?`, list, hit: gcd(a, b) };
-};
 const MATH = {
-  nok: { name: 'НОК', sub: 'Наименьшее общее кратное', title: 'Найди наименьшее общее кратное',
-    make(level) { const { a, b } = pairK(level); const N = lcm(a, b);
-      return { q: `Найди НОК(${a}, ${b})`, final: `НОК(${a}, ${b}) = ${N}`, steps: [
-        { title: 'НОК', what: 'Наименьшее число, которое делится и на одно, и на другое', show: (v) => `НОК(${a}, ${b}) = ${v}`, answer: N, hint: multsHint(a, b) }] }; } },
-  nod: { name: 'НОД', sub: 'Наибольший общий делитель', title: 'Найди наибольший общий делитель',
-    make(level) { const { a, b, k } = pairK(level);
-      return { q: `Найди НОД(${a}, ${b})`, final: `НОД(${a}, ${b}) = ${k}`, steps: [
-        { title: 'НОД', what: 'Самое большое число, на которое делятся оба', show: (v) => `НОД(${a}, ${b}) = ${v}`, answer: gcd(a, b), hint: divsHint(a, b) }] }; } },
   reduce: { name: 'Сократи дробь', sub: 'Через наибольший общий делитель', title: 'Сократи дробь',
     make(level) { const k = rnd(...[[2, 5], [3, 9], [6, 15]][level]); let p, q;
       do { q = rnd(...[[3, 9], [4, 12], [5, 16]][level]); p = rnd(1, q - 1); } while (gcd(p, q) !== 1);
       const n = p * k, d = q * k;
       return { q: `Сократи ${fr(n, d)}`, final: `${fr(n, d)} = ${fr(p, q)}`, steps: [
-        { title: 'Наибольший общий делитель', what: 'На какое самое большое число делятся и числитель, и знаменатель?', show: (v) => `НОД(${n}, ${d}) = ${v}`, answer: k, hint: divsHint(n, d) },
+        { title: 'Наибольший общий делитель', what: 'На какое самое большое число делятся и числитель, и знаменатель?', show: (v) => `НОД(${n}, ${d}) = ${v}`, answer: k, hint: factHint(n, d, 'nod') },
         { title: 'Новый числитель', what: 'Раздели числитель на НОД', show: (v) => `${n} : ${k} = ${v}`, answer: p, hint: { text: `${k} · ? = ${n}` } },
         { title: 'Новый знаменатель', what: 'Раздели знаменатель на НОД', show: (v) => `${d} : ${k} = ${v}`, answer: q, hint: { text: `${k} · ? = ${d}` } }] }; } },
   'common-denominator': { name: 'Общий знаменатель', sub: 'Приведи дроби к наименьшему', title: 'Приведи к наименьшему общему знаменателю',
     make(level) { const { a: b, b: d } = pairK(level); const N = lcm(b, d), x = N / b, y = N / d, a = coprime(b), c = coprime(d);
       return { q: `Приведи ${fr(a, b)} и ${fr(c, d)} к наименьшему общему знаменателю`, final: `${fr(a, b)} = ${fr(a * x, N)}, &nbsp;${fr(c, d)} = ${fr(c * y, N)}`, steps: [
-        { title: 'Наименьший общий знаменатель', what: 'Найди наименьшее общее кратное знаменателей — это и есть наименьший общий знаменатель', show: (v) => `НОК(${b}, ${d}) = ${v}`, answer: N, hint: multsHint(b, d) },
+        { title: 'Наименьший общий знаменатель', what: 'Найди наименьшее общее кратное знаменателей — это и есть наименьший общий знаменатель', show: (v) => `НОК(${b}, ${d}) = ${v}`, answer: N, hint: factHint(b, d, 'nok') },
         { title: 'Дополнительный множитель для первой дроби', what: `Дополнительный множитель для первой дроби: делим ${N} на её знаменатель`, show: (v) => `${N} : ${b} = ${v}`, answer: x, hint: { text: `${b} · ? = ${N}` } },
         { title: 'Дополнительный множитель для второй дроби', what: 'Дополнительный множитель для второй дроби', show: (v) => `${N} : ${d} = ${v}`, answer: y, hint: { text: `${d} · ? = ${N}` } },
         { title: 'Новая первая дробь', what: 'Умножь числитель и знаменатель первой дроби на её множитель', show: (v) => `${fr(a, b)} = ${fr(`${a}·<span class="mul">${x}</span>`, `${b}·<span class="mul">${x}</span>`)} = ${fr(v, N)}`, answer: a * x, hint: { text: `${a} · ${x} = ?` } },
@@ -1375,6 +1418,356 @@ function makeMath(L, topic) {
   g.stat = () => `Без ошибок: ${g.total - g.missed.size} из ${g.total}`;
   g.review = () => [...g.missed.values()];
   g.reviewTitle = 'Где были ошибки';
+  return g;
+}
+
+/* ===== Разложение, НОД, НОК — по алгоритмам учебника (Виленкин, 6 класс, п. 6–8) ===== */
+const PR = [2, 3, 5, 7, 11, 13];
+const pick1 = (a) => a[rnd(0, a.length - 1)];
+const prod = (a) => a.reduce((x, y) => x * y, 1);
+const factorize = (n) => { const f = []; for (let p = 2; p * p <= n; p++) while (n % p === 0) { f.push(p); n /= p; } if (n > 1) f.push(n); return f; };
+const smallestPrime = (n) => factorize(n)[0];
+const sortN = (a) => [...a].sort((x, y) => x - y);
+function msetMinus(a, b) { const r = [...a]; for (const x of b) { const i = r.indexOf(x); if (i >= 0) r.splice(i, 1); } return r; }
+function msetCommon(a, b) { const r = [], bb = [...b]; for (const x of a) { const i = bb.indexOf(x); if (i >= 0) { r.push(x); bb.splice(i, 1); } } return r; }
+const eqM = (a, b) => sortN(a).join() === sortN(b).join();
+const SIGN = { 2: 'Делится на 2, если последняя цифра чётная', 3: 'Делится на 3, если сумма цифр делится на 3', 5: 'Делится на 5, если оканчивается на 0 или 5', 7: 'Попробуй разделить на 7', 11: 'Попробуй разделить на 11', 13: 'Попробуй разделить на 13' };
+const LV = [
+  { pool: [2, 2, 3, 3, 5], k: [3, 3], max: 100 },
+  { pool: [2, 2, 2, 3, 3, 5, 7], k: [3, 4], max: 400 },
+  { pool: [2, 2, 2, 3, 3, 5, 7, 11, 13], k: [4, 5], max: 2000 },
+];
+function genNumber(l) {
+  for (;;) { const f = []; const k = rnd(...LV[l].k); for (let i = 0; i < k; i++) f.push(pick1(LV[l].pool)); const n = prod(f); if (n <= LV[l].max && n >= 12) return n; }
+}
+// Пара: общая часть и «свои» множители без общих простых — тогда ответ однозначный; одно число не делит другое.
+function genPair(l) {
+  for (;;) {
+    const c = [], ea = [], eb = [];
+    for (let i = 0, k = rnd(1, l + 2); i < k; i++) c.push(pick1(LV[l].pool));
+    for (let i = 0, k = rnd(1, 2); i < k; i++) ea.push(pick1(LV[l].pool));
+    for (let i = 0, k = rnd(1, 2); i < k; i++) eb.push(pick1(LV[l].pool));
+    if (ea.some((x) => eb.includes(x))) continue;
+    const A = prod(c) * prod(ea), B = prod(c) * prod(eb);
+    if (A === B || A > LV[l].max || B > LV[l].max || A % B === 0 || B % A === 0) continue;
+    return A < B ? [A, B] : [B, A];
+  }
+}
+const FTAB = {
+  factor: { title: 'Разложи на простые множители', item: '6',
+    rule: ['Дели на самое маленькое простое число, на которое делится (2, потом 3, 5…)', 'Справа от черты — делитель, слева под числом — частное', 'Повторяй, пока слева не будет 1'] },
+  nod: { title: 'Найди наибольший общий делитель', item: '7',
+    rule: ['Разложи числа на простые множители', 'Подчеркни общие множители в каждом разложении', 'Найди произведение общих множителей'] },
+  nok: { title: 'Найди наименьшее общее кратное', item: '8',
+    rule: ['Разложи числа на простые множители', 'Выпиши множители из разложения большего из чисел', 'Добавь к ним недостающие множители из разложения меньшего', 'Найди произведение этих множителей'] },
+};
+// Подсказка для НОД и НОК в других тренажёрах — тоже через разложение, как в учебнике.
+const factHint = (a, b, what) => {
+  const fa = factorize(a), fb = factorize(b), c = msetCommon(fa, fb);
+  return what === 'nod'
+    ? { text: `Разложи: ${a} = ${fa.join(' · ')}, ${b} = ${fb.join(' · ')}. Общие множители: ${c.join(' · ') || 'нет'}. Перемножь их` }
+    : { text: `Разложи: ${a} = ${fa.join(' · ')}, ${b} = ${fb.join(' · ')}. Возьми множители большего числа и добавь недостающие из меньшего` };
+};
+
+function makeFactorGame(L, mode) {
+  const g = base(5);
+  g.title = FTAB[mode].title; g.math = true; g.solved = 0; g.n = 0;
+  const setup = () => {
+    Object.assign(g, { input: '', msg: null, err: false, clean: true, badSlot: false });
+    if (mode === 'factor') { const n = genNumber(mathLevel); g.T = { n, rows: [{ n }], stage: 'pick' }; }
+    else { const [a, b] = genPair(mathLevel); g.T = { a, b, fa: factorize(a), fb: factorize(b), ma: new Set(), mb: new Set(), stage: mode === 'nod' ? 'mark' : 'big', taken: false, added: [] }; }
+  };
+  setup();
+  g.done = () => g.solved;
+  g.hint = () => '';
+  const T = () => g.T;
+  const slot = () => `<span class="mslot${g.input ? ' filled' : ''}${g.badSlot ? ' bad' : ''}">${g.input || '?'}</span>`;
+  const msg = () => (g.msg ? `<div class="mhint${g.err ? ' err' : ''}"><img src="${CAT(g.err ? 'oops' : 'think')}" alt=""><div>${g.msg}</div></div>` : '');
+  const pad = () => `<div class="mpad">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => `<button class="b3 c-card" data-act="md" data-id="${d}">${d}</button>`).join('')}
+    <button class="b3 c-card help" data-act="mhelp">Подсказка</button><button class="b3 c-card" data-act="md" data-id="0">0</button><button class="b3 c-card" data-act="mdel" aria-label="Стереть">⌫</button>
+    <button class="b3 c-orange btn" data-act="mok" style="grid-column:1 / -1">Проверить</button></div>`;
+  const chips = (f, cls = () => '', act = '', row = '') => f.map((x, i) => `${i ? '<span class="xdot">·</span>' : ''}${act
+    ? `<button class="xchip ${cls(i)}" data-act="${act}" data-id="${row}${i}">${x}</button>` : `<span class="xchip ${cls(i)}">${x}</span>`}`).join('');
+  const rule = (now) => `<div class="xrule"><b>Алгоритм из учебника (п. ${FTAB[mode].item})</b><ol>${FTAB[mode].rule.map((t, i) => `<li class="${i < now ? 'ok' : i === now ? 'now' : ''}">${t}</li>`).join('')}</ol></div>`;
+  const levels = () => `<div class="levels">${['Легко', 'Средне', 'Трудно'].map((t, i) => `<button class="${i === mathLevel ? 'on' : ''}" data-act="mlvl" data-id="${i}">${t}</button>`).join('')}</div>`;
+  const nextBtn = (t) => `<button class="b3 c-orange btn" style="width:100%" data-act="mnext">${g.n + 1 < g.total ? t : 'Готово'}</button>`;
+  function viewFactor() {
+    const t = T(), rows = t.rows, last = rows[rows.length - 1], done = last.n === 1;
+    const bar = `<div class="xbar">${rows.map((r, i) => {
+      const cur = i === rows.length - 1 && !done;
+      const right = r.p ? r.p : cur && t.stage === 'pick' ? '<span class="mslot">?</span>' : '';
+      return `<span class="l${cur ? ' cur' : ''}">${r.n}</span><span class="r">${right}</span>`;
+    }).join('')}${!done && t.stage === 'q' ? `<span class="l cur">${slot()}</span><span class="r"></span>` : ''}</div>`;
+    let ctrl;
+    if (done) ctrl = `<div class="xresult">${t.n} = ${rows.filter((r) => r.p).map((r) => r.p).join(' · ')}</div>${nextBtn('Следующее число')}`;
+    else if (t.stage === 'pick') ctrl = `<div class="xnote">На какое простое число делится ${last.n}? Начинай с самого маленького</div>
+      <div class="xprimes">${PR.map((p) => `<button class="b3 c-card" data-act="fp" data-id="${p}">${p}</button>`).join('')}</div>
+      <button class="b3 c-card btn" data-act="mhelp">Подсказка</button>`;
+    else ctrl = `<div class="xnote">${last.n} : ${last.p} = ?</div>` + pad();
+    return rule(done ? 3 : t.stage === 'pick' ? 0 : 1) + `<div class="mtask"><div class="lbl">Число ${g.n + 1} из ${g.total}</div><div class="q">Разложи ${t.n} на простые множители</div></div>` + bar + msg() + ctrl;
+  }
+  function viewPair() {
+    const t = T(), nok = mode === 'nok';
+    const row = (k, pickable, cls, act) => `<div class="xfrow${pickable ? ' pick' : ''}" ${pickable ? `data-act="frow" data-id="${k}"` : ''}><span>${t[k]}</span><span class="eq">=</span>${chips(k === 'a' ? t.fa : t.fb, cls, act, k)}</div>`;
+    const task = `<div class="mtask"><div class="lbl">Пример ${g.n + 1} из ${g.total}</div><div class="q">${nok ? 'НОК' : 'НОД'}(${t.a}, ${t.b}) = ?</div></div>`;
+    let body, step, ctrl;
+    if (!nok) {
+      const act = t.stage === 'mark' ? 'fm' : '';
+      body = `<div class="xfact">${row('a', false, (i) => (t.ma.has(i) ? 'marked' : ''), act)}${row('b', false, (i) => (t.mb.has(i) ? 'marked' : ''), act)}</div>`;
+      const c = msetCommon(t.fa, t.fb);
+      if (t.stage === 'mark') { step = 1; ctrl = '<div class="xnote">Нажимай на множители, которые есть в обоих разложениях, — в каждой строке</div><button class="b3 c-orange btn" data-act="fcheck">Проверить</button><button class="b3 c-card btn" data-act="mhelp">Подсказка</button>'; }
+      else if (t.stage === 'mul') { step = 2; ctrl = `<div class="xfrow" style="justify-content:center">НОД = ${c.join(' · ')} = ${slot()}</div>` + pad(); }
+      else { step = 3; ctrl = `<div class="xresult">НОД(${t.a}, ${t.b}) = ${c.length > 1 ? c.join(' · ') + ' = ' : ''}${prod(c)}</div>${nextBtn('Следующий пример')}`; }
+    } else {
+      const need = msetMinus(t.fa, t.fb);
+      const res = t.taken ? `<div class="xfrow xres"><span class="eq">НОК =</span>${t.fb.map((x, i) => `${i ? '<span class="xdot">·</span>' : ''}<span class="xchip from-b">${x}</span>`).join('')}${t.added.map((i) => `<span class="xdot">·</span><span class="xchip added">${t.fa[i]}</span>`).join('')}</div>` : '';
+      body = `<div class="xfact">${row('a', t.stage === 'big', (i) => (t.added.includes(i) ? 'used' : ''), t.stage === 'add' ? 'fadd' : '')}${row('b', t.stage === 'big', () => (t.taken ? 'used' : ''), '')}${res}</div>`;
+      const all = [...t.fb, ...t.added.map((i) => t.fa[i])];
+      if (t.stage === 'big') { step = 1; ctrl = '<div class="xnote">Нажми на разложение большего числа — выпишем его множители</div><button class="b3 c-card btn" data-act="mhelp">Подсказка</button>'; }
+      else if (t.stage === 'add') { step = 2; ctrl = `<div class="xnote">Нажимай множители меньшего числа ${t.a}, которых не хватает в НОК</div><div class="row2"><button class="b3 c-card btn" data-act="fundo">Убрать последний</button><button class="b3 c-orange btn" data-act="fcheck">Готово</button></div><button class="b3 c-card btn" data-act="mhelp">Подсказка</button>`; }
+      else if (t.stage === 'mul') { step = 3; ctrl = `<div class="xfrow" style="justify-content:center">НОК = ${all.join(' · ')} = ${slot()}</div>` + pad(); }
+      else { step = 4; ctrl = `<div class="xresult">НОК(${t.a}, ${t.b}) = ${[...t.fb, ...need].join(' · ')} = ${prod([...t.fb, ...need])}</div>${nextBtn('Следующий пример')}`; }
+    }
+    return rule(step) + task + body + msg() + ctrl;
+  }
+  g.body = () => levels() + (mode === 'factor' ? viewFactor() : viewPair());
+  const miss = () => {
+    const t = T(), k = 'f' + g.n; if (g.missed.has(k)) return;
+    const q = mode === 'factor' ? `Разложи ${t.n}` : `${mode === 'nod' ? 'НОД' : 'НОК'}(${t.a}, ${t.b})`;
+    const right = mode === 'factor' ? `${t.n} = ${factorize(t.n).join(' · ')}` : mode === 'nod' ? `${prod(msetCommon(t.fa, t.fb))}` : `${prod([...t.fb, ...msetMinus(t.fa, t.fb)])}`;
+    g.missed.set(k, { q, right });
+  };
+  const mistake = (m) => { g.msg = m; g.err = true; g.clean = false; g.wrong++; g.combo = 0; miss(); sfx('bad'); buzz(); draw(); };
+  const good = (pts = 10) => { g.score += g.clean ? pts : Math.round(pts / 2); g.bumped = true; g.msg = null; g.err = false; sfx('ok'); };
+  const numberOk = (answer, onOk) => {
+    if (g.input === '') return;
+    if (+g.input === answer) { g.input = ''; good(5); onOk(); return draw(); }
+    g.badSlot = true; g.clean = false; g.wrong++; miss(); sfx('bad'); buzz(); draw();
+    const g0 = g; setTimeout(() => { if (S.game !== g0) return; g.badSlot = false; g.input = ''; draw(); }, 450);
+  };
+  function onFactor(a, id) {
+    const t = T(), last = t.rows[t.rows.length - 1];
+    if (a === 'mhelp') {
+      const p = smallestPrime(last.n);
+      g.msg = t.stage === 'pick' ? `${SIGN[p] ? SIGN[p] + '. ' : ''}Проверь ${p}: ${last.n} : ${p} = ${last.n / p}` : `${last.p} · ? = ${last.n}`;
+      g.err = false; return draw();
+    }
+    if (t.stage === 'pick' && a === 'fp') {
+      const p = +id, sp = smallestPrime(last.n);
+      if (last.n % p) return mistake(`${last.n} не делится на ${p}. ${SIGN[sp] || ''}`);
+      if (p !== sp) return mistake(`Делится, но по учебнику начинаем с меньшего множителя. Проверь ${sp}`);
+      last.p = p; t.stage = 'q'; good(5); return draw();
+    }
+    if (t.stage === 'q' && a === 'mok') return numberOk(last.n / last.p, () => { t.rows.push({ n: last.n / last.p }); t.stage = 'pick'; });
+  }
+  function onNod(a, id) {
+    const t = T(), c = msetCommon(t.fa, t.fb);
+    if (a === 'mhelp') {
+      g.err = false;
+      g.msg = t.stage === 'mark' ? `Общие множители — те, что есть и в разложении ${t.a}, и в разложении ${t.b}. Двойку или тройку считай столько раз, сколько она встречается в обоих` : 'Перемножь подчёркнутые множители';
+      return draw();
+    }
+    if (t.stage === 'mark' && a === 'fm') { const set = id[0] === 'a' ? t.ma : t.mb, i = +id.slice(1); set.has(i) ? set.delete(i) : set.add(i); g.msg = null; sfx('tap'); return draw(); }
+    if (t.stage === 'mark' && a === 'fcheck') {
+      const mA = [...t.ma].map((i) => t.fa[i]), mB = [...t.mb].map((i) => t.fb[i]);
+      if (!mA.length || !mB.length) return mistake('Подчеркни общие множители в обеих строках');
+      if (!eqM(mA, mB)) return mistake('В двух строках должны быть подчёркнуты одинаковые множители');
+      if (!eqM(mA, c)) { const extra = msetMinus(mA, c), m = msetMinus(c, mA); return mistake(extra.length ? `Множителя ${extra[0]} нет в одном из разложений — он не общий` : `Подчёркнуты не все общие множители: есть ещё ${m[0]}`); }
+      good();
+      if (c.length === 1) { t.stage = 'done'; g.msg = `Общий множитель всего один — ${c[0]}. Он и есть НОД`; return draw(); }
+      t.stage = 'mul'; return draw();
+    }
+    if (t.stage === 'mul' && a === 'mok') return numberOk(prod(c), () => { t.stage = 'done'; });
+  }
+  function onNok(a, id) {
+    const t = T(), need = msetMinus(t.fa, t.fb);
+    if (a === 'mhelp') {
+      g.err = false;
+      g.msg = t.stage === 'big' ? `Большее из чисел ${t.a} и ${t.b} — ${t.b}. Начинаем с его множителей`
+        : t.stage === 'add' ? `Сравни: каких множителей из ${t.a} = ${t.fa.join(' · ')} не хватает среди ${t.fb.join(' · ')}?` : 'Перемножь все множители в строке НОК';
+      return draw();
+    }
+    if (t.stage === 'big' && a === 'frow') {
+      if (id !== 'b') return mistake(`${t.a} меньше, чем ${t.b}. По учебнику выписываем множители большего числа`);
+      t.taken = true; t.stage = 'add'; good(); return draw();
+    }
+    if (t.stage === 'add' && a === 'fadd') { const i = +id.slice(1); if (!t.added.includes(i)) t.added.push(i); g.msg = null; sfx('tap'); return draw(); }
+    if (t.stage === 'add' && a === 'fundo') { t.added.pop(); return draw(); }
+    if (t.stage === 'add' && a === 'fcheck') {
+      const got = t.added.map((i) => t.fa[i]);
+      if (eqM(got, need)) { t.stage = need.length ? 'mul' : 'done'; good(); return draw(); }
+      const extra = msetMinus(got, need); t.added = [];
+      return mistake(extra.length ? `Множитель ${extra[0]} уже есть в разложении ${t.b} — его добавлять не нужно` : `Не хватает ещё множителя: проверь, всё ли из ${t.fa.join(' · ')} есть в НОК`);
+    }
+    if (t.stage === 'mul' && a === 'mok') return numberOk(prod([...t.fb, ...need]), () => { t.stage = 'done'; });
+  }
+  const finished = () => (mode === 'factor' ? T().rows[T().rows.length - 1].n === 1 : T().stage === 'done');
+  g.key = (k) => {
+    if (/^[0-9]$/.test(k)) { if (g.input.length < 5) g.input += k; return draw(); }
+    if (k === 'Backspace') { g.input = g.input.slice(0, -1); return draw(); }
+    if (k === 'Enter') return g.on('mok');
+  };
+  g.on = (a, id) => {
+    if (a === 'md') return g.key(id);
+    if (a === 'mdel') return g.key('Backspace');
+    if (a === 'mlvl') { mathLevel = +id; store.set('mlevel', mathLevel); setup(); return draw(); }
+    if (a === 'mnext' && finished()) {
+      g.solved++; g.n++; if (g.clean) { g.right++; g.combo++; }
+      if (g.n >= g.total) { draw(); return maybeFinish(); }
+      setup(); window.scrollTo(0, 0); return draw();
+    }
+    return mode === 'factor' ? onFactor(a, id) : mode === 'nod' ? onNod(a, id) : onNok(a, id);
+  };
+  g.stat = () => `Без ошибок: ${g.total - g.missed.size} из ${g.total}`;
+  g.review = () => [...g.missed.values()];
+  g.reviewTitle = 'Где были ошибки';
+  return g;
+}
+
+/* ===== Котик объясняет: перед первым заходом в каждый тренажёр, на примерах ===== */
+const BAR = (rows) => `<div class="xbar flat">${rows.map(([l, r]) => `<span class="l">${l}</span><span class="r">${r}</span>`).join('')}</div>`;
+const MATH_EXPLAIN = {
+  factor: [
+    { cat: 'point', say: 'Привет! Сначала договоримся о словах. <b>Простое число</b> — то, которое делится только на 1 и на само себя.', board: '<div class="ln">2, 3, 5, 7, 11, 13, 17, 19…</div><div class="muted">4 — не простое: делится на 2. 9 — не простое: делится на 3</div>' },
+    { cat: 'think', say: '<b>Разложить на простые множители</b> — значит записать число как произведение одних простых чисел. Простые числа — это «кирпичики», из которых собирается любое число.', board: '<div class="ln">12 = 2 · 2 · 3</div><div class="muted">2 · 2 · 3 = 12, и все множители простые</div>' },
+    { cat: 'point', say: 'В учебнике раскладывают <b>столбиком с чертой</b>. Пишем 660. На что делится? Оно чётное — значит, на 2. Пишем 2 справа, а 330 — под 660.', board: BAR([['660', '2'], ['330', '']]) },
+    { cat: 'point', say: '330 тоже чётное — снова делим на 2, получаем 165. 165 нечётное, но сумма цифр 1 + 6 + 5 = 12 делится на 3 — делим на 3.', board: BAR([['660', '2'], ['330', '2'], ['165', '3'], ['55', '']]) },
+    { cat: 'point', say: '55 оканчивается на 5 — делим на 5, получаем 11. 11 — простое, делим его само на себя. Получили 1 — стоп!', board: BAR([['660', '2'], ['330', '2'], ['165', '3'], ['55', '5'], ['11', '11'], ['1', '']]) },
+    { cat: 'happy', say: 'Ответ — всё, что справа от черты. Главное правило: <b>всегда пробуй самое маленькое</b> — сначала 2, потом 3, потом 5…', board: '<div class="ln g">660 = 2 · 2 · 3 · 5 · 11</div>' },
+  ],
+  nod: [
+    { cat: 'point', say: 'Классу нужно собрать команды на квест. В классе 18 мальчиков и 24 девочки. Какое <b>наибольшее</b> число одинаковых команд можно сделать, чтобы в каждой было поровну мальчиков и поровну девочек и никто не остался без команды?', board: '<div class="ln">мальчики: 18 &nbsp;&nbsp; девочки: 24</div>' },
+    { cat: 'think', say: 'Число команд должно делить и 18, и 24. Общие делители: 1, 2, 3, 6. Самый большой — <b>6</b>: 6 команд по 3 мальчика и 4 девочки. Это и есть <b>НОД</b> — наибольший общий делитель.', board: '<div class="ln">18: 1, 2, 3, 6, 9, 18</div><div class="ln">24: 1, 2, 3, 4, 6, 8, 12, 24</div><div class="ln g">НОД(18, 24) = 6</div>' },
+    { cat: 'point', say: 'Выписывать все делители долго. По учебнику делаем быстрее. <b>Шаг 1:</b> раскладываем оба числа на простые множители.', board: '<div class="ln">18 = 2 · 3 · 3</div><div class="ln">24 = 2 · 2 · 2 · 3</div>' },
+    { cat: 'point', say: '<b>Шаг 2:</b> подчёркиваем то, что есть <b>в обоих</b>. Одна двойка есть и там, и там. Одна тройка тоже. А вторая тройка есть только у 18 — её не берём.', board: '<div class="ln">18 = <span class="u">2</span> · <span class="u">3</span> · <span class="x">3</span></div><div class="ln">24 = <span class="u">2</span> · <span class="x">2</span> · <span class="x">2</span> · <span class="u">3</span></div>' },
+    { cat: 'happy', say: '<b>Шаг 3:</b> перемножаем подчёркнутые. Если общий множитель всего один — он сам и есть НОД.', board: '<div class="ln g">НОД(18, 24) = 2 · 3 = 6</div><div class="muted">НОД(10, 12): общая только 2 → НОД = 2</div>' },
+    { cat: 'happy', say: 'Зачем это всё? НОД нужен, чтобы <b>сокращать дроби</b> за один шаг: делим числитель и знаменатель на НОД — и дробь сразу несократимая.', board: '<div class="ln">18/24 = (18 : 6)/(24 : 6) = <span class="g">3/4</span></div>' },
+  ],
+  nok: [
+    { cat: 'point', say: 'От остановки у школы автобус №5 уходит каждые 12 минут, а №17 — каждые 18 минут. Сейчас они ушли вместе. Через сколько минут снова уйдут <b>одновременно</b>?', board: '<div class="ln"><span>№5: 12, 24, <span class="g">36</span>, 48…</span></div><div class="ln"><span>№17: 18, <span class="g">36</span>, 54…</span></div>' },
+    { cat: 'think', say: 'Первое число, которое есть в обоих рядах, — 36 минут. Это <b>НОК</b>, наименьшее общее кратное: самое маленькое число, которое делится и на одно, и на другое.', board: '<div class="ln g">НОК(12, 18) = 36</div>' },
+    { cat: 'point', say: 'Для больших чисел — способ из учебника. Найдём НОК(45, 60). <b>Шаг 1:</b> раскладываем на простые множители.', board: '<div class="ln">45 = 3 · 3 · 5</div><div class="ln">60 = 2 · 2 · 3 · 5</div>' },
+    { cat: 'point', say: '<b>Шаг 2:</b> выписываем все множители <b>большего</b> числа — 60. <b>Шаг 3:</b> смотрим, чего не хватает из 45: одна 3 и 5 уже есть, а второй тройки нет — добавляем её.', board: '<div class="ln">45 = <span class="x">3</span> · <span class="u">3</span> · <span class="x">5</span></div><div class="ln">НОК = 2 · 2 · 3 · 5 · <span class="u">3</span></div>' },
+    { cat: 'happy', say: '<b>Шаг 4:</b> перемножаем. Запомни разницу: в <b>НОД</b> берём только общее, а в <b>НОК</b> — всё, что нужно обоим числам.', board: '<div class="ln g">НОК(45, 60) = 2 · 2 · 3 · 5 · 3 = 180</div>' },
+    { cat: 'happy', say: 'Где пригодится: НОК — это <b>наименьший общий знаменатель</b>. Чтобы сложить дроби с разными знаменателями, приводим их к НОК.', board: '<div class="ln">1/12 + 1/18 = 3/36 + 2/36 = <span class="g">5/36</span></div><div class="muted">НОК(12, 18) = 36</div>' },
+  ],
+};
+Object.assign(MATH_EXPLAIN, {
+  reduce: [
+    { cat: 'point', say: 'В классе 25 человек, 15 из них ходят в спортивные секции. Какая это часть класса? Можно сказать «пятнадцать двадцать пятых», но звучит громоздко. Дробь можно упростить.', board: `<div class="ln">${fr(15, 25)} = ?</div>` },
+    { cat: 'think', say: '<b>Сократить дробь</b> — разделить числитель и знаменатель на одно и то же число. Величина дроби не меняется: это та же самая часть класса.', board: `<div class="ln">${fr(15, 25)} = ${fr(3, 5)}</div><div class="muted">3 из каждых 5 человек ходят в секции</div>` },
+    { cat: 'point', say: 'По учебнику делим сразу на <b>НОД</b> числителя и знаменателя. <b>Шаг 1:</b> находим НОД через разложение.', board: '<div class="ln">15 = 3 · <span class="u">5</span></div><div class="ln">25 = <span class="u">5</span> · 5</div><div class="ln g">НОД(15, 25) = 5</div>' },
+    { cat: 'happy', say: '<b>Шаг 2:</b> делим числитель на НОД. <b>Шаг 3:</b> делим знаменатель. Получилась <b>несократимая</b> дробь — её уже ни на что не сократить.', board: `<div class="ln">${fr('15 : 5', '25 : 5')} = <span class="g">${fr(3, 5)}</span></div>` },
+  ],
+  'common-denominator': [
+    { cat: 'point', say: 'В понедельник ты прочитал 1/4 книги, во вторник — 1/6. Сколько всего? Четверти и шестые доли сразу не сложить — как метры с сантиметрами. Нужен <b>общий знаменатель</b>.', board: `<div class="ln">${fr(1, 4)} + ${fr(1, 6)} = ?</div>` },
+    { cat: 'think', say: '<b>Наименьший общий знаменатель</b> — это НОК знаменателей. Находим его через разложение, как в п. 8.', board: '<div class="ln">4 = 2 · 2 &nbsp;&nbsp; 6 = 2 · 3</div><div class="ln g">НОК(4, 6) = 2 · 2 · 3 = 12</div>' },
+    { cat: 'point', say: '<b>Дополнительный множитель</b> для каждой дроби: делим общий знаменатель на её знаменатель.', board: '<div class="ln">12 : 4 = <span class="u">3</span></div><div class="ln">12 : 6 = <span class="u">2</span></div>' },
+    { cat: 'happy', say: 'Умножаем числитель и знаменатель каждой дроби на её множитель. Теперь доли одинаковые, и их можно складывать: прочитано 5/12 книги.', board: `<div class="ln">${fr(1, 4)} = ${fr(3, 12)} &nbsp; ${fr(1, 6)} = ${fr(2, 12)}</div><div class="ln">${fr(3, 12)} + ${fr(2, 12)} = <span class="g">${fr(5, 12)}</span></div>` },
+  ],
+  'to-decimal': [
+    { cat: 'point', say: 'На калькуляторе, в ценах и в спортивных результатах дроби пишут через запятую: 0,75 или 2,5. А в задаче дано 3/4 часа. Переведём в десятичную дробь.', board: `<div class="ln">${fr(3, 4)} = ?</div>` },
+    { cat: 'think', say: 'Десятичная дробь — это дробь со знаменателем 10, 100, 1000… Значит, знаменатель 4 надо дополнить до такого числа. 10 на 4 не делится, а 100 — делится.', board: '<div class="ln">10 : 4 — <span class="x">не делится</span></div><div class="ln">100 : 4 = <span class="u">25</span></div>' },
+    { cat: 'point', say: '25 — дополнительный множитель. Умножаем на него и числитель, и знаменатель.', board: `<div class="ln">${fr('3 · 25', '4 · 25')} = ${fr(75, 100)}</div>` },
+    { cat: 'happy', say: 'В 100 два нуля — значит, после запятой две цифры. 3/4 часа = 0,75 часа, то есть 45 минут.', board: `<div class="ln">${fr(75, 100)} = <span class="g">0,75</span></div>` },
+  ],
+});
+const lineOf = (L) => { const l = (typeof selLines === 'function' && selLines()[0]) || LINES[0]; return l ? l.t : ''; };
+// Объяснения к остальным тренажёрам: что делать и как лучше запоминать. Примеры берутся из самого урока.
+function introOf(gid, L) {
+  if (gid.startsWith('m-')) return MATH_EXPLAIN[gid.slice(2)] || null;
+  const p = (L.persons || [])[0], t = (L.terms || [])[0], w = (L.words || [])[0], ev = L.events || [], f = (L.facts || [])[0];
+  const q = (L.quiz || [])[0], st = (L.steps || []).find((x) => x.items && x.items.length >= 3), gr = L.groups || [];
+  const pair = (a, b) => `<div class="xpair"><span>${esc(a)}</span><i>→</i><span>${esc(b)}</span></div>`;
+  const line = esc(lineOf(L));
+  const I = {
+    match: p && [
+      { cat: 'point', say: 'Слева — люди из параграфа, справа — что они сделали. Нажми на имя, а потом на его дело.', board: pair(p.name, p.text) },
+      { cat: 'think', say: 'Совет: прежде чем нажать, скажи про себя одну фразу целиком: кто и что сделал. Так связка запомнится, а не угадается. Ошибки я покажу в конце — их и повторишь.', board: `<div class="muted">«${esc(p.name)} — ${esc(p.text)}»</div>` },
+    ],
+    termmatch: t && [
+      { cat: 'point', say: 'Слева — термины, справа — их значения. Нажми на термин, а потом на то, что он значит.', board: pair(t.term, t.text) },
+      { cat: 'think', say: 'Совет: перед тем как нажать, скажи определение своими словами. Если получилось — значит, понял, а не просто узнал.', board: '' },
+    ],
+    memory: t && [
+      { cat: 'point', say: 'Карточки лежат рубашкой вверх. Открой две: термин и его значение. Совпали — пара твоя. Нет — запомни, где что лежит, и открой другие.', board: `<div class="xcards"><span class="v">${esc(t.term)}</span><span class="s">${esc(t.text)}</span></div>` },
+      { cat: 'think', say: 'Совет: когда открываешь значение, читай его вслух до конца. На уроке спросят именно определение, а не одно слово.', board: '' },
+    ],
+    words: w && [
+      { cat: 'point', say: 'Слева — слова, справа — перевод. Нажми на слово, потом на его перевод.', board: pair(w.word, w.translation) },
+      { cat: 'think', say: 'Совет: произноси слово вслух, когда нажимаешь. Так работает и глаз, и слух — запоминается быстрее.', board: '' },
+    ],
+    wordmemo: w && [
+      { cat: 'point', say: 'Карточки перевёрнуты. Открывай по две и ищи пару: слово и его перевод.', board: `<div class="xcards"><span class="v">${esc(w.word)}</span><span class="s">${esc(w.translation)}</span></div>` },
+      { cat: 'think', say: 'Совет: открыл слово — сначала вспомни перевод сам, а потом ищи его карточку.', board: '' },
+    ],
+    timeline: ev.length >= 2 && [
+      { cat: 'point', say: 'Сверху — событие, ниже — лента лет. Нажми на год, когда это случилось.', board: pair(String(ev[0].year), ev[0].text) },
+      { cat: 'think', say: 'Совет: держи в голове две опорные даты — начало и конец. Остальные события ставь между ними: что было раньше, что позже.', board: (() => { const s = [...ev].sort((a, b) => a.year - b.year); return `<div class="ln">${s[0].year} <span class="muted">…</span> ${s[s.length - 1].year}</div>`; })() },
+    ],
+    map: L.map && [
+      { cat: 'point', say: 'Сначала расставь города: выбери название и нажми на точку на карте. Потом будут вопросы — где что происходило.', board: '' },
+      { cat: 'think', say: 'Совет: запоминай города относительно Москвы — севернее, южнее, западнее. Так карта складывается в голове целиком.', board: '' },
+    ],
+    truth: f && [
+      { cat: 'point', say: 'Я покажу фразу из параграфа. Иногда в ней подменено слово, имя или год. Реши: правда или ошибка.', board: `<div class="xtruth"><span class="ok">Правда</span>${esc(f.text)}</div><div class="xtruth"><span class="no">Ошибка</span>${esc(f.false)}</div>` },
+      { cat: 'think', say: 'Совет: смотри на детали — годы, имена, «до» и «после», «больше» и «меньше». Ошибка обычно прячется именно там.', board: '' },
+    ],
+    quiz: q && [
+      { cat: 'point', say: 'Вопрос и несколько ответов — выбери правильный.', board: `<div class="muted">${esc(q.q)}</div>` },
+      { cat: 'think', say: 'Совет: сначала попробуй ответить сам, не глядя на варианты, и только потом найди свой ответ. Так проверяешь знание, а не угадывание.', board: '' },
+    ],
+    steps: st && [
+      { cat: 'point', say: 'Шаги перепутаны. Нажимай их по порядку: что сначала, что потом.', board: `<div class="muted">${esc(st.title || '')}</div><div class="xlist">${st.items.slice(0, 2).map((x, k) => `<div><b>${k + 1}</b>${esc(x)}</div>`).join('')}<div><b>3</b>…</div></div>` },
+      { cat: 'think', say: 'Совет: спрашивай себя «а без чего этот шаг невозможен?». То, без чего нельзя, идёт раньше.', board: '' },
+    ],
+    groups: gr.length >= 2 && [
+      { cat: 'point', say: 'Появляется слово или пример, а внизу — группы. Нажми на группу, к которой он относится.', board: `<div class="ln">${gr.map((x) => `<span class="xtag">${esc(x.name || x.title || '')}</span>`).join('')}</div>` },
+      { cat: 'think', say: 'Совет: для каждой группы найди один признак, чем её члены похожи. Потом просто проверяй этот признак.', board: '' },
+    ],
+    frames: [
+      { cat: 'point', say: 'У каждой строфы своя картинка. Сначала читаешь строфу и смотришь на картинку. Потом рассказываешь по картинке. В конце раскладываешь картинки по порядку.', board: '' },
+      { cat: 'think', say: 'Картинка — крючок для памяти. На уроке вспомнишь картинку — за ней потянутся и строки.', board: '' },
+    ],
+    fade: [
+      { cat: 'point', say: 'Читай отрывок вслух. С каждым кругом часть слов прячется, а ты говоришь их по памяти.', board: line ? `<div class="xverse">${line}</div>` : '' },
+      { cat: 'think', say: 'Забыл слово — нажми на пропуск, оно покажется. Это не стыдно: так и учат стихи — по чуть-чуть.', board: '' },
+    ],
+    build: [
+      { cat: 'point', say: 'Слова строки перемешаны. Нажимай на них по порядку. Знаки препинания встанут сами.', board: line ? `<div class="xverse">${line}</div>` : '' },
+      { cat: 'think', say: 'Совет: сначала скажи строку про себя, а потом собирай. Так тренируешь память, а не перебор.', board: '' },
+    ],
+    next: [
+      { cat: 'point', say: 'Я показываю строку, а ты выбираешь, какая идёт дальше. Так стих связывается в цепочку.', board: line ? `<div class="xverse">${line}</div><div class="muted">а дальше?..</div>` : '' },
+    ],
+    gap: [
+      { cat: 'point', say: 'Из строки выпало одно слово. Выбери, какое.', board: line ? `<div class="xverse">${line.replace(/[А-Яа-яЁё]{4,}/, '<span class="u">&nbsp;&nbsp;?&nbsp;&nbsp;</span>')}</div>` : '' },
+      { cat: 'think', say: 'Совет: прочитай строку вслух с пропуском. Рифма и ритм часто подсказывают слово сами.', board: '' },
+    ],
+    recite: [
+      { cat: 'point', say: 'Расскажи следующую строку вслух, потом открой её и проверь себя. Отмечай честно: это только для тебя.', board: '' },
+      { cat: 'think', say: 'Совет: рассказывай громко, а не шёпотом. На уроке тоже будешь говорить вслух.', board: '' },
+    ],
+  };
+  return I[gid] || null;
+}
+function introView(g) {
+  const list = g.introList, i = g.intro, s2 = list[i], last = i === list.length - 1;
+  return `<div class="xexplain">
+    <div class="xsay"><img src="${CAT(s2.cat)}" alt=""><div class="xbubble">${s2.say}</div></div>
+    ${s2.board ? `<div class="xboard">${s2.board}</div>` : ''}
+    ${list.length > 1 ? `<div class="xdots">${list.map((_, k) => `<i class="${k <= i ? 'on' : ''}"></i>`).join('')}</div>` : ''}
+    <div class="row2">${list.length > 1 ? `<button class="b3 c-card btn" data-act="exback" ${i ? '' : 'disabled'}>Назад</button>` : ''}
+      <button class="b3 c-orange btn" data-act="${last ? 'exdone' : 'exnext'}">${last ? (g.math ? 'Понятно, решаем!' : 'Понятно, играем!') : 'Дальше'}</button></div>
+    ${last ? '' : `<button class="b3 c-card btn" data-act="exdone" style="font-size:15px">Я уже знаю — ${g.math ? 'к примерам' : 'к игре'}</button>`}
+  </div>`;
+}
+// Первый заход в тренажёр — сразу объяснение. Потом — по кнопке «Как решать?».
+function withIntro(g, gid, L) {
+  const list = introOf(gid, L);
+  g.introKey = gid; g.introList = list && list.length ? list : null;
+  const seen = store.get('seen') || {};
+  g.intro = g.introList && !seen[gid] ? 0 : -1;
   return g;
 }
 
@@ -1990,7 +2383,7 @@ function vPlan() {
 
 function vGame() {
   const g = S.game, pct = Math.round(g.done() / g.total * 100);
-  const hint = g.hint();
+  const intro = g.intro >= 0, hint = intro ? '' : g.hint();
   const html = `<div class="screen">
     <div class="gtop">
       <button class="round" data-act="lesson-back" aria-label="Выйти из игры">${icon('back')}</button>
@@ -1998,8 +2391,9 @@ function vGame() {
       <span class="score${g.bumped ? ' bump' : ''}">${star(true)}${g.score}</span>
     </div>
     <div class="gtitle"><h2>${g.title}</h2>${g.combo >= 2 ? `<span class="combo${g.bumped ? ' bump' : ''}">${FLAME}Серия ×${g.combo}</span>` : ''}</div>
+    ${!intro && g.introList ? `<button class="b3 c-card xhow" data-act="how">🐱 ${g.math ? 'Как решать?' : 'Как играть?'}</button>` : ''}
     ${hint ? `<p class="hint">${hint}</p>` : ''}
-    ${g.body()}
+    ${intro ? introView(g) : g.body()}
   </div>`;
   g.bumped = false;
   return html;
@@ -2079,7 +2473,7 @@ $app.addEventListener('click', (e) => {
       usePoem(planLesson());
       const x = findTask(id); if (!x) return;
       taskRange = { a: x.a, b: x.b };
-      const gm = POEM_GAMES.find((q) => q.id === x.game), g = gm.make(POEM); g.id = x.game;
+      const gm = POEM_GAMES.find((q) => q.id === x.game), g = gm.make(POEM); g.id = x.game; withIntro(g, x.game, POEM);
       return go('game', { lesson: POEM, game: g, task: x });
     }
     case 'pick': return go('pick', { pick: { a: range.a, b: range.b } });
@@ -2097,9 +2491,13 @@ $app.addEventListener('click', (e) => {
     case 'play': {
       if (!S.task) taskRange = null;
       const x = gamesOf(S.lesson).find((q) => q.id === id);
-      const g = x.make(S.lesson); g.id = id;
+      const g = x.make(S.lesson); g.id = id; withIntro(g, id, S.lesson);
       return go('game', { game: g });
     }
+    case 'how': if (S.game && S.game.introList) { S.game.intro = 0; window.scrollTo(0, 0); draw(); } return;
+    case 'exnext': S.game.intro++; return draw();
+    case 'exback': S.game.intro = Math.max(0, S.game.intro - 1); return draw();
+    case 'exdone': { const seen = store.get('seen') || {}; seen[S.game.introKey] = 1; store.set('seen', seen); S.game.intro = -1; window.scrollTo(0, 0); return draw(); }
     default: if (S.game && S.screen === 'game' && !S.game.finished) S.game.on(a, id);
   }
 });
@@ -2107,7 +2505,7 @@ $app.addEventListener('change', (e) => {
   if (e.target.id === 'due-date' && e.target.value) { S.due = e.target.value; draw(); }
 });
 document.addEventListener('keydown', (e) => {
-  if (S.screen === 'game' && S.game && S.game.math && !S.game.finished && (/^[0-9.,]$/.test(e.key) || e.key === 'Backspace' || e.key === 'Enter')) { e.preventDefault(); S.game.key(e.key); }
+  if (S.screen === 'game' && S.game && S.game.math && !S.game.finished && !(S.game.intro >= 0) && (/^[0-9.,]$/.test(e.key) || e.key === 'Backspace' || e.key === 'Enter')) { e.preventDefault(); S.game.key(e.key); }
 });
 $app.addEventListener('keydown', (e) => {
   if (e.key !== 'Enter' && e.key !== ' ') return;
