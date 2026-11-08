@@ -507,10 +507,12 @@ local function buildZone(i)
 	end
 end
 
+-- Если карта уже лежит в Workspace (ты её построила и сохранила), скрипт её НЕ трогает.
+-- Чтобы построить карту заново, удали папку Workspace → SkateWorld.
 function World.build()
 	local existing = workspace:FindFirstChild("SkateWorld")
 	if existing then
-		existing:Destroy()
+		return existing
 	end
 	root = Instance.new("Folder")
 	root.Name = "SkateWorld"
@@ -541,7 +543,6 @@ function World.build()
 		Transparency = 1,
 	}, root)
 
-	workspace.FallenPartsDestroyHeight = -150
 	return root
 end
 

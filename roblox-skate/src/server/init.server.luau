@@ -16,7 +16,10 @@ local Config = require(Shared:WaitForChild("Config"))
 local Data = require(script:WaitForChild("Data"))
 local World = require(script:WaitForChild("World"))
 
-World.build()
+local okWorld, worldErr = pcall(World.build)
+if not okWorld then
+	warn("[SkateRush] Ошибка при постройке карты:", worldErr)
+end
 
 -- ---------- remotes ----------
 local remotes = Instance.new("Folder")
