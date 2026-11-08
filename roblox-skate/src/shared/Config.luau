@@ -30,8 +30,14 @@ Config.Products = {
 	Boost2x = { id = 0, price = 15, icon = "⚡", name = "Буст x2 на 15 минут", desc = "Двойные монеты на 15 минут. Складывается с геймпассами.", minutes = 15 },
 	CoinsSmall = { id = 0, price = 19, icon = "👜", name = "Мешок монет", desc = "Монеты. Чем дальше зона, тем больше." },
 	CoinsBig = { id = 0, price = 79, icon = "🧰", name = "Сундук монет", desc = "Много монет. Чем дальше зона, тем больше." },
+	LevelUp = { id = 0, price = 19, icon = "⭐", name = "+1 уровень", desc = "Сразу поднимает уровень на 1." },
+	StarterPack = { id = 0, price = 5, icon = "🎁", name = "Стартовый набор", desc = "Монеты, буст x2 на 15 минут и радужный след. Только для новичков!" },
 }
-Config.ProductOrder = { "Boost2x", "SkipZone", "CoinsSmall", "CoinsBig" }
+Config.ProductOrder = { "Boost2x", "LevelUp", "SkipZone", "CoinsSmall", "CoinsBig" }
+
+-- Стартовый набор показывается новичкам первые столько минут (по-честному: потом пропадает)
+Config.StarterOfferMinutes = 20
+Config.StarterCoins = 5000
 
 -- Сколько монет дают мешок и сундук (умножается на множитель лучшей открытой зоны)
 Config.CoinPackBase = { CoinsSmall = 1500, CoinsBig = 9000 }
@@ -80,75 +86,101 @@ Config.ZoneWidth = 170
 
 Config.Zones = {
 	{
-		name = "Двор",
-		theme = "park",
+		name = "Сакура-парк",
+		theme = "sakura",
 		level = 1,
 		cost = 0,
 		mult = 1,
-		floor = Color3.fromRGB(150, 150, 155),
-		floorMaterial = Enum.Material.Concrete,
-		accent = Color3.fromRGB(255, 170, 0),
-		light = { clock = 14, brightness = 2.5, fog = Color3.fromRGB(190, 220, 255), fogEnd = 1100, ambient = Color3.fromRGB(110, 110, 120) },
+		floor = Color3.fromRGB(255, 225, 235),
+		floor2 = Color3.fromRGB(255, 245, 250),
+		cliff = Color3.fromRGB(120, 200, 110),
+		cliff2 = Color3.fromRGB(255, 170, 200),
+		accent = Color3.fromRGB(255, 105, 180),
+		light = { clock = 13, brightness = 3, fog = Color3.fromRGB(255, 225, 240), fogEnd = 1400, ambient = Color3.fromRGB(150, 130, 150), haze = 1.2, tint = Color3.fromRGB(255, 245, 250) },
+		gravity = 196.2,
+	},
+	{
+		name = "Конфетная страна",
+		theme = "candy",
+		level = 4,
+		cost = 600,
+		mult = 2,
+		floor = Color3.fromRGB(255, 160, 200),
+		floor2 = Color3.fromRGB(255, 235, 140),
+		cliff = Color3.fromRGB(190, 120, 255),
+		cliff2 = Color3.fromRGB(255, 200, 230),
+		accent = Color3.fromRGB(170, 80, 255),
+		light = { clock = 14, brightness = 3, fog = Color3.fromRGB(255, 210, 240), fogEnd = 1300, ambient = Color3.fromRGB(160, 120, 170), haze = 1.5, tint = Color3.fromRGB(255, 240, 255) },
+		gravity = 196.2,
+	},
+	{
+		name = "Солнечный пляж",
+		theme = "beach",
+		level = 9,
+		cost = 5000,
+		mult = 3.5,
+		floor = Color3.fromRGB(255, 225, 160),
+		floor2 = Color3.fromRGB(255, 240, 200),
+		cliff = Color3.fromRGB(240, 200, 130),
+		cliff2 = Color3.fromRGB(110, 200, 120),
+		accent = Color3.fromRGB(0, 200, 230),
+		light = { clock = 15.5, brightness = 3.2, fog = Color3.fromRGB(200, 235, 255), fogEnd = 1500, ambient = Color3.fromRGB(150, 140, 120), haze = 1, tint = Color3.fromRGB(255, 250, 235) },
 		gravity = 196.2,
 	},
 	{
 		name = "Неоновый город",
 		theme = "city",
-		level = 5,
-		cost = 750,
-		mult = 2,
-		floor = Color3.fromRGB(45, 45, 55),
-		floorMaterial = Enum.Material.Asphalt,
+		level = 15,
+		cost = 30000,
+		mult = 6,
+		floor = Color3.fromRGB(40, 35, 70),
+		floor2 = Color3.fromRGB(60, 50, 100),
+		cliff = Color3.fromRGB(30, 25, 55),
+		cliff2 = Color3.fromRGB(50, 40, 90),
 		accent = Color3.fromRGB(255, 0, 200),
-		light = { clock = 20.5, brightness = 1.2, fog = Color3.fromRGB(60, 20, 90), fogEnd = 700, ambient = Color3.fromRGB(120, 80, 150) },
-		gravity = 196.2,
-	},
-	{
-		name = "Пляж",
-		theme = "beach",
-		level = 12,
-		cost = 8000,
-		mult = 3.5,
-		floor = Color3.fromRGB(240, 215, 150),
-		floorMaterial = Enum.Material.Sand,
-		accent = Color3.fromRGB(0, 210, 230),
-		light = { clock = 16.5, brightness = 3, fog = Color3.fromRGB(255, 220, 180), fogEnd = 1200, ambient = Color3.fromRGB(140, 120, 100) },
+		light = { clock = 20.8, brightness = 1.5, fog = Color3.fromRGB(70, 30, 110), fogEnd = 900, ambient = Color3.fromRGB(140, 100, 190), haze = 2, tint = Color3.fromRGB(235, 220, 255) },
 		gravity = 196.2,
 	},
 	{
 		name = "Ледяной каньон",
 		theme = "ice",
-		level = 20,
-		cost = 60000,
-		mult = 6,
-		floor = Color3.fromRGB(200, 235, 255),
-		floorMaterial = Enum.Material.Ice,
-		accent = Color3.fromRGB(80, 200, 255),
-		light = { clock = 10, brightness = 2.2, fog = Color3.fromRGB(220, 240, 255), fogEnd = 600, ambient = Color3.fromRGB(130, 150, 180) },
+		level = 23,
+		cost = 200000,
+		mult = 10,
+		floor = Color3.fromRGB(215, 240, 255),
+		floor2 = Color3.fromRGB(240, 250, 255),
+		cliff = Color3.fromRGB(170, 215, 245),
+		cliff2 = Color3.fromRGB(255, 255, 255),
+		accent = Color3.fromRGB(60, 190, 255),
+		light = { clock = 10, brightness = 2.6, fog = Color3.fromRGB(225, 245, 255), fogEnd = 900, ambient = Color3.fromRGB(150, 170, 200), haze = 2, tint = Color3.fromRGB(235, 245, 255) },
 		gravity = 196.2,
 	},
 	{
 		name = "Вулкан",
 		theme = "volcano",
-		level = 30,
-		cost = 400000,
-		mult = 10,
-		floor = Color3.fromRGB(50, 40, 40),
-		floorMaterial = Enum.Material.Basalt,
-		accent = Color3.fromRGB(255, 80, 0),
-		light = { clock = 18.3, brightness = 1.5, fog = Color3.fromRGB(120, 30, 10), fogEnd = 500, ambient = Color3.fromRGB(150, 70, 50) },
+		level = 32,
+		cost = 1500000,
+		mult = 16,
+		floor = Color3.fromRGB(70, 50, 55),
+		floor2 = Color3.fromRGB(95, 65, 65),
+		cliff = Color3.fromRGB(60, 40, 40),
+		cliff2 = Color3.fromRGB(100, 55, 45),
+		accent = Color3.fromRGB(255, 90, 0),
+		light = { clock = 18.2, brightness = 1.8, fog = Color3.fromRGB(150, 50, 20), fogEnd = 700, ambient = Color3.fromRGB(170, 90, 70), haze = 2.5, tint = Color3.fromRGB(255, 225, 205) },
 		gravity = 196.2,
 	},
 	{
 		name = "Космос",
 		theme = "space",
-		level = 42,
-		cost = 3000000,
-		mult = 16,
-		floor = Color3.fromRGB(25, 20, 45),
-		floorMaterial = Enum.Material.SmoothPlastic,
-		accent = Color3.fromRGB(150, 90, 255),
-		light = { clock = 0, brightness = 1, fog = Color3.fromRGB(10, 5, 30), fogEnd = 900, ambient = Color3.fromRGB(110, 90, 170) },
+		level = 45,
+		cost = 12000000,
+		mult = 28,
+		floor = Color3.fromRGB(35, 25, 70),
+		floor2 = Color3.fromRGB(55, 40, 110),
+		cliff = Color3.fromRGB(25, 20, 50),
+		cliff2 = Color3.fromRGB(80, 50, 150),
+		accent = Color3.fromRGB(150, 100, 255),
+		light = { clock = 0, brightness = 1.2, fog = Color3.fromRGB(20, 10, 50), fogEnd = 1200, ambient = Color3.fromRGB(130, 110, 200), haze = 0.5, tint = Color3.fromRGB(230, 220, 255) },
 		gravity = 70, -- низкая гравитация: прыжки выше, полёт дольше
 	},
 }
@@ -158,13 +190,15 @@ Config.Zones = {
 --  speed — множитель скорости, jump — добавка к прыжку
 -- ------------------------------------------------------------
 Config.Boards = {
-	{ id = "basic", name = "Классика", price = 0, speed = 1.0, jump = 0, deck = Color3.fromRGB(200, 120, 60), stripe = Color3.fromRGB(40, 40, 40), trail = Color3.fromRGB(255, 255, 255) },
-	{ id = "street", name = "Уличная", price = 2500, speed = 1.08, jump = 4, deck = Color3.fromRGB(30, 30, 30), stripe = Color3.fromRGB(255, 60, 60), trail = Color3.fromRGB(255, 80, 80) },
-	{ id = "neon", name = "Неон", price = 15000, speed = 1.15, jump = 8, deck = Color3.fromRGB(20, 20, 40), stripe = Color3.fromRGB(0, 255, 200), trail = Color3.fromRGB(0, 255, 200), neon = true },
-	{ id = "fire", name = "Огонь", price = 90000, speed = 1.22, jump = 12, deck = Color3.fromRGB(120, 20, 0), stripe = Color3.fromRGB(255, 140, 0), trail = Color3.fromRGB(255, 90, 0), neon = true, fire = true },
-	{ id = "ice", name = "Лёд", price = 450000, speed = 1.3, jump = 16, deck = Color3.fromRGB(170, 230, 255), stripe = Color3.fromRGB(255, 255, 255), trail = Color3.fromRGB(150, 230, 255), neon = true },
-	{ id = "galaxy", name = "Галактика", price = 2500000, speed = 1.4, jump = 22, deck = Color3.fromRGB(60, 0, 120), stripe = Color3.fromRGB(255, 0, 255), trail = Color3.fromRGB(180, 100, 255), neon = true, sparkle = true },
-	{ id = "gold", name = "Золотая", pass = "GoldBoard", speed = 1.35, jump = 20, coinBonus = 0.25, deck = Color3.fromRGB(255, 200, 40), stripe = Color3.fromRGB(255, 255, 200), trail = Color3.fromRGB(255, 215, 0), neon = true, sparkle = true },
+	{ id = "basic", name = "Классика", price = 0, speed = 1.0, jump = 0, deck = Color3.fromRGB(230, 120, 60), stripe = Color3.fromRGB(40, 40, 40), trail = Color3.fromRGB(255, 255, 255) },
+	{ id = "sakura", name = "Сакура", price = 1500, speed = 1.06, jump = 3, deck = Color3.fromRGB(255, 160, 200), stripe = Color3.fromRGB(255, 255, 255), trail = Color3.fromRGB(255, 170, 210) },
+	{ id = "lemon", name = "Лимонад", price = 6000, speed = 1.12, jump = 6, deck = Color3.fromRGB(255, 230, 60), stripe = Color3.fromRGB(80, 220, 120), trail = Color3.fromRGB(255, 240, 120) },
+	{ id = "mint", name = "Мята", price = 25000, speed = 1.18, jump = 9, deck = Color3.fromRGB(110, 240, 200), stripe = Color3.fromRGB(255, 255, 255), trail = Color3.fromRGB(110, 255, 210), neon = true },
+	{ id = "neon", name = "Неон", price = 90000, speed = 1.25, jump = 12, deck = Color3.fromRGB(20, 20, 40), stripe = Color3.fromRGB(0, 255, 200), trail = Color3.fromRGB(0, 255, 200), neon = true },
+	{ id = "fire", name = "Огонь", price = 350000, speed = 1.32, jump = 15, deck = Color3.fromRGB(150, 30, 0), stripe = Color3.fromRGB(255, 150, 0), trail = Color3.fromRGB(255, 90, 0), neon = true, fire = true },
+	{ id = "ice", name = "Лёд", price = 1500000, speed = 1.4, jump = 18, deck = Color3.fromRGB(170, 230, 255), stripe = Color3.fromRGB(255, 255, 255), trail = Color3.fromRGB(150, 230, 255), neon = true },
+	{ id = "galaxy", name = "Галактика", price = 8000000, speed = 1.5, jump = 24, deck = Color3.fromRGB(60, 0, 120), stripe = Color3.fromRGB(255, 0, 255), trail = Color3.fromRGB(180, 100, 255), neon = true, sparkle = true },
+	{ id = "gold", name = "Золотая", pass = "GoldBoard", speed = 1.45, jump = 22, coinBonus = 0.25, deck = Color3.fromRGB(255, 200, 40), stripe = Color3.fromRGB(255, 255, 200), trail = Color3.fromRGB(255, 215, 0), neon = true, sparkle = true },
 }
 
 function Config.getBoard(id)
@@ -180,12 +214,14 @@ end
 --  ПРОКАЧКА СКОРОСТИ
 -- ------------------------------------------------------------
 Config.Speed = {
-	Base = 20,
-	PerLevel = 1.6,
+	Base = 32,
+	PerLevel = 2.4,
 	MaxLevel = 50,
 	CostBase = 30,
 	CostGrowth = 1.27,
-	MaxWalkSpeed = 140,
+	MaxWalkSpeed = 175,
+	StartFraction = 0.7, -- с какой доли скорости начинаешь разгон
+	Accel = 0.9, -- как быстро разгоняешься (доля макс. скорости в секунду)
 }
 Config.BaseJump = 60
 
@@ -211,10 +247,75 @@ function Config.xpForLevel(level)
 end
 
 -- ------------------------------------------------------------
+--  СЛЕДЫ за доской (меню «Следы»). Только красота, на скорость не влияют.
+-- ------------------------------------------------------------
+Config.Trails = {
+	{ id = "board", name = "Цвет доски", price = 0, colors = nil },
+	{ id = "cloud", name = "Облачко", price = 1500, colors = { Color3.fromRGB(255, 255, 255), Color3.fromRGB(200, 230, 255) } },
+	{ id = "sakura", name = "Сакура", price = 6000, colors = { Color3.fromRGB(255, 150, 200), Color3.fromRGB(255, 230, 240) } },
+	{ id = "mint", name = "Мятный", price = 20000, colors = { Color3.fromRGB(80, 255, 190), Color3.fromRGB(0, 170, 255) } },
+	{ id = "sunset", name = "Закат", price = 75000, colors = { Color3.fromRGB(255, 200, 0), Color3.fromRGB(255, 40, 120) } },
+	{ id = "toxic", name = "Токсичный", price = 300000, colors = { Color3.fromRGB(180, 255, 0), Color3.fromRGB(0, 120, 40) } },
+	{ id = "galaxy", name = "Галактика", price = 1500000, colors = { Color3.fromRGB(120, 0, 255), Color3.fromRGB(255, 0, 200) } },
+	{ id = "rainbow", name = "Радуга", starter = true, colors = { Color3.fromRGB(255, 0, 0), Color3.fromRGB(255, 220, 0), Color3.fromRGB(0, 220, 80), Color3.fromRGB(0, 140, 255), Color3.fromRGB(200, 0, 255) } },
+}
+
+function Config.getTrail(id)
+	for _, t in ipairs(Config.Trails) do
+		if t.id == id then
+			return t
+		end
+	end
+	return Config.Trails[1]
+end
+
+-- ------------------------------------------------------------
+--  ПОДАРКИ ЗА ВРЕМЯ В ИГРЕ (каждый заход заново)
+--  minutes — через сколько минут игры, coins — сколько монет
+--  (умножается на множитель лучшей открытой зоны)
+-- ------------------------------------------------------------
+Config.Gifts = {
+	{ minutes = 1, coins = 150 },
+	{ minutes = 3, coins = 300 },
+	{ minutes = 6, coins = 600 },
+	{ minutes = 10, coins = 1000 },
+	{ minutes = 15, coins = 1600 },
+	{ minutes = 25, coins = 2500 },
+	{ minutes = 40, coins = 4000 },
+	{ minutes = 60, coins = 8000 },
+}
+
+-- ------------------------------------------------------------
+--  ЗВУКИ. Можно заменить на любые из Toolbox → Audio:
+--  вставь "rbxassetid://НОМЕР". Пустая строка = без звука.
+--  Music — музыка (по одной на зону, по порядку). Пока пусто.
+-- ------------------------------------------------------------
+Config.Sounds = {
+	Jump = "rbxasset://sounds/action_jump.mp3",
+	Land = "rbxasset://sounds/action_jump_land.mp3",
+	Bail = "rbxasset://sounds/action_falling.mp3",
+	Coin = "rbxasset://sounds/electronicpingshort.wav",
+	Trick = "rbxasset://sounds/swoosh.wav",
+	Click = "rbxasset://sounds/button.wav",
+	LevelUp = "rbxasset://sounds/electronicpingshort.wav",
+	Roll = "", -- звук колёс (зацикленный). Найди в Toolbox «skateboard» и вставь сюда
+	Music = { "", "", "", "", "", "", "" },
+}
+
+-- Надписи после комбо (по множителю)
+Config.ComboWords = {
+	{ mult = 9, text = "ЛЕГЕНДА!" },
+	{ mult = 6, text = "НЕВЕРОЯТНО!" },
+	{ mult = 3.5, text = "БЕЗУМНО!" },
+	{ mult = 2, text = "КРУТО!" },
+	{ mult = 1.5, text = "НЕПЛОХО!" },
+}
+
+-- ------------------------------------------------------------
 --  ПЕРЕРОЖДЕНИЕ: сбрасывает монеты и скорость,
 --  но навсегда даёт +50% к монетам
 -- ------------------------------------------------------------
-Config.Rebirth = { CostBase = 250000, CostGrowth = 4, Bonus = 0.5 }
+Config.Rebirth = { CostBase = 150000, CostGrowth = 4, Bonus = 0.5 }
 
 function Config.rebirthCost(rebirths)
 	return math.floor(Config.Rebirth.CostBase * Config.Rebirth.CostGrowth ^ rebirths)

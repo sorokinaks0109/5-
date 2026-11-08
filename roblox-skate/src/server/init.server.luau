@@ -44,6 +44,7 @@ local ComboResult = newEvent("ComboResult") -- сервер → клиент: с
 local DataChanged = newEvent("DataChanged") -- сервер → клиент: новые данные
 local Notify = newEvent("Notify") -- сервер → клиент: сообщение
 local PickupTaken = newEvent("PickupTaken") -- сервер → клиент: звезда собрана
+local AnimState = newEvent("AnimState") -- клиент → сервер: поза на доске (чтобы её видели другие)
 local Request = newFunction("Request") -- все покупки и кнопки меню
 remotes.Parent = ReplicatedStorage
 
@@ -55,6 +56,8 @@ local budget = {} -- [player] = { allowance, last } — защита от нак
 local pendingLost = {} -- [player] = { coins, xp, expires }
 local starCooldown = {} -- [player] = { [part] = time }
 local eventScores = {} -- [player] = score
+local joinTime = {} -- [player] = os.time() захода
+local giftsClaimed = {} -- [player] = { [index] = true } (на один заход)
 
 local productByKey = {}
 local productKeyById = {}
@@ -126,6 +129,20 @@ local function snapshot(player)
 		passes = passes[player] or {},
 		coinMult = coinMultiplier(player, currentZone(player)),
 		saving = canSave[player] == true,
+		trails = data.trails,
+		trail = data.trail,
+		settings = data.settings,
+		played = os.time() - (joinTime[player] or os.time()),
+		gifts = (function()
+			-- сплошной список true/false: так он без потерь проходит через сеть
+			local list = {}
+			local claimed = giftsClaimed[player] or {}
+			for i = 1, #Config.Gifts do
+				list[i] = claimed[i] == true
+			end
+			return list
+		end)(),
+		starterLeft = data.starterBought and 0 or math.max(0, data.firstJoin + Config.StarterOfferMinutes * 60 - os.time()),
 	}
 end
 
@@ -301,9 +318,18 @@ local function attachBoard(player)
 	trail.Name = "BoardTrail"
 	trail.Attachment0 = a0
 	trail.Attachment1 = a1
-	trail.Color = ColorSequence.new(cfg.trail)
+	local trailCfg = Config.getTrail(data.trail)
+	if trailCfg.colors then
+		local keys = {}
+		for k, c in ipairs(trailCfg.colors) do
+			table.insert(keys, ColorSequenceKeypoint.new((k - 1) / math.max(1, #trailCfg.colors - 1), c))
+		end
+		trail.Color = ColorSequence.new(keys)
+	else
+		trail.Color = ColorSequence.new(cfg.trail)
+	end
 	trail.Transparency = NumberSequence.new(0.2, 1)
-	trail.Lifetime = 0.35
+	trail.Lifetime = 0.5
 	trail.LightEmission = cfg.neon and 1 or 0
 	trail.FaceCamera = true
 	trail.Enabled = false
@@ -384,6 +410,11 @@ local function onPlayerAdded(player)
 	if not player.Parent then
 		return
 	end
+	if data.firstJoin == 0 then
+		data.firstJoin = os.time()
+	end
+	joinTime[player] = os.time()
+	giftsClaimed[player] = {}
 	profiles[player] = data
 	canSave[player] = ok
 	budget[player] = { allowance = 5, last = os.clock() }
@@ -427,6 +458,8 @@ local function saveAndForget(player)
 	pendingLost[player] = nil
 	starCooldown[player] = nil
 	eventScores[player] = nil
+	joinTime[player] = nil
+	giftsClaimed[player] = nil
 end
 
 Players.PlayerAdded:Connect(onPlayerAdded)
@@ -532,7 +565,8 @@ ComboBanked.OnServerEvent:Connect(function(player, entries)
 		eventScores[player] = (eventScores[player] or 0) + math.floor(score)
 		player:SetAttribute("EventScore", eventScores[player])
 	end
-	ComboResult:FireClient(player, coins, xp, record)
+	local _, mult = Config.comboScore(clean)
+	ComboResult:FireClient(player, coins, xp, record, mult)
 	push(player)
 end)
 
@@ -606,6 +640,17 @@ local function grantProduct(player, key)
 		local minutes = Config.Products.Boost2x.minutes
 		data.boostUntil = math.max(data.boostUntil, os.time()) + minutes * 60
 		notify(player, "⚡ Буст x2 включён на " .. minutes .. " минут!", "good")
+	elseif key == "LevelUp" then
+		addXp(player, Config.xpForLevel(data.level) - data.xp)
+	elseif key == "StarterPack" then
+		local c = Config.StarterCoins * zoneMult(data.maxZone)
+		addCoins(player, c)
+		data.boostUntil = math.max(data.boostUntil, os.time()) + 15 * 60
+		data.trails.rainbow = true
+		data.trail = "rainbow"
+		data.starterBought = true
+		attachBoard(player)
+		notify(player, "🎁 Стартовый набор: +" .. Config.formatNumber(c) .. " 💰, буст x2 и радужный след!", "good")
 	elseif key == "CoinsSmall" or key == "CoinsBig" then
 		local c = Config.CoinPackBase[key] * zoneMult(data.maxZone)
 		addCoins(player, c)
@@ -737,7 +782,7 @@ function handlers.UnlockZone(player, data, index)
 end
 
 function handlers.Teleport(player, data, index)
-	if type(index) ~= "number" or index < 1 or index > data.maxZone then
+	if type(index) ~= "number" or index < 0 or index > data.maxZone then
 		return false, "Зона закрыта"
 	end
 	local char = player.Character
@@ -791,6 +836,55 @@ function handlers.RedeemCode(player, data, code)
 	return true, "Код принят: +" .. Config.formatNumber(reward) .. " 💰"
 end
 
+function handlers.BuyTrail(player, data, id)
+	local t = Config.getTrail(id)
+	if t.id ~= id then
+		return false, "Нет такого следа"
+	end
+	if not data.trails[id] then
+		if t.starter then
+			return false, "Этот след есть только в стартовом наборе"
+		end
+		if data.coins < t.price then
+			return false, "Не хватает монет"
+		end
+		data.coins -= t.price
+		data.trails[id] = true
+	end
+	data.trail = id
+	attachBoard(player)
+	return true, "След «" .. t.name .. "» надет!"
+end
+
+function handlers.ClaimGift(player, data, index)
+	local g = type(index) == "number" and Config.Gifts[index]
+	if not g then
+		return false, "Нет такого подарка"
+	end
+	local claimed = giftsClaimed[player]
+	if claimed[index] then
+		return false, "Уже забрано"
+	end
+	if os.time() - joinTime[player] < g.minutes * 60 then
+		return false, "Ещё рано!"
+	end
+	claimed[index] = true
+	local c = g.coins * zoneMult(data.maxZone)
+	addCoins(player, c)
+	return true, "🎁 +" .. Config.formatNumber(c) .. " 💰"
+end
+
+function handlers.SaveSettings(player, data, settings)
+	if type(settings) ~= "table" then
+		return false
+	end
+	data.settings.music = settings.music == true
+	data.settings.sfx = settings.sfx == true
+	local lim = tonumber(settings.speedLimit) or 100
+	data.settings.speedLimit = math.clamp(math.floor(lim), 30, 100)
+	return true
+end
+
 -- В Studio товары с ID = 0 выдаются бесплатно, чтобы всё можно было проверить
 function handlers.StudioPurchase(player, data, kind, key)
 	if not RunService:IsStudio() then
@@ -818,6 +912,57 @@ Request.OnServerInvoke = function(player, action, ...)
 	local ok, msg = h(player, data, ...)
 	push(player)
 	return ok, msg
+end
+
+-- ---------- поза на доске для других игроков ----------
+local ANIM_STATES = { ride = true, air = true, grind = true, bail = true, Kickflip = true, Spin = true, Grab = true, Backflip = true }
+local animStamp = {}
+AnimState.OnServerEvent:Connect(function(player, state)
+	if type(state) ~= "string" or not ANIM_STATES[state] then
+		return
+	end
+	local now = os.clock()
+	if animStamp[player] and now - animStamp[player] < 0.05 then
+		return
+	end
+	animStamp[player] = now
+	local char = player.Character
+	if char then
+		char:SetAttribute("SkateAnim", state)
+	end
+end)
+Players.PlayerRemoving:Connect(function(player)
+	animStamp[player] = nil
+end)
+
+-- ---------- витрина досок в лобби ----------
+local function hookStand(stand)
+	local prompt = stand:FindFirstChildOfClass("ProximityPrompt")
+	local id = stand:GetAttribute("BoardId")
+	if not prompt or not id then
+		return
+	end
+	prompt.Triggered:Connect(function(player)
+		local data = profiles[player]
+		if not data then
+			return
+		end
+		local b = Config.getBoard(id)
+		if b.pass and not (passes[player] and passes[player][b.pass]) then
+			notify(player, "Золотая доска продаётся в магазине за робуксы 💎", "warn")
+			return
+		end
+		local ok, msg = handlers.BuyBoard(player, data, id)
+		if msg then
+			notify(player, msg, ok and "good" or "warn")
+		elseif ok then
+			notify(player, "Доска «" .. b.name .. "» надета!", "good")
+		end
+		push(player)
+	end)
+end
+for _, stand in ipairs(CollectionService:GetTagged("BoardStand")) do
+	hookStand(stand)
 end
 
 -- ---------- трюк-битва ----------

@@ -57,7 +57,11 @@ def main():
     )
     server = script_item("Script", "SkateServer", read("server/init.server.luau"), server_children)
 
-    client_children = script_item("ModuleScript", "UI", read("client/UI.luau"))
+    client_children = (
+        script_item("ModuleScript", "UI", read("client/UI.luau"))
+        + script_item("ModuleScript", "Rider", read("client/Rider.luau"))
+        + script_item("ModuleScript", "Sounds", read("client/Sounds.luau"))
+    )
     client = script_item("LocalScript", "SkateClient", read("client/init.client.luau"), client_children)
 
     starter_player_props = (

@@ -100,6 +100,9 @@ local function button(props, onClick)
 	new("UIPadding", { PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 6), PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 4), Parent = b })
 	textStroke(b, 1.5)
 	b.MouseButton1Click:Connect(function()
+		if ctx and ctx.sounds then
+			ctx.sounds.play("Click", 1, 0.4)
+		end
 		local s = b:FindFirstChildOfClass("UIScale") or new("UIScale", { Parent = b })
 		s.Scale = 0.9
 		TweenService:Create(s, TweenInfo.new(0.25, Enum.EasingStyle.Back), { Scale = 1 }):Play()
@@ -220,7 +223,49 @@ function UI.comboEnd(banked)
 	end
 end
 
-function UI.comboResult(coins, xp, record)
+local function comboWord(mult)
+	if not gui or not mult then
+		return
+	end
+	local word
+	for _, w in ipairs(Config.ComboWords) do
+		if mult >= w.mult then
+			word = w.text
+			break
+		end
+	end
+	if not word then
+		return
+	end
+	local burst = new("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.72, 0.42),
+		Size = UDim2.fromOffset(250, 110),
+		BackgroundColor3 = C.gold,
+		Rotation = -8,
+		ZIndex = 25,
+		Parent = gui,
+	}, { corner(26), stroke(Color3.new(0, 0, 0), 4), gradient(Color3.fromRGB(255, 240, 120), Color3.fromRGB(255, 150, 0)) })
+	local multText = "x" .. (mult % 1 == 0 and tostring(mult) or string.format("%.1f", mult))
+	textStroke(label({ Text = word, Size = UDim2.new(1, -16, 0.55, 0), Position = UDim2.new(0, 8, 0.06, 0), MaxText = 34, ZIndex = 26, Parent = burst }), 2.5)
+	textStroke(label({ Text = multText, Size = UDim2.new(1, -16, 0.4, 0), Position = UDim2.new(0, 8, 0.56, 0), MaxText = 34, TextColor3 = C.pink, ZIndex = 26, Parent = burst }), 2.5)
+	pop(burst, 0.2)
+	task.delay(1.4, function()
+		TweenService:Create(burst, TweenInfo.new(0.3), { Position = burst.Position - UDim2.fromScale(0, 0.06), BackgroundTransparency = 1 }):Play()
+		for _, d in ipairs(burst:GetDescendants()) do
+			if d:IsA("TextLabel") then
+				TweenService:Create(d, TweenInfo.new(0.3), { TextTransparency = 1 }):Play()
+			elseif d:IsA("UIStroke") then
+				TweenService:Create(d, TweenInfo.new(0.3), { Transparency = 1 }):Play()
+			end
+		end
+		task.wait(0.35)
+		burst:Destroy()
+	end)
+end
+
+function UI.comboResult(coins, xp, record, mult)
+	comboWord(mult)
 	UI.floatText("+" .. fmt(coins) .. " 💰", C.gold, coins > 1000 and 1.4 or 1.1)
 	if record then
 		task.delay(0.4, function()
@@ -446,6 +491,11 @@ end
 -- Зоны
 local function buildZones(list)
 	header(list, "Открывай зоны: чем дальше, тем больше монет")
+	row(list, { icon = "🏠", title = "Лобби", subtitle = "Магазин досок и старт", buttonText = "ПОЕХАЛИ", buttonColor = C.blue, onClick = function()
+		if ctx.request("Teleport", 0) then
+			closeWindow()
+		end
+	end })
 	for i, z in ipairs(Config.Zones) do
 		local opts = { icon = i <= data.maxZone and "🗺️" or "🔒", title = i .. ". " .. z.name, highlight = i == data.maxZone and z.accent or nil }
 		if i <= data.maxZone then
@@ -584,6 +634,110 @@ local function buildRebirth(list)
 	})
 end
 
+-- Следы
+local function buildTrails(list)
+	header(list, "След тянется за доской. Только для красоты!")
+	for _, t in ipairs(Config.Trails) do
+		local owned = data.trails[t.id]
+		local equipped = data.trail == t.id
+		local btn, color, click
+		if equipped then
+			btn, color = "НАДЕТ", C.blue
+		elseif owned then
+			btn, color = "НАДЕТЬ", C.blue
+			click = function()
+				ctx.request("BuyTrail", t.id)
+			end
+		elseif t.starter then
+			btn, color = "В НАБОРЕ", C.pink
+			click = function()
+				if data.starterLeft and data.starterLeft > 0 then
+					ctx.buy("product", "StarterPack")
+				else
+					UI.toast("Этот след был в стартовом наборе", "warn")
+				end
+			end
+		else
+			btn, color = fmt(t.price) .. " 💰", data.coins >= t.price and C.green or Color3.fromRGB(90, 90, 110)
+			click = function()
+				ctx.request("BuyTrail", t.id)
+			end
+		end
+		local f = row(list, { icon = "✨", title = t.name, subtitle = t.colors and "" or "Цвет как у доски", buttonText = btn, buttonColor = color, onClick = click, highlight = equipped and C.blue or nil })
+		if t.colors then
+			local keys = {}
+			for k, c in ipairs(t.colors) do
+				table.insert(keys, ColorSequenceKeypoint.new((k - 1) / math.max(1, #t.colors - 1), c))
+			end
+			local strip = new("Frame", { Size = UDim2.new(1, -230, 0, 12), Position = UDim2.new(0, 66, 0.62, 0), BackgroundColor3 = Color3.new(1, 1, 1), Parent = f }, { corner(6) })
+			new("UIGradient", { Color = ColorSequence.new(keys), Parent = strip })
+		end
+	end
+end
+
+-- Подарки за время
+local function giftReadyCount()
+	if not data then
+		return 0
+	end
+	local played = data.played + (os.clock() - (refs.dataTime or os.clock()))
+	local n = 0
+	for i, g in ipairs(Config.Gifts) do
+		if not data.gifts[i] and played >= g.minutes * 60 then
+			n += 1
+		end
+	end
+	return n
+end
+
+local function buildGifts(list)
+	header(list, "Играй дольше — получай подарки!")
+	local mult = Config.Zones[data.maxZone].mult
+	local played = data.played + (os.clock() - (refs.dataTime or os.clock()))
+	for i, g in ipairs(Config.Gifts) do
+		local claimed = data.gifts[i]
+		local left = g.minutes * 60 - played
+		local opts = { height = 56, icon = claimed and "✅" or "🎁", title = "+" .. fmt(g.coins * mult) .. " 💰", subtitle = "через " .. g.minutes .. " мин. игры" }
+		if claimed then
+			opts.buttonText, opts.buttonColor = "ЗАБРАН", Color3.fromRGB(90, 90, 110)
+		elseif left <= 0 then
+			opts.buttonText, opts.buttonColor, opts.highlight = "ЗАБРАТЬ", C.green, C.green
+			opts.onClick = function()
+				ctx.request("ClaimGift", i)
+			end
+		else
+			opts.buttonText, opts.buttonColor = timeText(left), Color3.fromRGB(90, 90, 110)
+		end
+		row(list, opts)
+	end
+end
+
+-- Настройки
+local function buildSettings(list)
+	local st = data.settings or { music = true, sfx = true, speedLimit = 100 }
+	local function save(changes)
+		local copy = { music = st.music, sfx = st.sfx, speedLimit = st.speedLimit }
+		for k, v in pairs(changes) do
+			copy[k] = v
+		end
+		ctx.request("SaveSettings", copy)
+	end
+	header(list, "Настройки")
+	row(list, { icon = "🎵", title = "Музыка", subtitle = st.music and "Включена" or "Выключена", buttonText = st.music and "ВКЛ" or "ВЫКЛ", buttonColor = st.music and C.green or C.red, onClick = function()
+		save({ music = not st.music })
+	end })
+	row(list, { icon = "🔊", title = "Звуки", subtitle = st.sfx and "Включены" or "Выключены", buttonText = st.sfx and "ВКЛ" or "ВЫКЛ", buttonColor = st.sfx and C.green or C.red, onClick = function()
+		save({ sfx = not st.sfx })
+	end })
+	header(list, "Ограничение скорости: " .. st.speedLimit .. "%")
+	row(list, { icon = "🐢", title = "Медленнее", subtitle = "Если слишком быстро и трудно управлять", buttonText = "−10%", buttonColor = C.blue, onClick = function()
+		save({ speedLimit = math.max(30, st.speedLimit - 10) })
+	end })
+	row(list, { icon = "🐇", title = "Быстрее", subtitle = "Максимум — 100%", buttonText = "+10%", buttonColor = C.blue, onClick = function()
+		save({ speedLimit = math.min(100, st.speedLimit + 10) })
+	end })
+end
+
 local windows = {
 	Boards = { "🛹 ДОСКИ", C.orange, buildBoards },
 	Speed = { "⚡ СКОРОСТЬ", C.blue, buildSpeed },
@@ -592,6 +746,9 @@ local windows = {
 	Daily = { "🎁 НАГРАДА", C.gold, buildDaily },
 	Codes = { "🎟️ КОДЫ", C.purple, buildCodes, true },
 	Rebirth = { "♻️ ПЕРЕРОЖДЕНИЕ", C.purple, buildRebirth },
+	Trails = { "✨ СЛЕДЫ", C.blue, buildTrails },
+	Gifts = { "🎁 ПОДАРКИ", C.green, buildGifts },
+	Settings = { "⚙️ НАСТРОЙКИ", Color3.fromRGB(120, 120, 150), buildSettings },
 }
 
 local function open(name)
@@ -612,6 +769,7 @@ end
 -- ---------- данные ----------
 function UI.setData(snap)
 	data = snap
+	refs.dataTime = os.clock()
 	boostEnds = os.clock() + (snap.boostLeft or 0)
 	if refs.level then
 		local need = Config.xpForLevel(snap.level)
@@ -678,7 +836,7 @@ local function buildHud()
 	refs.boost = textStroke(label({ Text = "", Size = UDim2.new(0.45, -12, 0, 24), Position = UDim2.new(0.55, 0, 0, 86), TextXAlignment = Enum.TextXAlignment.Right, TextColor3 = C.orange, MaxText = 18, Parent = stats }), 1)
 
 	-- кнопки меню слева
-	local menu = new("Frame", { Size = UDim2.fromOffset(160, 330), Position = UDim2.new(0, 16, 0, 144), BackgroundTransparency = 1, Parent = gui }, {
+	local menu = new("Frame", { Size = UDim2.fromOffset(160, 400), Position = UDim2.new(0, 16, 0, 144), BackgroundTransparency = 1, Parent = gui }, {
 		new("UIGridLayout", { CellSize = UDim2.fromOffset(74, 68), CellPadding = UDim2.fromOffset(8, 8), SortOrder = Enum.SortOrder.LayoutOrder }),
 	})
 	local items = {
@@ -686,17 +844,26 @@ local function buildHud()
 		{ "Speed", "⚡", "Скорость", C.blue },
 		{ "Zones", "🗺️", "Зоны", C.green },
 		{ "Shop", "💎", "Магазин", C.pink },
-		{ "Daily", "🎁", "Награда", C.gold },
+		{ "Daily", "📅", "Награда", C.gold },
+		{ "Gifts", "🎁", "Подарки", C.green },
+		{ "Trails", "✨", "Следы", C.blue },
 		{ "Codes", "🎟️", "Коды", C.purple },
 		{ "Rebirth", "♻️", "Перерожд.", C.purple },
+		{ "Settings", "⚙️", "Настройки", Color3.fromRGB(120, 120, 150) },
 	}
 	for i, it in ipairs(items) do
 		local b = new("TextButton", { Size = UDim2.fromOffset(72, 66), BackgroundColor3 = it[4], Text = "", AutoButtonColor = true, LayoutOrder = i, Parent = menu }, { corner(14), stroke(Color3.new(0, 0, 0), 2), gradient(Color3.new(1, 1, 1), Color3.fromRGB(170, 170, 170)) })
 		label({ Text = it[2], Size = UDim2.new(1, 0, 0.62, 0), MaxText = 30, Parent = b })
 		textStroke(label({ Text = it[3], Size = UDim2.new(1, -4, 0.32, 0), Position = UDim2.new(0, 2, 0.64, 0), MaxText = 13, Parent = b }), 1)
 		b.MouseButton1Click:Connect(function()
+			if ctx and ctx.sounds then
+				ctx.sounds.play("Click", 1, 0.4)
+			end
 			open(it[1])
 		end)
+		if it[1] == "Gifts" then
+			refs.giftDot = new("Frame", { Size = UDim2.fromOffset(18, 18), Position = UDim2.new(1, -12, 0, -6), BackgroundColor3 = C.red, Visible = false, Parent = b }, { corner(9), stroke(Color3.new(1, 1, 1), 2) })
+		end
 		if it[1] == "Daily" then
 			refs.dailyDot = new("Frame", { Size = UDim2.fromOffset(18, 18), Position = UDim2.new(1, -12, 0, -6), BackgroundColor3 = C.red, Visible = false, Parent = b }, { corner(9), stroke(Color3.new(1, 1, 1), 2) })
 		end
@@ -757,8 +924,27 @@ local function buildHud()
 		end
 	end
 
+	-- справа: стартовый набор и быстрый буст
+	local side = new("Frame", { Size = UDim2.fromOffset(200, 190), AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -16, 0, 12), BackgroundTransparency = 1, Parent = gui }, {
+		new("UIListLayout", { Padding = UDim.new(0, 10), HorizontalAlignment = Enum.HorizontalAlignment.Right, SortOrder = Enum.SortOrder.LayoutOrder }),
+	})
+	refs.starter = new("TextButton", { Size = UDim2.fromOffset(190, 120), BackgroundColor3 = C.pink, Text = "", AutoButtonColor = true, Visible = false, LayoutOrder = 1, Parent = side }, { corner(16), stroke(Color3.new(0, 0, 0), 3), gradient(Color3.fromRGB(255, 150, 220), Color3.fromRGB(200, 60, 255)) })
+	label({ Text = "🎁", Size = UDim2.fromOffset(60, 60), Position = UDim2.fromOffset(6, 6), MaxText = 46, Parent = refs.starter })
+	textStroke(label({ Text = "СТАРТОВЫЙ\nНАБОР", Size = UDim2.new(1, -72, 0, 50), Position = UDim2.fromOffset(66, 8), MaxText = 20, Parent = refs.starter }), 1.5)
+	refs.starterTimer = textStroke(label({ Text = "", Size = UDim2.new(0.5, -8, 0, 26), Position = UDim2.new(0, 8, 1, -34), TextColor3 = C.gold, MaxText = 20, Parent = refs.starter }), 1.5)
+	textStroke(label({ Text = "Только " .. Config.Products.StarterPack.price .. " R$", Size = UDim2.new(0.5, -8, 0, 26), Position = UDim2.new(0.5, 0, 1, -34), TextColor3 = C.text, MaxText = 20, Parent = refs.starter }), 1.5)
+	local starterScale = new("UIScale", { Parent = refs.starter })
+	TweenService:Create(starterScale, TweenInfo.new(0.7, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Scale = 1.05 }):Play()
+	refs.starter.MouseButton1Click:Connect(function()
+		ctx.buy("product", "StarterPack")
+	end)
+	local boostBtn = button({ Text = "⚡ x2 МОНЕТЫ  " .. Config.Products.Boost2x.price .. " R$", Size = UDim2.fromOffset(190, 52), Color = C.blue, LayoutOrder = 2, MaxText = 18, Parent = side }, function()
+		ctx.buy("product", "Boost2x")
+	end)
+	boostBtn.Name = "BoostQuick"
+
 	-- трюк-битва
-	refs.event = new("Frame", { Size = UDim2.fromOffset(260, 170), AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -16, 0, 12), BackgroundColor3 = C.panel, BackgroundTransparency = 0.15, Visible = false, Parent = gui }, { corner(14), stroke(C.purple, 3) })
+	refs.event = new("Frame", { Size = UDim2.fromOffset(260, 170), AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -228, 0, 12), BackgroundColor3 = C.panel, BackgroundTransparency = 0.15, Visible = false, Parent = gui }, { corner(14), stroke(C.purple, 3) })
 	refs.eventTitle = textStroke(label({ Text = "🏆 ТРЮК-БИТВА", Size = UDim2.new(1, -16, 0, 30), Position = UDim2.fromOffset(8, 6), TextColor3 = C.gold, MaxText = 22, Parent = refs.event }), 1)
 	refs.eventList = label({ Text = "", Size = UDim2.new(1, -16, 1, -44), Position = UDim2.fromOffset(8, 38), Font = Enum.Font.GothamBold, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, MaxText = 17, Parent = refs.event })
 
@@ -838,6 +1024,12 @@ function UI.init(context)
 			local left = boostEnds - os.clock()
 			refs.boost.Text = left > 0 and ("⚡x2 " .. timeText(left)) or ""
 			updateEvent()
+			if data then
+				local sl = (data.starterLeft or 0) - (os.clock() - (refs.dataTime or os.clock()))
+				refs.starter.Visible = sl > 0
+				refs.starterTimer.Text = "⏰ " .. timeText(sl)
+				refs.giftDot.Visible = giftReadyCount() > 0
+			end
 		end
 	end)
 end

@@ -39,6 +39,11 @@ function Data.default()
 		boostUntil = 0,
 		bestCombo = 0,
 		totalTricks = 0,
+		trails = { board = true },
+		trail = "board",
+		firstJoin = 0,
+		starterBought = false,
+		settings = { music = true, sfx = true, speedLimit = 100 },
 	}
 end
 

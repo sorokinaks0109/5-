@@ -1,4 +1,4 @@
-<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="ReplicatedStorage" referent="RBX00000008"><Properties><string name="Name">ReplicatedStorage</string></Properties><Item class="Folder" referent="RBX00000007"><Properties><string name="Name">SkateShared</string></Properties><Item class="ModuleScript" referent="RBX00000001"><Properties><string name="Name">Config</string><ProtectedString name="Source"><![CDATA[-- ============================================================
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="ReplicatedStorage" referent="RBX0000000A"><Properties><string name="Name">ReplicatedStorage</string></Properties><Item class="Folder" referent="RBX00000009"><Properties><string name="Name">SkateShared</string></Properties><Item class="ModuleScript" referent="RBX00000001"><Properties><string name="Name">Config</string><ProtectedString name="Source"><![CDATA[-- ============================================================
 --  SKATE RUSH — все настройки игры в одном месте.
 --  Меняй цифры здесь, и игра поменяется сама: цены, зоны,
 --  доски, трюки, награды. Код трогать не нужно.
@@ -30,8 +30,14 @@ Config.Products = {
 	Boost2x = { id = 0, price = 15, icon = "⚡", name = "Буст x2 на 15 минут", desc = "Двойные монеты на 15 минут. Складывается с геймпассами.", minutes = 15 },
 	CoinsSmall = { id = 0, price = 19, icon = "👜", name = "Мешок монет", desc = "Монеты. Чем дальше зона, тем больше." },
 	CoinsBig = { id = 0, price = 79, icon = "🧰", name = "Сундук монет", desc = "Много монет. Чем дальше зона, тем больше." },
+	LevelUp = { id = 0, price = 19, icon = "⭐", name = "+1 уровень", desc = "Сразу поднимает уровень на 1." },
+	StarterPack = { id = 0, price = 5, icon = "🎁", name = "Стартовый набор", desc = "Монеты, буст x2 на 15 минут и радужный след. Только для новичков!" },
 }
-Config.ProductOrder = { "Boost2x", "SkipZone", "CoinsSmall", "CoinsBig" }
+Config.ProductOrder = { "Boost2x", "LevelUp", "SkipZone", "CoinsSmall", "CoinsBig" }
+
+-- Стартовый набор показывается новичкам первые столько минут (по-честному: потом пропадает)
+Config.StarterOfferMinutes = 20
+Config.StarterCoins = 5000
 
 -- Сколько монет дают мешок и сундук (умножается на множитель лучшей открытой зоны)
 Config.CoinPackBase = { CoinsSmall = 1500, CoinsBig = 9000 }
@@ -80,75 +86,101 @@ Config.ZoneWidth = 170
 
 Config.Zones = {
 	{
-		name = "Двор",
-		theme = "park",
+		name = "Сакура-парк",
+		theme = "sakura",
 		level = 1,
 		cost = 0,
 		mult = 1,
-		floor = Color3.fromRGB(150, 150, 155),
-		floorMaterial = Enum.Material.Concrete,
-		accent = Color3.fromRGB(255, 170, 0),
-		light = { clock = 14, brightness = 2.5, fog = Color3.fromRGB(190, 220, 255), fogEnd = 1100, ambient = Color3.fromRGB(110, 110, 120) },
+		floor = Color3.fromRGB(255, 225, 235),
+		floor2 = Color3.fromRGB(255, 245, 250),
+		cliff = Color3.fromRGB(120, 200, 110),
+		cliff2 = Color3.fromRGB(255, 170, 200),
+		accent = Color3.fromRGB(255, 105, 180),
+		light = { clock = 13, brightness = 3, fog = Color3.fromRGB(255, 225, 240), fogEnd = 1400, ambient = Color3.fromRGB(150, 130, 150), haze = 1.2, tint = Color3.fromRGB(255, 245, 250) },
+		gravity = 196.2,
+	},
+	{
+		name = "Конфетная страна",
+		theme = "candy",
+		level = 4,
+		cost = 600,
+		mult = 2,
+		floor = Color3.fromRGB(255, 160, 200),
+		floor2 = Color3.fromRGB(255, 235, 140),
+		cliff = Color3.fromRGB(190, 120, 255),
+		cliff2 = Color3.fromRGB(255, 200, 230),
+		accent = Color3.fromRGB(170, 80, 255),
+		light = { clock = 14, brightness = 3, fog = Color3.fromRGB(255, 210, 240), fogEnd = 1300, ambient = Color3.fromRGB(160, 120, 170), haze = 1.5, tint = Color3.fromRGB(255, 240, 255) },
+		gravity = 196.2,
+	},
+	{
+		name = "Солнечный пляж",
+		theme = "beach",
+		level = 9,
+		cost = 5000,
+		mult = 3.5,
+		floor = Color3.fromRGB(255, 225, 160),
+		floor2 = Color3.fromRGB(255, 240, 200),
+		cliff = Color3.fromRGB(240, 200, 130),
+		cliff2 = Color3.fromRGB(110, 200, 120),
+		accent = Color3.fromRGB(0, 200, 230),
+		light = { clock = 15.5, brightness = 3.2, fog = Color3.fromRGB(200, 235, 255), fogEnd = 1500, ambient = Color3.fromRGB(150, 140, 120), haze = 1, tint = Color3.fromRGB(255, 250, 235) },
 		gravity = 196.2,
 	},
 	{
 		name = "Неоновый город",
 		theme = "city",
-		level = 5,
-		cost = 750,
-		mult = 2,
-		floor = Color3.fromRGB(45, 45, 55),
-		floorMaterial = Enum.Material.Asphalt,
+		level = 15,
+		cost = 30000,
+		mult = 6,
+		floor = Color3.fromRGB(40, 35, 70),
+		floor2 = Color3.fromRGB(60, 50, 100),
+		cliff = Color3.fromRGB(30, 25, 55),
+		cliff2 = Color3.fromRGB(50, 40, 90),
 		accent = Color3.fromRGB(255, 0, 200),
-		light = { clock = 20.5, brightness = 1.2, fog = Color3.fromRGB(60, 20, 90), fogEnd = 700, ambient = Color3.fromRGB(120, 80, 150) },
-		gravity = 196.2,
-	},
-	{
-		name = "Пляж",
-		theme = "beach",
-		level = 12,
-		cost = 8000,
-		mult = 3.5,
-		floor = Color3.fromRGB(240, 215, 150),
-		floorMaterial = Enum.Material.Sand,
-		accent = Color3.fromRGB(0, 210, 230),
-		light = { clock = 16.5, brightness = 3, fog = Color3.fromRGB(255, 220, 180), fogEnd = 1200, ambient = Color3.fromRGB(140, 120, 100) },
+		light = { clock = 20.8, brightness = 1.5, fog = Color3.fromRGB(70, 30, 110), fogEnd = 900, ambient = Color3.fromRGB(140, 100, 190), haze = 2, tint = Color3.fromRGB(235, 220, 255) },
 		gravity = 196.2,
 	},
 	{
 		name = "Ледяной каньон",
 		theme = "ice",
-		level = 20,
-		cost = 60000,
-		mult = 6,
-		floor = Color3.fromRGB(200, 235, 255),
-		floorMaterial = Enum.Material.Ice,
-		accent = Color3.fromRGB(80, 200, 255),
-		light = { clock = 10, brightness = 2.2, fog = Color3.fromRGB(220, 240, 255), fogEnd = 600, ambient = Color3.fromRGB(130, 150, 180) },
+		level = 23,
+		cost = 200000,
+		mult = 10,
+		floor = Color3.fromRGB(215, 240, 255),
+		floor2 = Color3.fromRGB(240, 250, 255),
+		cliff = Color3.fromRGB(170, 215, 245),
+		cliff2 = Color3.fromRGB(255, 255, 255),
+		accent = Color3.fromRGB(60, 190, 255),
+		light = { clock = 10, brightness = 2.6, fog = Color3.fromRGB(225, 245, 255), fogEnd = 900, ambient = Color3.fromRGB(150, 170, 200), haze = 2, tint = Color3.fromRGB(235, 245, 255) },
 		gravity = 196.2,
 	},
 	{
 		name = "Вулкан",
 		theme = "volcano",
-		level = 30,
-		cost = 400000,
-		mult = 10,
-		floor = Color3.fromRGB(50, 40, 40),
-		floorMaterial = Enum.Material.Basalt,
-		accent = Color3.fromRGB(255, 80, 0),
-		light = { clock = 18.3, brightness = 1.5, fog = Color3.fromRGB(120, 30, 10), fogEnd = 500, ambient = Color3.fromRGB(150, 70, 50) },
+		level = 32,
+		cost = 1500000,
+		mult = 16,
+		floor = Color3.fromRGB(70, 50, 55),
+		floor2 = Color3.fromRGB(95, 65, 65),
+		cliff = Color3.fromRGB(60, 40, 40),
+		cliff2 = Color3.fromRGB(100, 55, 45),
+		accent = Color3.fromRGB(255, 90, 0),
+		light = { clock = 18.2, brightness = 1.8, fog = Color3.fromRGB(150, 50, 20), fogEnd = 700, ambient = Color3.fromRGB(170, 90, 70), haze = 2.5, tint = Color3.fromRGB(255, 225, 205) },
 		gravity = 196.2,
 	},
 	{
 		name = "Космос",
 		theme = "space",
-		level = 42,
-		cost = 3000000,
-		mult = 16,
-		floor = Color3.fromRGB(25, 20, 45),
-		floorMaterial = Enum.Material.SmoothPlastic,
-		accent = Color3.fromRGB(150, 90, 255),
-		light = { clock = 0, brightness = 1, fog = Color3.fromRGB(10, 5, 30), fogEnd = 900, ambient = Color3.fromRGB(110, 90, 170) },
+		level = 45,
+		cost = 12000000,
+		mult = 28,
+		floor = Color3.fromRGB(35, 25, 70),
+		floor2 = Color3.fromRGB(55, 40, 110),
+		cliff = Color3.fromRGB(25, 20, 50),
+		cliff2 = Color3.fromRGB(80, 50, 150),
+		accent = Color3.fromRGB(150, 100, 255),
+		light = { clock = 0, brightness = 1.2, fog = Color3.fromRGB(20, 10, 50), fogEnd = 1200, ambient = Color3.fromRGB(130, 110, 200), haze = 0.5, tint = Color3.fromRGB(230, 220, 255) },
 		gravity = 70, -- низкая гравитация: прыжки выше, полёт дольше
 	},
 }
@@ -158,13 +190,15 @@ Config.Zones = {
 --  speed — множитель скорости, jump — добавка к прыжку
 -- ------------------------------------------------------------
 Config.Boards = {
-	{ id = "basic", name = "Классика", price = 0, speed = 1.0, jump = 0, deck = Color3.fromRGB(200, 120, 60), stripe = Color3.fromRGB(40, 40, 40), trail = Color3.fromRGB(255, 255, 255) },
-	{ id = "street", name = "Уличная", price = 2500, speed = 1.08, jump = 4, deck = Color3.fromRGB(30, 30, 30), stripe = Color3.fromRGB(255, 60, 60), trail = Color3.fromRGB(255, 80, 80) },
-	{ id = "neon", name = "Неон", price = 15000, speed = 1.15, jump = 8, deck = Color3.fromRGB(20, 20, 40), stripe = Color3.fromRGB(0, 255, 200), trail = Color3.fromRGB(0, 255, 200), neon = true },
-	{ id = "fire", name = "Огонь", price = 90000, speed = 1.22, jump = 12, deck = Color3.fromRGB(120, 20, 0), stripe = Color3.fromRGB(255, 140, 0), trail = Color3.fromRGB(255, 90, 0), neon = true, fire = true },
-	{ id = "ice", name = "Лёд", price = 450000, speed = 1.3, jump = 16, deck = Color3.fromRGB(170, 230, 255), stripe = Color3.fromRGB(255, 255, 255), trail = Color3.fromRGB(150, 230, 255), neon = true },
-	{ id = "galaxy", name = "Галактика", price = 2500000, speed = 1.4, jump = 22, deck = Color3.fromRGB(60, 0, 120), stripe = Color3.fromRGB(255, 0, 255), trail = Color3.fromRGB(180, 100, 255), neon = true, sparkle = true },
-	{ id = "gold", name = "Золотая", pass = "GoldBoard", speed = 1.35, jump = 20, coinBonus = 0.25, deck = Color3.fromRGB(255, 200, 40), stripe = Color3.fromRGB(255, 255, 200), trail = Color3.fromRGB(255, 215, 0), neon = true, sparkle = true },
+	{ id = "basic", name = "Классика", price = 0, speed = 1.0, jump = 0, deck = Color3.fromRGB(230, 120, 60), stripe = Color3.fromRGB(40, 40, 40), trail = Color3.fromRGB(255, 255, 255) },
+	{ id = "sakura", name = "Сакура", price = 1500, speed = 1.06, jump = 3, deck = Color3.fromRGB(255, 160, 200), stripe = Color3.fromRGB(255, 255, 255), trail = Color3.fromRGB(255, 170, 210) },
+	{ id = "lemon", name = "Лимонад", price = 6000, speed = 1.12, jump = 6, deck = Color3.fromRGB(255, 230, 60), stripe = Color3.fromRGB(80, 220, 120), trail = Color3.fromRGB(255, 240, 120) },
+	{ id = "mint", name = "Мята", price = 25000, speed = 1.18, jump = 9, deck = Color3.fromRGB(110, 240, 200), stripe = Color3.fromRGB(255, 255, 255), trail = Color3.fromRGB(110, 255, 210), neon = true },
+	{ id = "neon", name = "Неон", price = 90000, speed = 1.25, jump = 12, deck = Color3.fromRGB(20, 20, 40), stripe = Color3.fromRGB(0, 255, 200), trail = Color3.fromRGB(0, 255, 200), neon = true },
+	{ id = "fire", name = "Огонь", price = 350000, speed = 1.32, jump = 15, deck = Color3.fromRGB(150, 30, 0), stripe = Color3.fromRGB(255, 150, 0), trail = Color3.fromRGB(255, 90, 0), neon = true, fire = true },
+	{ id = "ice", name = "Лёд", price = 1500000, speed = 1.4, jump = 18, deck = Color3.fromRGB(170, 230, 255), stripe = Color3.fromRGB(255, 255, 255), trail = Color3.fromRGB(150, 230, 255), neon = true },
+	{ id = "galaxy", name = "Галактика", price = 8000000, speed = 1.5, jump = 24, deck = Color3.fromRGB(60, 0, 120), stripe = Color3.fromRGB(255, 0, 255), trail = Color3.fromRGB(180, 100, 255), neon = true, sparkle = true },
+	{ id = "gold", name = "Золотая", pass = "GoldBoard", speed = 1.45, jump = 22, coinBonus = 0.25, deck = Color3.fromRGB(255, 200, 40), stripe = Color3.fromRGB(255, 255, 200), trail = Color3.fromRGB(255, 215, 0), neon = true, sparkle = true },
 }
 
 function Config.getBoard(id)
@@ -180,12 +214,14 @@ end
 --  ПРОКАЧКА СКОРОСТИ
 -- ------------------------------------------------------------
 Config.Speed = {
-	Base = 20,
-	PerLevel = 1.6,
+	Base = 32,
+	PerLevel = 2.4,
 	MaxLevel = 50,
 	CostBase = 30,
 	CostGrowth = 1.27,
-	MaxWalkSpeed = 140,
+	MaxWalkSpeed = 175,
+	StartFraction = 0.7, -- с какой доли скорости начинаешь разгон
+	Accel = 0.9, -- как быстро разгоняешься (доля макс. скорости в секунду)
 }
 Config.BaseJump = 60
 
@@ -211,10 +247,75 @@ function Config.xpForLevel(level)
 end
 
 -- ------------------------------------------------------------
+--  СЛЕДЫ за доской (меню «Следы»). Только красота, на скорость не влияют.
+-- ------------------------------------------------------------
+Config.Trails = {
+	{ id = "board", name = "Цвет доски", price = 0, colors = nil },
+	{ id = "cloud", name = "Облачко", price = 1500, colors = { Color3.fromRGB(255, 255, 255), Color3.fromRGB(200, 230, 255) } },
+	{ id = "sakura", name = "Сакура", price = 6000, colors = { Color3.fromRGB(255, 150, 200), Color3.fromRGB(255, 230, 240) } },
+	{ id = "mint", name = "Мятный", price = 20000, colors = { Color3.fromRGB(80, 255, 190), Color3.fromRGB(0, 170, 255) } },
+	{ id = "sunset", name = "Закат", price = 75000, colors = { Color3.fromRGB(255, 200, 0), Color3.fromRGB(255, 40, 120) } },
+	{ id = "toxic", name = "Токсичный", price = 300000, colors = { Color3.fromRGB(180, 255, 0), Color3.fromRGB(0, 120, 40) } },
+	{ id = "galaxy", name = "Галактика", price = 1500000, colors = { Color3.fromRGB(120, 0, 255), Color3.fromRGB(255, 0, 200) } },
+	{ id = "rainbow", name = "Радуга", starter = true, colors = { Color3.fromRGB(255, 0, 0), Color3.fromRGB(255, 220, 0), Color3.fromRGB(0, 220, 80), Color3.fromRGB(0, 140, 255), Color3.fromRGB(200, 0, 255) } },
+}
+
+function Config.getTrail(id)
+	for _, t in ipairs(Config.Trails) do
+		if t.id == id then
+			return t
+		end
+	end
+	return Config.Trails[1]
+end
+
+-- ------------------------------------------------------------
+--  ПОДАРКИ ЗА ВРЕМЯ В ИГРЕ (каждый заход заново)
+--  minutes — через сколько минут игры, coins — сколько монет
+--  (умножается на множитель лучшей открытой зоны)
+-- ------------------------------------------------------------
+Config.Gifts = {
+	{ minutes = 1, coins = 150 },
+	{ minutes = 3, coins = 300 },
+	{ minutes = 6, coins = 600 },
+	{ minutes = 10, coins = 1000 },
+	{ minutes = 15, coins = 1600 },
+	{ minutes = 25, coins = 2500 },
+	{ minutes = 40, coins = 4000 },
+	{ minutes = 60, coins = 8000 },
+}
+
+-- ------------------------------------------------------------
+--  ЗВУКИ. Можно заменить на любые из Toolbox → Audio:
+--  вставь "rbxassetid://НОМЕР". Пустая строка = без звука.
+--  Music — музыка (по одной на зону, по порядку). Пока пусто.
+-- ------------------------------------------------------------
+Config.Sounds = {
+	Jump = "rbxasset://sounds/action_jump.mp3",
+	Land = "rbxasset://sounds/action_jump_land.mp3",
+	Bail = "rbxasset://sounds/action_falling.mp3",
+	Coin = "rbxasset://sounds/electronicpingshort.wav",
+	Trick = "rbxasset://sounds/swoosh.wav",
+	Click = "rbxasset://sounds/button.wav",
+	LevelUp = "rbxasset://sounds/electronicpingshort.wav",
+	Roll = "", -- звук колёс (зацикленный). Найди в Toolbox «skateboard» и вставь сюда
+	Music = { "", "", "", "", "", "", "" },
+}
+
+-- Надписи после комбо (по множителю)
+Config.ComboWords = {
+	{ mult = 9, text = "ЛЕГЕНДА!" },
+	{ mult = 6, text = "НЕВЕРОЯТНО!" },
+	{ mult = 3.5, text = "БЕЗУМНО!" },
+	{ mult = 2, text = "КРУТО!" },
+	{ mult = 1.5, text = "НЕПЛОХО!" },
+}
+
+-- ------------------------------------------------------------
 --  ПЕРЕРОЖДЕНИЕ: сбрасывает монеты и скорость,
 --  но навсегда даёт +50% к монетам
 -- ------------------------------------------------------------
-Config.Rebirth = { CostBase = 250000, CostGrowth = 4, Bonus = 0.5 }
+Config.Rebirth = { CostBase = 150000, CostGrowth = 4, Bonus = 0.5 }
 
 function Config.rebirthCost(rebirths)
 	return math.floor(Config.Rebirth.CostBase * Config.Rebirth.CostGrowth ^ rebirths)
@@ -292,7 +393,7 @@ function Config.formatNumber(n)
 end
 
 return Config
-]]></ProtectedString></Properties></Item></Item></Item><Item class="ServerScriptService" referent="RBX00000009"><Properties><string name="Name">ServerScriptService</string></Properties><Item class="Script" referent="RBX00000004"><Properties><string name="Name">SkateServer</string><ProtectedString name="Source"><![CDATA[-- ============================================================
+]]></ProtectedString></Properties></Item></Item></Item><Item class="ServerScriptService" referent="RBX0000000B"><Properties><string name="Name">ServerScriptService</string></Properties><Item class="Script" referent="RBX00000004"><Properties><string name="Name">SkateServer</string><ProtectedString name="Source"><![CDATA[-- ============================================================
 --  SKATE RUSH — сервер
 --  Хранит монеты и уровни, проверяет трюки, продаёт товары,
 --  проводит трюк-битвы. Игрок не может сам себе начислить монеты:
@@ -338,6 +439,7 @@ local ComboResult = newEvent("ComboResult") -- сервер → клиент: с
 local DataChanged = newEvent("DataChanged") -- сервер → клиент: новые данные
 local Notify = newEvent("Notify") -- сервер → клиент: сообщение
 local PickupTaken = newEvent("PickupTaken") -- сервер → клиент: звезда собрана
+local AnimState = newEvent("AnimState") -- клиент → сервер: поза на доске (чтобы её видели другие)
 local Request = newFunction("Request") -- все покупки и кнопки меню
 remotes.Parent = ReplicatedStorage
 
@@ -349,6 +451,8 @@ local budget = {} -- [player] = { allowance, last } — защита от нак
 local pendingLost = {} -- [player] = { coins, xp, expires }
 local starCooldown = {} -- [player] = { [part] = time }
 local eventScores = {} -- [player] = score
+local joinTime = {} -- [player] = os.time() захода
+local giftsClaimed = {} -- [player] = { [index] = true } (на один заход)
 
 local productByKey = {}
 local productKeyById = {}
@@ -420,6 +524,20 @@ local function snapshot(player)
 		passes = passes[player] or {},
 		coinMult = coinMultiplier(player, currentZone(player)),
 		saving = canSave[player] == true,
+		trails = data.trails,
+		trail = data.trail,
+		settings = data.settings,
+		played = os.time() - (joinTime[player] or os.time()),
+		gifts = (function()
+			-- сплошной список true/false: так он без потерь проходит через сеть
+			local list = {}
+			local claimed = giftsClaimed[player] or {}
+			for i = 1, #Config.Gifts do
+				list[i] = claimed[i] == true
+			end
+			return list
+		end)(),
+		starterLeft = data.starterBought and 0 or math.max(0, data.firstJoin + Config.StarterOfferMinutes * 60 - os.time()),
 	}
 end
 
@@ -595,9 +713,18 @@ local function attachBoard(player)
 	trail.Name = "BoardTrail"
 	trail.Attachment0 = a0
 	trail.Attachment1 = a1
-	trail.Color = ColorSequence.new(cfg.trail)
+	local trailCfg = Config.getTrail(data.trail)
+	if trailCfg.colors then
+		local keys = {}
+		for k, c in ipairs(trailCfg.colors) do
+			table.insert(keys, ColorSequenceKeypoint.new((k - 1) / math.max(1, #trailCfg.colors - 1), c))
+		end
+		trail.Color = ColorSequence.new(keys)
+	else
+		trail.Color = ColorSequence.new(cfg.trail)
+	end
 	trail.Transparency = NumberSequence.new(0.2, 1)
-	trail.Lifetime = 0.35
+	trail.Lifetime = 0.5
 	trail.LightEmission = cfg.neon and 1 or 0
 	trail.FaceCamera = true
 	trail.Enabled = false
@@ -678,6 +805,11 @@ local function onPlayerAdded(player)
 	if not player.Parent then
 		return
 	end
+	if data.firstJoin == 0 then
+		data.firstJoin = os.time()
+	end
+	joinTime[player] = os.time()
+	giftsClaimed[player] = {}
 	profiles[player] = data
 	canSave[player] = ok
 	budget[player] = { allowance = 5, last = os.clock() }
@@ -721,6 +853,8 @@ local function saveAndForget(player)
 	pendingLost[player] = nil
 	starCooldown[player] = nil
 	eventScores[player] = nil
+	joinTime[player] = nil
+	giftsClaimed[player] = nil
 end
 
 Players.PlayerAdded:Connect(onPlayerAdded)
@@ -826,7 +960,8 @@ ComboBanked.OnServerEvent:Connect(function(player, entries)
 		eventScores[player] = (eventScores[player] or 0) + math.floor(score)
 		player:SetAttribute("EventScore", eventScores[player])
 	end
-	ComboResult:FireClient(player, coins, xp, record)
+	local _, mult = Config.comboScore(clean)
+	ComboResult:FireClient(player, coins, xp, record, mult)
 	push(player)
 end)
 
@@ -900,6 +1035,17 @@ local function grantProduct(player, key)
 		local minutes = Config.Products.Boost2x.minutes
 		data.boostUntil = math.max(data.boostUntil, os.time()) + minutes * 60
 		notify(player, "⚡ Буст x2 включён на " .. minutes .. " минут!", "good")
+	elseif key == "LevelUp" then
+		addXp(player, Config.xpForLevel(data.level) - data.xp)
+	elseif key == "StarterPack" then
+		local c = Config.StarterCoins * zoneMult(data.maxZone)
+		addCoins(player, c)
+		data.boostUntil = math.max(data.boostUntil, os.time()) + 15 * 60
+		data.trails.rainbow = true
+		data.trail = "rainbow"
+		data.starterBought = true
+		attachBoard(player)
+		notify(player, "🎁 Стартовый набор: +" .. Config.formatNumber(c) .. " 💰, буст x2 и радужный след!", "good")
 	elseif key == "CoinsSmall" or key == "CoinsBig" then
 		local c = Config.CoinPackBase[key] * zoneMult(data.maxZone)
 		addCoins(player, c)
@@ -1031,7 +1177,7 @@ function handlers.UnlockZone(player, data, index)
 end
 
 function handlers.Teleport(player, data, index)
-	if type(index) ~= "number" or index < 1 or index > data.maxZone then
+	if type(index) ~= "number" or index < 0 or index > data.maxZone then
 		return false, "Зона закрыта"
 	end
 	local char = player.Character
@@ -1085,6 +1231,55 @@ function handlers.RedeemCode(player, data, code)
 	return true, "Код принят: +" .. Config.formatNumber(reward) .. " 💰"
 end
 
+function handlers.BuyTrail(player, data, id)
+	local t = Config.getTrail(id)
+	if t.id ~= id then
+		return false, "Нет такого следа"
+	end
+	if not data.trails[id] then
+		if t.starter then
+			return false, "Этот след есть только в стартовом наборе"
+		end
+		if data.coins < t.price then
+			return false, "Не хватает монет"
+		end
+		data.coins -= t.price
+		data.trails[id] = true
+	end
+	data.trail = id
+	attachBoard(player)
+	return true, "След «" .. t.name .. "» надет!"
+end
+
+function handlers.ClaimGift(player, data, index)
+	local g = type(index) == "number" and Config.Gifts[index]
+	if not g then
+		return false, "Нет такого подарка"
+	end
+	local claimed = giftsClaimed[player]
+	if claimed[index] then
+		return false, "Уже забрано"
+	end
+	if os.time() - joinTime[player] < g.minutes * 60 then
+		return false, "Ещё рано!"
+	end
+	claimed[index] = true
+	local c = g.coins * zoneMult(data.maxZone)
+	addCoins(player, c)
+	return true, "🎁 +" .. Config.formatNumber(c) .. " 💰"
+end
+
+function handlers.SaveSettings(player, data, settings)
+	if type(settings) ~= "table" then
+		return false
+	end
+	data.settings.music = settings.music == true
+	data.settings.sfx = settings.sfx == true
+	local lim = tonumber(settings.speedLimit) or 100
+	data.settings.speedLimit = math.clamp(math.floor(lim), 30, 100)
+	return true
+end
+
 -- В Studio товары с ID = 0 выдаются бесплатно, чтобы всё можно было проверить
 function handlers.StudioPurchase(player, data, kind, key)
 	if not RunService:IsStudio() then
@@ -1112,6 +1307,57 @@ Request.OnServerInvoke = function(player, action, ...)
 	local ok, msg = h(player, data, ...)
 	push(player)
 	return ok, msg
+end
+
+-- ---------- поза на доске для других игроков ----------
+local ANIM_STATES = { ride = true, air = true, grind = true, bail = true, Kickflip = true, Spin = true, Grab = true, Backflip = true }
+local animStamp = {}
+AnimState.OnServerEvent:Connect(function(player, state)
+	if type(state) ~= "string" or not ANIM_STATES[state] then
+		return
+	end
+	local now = os.clock()
+	if animStamp[player] and now - animStamp[player] < 0.05 then
+		return
+	end
+	animStamp[player] = now
+	local char = player.Character
+	if char then
+		char:SetAttribute("SkateAnim", state)
+	end
+end)
+Players.PlayerRemoving:Connect(function(player)
+	animStamp[player] = nil
+end)
+
+-- ---------- витрина досок в лобби ----------
+local function hookStand(stand)
+	local prompt = stand:FindFirstChildOfClass("ProximityPrompt")
+	local id = stand:GetAttribute("BoardId")
+	if not prompt or not id then
+		return
+	end
+	prompt.Triggered:Connect(function(player)
+		local data = profiles[player]
+		if not data then
+			return
+		end
+		local b = Config.getBoard(id)
+		if b.pass and not (passes[player] and passes[player][b.pass]) then
+			notify(player, "Золотая доска продаётся в магазине за робуксы 💎", "warn")
+			return
+		end
+		local ok, msg = handlers.BuyBoard(player, data, id)
+		if msg then
+			notify(player, msg, ok and "good" or "warn")
+		elseif ok then
+			notify(player, "Доска «" .. b.name .. "» надета!", "good")
+		end
+		push(player)
+	end)
+end
+for _, stand in ipairs(CollectionService:GetTagged("BoardStand")) do
+	hookStand(stand)
 end
 
 -- ---------- трюк-битва ----------
@@ -1214,6 +1460,11 @@ function Data.default()
 		boostUntil = 0,
 		bestCombo = 0,
 		totalTricks = 0,
+		trails = { board = true },
+		trail = "board",
+		firstJoin = 0,
+		starterBought = false,
+		settings = { music = true, sfx = true, speedLimit = 100 },
 	}
 end
 
@@ -1276,11 +1527,16 @@ function Data.save(player, data)
 end
 
 return Data
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX00000003"><Properties><string name="Name">World</string><ProtectedString name="Source"><![CDATA[-- Строит всю карту кодом: 6 зон с трамплинами, перилами, звёздами и декором.
--- Хочешь поменять карту — меняй функции ниже или достраивай руками в Studio
--- поверх (то, что построено руками, скрипт не трогает).
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX00000003"><Properties><string name="Name">World</string><ProtectedString name="Source"><![CDATA[-- ============================================================
+--  Строит всю карту кодом: лобби с витриной досок и 7 зон.
+--  Если папка Workspace → SkateWorld уже есть (ты построила карту
+--  в Studio и сохранила), скрипт её НЕ трогает — можно править руками.
+--  Построить карту в Studio без запуска игры (Command Bar):
+--    require(game.ServerScriptService.SkateServer.World).build()
+-- ============================================================
 
 local CollectionService = game:GetService("CollectionService")
+local Lighting = game:GetService("Lighting")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SkateShared")
 local Config = require(Shared:WaitForChild("Config"))
@@ -1289,8 +1545,9 @@ local World = {}
 
 local L = Config.ZoneLength
 local W = Config.ZoneWidth
+local LOBBY = 150 -- длина лобби (от z = 0 до z = +LOBBY)
 
-local root -- папка Workspace.SkateWorld
+local root
 
 -- ---------- helpers ----------
 
@@ -1299,8 +1556,12 @@ local function part(props, parent)
 	p.Anchored = true
 	p.TopSurface = Enum.SurfaceType.Smooth
 	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Material = Enum.Material.SmoothPlastic
+	if props.Shape then
+		p.Shape = props.Shape
+	end
 	for k, v in pairs(props) do
-		if k ~= "ClassName" then
+		if k ~= "ClassName" and k ~= "Shape" then
 			p[k] = v
 		end
 	end
@@ -1308,363 +1569,477 @@ local function part(props, parent)
 	return p
 end
 
+local function deco(props, parent)
+	props.CanCollide = props.CanCollide == true
+	props.CanQuery = false
+	props.CanTouch = false
+	props.CastShadow = props.CastShadow ~= false
+	return part(props, parent)
+end
+
+local function billboard(parent, text, size, offsetY, color)
+	local bb = Instance.new("BillboardGui")
+	bb.Size = UDim2.fromScale(size.X, size.Y)
+	bb.StudsOffset = Vector3.new(0, offsetY or 0, 0)
+	bb.LightInfluence = 0
+	bb.MaxDistance = 250
+	bb.Parent = parent
+	local t = Instance.new("TextLabel")
+	t.Name = "Text"
+	t.Size = UDim2.fromScale(1, 1)
+	t.BackgroundTransparency = 1
+	t.Text = text
+	t.TextScaled = true
+	t.Font = Enum.Font.GothamBlack
+	t.TextColor3 = color or Color3.new(1, 1, 1)
+	t.Parent = bb
+	local st = Instance.new("UIStroke")
+	st.Thickness = 3
+	st.Parent = t
+	return bb, t
+end
+
 local function zoneStartZ(i)
 	return -(i - 1) * L
 end
 
 function World.zoneSpawn(i)
-	return CFrame.new(0, 4, zoneStartZ(i) - 18) * CFrame.Angles(0, 0, 0)
+	if i <= 0 then
+		return CFrame.new(0, 4, LOBBY - 30)
+	end
+	return CFrame.new(0, 4, zoneStartZ(i) - 18)
 end
 
--- Номер зоны по позиции (зоны идут вдоль -Z)
 function World.zoneAt(position)
 	local i = math.floor(-position.Z / L) + 1
 	return math.clamp(i, 1, #Config.Zones)
 end
 
--- Наклонная плита-рампа. Поднимается в сторону -Z (вперёд по ходу игры).
--- x,z — середина нижнего края, height — высота верхнего края.
-local function ramp(parent, x, z, width, height, angleDeg, props)
+-- Наклонная плита: поднимается в сторону -Z (по ходу игры)
+local function ramp(parent, x, z, width, height, angleDeg, color, material)
 	local a = math.rad(angleDeg)
 	local len = height / math.sin(a)
 	local depth = len * math.cos(a)
-	local cf = CFrame.new(x, height / 2 - 0.5 * math.cos(a), z - depth / 2) * CFrame.Angles(a, 0, 0)
 	local p = part({
 		Name = "Ramp",
 		Size = Vector3.new(width, 1, len),
-		CFrame = cf,
-		Color = props.Color,
-		Material = props.Material or Enum.Material.Wood,
+		CFrame = CFrame.new(x, height / 2 - 0.5 * math.cos(a), z - depth / 2) * CFrame.Angles(a, 0, 0),
+		Color = color,
+		Material = material or Enum.Material.SmoothPlastic,
 	}, parent)
-	-- опора под высоким краем
 	part({
 		Name = "Support",
 		Size = Vector3.new(width, height, 2),
 		CFrame = CFrame.new(x, height / 2 - 0.5, z - depth + 1),
-		Color = props.SupportColor or Color3.fromRGB(90, 90, 95),
-		Material = Enum.Material.Metal,
+		Color = color:Lerp(Color3.new(0, 0, 0), 0.25),
 	}, parent)
 	return p, depth
 end
 
 local function kicker(parent, x, z, width, power, color)
-	local p = ramp(parent, x, z, width, 3.2, 26, { Color = color, Material = Enum.Material.SmoothPlastic })
+	local p = ramp(parent, x, z, width, 3.4, 26, color)
 	p.Name = "Kicker"
 	p:SetAttribute("Power", power)
 	CollectionService:AddTag(p, "Kicker")
-	-- неоновая полоска на краю, чтобы было видно трамплин
-	local a = math.rad(26)
-	local len = 3.2 / math.sin(a)
-	part({
-		Name = "KickerStripe",
-		Size = Vector3.new(width, 1.05, 0.8),
-		CFrame = p.CFrame * CFrame.new(0, 0.02, -len / 2 + 0.4),
-		Color = Color3.fromRGB(255, 255, 255),
-		Material = Enum.Material.Neon,
-		CanCollide = false,
-		CanQuery = false,
-	}, parent)
-	-- стрелка на земле перед трамплином
-	part({
-		Name = "Arrow",
-		Size = Vector3.new(width * 0.6, 0.1, 3),
-		CFrame = CFrame.new(x, 0.06, z + 6),
-		Color = color,
-		Material = Enum.Material.Neon,
-		CanCollide = false,
-		CanQuery = false,
-		Transparency = 0.3,
-	}, parent)
+	local len = 3.4 / math.sin(math.rad(26))
+	deco({ Name = "KickerStripe", Size = Vector3.new(width, 1.05, 0.9), CFrame = p.CFrame * CFrame.new(0, 0.02, -len / 2 + 0.45), Color = Color3.new(1, 1, 1), Material = Enum.Material.Neon }, parent)
+	for k = 0, 1 do
+		deco({ Name = "Arrow", Size = Vector3.new(width * 0.5, 0.1, 2), CFrame = CFrame.new(x, 0.06, z + 5 + k * 4), Color = color, Material = Enum.Material.Neon, Transparency = 0.2 }, parent)
+	end
 	return p
 end
 
-local function rail(parent, x, z, length, height, accent)
-	height = height or 2.4
-	local r = part({
-		Name = "Rail",
-		Size = Vector3.new(1.6, 0.5, length),
-		CFrame = CFrame.new(x, height, z - length / 2),
-		Color = Color3.fromRGB(200, 200, 210),
-		Material = Enum.Material.DiamondPlate,
-	}, parent)
+local function rail(parent, x, z, length, accent)
+	local height = 2.4
+	local r = part({ Name = "Rail", Size = Vector3.new(1.6, 0.5, length), CFrame = CFrame.new(x, height, z - length / 2), Color = Color3.fromRGB(235, 235, 245), Material = Enum.Material.Metal }, parent)
 	r:SetAttribute("Rail", true)
 	CollectionService:AddTag(r, "Rail")
-	-- светящаяся кромка
-	part({
-		Name = "RailGlow",
-		Size = Vector3.new(0.4, 0.2, length),
-		CFrame = r.CFrame * CFrame.new(0, -0.35, 0),
-		Color = accent,
-		Material = Enum.Material.Neon,
-		CanCollide = false,
-		CanQuery = false,
-	}, parent)
+	deco({ Name = "RailGlow", Size = Vector3.new(0.5, 0.2, length), CFrame = r.CFrame * CFrame.new(0, -0.35, 0), Color = accent, Material = Enum.Material.Neon }, parent)
 	local posts = math.max(2, math.floor(length / 12))
 	for k = 0, posts do
-		local pz = z - (length * k / posts)
-		part({
-			Name = "RailPost",
-			Size = Vector3.new(0.6, height, 0.6),
-			CFrame = CFrame.new(x, height / 2 - 0.2, pz),
-			Color = Color3.fromRGB(70, 70, 75),
-			Material = Enum.Material.Metal,
-			CanQuery = false,
-		}, parent)
+		deco({ Name = "RailPost", Size = Vector3.new(0.6, height, 0.6), CFrame = CFrame.new(x, height / 2 - 0.2, z - length * k / posts), Color = accent:Lerp(Color3.new(1, 1, 1), 0.3), CanCollide = true }, parent)
 	end
-	-- низкий заезд на перила
-	ramp(parent, x, z + 7, 4, height - 0.3, 18, { Color = Color3.fromRGB(110, 110, 115), Material = Enum.Material.Metal })
+	ramp(parent, x, z + 7, 4, height - 0.3, 18, Color3.fromRGB(200, 200, 215))
 	return r
 end
 
 local function funbox(parent, x, z, color, accent)
 	local h, len, w = 3, 18, 22
-	local _, d = ramp(parent, x, z, w, h, 20, { Color = color })
+	local _, d = ramp(parent, x, z, w, h, 20, color)
 	local boxZ = z - d - len / 2
-	part({
-		Name = "Funbox",
-		Size = Vector3.new(w, h, len),
-		CFrame = CFrame.new(x, h / 2, boxZ),
-		Color = color,
-		Material = Enum.Material.Concrete,
-	}, parent)
-	-- спуск с другой стороны (развёрнутая рампа)
+	part({ Name = "Funbox", Size = Vector3.new(w, h, len), CFrame = CFrame.new(x, h / 2, boxZ), Color = color }, parent)
+	deco({ Name = "FunboxEdge", Size = Vector3.new(w + 0.2, 0.4, len + 0.2), CFrame = CFrame.new(x, h - 0.1, boxZ), Color = accent, Material = Enum.Material.Neon }, parent)
 	local a = math.rad(20)
 	local rl = h / math.sin(a)
 	local rd = rl * math.cos(a)
-	part({
-		Name = "RampDown",
-		Size = Vector3.new(w, 1, rl),
-		CFrame = CFrame.new(x, h / 2 - 0.5 * math.cos(a), boxZ - len / 2 - rd / 2) * CFrame.Angles(-a, 0, 0),
-		Color = color,
-		Material = Enum.Material.Wood,
-	}, parent)
-	-- перила на фанбоксе
-	local r = part({
-		Name = "Rail",
-		Size = Vector3.new(1.6, 0.5, len - 2),
-		CFrame = CFrame.new(x, h + 1.4, boxZ),
-		Color = Color3.fromRGB(220, 220, 230),
-		Material = Enum.Material.DiamondPlate,
-	}, parent)
+	part({ Name = "RampDown", Size = Vector3.new(w, 1, rl), CFrame = CFrame.new(x, h / 2 - 0.5 * math.cos(a), boxZ - len / 2 - rd / 2) * CFrame.Angles(-a, 0, 0), Color = color }, parent)
+	local r = part({ Name = "Rail", Size = Vector3.new(1.6, 0.5, len - 2), CFrame = CFrame.new(x, h + 1.4, boxZ), Color = Color3.fromRGB(235, 235, 245), Material = Enum.Material.Metal }, parent)
 	r:SetAttribute("Rail", true)
 	CollectionService:AddTag(r, "Rail")
-	part({
-		Name = "RailGlow",
-		Size = Vector3.new(0.4, 0.2, len - 2),
-		CFrame = r.CFrame * CFrame.new(0, -0.35, 0),
-		Color = accent,
-		Material = Enum.Material.Neon,
-		CanCollide = false,
-		CanQuery = false,
-	}, parent)
 end
 
--- Мега-рампа: долгий подъём, большой трамплин наверху и площадка для приземления
+local function boostPad(parent, x, z, color)
+	local pad = part({ Name = "BoostPad", Size = Vector3.new(12, 0.3, 10), CFrame = CFrame.new(x, 0.1, z), Color = color, Material = Enum.Material.Neon, CanCollide = false }, parent)
+	CollectionService:AddTag(pad, "Boost")
+	for k = 0, 2 do
+		deco({ Name = "Chevron", Size = Vector3.new(8 - k * 2, 0.35, 1), CFrame = CFrame.new(x, 0.15, z + 3 - k * 3), Color = Color3.new(1, 1, 1), Material = Enum.Material.Neon }, parent)
+	end
+	return pad
+end
+
 local function megaRamp(parent, x, z, zone)
 	local height = 16
-	local _, d = ramp(parent, x, z, 30, height, 17, { Color = zone.accent:Lerp(Color3.new(1, 1, 1), 0.3), Material = Enum.Material.SmoothPlastic })
+	local _, d = ramp(parent, x, z, 30, height, 17, zone.floor2:Lerp(zone.accent, 0.35))
 	local topZ = z - d
-	part({
-		Name = "MegaTop",
-		Size = Vector3.new(30, height, 14),
-		CFrame = CFrame.new(x, height / 2 - 0.5, topZ - 7),
-		Color = Color3.fromRGB(80, 80, 90),
-		Material = Enum.Material.Metal,
-	}, parent)
-	local k = part({
-		Name = "Kicker",
-		Size = Vector3.new(30, 1, 8),
-		CFrame = CFrame.new(x, height + 1.2, topZ - 13) * CFrame.Angles(math.rad(28), 0, 0),
-		Color = zone.accent,
-		Material = Enum.Material.Neon,
-	}, parent)
+	part({ Name = "MegaTop", Size = Vector3.new(30, height, 14), CFrame = CFrame.new(x, height / 2 - 0.5, topZ - 7), Color = zone.cliff }, parent)
+	local k = part({ Name = "Kicker", Size = Vector3.new(30, 1, 8), CFrame = CFrame.new(x, height + 1.2, topZ - 13) * CFrame.Angles(math.rad(28), 0, 0), Color = zone.accent, Material = Enum.Material.Neon }, parent)
 	k:SetAttribute("Power", 125)
 	k:SetAttribute("Mega", true)
 	CollectionService:AddTag(k, "Kicker")
-	-- табличка
-	local sign = part({
-		Name = "MegaSign",
-		Size = Vector3.new(30, 5, 1),
-		CFrame = CFrame.new(x, height + 8, topZ - 14),
-		Transparency = 1,
-		CanCollide = false,
-		CanQuery = false,
-	}, parent)
-	local bb = Instance.new("BillboardGui")
-	bb.Size = UDim2.fromScale(18, 4)
-	bb.AlwaysOnTop = false
-	bb.LightInfluence = 0
-	bb.Parent = sign
-	local t = Instance.new("TextLabel")
-	t.Size = UDim2.fromScale(1, 1)
-	t.BackgroundTransparency = 1
-	t.Text = "МЕГА-ТРАМПЛИН"
-	t.TextScaled = true
-	t.Font = Enum.Font.GothamBlack
-	t.TextColor3 = Color3.new(1, 1, 1)
-	t.TextStrokeTransparency = 0
-	t.Parent = bb
+	local sign = deco({ Name = "MegaSign", Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(x, height + 9, topZ - 14), Transparency = 1 }, parent)
+	billboard(sign, "МЕГА-ТРАМПЛИН", Vector2.new(20, 4), 0)
 	return topZ - 17
 end
 
 local function star(parent, pos, value)
-	local s = part({
-		Name = "Star",
-		Shape = Enum.PartType.Ball,
-		Size = Vector3.new(2.6, 2.6, 2.6),
-		CFrame = CFrame.new(pos),
-		Color = Color3.fromRGB(255, 215, 0),
-		Material = Enum.Material.Neon,
-		CanCollide = false,
-		CanQuery = false,
-	}, parent)
+	local s = part({ Name = "Star", Shape = Enum.PartType.Ball, Size = Vector3.new(2.6, 2.6, 2.6), CFrame = CFrame.new(pos), Color = Color3.fromRGB(255, 215, 0), Material = Enum.Material.Neon, CanCollide = false, CanQuery = false }, parent)
 	s:SetAttribute("Value", value)
 	CollectionService:AddTag(s, "Pickup")
-	local light = Instance.new("PointLight")
-	light.Color = s.Color
-	light.Range = 8
-	light.Brightness = 1.5
-	light.Parent = s
 	return s
 end
 
--- ---------- декор по темам ----------
+-- ---------- декор ----------
 
-local function tree(parent, x, z, rng)
-	local h = rng:NextNumber(8, 14)
-	part({ Name = "Trunk", Shape = Enum.PartType.Cylinder, Size = Vector3.new(h, 1.6, 1.6), CFrame = CFrame.new(x, h / 2, z) * CFrame.Angles(0, 0, math.rad(90)), Color = Color3.fromRGB(110, 75, 45), Material = Enum.Material.Wood, CanQuery = false }, parent)
-	local r = rng:NextNumber(6, 9)
-	part({ Name = "Leaves", Shape = Enum.PartType.Ball, Size = Vector3.new(r, r, r), CFrame = CFrame.new(x, h + r * 0.3, z), Color = Color3.fromRGB(60, rng:NextInteger(140, 190), 60), Material = Enum.Material.Grass, CanCollide = false, CanQuery = false }, parent)
-end
-
-local function palm(parent, x, z, rng)
-	local h = rng:NextNumber(12, 18)
-	part({ Name = "PalmTrunk", Shape = Enum.PartType.Cylinder, Size = Vector3.new(h, 1.3, 1.3), CFrame = CFrame.new(x, h / 2, z) * CFrame.Angles(0, 0, math.rad(90 + rng:NextNumber(-8, 8))), Color = Color3.fromRGB(150, 110, 70), Material = Enum.Material.Wood, CanQuery = false }, parent)
-	for k = 1, 6 do
-		local ang = k * math.pi / 3
-		part({ Name = "PalmLeaf", Size = Vector3.new(1.5, 0.3, 8), CFrame = CFrame.new(x, h, z) * CFrame.Angles(0, ang, 0) * CFrame.new(0, 0, -3.5) * CFrame.Angles(math.rad(-25), 0, 0), Color = Color3.fromRGB(40, 170, 70), Material = Enum.Material.Grass, CanCollide = false, CanQuery = false }, parent)
+local function cloud(parent, pos, rng)
+	for k = 1, 5 do
+		local r = rng:NextNumber(10, 22)
+		deco({ Name = "Cloud", Shape = Enum.PartType.Ball, Size = Vector3.new(r, r, r), CFrame = CFrame.new(pos + Vector3.new(rng:NextNumber(-16, 16), rng:NextNumber(-3, 4), rng:NextNumber(-8, 8))), Color = Color3.new(1, 1, 1), CastShadow = false }, parent)
 	end
 end
 
-local function building(parent, x, z, rng, accent)
-	local w = rng:NextNumber(18, 30)
-	local d = rng:NextNumber(18, 30)
-	local h = rng:NextNumber(40, 110)
-	part({ Name = "Building", Size = Vector3.new(w, h, d), CFrame = CFrame.new(x, h / 2, z), Color = Color3.fromRGB(25, 25, 35), Material = Enum.Material.Concrete, CanQuery = false }, parent)
-	local colors = { accent, Color3.fromRGB(0, 220, 255), Color3.fromRGB(255, 230, 120) }
-	local side = x > 0 and -1 or 1
-	for row = 1, math.floor(h / 8) do
-		if rng:NextNumber() < 0.7 then
-			part({ Name = "Window", Size = Vector3.new(0.3, 2.5, d * 0.8), CFrame = CFrame.new(x + side * (w / 2 + 0.1), row * 8 - 2, z), Color = colors[rng:NextInteger(1, #colors)], Material = Enum.Material.Neon, CanCollide = false, CanQuery = false }, parent)
+local function blockTree(parent, x, z, rng, leafColors, trunkColor, petals)
+	local h = rng:NextNumber(10, 16)
+	local y = 0
+	-- ступенчатый ствол
+	for k = 1, 3 do
+		local seg = h / 3
+		deco({ Name = "Trunk", Size = Vector3.new(2.4 - k * 0.4, seg, 2.4 - k * 0.4), CFrame = CFrame.new(x + (k - 2) * 0.4, y + seg / 2, z), Color = trunkColor, CanCollide = k == 1 }, parent)
+		y += seg
+	end
+	-- ветки
+	for _, side in ipairs({ -1, 1 }) do
+		deco({ Name = "Branch", Size = Vector3.new(5, 1, 1), CFrame = CFrame.new(x + side * 2.2, h - 1, z) * CFrame.Angles(0, 0, side * math.rad(30)), Color = trunkColor }, parent)
+	end
+	-- крона из кубиков
+	local canopy
+	for k = 1, 7 do
+		local s = rng:NextNumber(4, 7.5)
+		local c = deco({
+			Name = "Leaves",
+			Size = Vector3.new(s, s * 0.8, s),
+			CFrame = CFrame.new(x + rng:NextNumber(-4.5, 4.5), h + rng:NextNumber(0, 4), z + rng:NextNumber(-4.5, 4.5)) * CFrame.Angles(0, rng:NextNumber(0, 1.5), 0),
+			Color = leafColors[rng:NextInteger(1, #leafColors)],
+			Material = Enum.Material.SmoothPlastic,
+		}, parent)
+		canopy = canopy or c
+	end
+	if petals and canopy then
+		local e = Instance.new("ParticleEmitter")
+		e.Color = ColorSequence.new(leafColors[1])
+		e.Size = NumberSequence.new(0.35)
+		e.Lifetime = NumberRange.new(4, 6)
+		e.Rate = 3
+		e.Speed = NumberRange.new(1, 2)
+		e.Acceleration = Vector3.new(1, -1.5, 0)
+		e.Rotation = NumberRange.new(0, 360)
+		e.RotSpeed = NumberRange.new(-90, 90)
+		e.SpreadAngle = Vector2.new(180, 180)
+		e.Parent = canopy
+	end
+end
+
+local function waterfall(parent, x, z, top, side)
+	local w = 10
+	deco({ Name = "Waterfall", Size = Vector3.new(1, top, w), CFrame = CFrame.new(x, top / 2, z), Color = Color3.fromRGB(120, 210, 255), Material = Enum.Material.Glass, Transparency = 0.25, CastShadow = false }, parent)
+	deco({ Name = "WaterfallShine", Size = Vector3.new(1.1, top, 2), CFrame = CFrame.new(x, top / 2, z + 2), Color = Color3.fromRGB(235, 250, 255), Material = Enum.Material.Neon, Transparency = 0.4, CastShadow = false }, parent)
+	local pool = deco({ Name = "Pool", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.4, 18, 18), CFrame = CFrame.new(x - side * 6, 0.15, z) * CFrame.Angles(0, 0, math.rad(90)), Color = Color3.fromRGB(90, 200, 255), Material = Enum.Material.Glass, Transparency = 0.2 }, parent)
+	for k = 1, 4 do
+		deco({ Name = "Foam", Shape = Enum.PartType.Ball, Size = Vector3.new(4, 4, 4), CFrame = CFrame.new(x - side * 2, 0.6, z + (k - 2.5) * 3), Color = Color3.new(1, 1, 1), CastShadow = false }, parent)
+	end
+	local e = Instance.new("ParticleEmitter")
+	e.Color = ColorSequence.new(Color3.new(1, 1, 1))
+	e.Size = NumberSequence.new(1.2, 0)
+	e.Transparency = NumberSequence.new(0.2, 1)
+	e.Lifetime = NumberRange.new(0.6, 1)
+	e.Rate = 15
+	e.Speed = NumberRange.new(6, 10)
+	e.SpreadAngle = Vector2.new(60, 60)
+	e.EmissionDirection = Enum.NormalId.Top
+	e.Parent = pool
+end
+
+local function donutArch(parent, z, rng)
+	local radius = 72
+	local icing = ({ Color3.fromRGB(255, 130, 190), Color3.fromRGB(150, 90, 60), Color3.fromRGB(255, 255, 255), Color3.fromRGB(180, 120, 255) })[rng:NextInteger(1, 4)]
+	local dough = Color3.fromRGB(240, 190, 120)
+	local n = 20
+	for k = 0, n do
+		local a = math.pi * k / n
+		local px, py = math.cos(a) * radius, math.sin(a) * radius
+		local cf = CFrame.new(px, py, z) * CFrame.Angles(0, 0, a)
+		deco({ Name = "Donut", Size = Vector3.new(9, 15, 15), CFrame = cf, Color = dough, CanCollide = true }, parent)
+		deco({ Name = "Icing", Size = Vector3.new(4, 15.4, 15.4), CFrame = cf * CFrame.new(3.5, 0, 0), Color = icing }, parent)
+		if k % 2 == 0 then
+			local sprinkle = ({ Color3.fromRGB(255, 255, 255), Color3.fromRGB(255, 220, 0), Color3.fromRGB(0, 200, 255), Color3.fromRGB(255, 60, 120) })[rng:NextInteger(1, 4)]
+			deco({ Name = "Sprinkle", Size = Vector3.new(0.6, 0.6, 2.4), CFrame = cf * CFrame.new(5.8, rng:NextNumber(-5, 5), rng:NextNumber(-5, 5)) * CFrame.Angles(0, rng:NextNumber(0, 3), 0), Color = sprinkle, Material = Enum.Material.Neon }, parent)
 		end
 	end
 end
 
+local function lollipop(parent, x, z, rng)
+	local h = rng:NextNumber(14, 22)
+	deco({ Name = "Stick", Shape = Enum.PartType.Cylinder, Size = Vector3.new(h, 1, 1), CFrame = CFrame.new(x, h / 2, z) * CFrame.Angles(0, 0, math.rad(90)), Color = Color3.new(1, 1, 1), CanCollide = true }, parent)
+	local c1 = ({ Color3.fromRGB(255, 80, 150), Color3.fromRGB(255, 200, 0), Color3.fromRGB(80, 220, 255), Color3.fromRGB(170, 100, 255) })[rng:NextInteger(1, 4)]
+	deco({ Name = "Candy", Shape = Enum.PartType.Cylinder, Size = Vector3.new(2, 11, 11), CFrame = CFrame.new(x, h + 4, z) * CFrame.Angles(0, rng:NextNumber(0, 3), 0), Color = c1 }, parent)
+	deco({ Name = "CandySwirl", Shape = Enum.PartType.Cylinder, Size = Vector3.new(2.2, 6, 6), CFrame = CFrame.new(x, h + 4, z) * CFrame.Angles(0, rng:NextNumber(0, 3), 0), Color = Color3.new(1, 1, 1) }, parent)
+end
+
+local function candyCane(parent, x, z)
+	for k = 0, 7 do
+		deco({ Name = "Cane", Size = Vector3.new(2, 2, 2), CFrame = CFrame.new(x, 1 + k * 2, z), Color = (k % 2 == 0) and Color3.fromRGB(255, 50, 70) or Color3.new(1, 1, 1), CanCollide = true }, parent)
+	end
+	for k = 1, 3 do
+		deco({ Name = "Cane", Size = Vector3.new(2, 2, 2), CFrame = CFrame.new(x + k * 1.6, 16 + math.sin(k / 3 * math.pi) * 2, z), Color = (k % 2 == 0) and Color3.fromRGB(255, 50, 70) or Color3.new(1, 1, 1) }, parent)
+	end
+end
+
+local function gumdrop(parent, x, z, rng)
+	local s = rng:NextNumber(5, 9)
+	local c = ({ Color3.fromRGB(255, 90, 160), Color3.fromRGB(120, 230, 120), Color3.fromRGB(255, 210, 60), Color3.fromRGB(110, 170, 255) })[rng:NextInteger(1, 4)]
+	deco({ Name = "Gumdrop", Shape = Enum.PartType.Ball, Size = Vector3.new(s, s, s), CFrame = CFrame.new(x, s * 0.25, z), Color = c, Material = Enum.Material.Glass, Transparency = 0.1, CanCollide = true }, parent)
+end
+
+local function palm(parent, x, z, rng)
+	local h = rng:NextNumber(14, 20)
+	local lean = rng:NextNumber(-0.15, 0.15)
+	for k = 0, 5 do
+		deco({ Name = "PalmTrunk", Size = Vector3.new(1.6, h / 6 + 0.2, 1.6), CFrame = CFrame.new(x + lean * k * 3, k * h / 6 + h / 12, z) * CFrame.Angles(0, k * 0.3, 0), Color = (k % 2 == 0) and Color3.fromRGB(170, 120, 70) or Color3.fromRGB(150, 100, 60), CanCollide = k == 0 }, parent)
+	end
+	local top = Vector3.new(x + lean * 15, h, z)
+	for k = 1, 7 do
+		local ang = k * math.pi * 2 / 7
+		deco({ Name = "PalmLeaf", Size = Vector3.new(2, 0.4, 9), CFrame = CFrame.new(top) * CFrame.Angles(0, ang, 0) * CFrame.new(0, 0, -4) * CFrame.Angles(math.rad(-25), 0, 0), Color = Color3.fromRGB(40, 190, 80) }, parent)
+	end
+	deco({ Name = "Coconut", Shape = Enum.PartType.Ball, Size = Vector3.new(1.6, 1.6, 1.6), CFrame = CFrame.new(top - Vector3.new(0, 1, 0)), Color = Color3.fromRGB(110, 70, 40) }, parent)
+end
+
+local function umbrella(parent, x, z, rng)
+	deco({ Name = "Pole", Size = Vector3.new(0.5, 9, 0.5), CFrame = CFrame.new(x, 4.5, z), Color = Color3.new(1, 1, 1) }, parent)
+	local c = ({ Color3.fromRGB(255, 80, 80), Color3.fromRGB(0, 180, 255), Color3.fromRGB(255, 200, 0) })[rng:NextInteger(1, 3)]
+	deco({ Name = "Umbrella", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1, 12, 12), CFrame = CFrame.new(x, 9, z) * CFrame.Angles(0, 0, math.rad(90)), Color = c }, parent)
+	deco({ Name = "UmbrellaTop", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1.2, 5, 5), CFrame = CFrame.new(x, 9.3, z) * CFrame.Angles(0, 0, math.rad(90)), Color = Color3.new(1, 1, 1) }, parent)
+end
+
+local function building(parent, x, z, rng, accent)
+	local w = rng:NextNumber(20, 30)
+	local d = rng:NextNumber(20, 30)
+	local h = rng:NextNumber(50, 130)
+	deco({ Name = "Building", Size = Vector3.new(w, h, d), CFrame = CFrame.new(x, h / 2, z), Color = Color3.fromRGB(35, 30, 60), CanCollide = true }, parent)
+	local colors = { accent, Color3.fromRGB(0, 230, 255), Color3.fromRGB(255, 230, 120) }
+	local side = x > 0 and -1 or 1
+	for row = 1, math.floor(h / 9) do
+		if rng:NextNumber() < 0.75 then
+			deco({ Name = "Window", Size = Vector3.new(0.3, 3, d * 0.8), CFrame = CFrame.new(x + side * (w / 2 + 0.1), row * 9 - 3, z), Color = colors[rng:NextInteger(1, #colors)], Material = Enum.Material.Neon }, parent)
+		end
+	end
+	deco({ Name = "Roof", Size = Vector3.new(w + 1, 1, d + 1), CFrame = CFrame.new(x, h + 0.5, z), Color = accent, Material = Enum.Material.Neon }, parent)
+end
+
+local function neonArch(parent, z, color)
+	for _, side in ipairs({ -1, 1 }) do
+		deco({ Name = "ArchPost", Size = Vector3.new(3, 40, 3), CFrame = CFrame.new(side * 70, 20, z), Color = color, Material = Enum.Material.Neon, CanCollide = true }, parent)
+	end
+	deco({ Name = "ArchTop", Size = Vector3.new(143, 3, 3), CFrame = CFrame.new(0, 40, z), Color = color, Material = Enum.Material.Neon }, parent)
+end
+
 local function crystal(parent, x, z, rng)
-	local h = rng:NextNumber(8, 22)
-	part({ Name = "Crystal", Size = Vector3.new(h * 0.3, h, h * 0.3), CFrame = CFrame.new(x, h / 2 - 1, z) * CFrame.Angles(math.rad(rng:NextNumber(-20, 20)), rng:NextNumber(0, 6), math.rad(rng:NextNumber(-20, 20))), Color = Color3.fromRGB(140, 220, 255), Material = Enum.Material.Glass, Transparency = 0.25, CanQuery = false }, parent)
+	local h = rng:NextNumber(10, 26)
+	deco({ Name = "Crystal", Size = Vector3.new(h * 0.3, h, h * 0.3), CFrame = CFrame.new(x, h / 2 - 1, z) * CFrame.Angles(math.rad(rng:NextNumber(-20, 20)), rng:NextNumber(0, 6), math.rad(rng:NextNumber(-20, 20))), Color = Color3.fromRGB(140, 220, 255), Material = Enum.Material.Glass, Transparency = 0.2, CanCollide = true }, parent)
+end
+
+local function snowman(parent, x, z)
+	local y = 0
+	for k, s in ipairs({ 8, 6, 4 }) do
+		y += s / 2
+		deco({ Name = "Snow", Shape = Enum.PartType.Ball, Size = Vector3.new(s, s, s), CFrame = CFrame.new(x, y, z), Color = Color3.new(1, 1, 1), CanCollide = k == 1 }, parent)
+		y += s / 2 - 0.8
+	end
+	deco({ Name = "Nose", Size = Vector3.new(0.6, 0.6, 2), CFrame = CFrame.new(x, y - 1.5, z + 2), Color = Color3.fromRGB(255, 140, 0) }, parent)
 end
 
 local function rock(parent, x, z, rng, color)
-	local s = rng:NextNumber(5, 14)
-	part({ Name = "Rock", Size = Vector3.new(s, s * 0.8, s), CFrame = CFrame.new(x, s * 0.3, z) * CFrame.Angles(rng:NextNumber(0, 1), rng:NextNumber(0, 6), rng:NextNumber(0, 1)), Color = color, Material = Enum.Material.Slate, CanQuery = false }, parent)
+	local s = rng:NextNumber(6, 15)
+	deco({ Name = "Rock", Size = Vector3.new(s, s * 0.8, s), CFrame = CFrame.new(x, s * 0.3, z) * CFrame.Angles(rng:NextNumber(0, 1), rng:NextNumber(0, 6), rng:NextNumber(0, 1)), Color = color, Material = Enum.Material.Slate, CanCollide = true }, parent)
 end
 
 local function lavaPool(parent, x, z, rng)
-	local w = rng:NextNumber(10, 18)
-	local d = rng:NextNumber(10, 18)
-	local lava = part({ Name = "Lava", Size = Vector3.new(w, 0.3, d), CFrame = CFrame.new(x, 0.1, z), Color = Color3.fromRGB(255, 90, 0), Material = Enum.Material.Neon, CanCollide = false, CanQuery = false }, parent)
+	local w, d = rng:NextNumber(10, 18), rng:NextNumber(10, 18)
+	local lava = part({ Name = "Lava", Size = Vector3.new(w, 0.3, d), CFrame = CFrame.new(x, 0.12, z), Color = Color3.fromRGB(255, 100, 0), Material = Enum.Material.Neon, CanCollide = false, CanQuery = false }, parent)
 	CollectionService:AddTag(lava, "Lava")
 	local fire = Instance.new("ParticleEmitter")
-	fire.Color = ColorSequence.new(Color3.fromRGB(255, 160, 0), Color3.fromRGB(255, 40, 0))
+	fire.Color = ColorSequence.new(Color3.fromRGB(255, 170, 0), Color3.fromRGB(255, 40, 0))
 	fire.LightEmission = 1
 	fire.Size = NumberSequence.new(1.5, 0)
 	fire.Lifetime = NumberRange.new(0.6, 1.2)
-	fire.Rate = 12
+	fire.Rate = 10
 	fire.Speed = NumberRange.new(4, 8)
-	fire.SpreadAngle = Vector2.new(20, 20)
 	fire.EmissionDirection = Enum.NormalId.Top
 	fire.Parent = lava
 end
 
-local function planet(parent, pos, size, color)
-	part({ Name = "Planet", Shape = Enum.PartType.Ball, Size = Vector3.new(size, size, size), CFrame = CFrame.new(pos), Color = color, Material = Enum.Material.SmoothPlastic, CanCollide = false, CanQuery = false }, parent)
+local function planet(parent, pos, size, color, ring)
+	deco({ Name = "Planet", Shape = Enum.PartType.Ball, Size = Vector3.new(size, size, size), CFrame = CFrame.new(pos), Color = color, CastShadow = false }, parent)
+	if ring then
+		deco({ Name = "Ring", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1, size * 1.8, size * 1.8), CFrame = CFrame.new(pos) * CFrame.Angles(0.4, 0, math.rad(90) + 0.3), Color = ring, Material = Enum.Material.Neon, Transparency = 0.4, CastShadow = false }, parent)
+	end
+end
+
+-- Скалы-террасы по краям трассы
+local function terraces(parent, i, zone, rng)
+	local z0 = zoneStartZ(i)
+	local edge = W / 2
+	local step = 35
+	local z = z0
+	while z > z0 - L do
+		for _, side in ipairs({ -1, 1 }) do
+			local h1 = rng:NextNumber(6, 12)
+			local h2 = h1 + rng:NextNumber(10, 22)
+			local len = step + 2
+			deco({ Name = "Cliff", Size = Vector3.new(28, h1, len), CFrame = CFrame.new(side * (edge + 14), h1 / 2, z - step / 2), Color = zone.cliff, CanCollide = true }, parent)
+			deco({ Name = "CliffTop", Size = Vector3.new(28.4, 1.5, len + 0.4), CFrame = CFrame.new(side * (edge + 14), h1 + 0.25, z - step / 2), Color = zone.cliff2 }, parent)
+			deco({ Name = "Cliff", Size = Vector3.new(34, h2, len), CFrame = CFrame.new(side * (edge + 44), h2 / 2, z - step / 2), Color = zone.cliff:Lerp(Color3.new(0, 0, 0), 0.08), CanCollide = true }, parent)
+			deco({ Name = "CliffTop", Size = Vector3.new(34.4, 1.5, len + 0.4), CFrame = CFrame.new(side * (edge + 44), h2 + 0.25, z - step / 2), Color = zone.cliff2 }, parent)
+		end
+		z -= step
+	end
+end
+
+-- Шахматная кромка трассы
+local function checkerEdges(parent, i, zone)
+	local z0 = zoneStartZ(i)
+	local edge = W / 2
+	local tile = 10
+	local n = math.floor(L / tile)
+	for k = 0, n - 1 do
+		for _, side in ipairs({ -1, 1 }) do
+			for col = 0, 1 do
+				local dark = (k + col) % 2 == 0
+				deco({ Name = "Tile", Size = Vector3.new(tile, 0.1, tile), CFrame = CFrame.new(side * (edge - tile / 2 - col * tile), 0.03, z0 - k * tile - tile / 2), Color = dark and zone.accent or zone.floor2, CastShadow = false }, parent)
+			end
+		end
+	end
+	-- поперечные полосы
+	for k = 1, 13 do
+		deco({ Name = "Stripe", Size = Vector3.new(W - 40, 0.06, 6), CFrame = CFrame.new(0, 0.02, z0 - k * (L / 14)), Color = zone.floor2, CastShadow = false }, parent)
+	end
 end
 
 local function decorate(folder, i, zone, rng)
 	local z0 = zoneStartZ(i)
-	local theme = zone.theme
 	local edge = W / 2
-	for k = 1, 14 do
-		local z = z0 - k * (L / 15)
+	local theme = zone.theme
+
+	terraces(folder, i, zone, rng)
+	checkerEdges(folder, i, zone)
+
+	-- облака
+	if theme ~= "space" and theme ~= "city" then
+		for k = 1, 7 do
+			cloud(folder, Vector3.new(rng:NextNumber(-180, 180), rng:NextNumber(70, 110), z0 - rng:NextNumber(0, L)), rng)
+		end
+	end
+
+	for k = 1, 10 do
+		local z = z0 - k * (L / 11)
 		for _, side in ipairs({ -1, 1 }) do
-			local x = side * (edge + rng:NextNumber(8, 30))
-			if theme == "park" then
-				tree(folder, x, z, rng)
-			elseif theme == "city" then
-				building(folder, side * (edge + 20), z, rng, zone.accent)
+			-- декор стоит на кромке трассы, у подножия скал
+			local x = side * (edge - rng:NextNumber(6, 9))
+			if theme == "sakura" then
+				blockTree(folder, x, z, rng, { Color3.fromRGB(255, 170, 205), Color3.fromRGB(255, 200, 225), Color3.fromRGB(250, 140, 190) }, Color3.fromRGB(200, 100, 60), k % 3 == 0)
+			elseif theme == "candy" then
+				if k % 2 == 0 then
+					lollipop(folder, x, z, rng)
+				else
+					candyCane(folder, x, z)
+				end
 			elseif theme == "beach" then
 				if side == 1 then
 					palm(folder, x, z, rng)
+				else
+					umbrella(folder, -edge + 25, z, rng)
 				end
+			elseif theme == "city" then
+				building(folder, side * (edge + 46), z, rng, zone.accent)
 			elseif theme == "ice" then
-				crystal(folder, x, z, rng)
+				if k % 3 == 0 then
+					snowman(folder, x, z)
+				else
+					crystal(folder, x, z, rng)
+				end
 			elseif theme == "volcano" then
-				rock(folder, x, z, rng, Color3.fromRGB(60, 45, 40))
+				rock(folder, x, z, rng, Color3.fromRGB(70, 50, 45))
+			elseif theme == "space" then
+				if k % 2 == 0 then
+					crystal(folder, x, z, rng)
+				end
 			end
 		end
 	end
 
-	if theme == "park" then
-		-- трава по краям
-		for _, side in ipairs({ -1, 1 }) do
-			part({ Name = "Grass", Size = Vector3.new(60, 1, L), CFrame = CFrame.new(side * (edge + 30), -0.4, z0 - L / 2), Color = Color3.fromRGB(80, 170, 70), Material = Enum.Material.Grass }, folder)
+	if theme == "sakura" or theme == "candy" or theme == "beach" then
+		for k = 1, 3 do
+			for _, side in ipairs({ -1, 1 }) do
+				waterfall(folder, side * (edge + 1), z0 - k * (L / 4) + side * 20, 26, side)
+			end
 		end
-	elseif theme == "city" then
-		-- разметка дороги
-		for k = 1, 20 do
-			part({ Name = "RoadLine", Size = Vector3.new(0.8, 0.05, 8), CFrame = CFrame.new(0, 0.03, z0 - k * (L / 21)), Color = Color3.fromRGB(255, 220, 0), Material = Enum.Material.Neon, CanCollide = false, CanQuery = false }, folder)
+	end
+
+	if theme == "candy" then
+		for k = 1, 2 do
+			donutArch(folder, z0 - k * (L / 3), rng)
 		end
-		for _, side in ipairs({ -1, 1 }) do
-			part({ Name = "Sidewalk", Size = Vector3.new(60, 1, L), CFrame = CFrame.new(side * (edge + 30), -0.3, z0 - L / 2), Color = Color3.fromRGB(70, 70, 80), Material = Enum.Material.Concrete }, folder)
+		for _ = 1, 8 do
+			gumdrop(folder, rng:NextNumber(-edge + 8, edge - 8), z0 - rng:NextNumber(30, L - 30), rng)
 		end
 	elseif theme == "beach" then
-		part({ Name = "Sea", Size = Vector3.new(400, 1, L), CFrame = CFrame.new(-(edge + 200), -0.8, z0 - L / 2), Color = Color3.fromRGB(0, 160, 220), Material = Enum.Material.Glass, Transparency = 0.2, CanQuery = false }, folder)
-		part({ Name = "Sand", Size = Vector3.new(80, 1, L), CFrame = CFrame.new(edge + 40, -0.4, z0 - L / 2), Color = zone.floor, Material = Enum.Material.Sand }, folder)
-	elseif theme == "ice" then
-		for _, side in ipairs({ -1, 1 }) do
-			part({ Name = "CanyonWall", Size = Vector3.new(30, 70, L), CFrame = CFrame.new(side * (edge + 25), 35, z0 - L / 2), Color = Color3.fromRGB(170, 210, 240), Material = Enum.Material.Glacier, CanQuery = false }, folder)
+		deco({ Name = "Sea", Size = Vector3.new(500, 1, L), CFrame = CFrame.new(-(edge + 300), 2, z0 - L / 2), Color = Color3.fromRGB(0, 190, 230), Material = Enum.Material.Glass, Transparency = 0.15 }, folder)
+	elseif theme == "city" then
+		for k = 1, 3 do
+			neonArch(folder, z0 - k * (L / 4), ({ zone.accent, Color3.fromRGB(0, 230, 255), Color3.fromRGB(255, 220, 0) })[k])
 		end
 	elseif theme == "volcano" then
 		local vz = z0 - L / 2
 		for k = 0, 5 do
-			local r = 160 - k * 25
-			part({ Name = "Volcano", Shape = Enum.PartType.Cylinder, Size = Vector3.new(20, r, r), CFrame = CFrame.new(edge + 160, 10 + k * 20, vz) * CFrame.Angles(0, 0, math.rad(90)), Color = Color3.fromRGB(70 - k * 5, 45, 40), Material = Enum.Material.Basalt, CanQuery = false }, folder)
+			local r = 170 - k * 26
+			deco({ Name = "Volcano", Shape = Enum.PartType.Cylinder, Size = Vector3.new(22, r, r), CFrame = CFrame.new(edge + 190, 11 + k * 22, vz) * CFrame.Angles(0, 0, math.rad(90)), Color = Color3.fromRGB(80 - k * 6, 50, 45), Material = Enum.Material.Basalt }, folder)
 		end
-		part({ Name = "Crater", Shape = Enum.PartType.Cylinder, Size = Vector3.new(2, 30, 30), CFrame = CFrame.new(edge + 160, 130, vz) * CFrame.Angles(0, 0, math.rad(90)), Color = Color3.fromRGB(255, 80, 0), Material = Enum.Material.Neon, CanQuery = false }, folder)
+		deco({ Name = "Crater", Shape = Enum.PartType.Cylinder, Size = Vector3.new(2, 34, 34), CFrame = CFrame.new(edge + 190, 143, vz) * CFrame.Angles(0, 0, math.rad(90)), Color = Color3.fromRGB(255, 90, 0), Material = Enum.Material.Neon }, folder)
 		for _ = 1, 7 do
-			lavaPool(folder, rng:NextNumber(-edge + 15, edge - 15), z0 - rng:NextNumber(50, L - 40), rng)
+			lavaPool(folder, rng:NextNumber(-edge + 25, edge - 25), z0 - rng:NextNumber(50, L - 40), rng)
 		end
 	elseif theme == "space" then
-		planet(folder, Vector3.new(-260, 120, z0 - 120), 120, Color3.fromRGB(255, 120, 80))
-		planet(folder, Vector3.new(300, 200, z0 - 300), 200, Color3.fromRGB(80, 140, 255))
-		planet(folder, Vector3.new(-200, 260, z0 - 380), 60, Color3.fromRGB(200, 255, 200))
-		-- неоновая сетка на полу
-		for k = 1, 12 do
-			part({ Name = "Grid", Size = Vector3.new(W, 0.05, 0.4), CFrame = CFrame.new(0, 0.03, z0 - k * (L / 13)), Color = zone.accent, Material = Enum.Material.Neon, CanCollide = false, CanQuery = false }, folder)
-		end
-		-- летающие платформы со звёздами
-		for k = 1, 6 do
-			local px = rng:NextNumber(-edge + 20, edge - 20)
-			local pz = z0 - rng:NextNumber(60, L - 60)
-			local py = rng:NextNumber(14, 26)
+		planet(folder, Vector3.new(-280, 130, z0 - 120), 130, Color3.fromRGB(255, 130, 90), Color3.fromRGB(255, 220, 160))
+		planet(folder, Vector3.new(320, 210, z0 - 300), 210, Color3.fromRGB(90, 150, 255), nil)
+		planet(folder, Vector3.new(-220, 270, z0 - 380), 70, Color3.fromRGB(200, 255, 200), Color3.fromRGB(150, 255, 255))
+		for _ = 1, 6 do
+			local px, pz, py = rng:NextNumber(-edge + 25, edge - 25), z0 - rng:NextNumber(60, L - 60), rng:NextNumber(14, 26)
 			part({ Name = "FloatPad", Size = Vector3.new(14, 1, 14), CFrame = CFrame.new(px, py, pz), Color = zone.accent, Material = Enum.Material.Neon }, folder)
 			star(folder, Vector3.new(px, py + 4, pz), Config.Star.Value * 3)
 		end
 	end
 end
 
--- ---------- зона целиком ----------
+-- ---------- зона ----------
 
 local function buildZone(i)
 	local zone = Config.Zones[i]
@@ -1676,44 +2051,13 @@ local function buildZone(i)
 	local z0 = zoneStartZ(i)
 	local edge = W / 2
 
-	-- пол
-	part({
-		Name = "Floor",
-		Size = Vector3.new(W, 4, L),
-		CFrame = CFrame.new(0, -2, z0 - L / 2),
-		Color = zone.floor,
-		Material = zone.floorMaterial,
-	}, folder)
-
-	-- невидимые бортики, чтобы не выпадать
+	part({ Name = "Floor", Size = Vector3.new(W, 4, L), CFrame = CFrame.new(0, -2, z0 - L / 2), Color = zone.floor }, folder)
 	for _, side in ipairs({ -1, 1 }) do
-		part({
-			Name = "Border",
-			Size = Vector3.new(2, 60, L),
-			CFrame = CFrame.new(side * (edge + 1), 30, z0 - L / 2),
-			Transparency = 1,
-			CanQuery = false,
-		}, folder)
-		part({
-			Name = "BorderGlow",
-			Size = Vector3.new(1, 1, L),
-			CFrame = CFrame.new(side * edge, 0.5, z0 - L / 2),
-			Color = zone.accent,
-			Material = Enum.Material.Neon,
-			CanQuery = false,
-		}, folder)
+		part({ Name = "Border", Size = Vector3.new(2, 80, L), CFrame = CFrame.new(side * (edge + 1), 40, z0 - L / 2), Transparency = 1, CanQuery = false }, folder)
 	end
 
-	-- ворота в начале зоны (кроме первой)
 	if i > 1 then
-		local gate = part({
-			Name = "Gate",
-			Size = Vector3.new(W, 50, 2),
-			CFrame = CFrame.new(0, 25, z0),
-			Color = zone.accent,
-			Material = Enum.Material.ForceField,
-			Transparency = 0.2,
-		}, folder)
+		local gate = part({ Name = "Gate", Size = Vector3.new(W, 50, 2), CFrame = CFrame.new(0, 25, z0), Color = zone.accent, Material = Enum.Material.ForceField, Transparency = 0.2 }, folder)
 		gate:SetAttribute("ZoneIndex", i)
 		CollectionService:AddTag(gate, "Gate")
 		for _, face in ipairs({ Enum.NormalId.Front, Enum.NormalId.Back }) do
@@ -1730,38 +2074,40 @@ local function buildZone(i)
 			t.Font = Enum.Font.GothamBlack
 			t.TextColor3 = Color3.new(1, 1, 1)
 			t.TextStrokeTransparency = 0
-			t.Text = string.format("🔒 %s\nУровень %d  •  %s 💰  •  монеты x%s", zone.name:upper(), zone.level, Config.formatNumber(zone.cost), tostring(zone.mult))
+			t.Text = string.format("🔒 %s\nУровень %d  •  %s 💰  •  монеты x%s", zone.name, zone.level, Config.formatNumber(zone.cost), tostring(zone.mult))
 			t.Parent = sg
 		end
 	end
 
-	-- препятствия рядами
-	local lanes = { -52, 0, 52 }
+	-- табличка с названием зоны над въездом
+	local sign = deco({ Name = "ZoneSign", Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(0, 34, z0 - 6), Transparency = 1 }, folder)
+	billboard(sign, zone.name, Vector2.new(60, 10), 0, zone.accent:Lerp(Color3.new(1, 1, 1), 0.4))
+
+	local lanes = { -48, 0, 48 }
 	local z = z0 - 40
-	local rowIndex = 0
-	local megaAt = math.floor(L * 0.55)
 	local megaDone = false
 	while z > z0 - L + 40 do
-		rowIndex += 1
-		if not megaDone and (z0 - z) >= megaAt then
+		if not megaDone and (z0 - z) >= L * 0.55 then
 			z = megaRamp(folder, 0, z, zone) - 30
 			megaDone = true
-			-- звёзды в воздухе после мега-трамплина
 			for k = 1, 5 do
 				star(folder, Vector3.new(0, 26 + k * 2, z + 10 - k * 9), Config.Star.Value * 2)
 			end
 		else
 			for _, x in ipairs(lanes) do
 				local roll = rng:NextNumber()
-				local jitter = rng:NextNumber(-8, 8)
-				if roll < 0.32 then
-					kicker(folder, x + jitter, z, 12, rng:NextNumber(70, 90), zone.accent)
+				local jitter = rng:NextNumber(-6, 6)
+				if roll < 0.3 then
+					kicker(folder, x + jitter, z, 12, rng:NextNumber(72, 92), zone.accent)
 					star(folder, Vector3.new(x + jitter, rng:NextNumber(12, 18), z - 16), Config.Star.Value)
-				elseif roll < 0.58 then
-					rail(folder, x + jitter, z, rng:NextInteger(26, 44), nil, zone.accent)
-				elseif roll < 0.74 then
-					funbox(folder, x + jitter, z, zone.floor:Lerp(Color3.new(1, 1, 1), 0.25), zone.accent)
-				elseif roll < 0.9 then
+				elseif roll < 0.52 then
+					rail(folder, x + jitter, z, rng:NextInteger(26, 44), zone.accent)
+				elseif roll < 0.66 then
+					funbox(folder, x + jitter, z, zone.floor2:Lerp(zone.accent, 0.25), zone.accent)
+				elseif roll < 0.8 then
+					boostPad(folder, x + jitter, z, zone.accent)
+					star(folder, Vector3.new(x + jitter, 3, z - 14), Config.Star.Value)
+				elseif roll < 0.92 then
 					star(folder, Vector3.new(x + jitter, 3, z), Config.Star.Value)
 					star(folder, Vector3.new(x + jitter, 3, z - 8), Config.Star.Value)
 				end
@@ -1772,22 +2118,138 @@ local function buildZone(i)
 
 	decorate(folder, i, zone, rng)
 
-	-- финишная надпись в конце зоны
 	if i == #Config.Zones then
-		part({
-			Name = "EndWall",
-			Size = Vector3.new(W, 60, 2),
-			CFrame = CFrame.new(0, 30, z0 - L),
-			Color = zone.accent,
-			Material = Enum.Material.ForceField,
-			Transparency = 0.3,
-		}, folder)
+		part({ Name = "EndWall", Size = Vector3.new(W, 60, 2), CFrame = CFrame.new(0, 30, z0 - L), Color = zone.accent, Material = Enum.Material.ForceField, Transparency = 0.3 }, folder)
 	end
 end
 
--- Если карта уже лежит в Workspace (ты её построила и сохранила), скрипт её НЕ трогает.
--- Чтобы построить карту заново, удали папку Workspace → SkateWorld.
+-- ---------- лобби с витриной досок ----------
+
+local function buildLobby()
+	local folder = Instance.new("Folder")
+	folder.Name = "Lobby"
+	folder.Parent = root
+	local rng = Random.new(42)
+	local zone = Config.Zones[1]
+
+	part({ Name = "LobbyFloor", Size = Vector3.new(W, 4, LOBBY), CFrame = CFrame.new(0, -2, LOBBY / 2), Color = Color3.fromRGB(245, 240, 255) }, folder)
+	-- шахматный пол площади
+	for gx = -3, 3 do
+		for gz = 1, 6 do
+			if (gx + gz) % 2 == 0 then
+				deco({ Name = "PlazaTile", Size = Vector3.new(14, 0.1, 14), CFrame = CFrame.new(gx * 14, 0.03, 40 + gz * 14), Color = Color3.fromRGB(255, 215, 235), CastShadow = false }, folder)
+			end
+		end
+	end
+	for _, side in ipairs({ -1, 1 }) do
+		part({ Name = "Border", Size = Vector3.new(2, 80, LOBBY), CFrame = CFrame.new(side * (W / 2 + 1), 40, LOBBY / 2), Transparency = 1, CanQuery = false }, folder)
+		blockTree(folder, side * 70, 130, rng, { Color3.fromRGB(255, 170, 205), Color3.fromRGB(255, 200, 225) }, Color3.fromRGB(200, 100, 60), true)
+		blockTree(folder, side * 70, 25, rng, { Color3.fromRGB(255, 170, 205), Color3.fromRGB(255, 200, 225) }, Color3.fromRGB(200, 100, 60), false)
+	end
+	part({ Name = "BackWall", Size = Vector3.new(W, 80, 2), CFrame = CFrame.new(0, 40, LOBBY + 1), Transparency = 1 }, folder)
+	for k = 1, 5 do
+		cloud(folder, Vector3.new(rng:NextNumber(-150, 150), rng:NextNumber(70, 100), rng:NextNumber(0, LOBBY)), rng)
+	end
+
+	-- арка «СТАРТ»
+	for _, side in ipairs({ -1, 1 }) do
+		deco({ Name = "StartPost", Size = Vector3.new(6, 36, 6), CFrame = CFrame.new(side * 40, 18, 4), Color = zone.accent, CanCollide = true }, folder)
+	end
+	local top = deco({ Name = "StartTop", Size = Vector3.new(86, 8, 6), CFrame = CFrame.new(0, 38, 4), Color = Color3.fromRGB(255, 255, 255) }, folder)
+	for _, face in ipairs({ Enum.NormalId.Front, Enum.NormalId.Back }) do
+		local sg = Instance.new("SurfaceGui")
+		sg.Face = face
+		sg.CanvasSize = Vector2.new(860, 80)
+		sg.LightInfluence = 0
+		sg.Parent = top
+		local t = Instance.new("TextLabel")
+		t.Size = UDim2.fromScale(1, 1)
+		t.BackgroundTransparency = 1
+		t.TextScaled = true
+		t.Font = Enum.Font.GothamBlack
+		t.TextColor3 = zone.accent
+		t.Text = "СТАРТ ▶ SKATE RUSH"
+		t.Parent = sg
+	end
+
+	-- витрина досок слева
+	local n = #Config.Boards
+	for idx, b in ipairs(Config.Boards) do
+		local z = 20 + (idx - 1) * (110 / math.max(1, n - 1))
+		local x = -62
+		local base = part({ Name = "BoardStand", Shape = Enum.PartType.Cylinder, Size = Vector3.new(2, 12, 12), CFrame = CFrame.new(x, 1, z) * CFrame.Angles(0, 0, math.rad(90)), Color = Color3.fromRGB(255, 255, 255) }, folder)
+		deco({ Name = "StandGlow", Shape = Enum.PartType.Cylinder, Size = Vector3.new(2.2, 12.6, 12.6), CFrame = CFrame.new(x, 0.9, z) * CFrame.Angles(0, 0, math.rad(90)), Color = b.trail, Material = Enum.Material.Neon }, folder)
+		base:SetAttribute("BoardId", b.id)
+		CollectionService:AddTag(base, "BoardStand")
+		-- модель доски над подставкой (её крутит клиент)
+		local deck = deco({ Name = "ShowDeck", Size = Vector3.new(1.7, 0.25, 4.6), CFrame = CFrame.new(x, 5, z) * CFrame.Angles(0, 0, math.rad(25)), Color = b.deck, Material = b.neon and Enum.Material.Neon or Enum.Material.SmoothPlastic }, folder)
+		deck:SetAttribute("Spin", true)
+		CollectionService:AddTag(deck, "ShowDeck")
+		local bb, label = billboard(base, b.name, Vector2.new(10, 3.2), 9, Color3.new(1, 1, 1))
+		bb.Name = "Info"
+		label.Name = "Text"
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.ObjectText = b.name
+		prompt.ActionText = "Купить / надеть"
+		prompt.HoldDuration = 0
+		prompt.MaxActivationDistance = 12
+		prompt.RequiresLineOfSight = false
+		prompt.Parent = base
+	end
+	local showSign = deco({ Name = "ShopSign", Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(-62, 22, 75), Transparency = 1 }, folder)
+	billboard(showSign, "🛹 МАГАЗИН ДОСОК", Vector2.new(34, 6), 0, Color3.fromRGB(255, 220, 60))
+
+	-- спавн
+	local spawn = Instance.new("SpawnLocation")
+	spawn.Name = "SkateSpawn"
+	spawn.Anchored = true
+	spawn.Neutral = true
+	spawn.Duration = 0
+	spawn.Size = Vector3.new(14, 1, 14)
+	spawn.CFrame = CFrame.new(0, 0.5, LOBBY - 30)
+	spawn.Color = zone.accent
+	spawn.Material = Enum.Material.Neon
+	spawn.TopSurface = Enum.SurfaceType.Smooth
+	spawn.Parent = folder
+end
+
+-- ---------- свет и «красивость» ----------
+
+local function setupLighting()
+	local function ensure(class, name)
+		local o = Lighting:FindFirstChild(name)
+		if not o then
+			o = Instance.new(class)
+			o.Name = name
+			o.Parent = Lighting
+		end
+		return o
+	end
+	local atm = ensure("Atmosphere", "SkateAtmosphere")
+	atm.Density = 0.28
+	atm.Offset = 0.2
+	atm.Color = Color3.fromRGB(255, 230, 245)
+	atm.Decay = Color3.fromRGB(180, 150, 220)
+	atm.Glare = 0.3
+	atm.Haze = 1.2
+	local bloom = ensure("BloomEffect", "SkateBloom")
+	bloom.Intensity = 0.6
+	bloom.Size = 30
+	bloom.Threshold = 1.3
+	local cc = ensure("ColorCorrectionEffect", "SkateColor")
+	cc.Saturation = 0.2
+	cc.Contrast = 0.08
+	cc.Brightness = 0.03
+	local rays = ensure("SunRaysEffect", "SkateSunRays")
+	rays.Intensity = 0.05
+	rays.Spread = 0.6
+	Lighting.GlobalShadows = true
+	Lighting.EnvironmentDiffuseScale = 0.5
+	Lighting.EnvironmentSpecularScale = 0.5
+end
+
 function World.build()
+	setupLighting()
 	local existing = workspace:FindFirstChild("SkateWorld")
 	if existing then
 		return existing
@@ -1796,36 +2258,15 @@ function World.build()
 	root.Name = "SkateWorld"
 	root.Parent = workspace
 
+	buildLobby()
 	for i = 1, #Config.Zones do
 		buildZone(i)
 	end
-
-	-- точка появления
-	local spawn = Instance.new("SpawnLocation")
-	spawn.Name = "SkateSpawn"
-	spawn.Anchored = true
-	spawn.Neutral = true
-	spawn.Duration = 0
-	spawn.Size = Vector3.new(12, 1, 12)
-	spawn.CFrame = CFrame.new(0, 0.5, -12)
-	spawn.Color = Config.Zones[1].accent
-	spawn.Material = Enum.Material.Neon
-	spawn.TopSurface = Enum.SurfaceType.Smooth
-	spawn.Parent = root
-
-	-- стенка позади старта
-	part({
-		Name = "BackWall",
-		Size = Vector3.new(W, 60, 2),
-		CFrame = CFrame.new(0, 30, 1),
-		Transparency = 1,
-	}, root)
-
 	return root
 end
 
 return World
-]]></ProtectedString></Properties></Item></Item></Item><Item class="StarterPlayer" referent="RBX0000000B"><Properties><string name="Name">StarterPlayer</string><bool name="CharacterUseJumpPower">true</bool><float name="CharacterJumpPower">60</float><float name="CameraMaxZoomDistance">60</float></Properties><Item class="StarterPlayerScripts" referent="RBX0000000A"><Properties><string name="Name">StarterPlayerScripts</string></Properties><Item class="LocalScript" referent="RBX00000006"><Properties><string name="Name">SkateClient</string><ProtectedString name="Source"><![CDATA[-- ============================================================
+]]></ProtectedString></Properties></Item></Item></Item><Item class="StarterPlayer" referent="RBX0000000D"><Properties><string name="Name">StarterPlayer</string><bool name="CharacterUseJumpPower">true</bool><float name="CharacterJumpPower">60</float><float name="CameraMaxZoomDistance">60</float></Properties><Item class="StarterPlayerScripts" referent="RBX0000000C"><Properties><string name="Name">StarterPlayerScripts</string></Properties><Item class="LocalScript" referent="RBX00000008"><Properties><string name="Name">SkateClient</string><ProtectedString name="Source"><![CDATA[-- ============================================================
 --  SKATE RUSH — управление скейтом (работает у каждого игрока)
 --  Разгон, трюки в воздухе, комбо, падения, трамплины, перила.
 -- ============================================================
@@ -1843,6 +2284,8 @@ local player = Players.LocalPlayer
 local Config = require(ReplicatedStorage:WaitForChild("SkateShared"):WaitForChild("Config"))
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local UI = require(script:WaitForChild("UI"))
+local Rider = require(script:WaitForChild("Rider"))
+local Sounds = require(script:WaitForChild("Sounds"))
 
 local TWO_PI = math.pi * 2
 
@@ -1862,6 +2305,9 @@ local state = {
 	lastKick = 0,
 	zone = 0,
 	gateCooldown = 0,
+	boostUntil = 0,
+	anim = "ride",
+	lean = 0,
 }
 
 -- ---------- запросы к серверу ----------
@@ -1978,6 +2424,7 @@ local function bail(reason)
 	local lostCoins = #lost > 0 and estimate(lost) or 0
 	UI.comboEnd(false)
 	UI.bail(lostCoins, reason)
+	Sounds.play("Bail")
 
 	local yaw = tr and tr.yaw or yawOnly(root.CFrame)
 	hum.PlatformStand = true
@@ -2018,6 +2465,7 @@ local function startTrick(name)
 		hum.AutoRotate = false
 	end
 	UI.trickPop(cfg.display)
+	Sounds.play("Trick", 0.9 + math.random() * 0.3, 0.5)
 end
 
 local function completeTrick()
@@ -2067,6 +2515,9 @@ local function onLand()
 			return
 		end
 	end
+	if state.airTime > 0.3 then
+		Sounds.play("Land", 1, math.clamp(state.airTime, 0.3, 0.8))
+	end
 	if state.airTime > 0.5 then
 		local deck = boardPart("Deck")
 		if deck then
@@ -2095,6 +2546,7 @@ local function launch(kick)
 	end
 	hum:ChangeState(Enum.HumanoidStateType.Freefall)
 	root.AssemblyLinearVelocity = horiz + Vector3.new(0, power, 0)
+	Sounds.play("Jump", 0.8)
 	addEntryChecked("Air")
 	if kick:GetAttribute("Mega") then
 		UI.floatText("МЕГА-ПРЫЖОК!", Color3.fromRGB(255, 80, 200))
@@ -2118,7 +2570,7 @@ local function hookLava(lava)
 	lava.Touched:Connect(function(hit)
 		if char and hit:IsDescendantOf(char) and not state.bailing then
 			bail("Горячо! Лава!")
-			local zoneIndex = state.zone
+			local zoneIndex = math.max(1, state.zone)
 			task.delay(1.2, function()
 				if root and root.Parent then
 					root.CFrame = CFrame.new(0, 5, -(zoneIndex - 1) * Config.ZoneLength - 18)
@@ -2132,6 +2584,66 @@ for _, l in ipairs(CollectionService:GetTagged("Lava")) do
 	hookLava(l)
 end
 CollectionService:GetInstanceAddedSignal("Lava"):Connect(hookLava)
+
+-- ---------- ускорители ----------
+local function hookBoost(pad)
+	pad.Touched:Connect(function(hit)
+		if char and hit:IsDescendantOf(char) and not state.bailing then
+			if os.clock() > state.boostUntil - 1.5 then
+				UI.floatText("УСКОРЕНИЕ!", Color3.fromRGB(0, 230, 255), 0.9)
+				Sounds.play("Jump", 1.4, 0.4)
+			end
+			state.boostUntil = os.clock() + 2.5
+			local maxSpeed = player:GetAttribute("MaxSpeed") or Config.Speed.Base
+			state.speed = math.max(state.speed, maxSpeed)
+		end
+	end)
+end
+for _, p in ipairs(CollectionService:GetTagged("Boost")) do
+	hookBoost(p)
+end
+CollectionService:GetInstanceAddedSignal("Boost"):Connect(hookBoost)
+
+-- ---------- витрина досок в лобби ----------
+local showDecks = {}
+local function addShowDeck(d)
+	showDecks[d] = d.CFrame
+end
+for _, d in ipairs(CollectionService:GetTagged("ShowDeck")) do
+	addShowDeck(d)
+end
+CollectionService:GetInstanceAddedSignal("ShowDeck"):Connect(addShowDeck)
+
+local function refreshStands()
+	local data = state.data
+	if not data then
+		return
+	end
+	for _, stand in ipairs(CollectionService:GetTagged("BoardStand")) do
+		local id = stand:GetAttribute("BoardId")
+		local b = Config.getBoard(id)
+		local owned = (b.pass and data.passes[b.pass]) or data.boards[id]
+		local status
+		if data.equipped == id then
+			status = "✅ НАДЕТА"
+		elseif owned then
+			status = "Нажми E — надеть"
+		elseif b.pass then
+			status = "👑 за робуксы"
+		else
+			status = Config.formatNumber(b.price) .. " 💰"
+		end
+		local info = stand:FindFirstChild("Info")
+		local label = info and info:FindFirstChild("Text")
+		if label then
+			label.Text = string.format("%s\n⚡x%.2f  •  %s", b.name, b.speed, status)
+		end
+		local prompt = stand:FindFirstChildOfClass("ProximityPrompt")
+		if prompt then
+			prompt.ActionText = owned and "Надеть" or (b.pass and "Подробнее" or "Купить")
+		end
+	end
+end
 
 -- ---------- ворота зон ----------
 local function refreshGates()
@@ -2191,6 +2703,7 @@ remotes.PickupTaken.OnClientEvent:Connect(function(s, cooldown, coins)
 		end
 	end
 	UI.floatText("+" .. Config.formatNumber(coins) .. " 💰", Color3.fromRGB(255, 220, 60))
+	Sounds.play("Coin", 1.2, 0.4)
 end)
 
 -- ---------- зоны: свет и гравитация ----------
@@ -2207,6 +2720,15 @@ local function enterZone(i)
 		OutdoorAmbient = l.ambient,
 	}):Play()
 	workspace.Gravity = zone.gravity
+	local atm = Lighting:FindFirstChild("SkateAtmosphere")
+	if atm then
+		TweenService:Create(atm, TweenInfo.new(1.5), { Haze = l.haze or 1, Color = l.fog }):Play()
+	end
+	local cc = Lighting:FindFirstChild("SkateColor")
+	if cc then
+		TweenService:Create(cc, TweenInfo.new(1.5), { TintColor = l.tint or Color3.new(1, 1, 1) }):Play()
+	end
+	Sounds.setZoneMusic(i)
 	UI.zoneBanner(i)
 end
 
@@ -2224,6 +2746,18 @@ local function onCharacter(c)
 	state.inAir = false
 	state.speed = 0
 	UI.comboEnd(nil)
+	-- выключаем стандартный звук шагов: мы же на доске
+	task.spawn(function()
+		local running = root:WaitForChild("Running", 10)
+		if running and running:IsA("Sound") then
+			running.Volume = 0
+			running:GetPropertyChangedSignal("Volume"):Connect(function()
+				if running.Volume ~= 0 then
+					running.Volume = 0
+				end
+			end)
+		end
+	end)
 	hum.Died:Connect(function()
 		if #state.combo > 0 then
 			remotes.ComboBailed:FireServer(state.combo)
@@ -2274,6 +2808,14 @@ RunService.Heartbeat:Connect(function(dt)
 			s.CFrame = info.base + Vector3.new(0, math.sin(t * 2.5 + info.phase) * 0.7, 0)
 		else
 			stars[s] = nil
+		end
+	end
+
+	for d, base in pairs(showDecks) do
+		if d.Parent then
+			d.CFrame = base * CFrame.new(0, math.sin(t * 2) * 0.5, 0) * CFrame.Angles(0, t * 1.2, 0)
+		else
+			showDecks[d] = nil
 		end
 	end
 
@@ -2358,18 +2900,59 @@ RunService.Heartbeat:Connect(function(dt)
 	if hum.JumpPower ~= jump then
 		hum.JumpPower = jump
 	end
-	local cap = maxSpeed * (state.grinding and 1.2 or 1)
+	-- ограничение скорости из настроек (если слишком быстро)
+	local limit = (state.data and state.data.settings and state.data.settings.speedLimit or 100) / 100
+	maxSpeed *= limit
+	local boosted = t < state.boostUntil
+	local cap = maxSpeed * (state.grinding and 1.2 or 1) * (boosted and 1.45 or 1)
+	local startSpeed = maxSpeed * Config.Speed.StartFraction
 	if state.bailing then
-		state.speed = maxSpeed * 0.4
+		state.speed = startSpeed * 0.5
 	elseif hum.MoveDirection.Magnitude > 0.1 then
-		state.speed = math.min(cap, math.max(state.speed, maxSpeed * 0.45) + maxSpeed * 0.7 * dt)
+		state.speed = math.max(state.speed, startSpeed)
+		if state.speed < cap then
+			state.speed = math.min(cap, state.speed + maxSpeed * Config.Speed.Accel * dt)
+		else
+			state.speed = math.max(cap, state.speed - maxSpeed * 0.8 * dt)
+		end
 	else
-		state.speed = math.max(maxSpeed * 0.45, state.speed - maxSpeed * 1.5 * dt)
+		state.speed = math.max(startSpeed, state.speed - maxSpeed * 1.2 * dt)
 	end
 	hum.WalkSpeed = state.speed
 
+	-- наклон в поворотах (доска и тело)
+	local yawRate = root.AssemblyAngularVelocity.Y
+	local targetLean = state.inAir and 0 or math.clamp(yawRate * 0.06, -0.35, 0.35)
+	state.lean += (targetLean - state.lean) * math.min(1, dt * 8)
+	if not state.trick and not state.bailing then
+		local weld = getWeld()
+		if weld then
+			weld.C0 = boardBase() * CFrame.Angles(0, 0, -state.lean * 0.6)
+		end
+	end
+
+	-- поза скейтера для анимации
+	local anim
+	if state.bailing then
+		anim = "bail"
+	elseif state.trick then
+		anim = state.trick.name
+	elseif state.grinding then
+		anim = "grind"
+	elseif state.inAir then
+		anim = "air"
+	else
+		anim = "ride"
+	end
+	Rider.setLocal(anim, state.lean)
+	if anim ~= state.anim then
+		state.anim = anim
+		remotes.AnimState:FireServer(anim)
+	end
+	Sounds.setRoll(flat, not state.inAir and not state.bailing)
+
 	-- камера и след
-	local targetFov = 70 + math.clamp((flat - 20) / 100, 0, 1) * 22
+	local targetFov = 70 + math.clamp((flat - 25) / 120, 0, 1) * 25 + (boosted and 8 or 0)
 	camera.FieldOfView += (targetFov - camera.FieldOfView) * math.min(1, dt * 4)
 	local trail = boardPart("BoardTrail")
 	if trail then
@@ -2391,16 +2974,25 @@ end)
 -- ---------- данные с сервера ----------
 remotes.DataChanged.OnClientEvent:Connect(function(snap)
 	local first = state.data == nil
+	local prevLevel = state.data and state.data.level
 	state.data = snap
 	UI.setData(snap)
 	refreshGates()
+	refreshStands()
+	if snap.settings then
+		Sounds.setEnabled(snap.settings.sfx ~= false, snap.settings.music ~= false)
+	end
+	if prevLevel and snap.level > prevLevel then
+		Sounds.play("LevelUp", 1.3)
+	end
 	if first and snap.level <= 1 and snap.coins == 0 then
 		UI.tutorial()
 	end
 end)
 
-remotes.ComboResult.OnClientEvent:Connect(function(coins, xp, record)
-	UI.comboResult(coins, xp, record)
+remotes.ComboResult.OnClientEvent:Connect(function(coins, xp, record, mult)
+	UI.comboResult(coins, xp, record, mult)
+	Sounds.play("Coin", 1 + math.clamp((mult or 1) / 20, 0, 0.5))
 end)
 
 remotes.Notify.OnClientEvent:Connect(function(text, kind)
@@ -2412,6 +3004,7 @@ UI.init({
 	request = request,
 	buy = buy,
 	onTrick = startTrick,
+	sounds = Sounds,
 	getData = function()
 		return state.data
 	end,
@@ -2518,6 +3111,9 @@ local function button(props, onClick)
 	new("UIPadding", { PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 6), PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 4), Parent = b })
 	textStroke(b, 1.5)
 	b.MouseButton1Click:Connect(function()
+		if ctx and ctx.sounds then
+			ctx.sounds.play("Click", 1, 0.4)
+		end
 		local s = b:FindFirstChildOfClass("UIScale") or new("UIScale", { Parent = b })
 		s.Scale = 0.9
 		TweenService:Create(s, TweenInfo.new(0.25, Enum.EasingStyle.Back), { Scale = 1 }):Play()
@@ -2638,7 +3234,49 @@ function UI.comboEnd(banked)
 	end
 end
 
-function UI.comboResult(coins, xp, record)
+local function comboWord(mult)
+	if not gui or not mult then
+		return
+	end
+	local word
+	for _, w in ipairs(Config.ComboWords) do
+		if mult >= w.mult then
+			word = w.text
+			break
+		end
+	end
+	if not word then
+		return
+	end
+	local burst = new("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.72, 0.42),
+		Size = UDim2.fromOffset(250, 110),
+		BackgroundColor3 = C.gold,
+		Rotation = -8,
+		ZIndex = 25,
+		Parent = gui,
+	}, { corner(26), stroke(Color3.new(0, 0, 0), 4), gradient(Color3.fromRGB(255, 240, 120), Color3.fromRGB(255, 150, 0)) })
+	local multText = "x" .. (mult % 1 == 0 and tostring(mult) or string.format("%.1f", mult))
+	textStroke(label({ Text = word, Size = UDim2.new(1, -16, 0.55, 0), Position = UDim2.new(0, 8, 0.06, 0), MaxText = 34, ZIndex = 26, Parent = burst }), 2.5)
+	textStroke(label({ Text = multText, Size = UDim2.new(1, -16, 0.4, 0), Position = UDim2.new(0, 8, 0.56, 0), MaxText = 34, TextColor3 = C.pink, ZIndex = 26, Parent = burst }), 2.5)
+	pop(burst, 0.2)
+	task.delay(1.4, function()
+		TweenService:Create(burst, TweenInfo.new(0.3), { Position = burst.Position - UDim2.fromScale(0, 0.06), BackgroundTransparency = 1 }):Play()
+		for _, d in ipairs(burst:GetDescendants()) do
+			if d:IsA("TextLabel") then
+				TweenService:Create(d, TweenInfo.new(0.3), { TextTransparency = 1 }):Play()
+			elseif d:IsA("UIStroke") then
+				TweenService:Create(d, TweenInfo.new(0.3), { Transparency = 1 }):Play()
+			end
+		end
+		task.wait(0.35)
+		burst:Destroy()
+	end)
+end
+
+function UI.comboResult(coins, xp, record, mult)
+	comboWord(mult)
 	UI.floatText("+" .. fmt(coins) .. " 💰", C.gold, coins > 1000 and 1.4 or 1.1)
 	if record then
 		task.delay(0.4, function()
@@ -2864,6 +3502,11 @@ end
 -- Зоны
 local function buildZones(list)
 	header(list, "Открывай зоны: чем дальше, тем больше монет")
+	row(list, { icon = "🏠", title = "Лобби", subtitle = "Магазин досок и старт", buttonText = "ПОЕХАЛИ", buttonColor = C.blue, onClick = function()
+		if ctx.request("Teleport", 0) then
+			closeWindow()
+		end
+	end })
 	for i, z in ipairs(Config.Zones) do
 		local opts = { icon = i <= data.maxZone and "🗺️" or "🔒", title = i .. ". " .. z.name, highlight = i == data.maxZone and z.accent or nil }
 		if i <= data.maxZone then
@@ -3002,6 +3645,110 @@ local function buildRebirth(list)
 	})
 end
 
+-- Следы
+local function buildTrails(list)
+	header(list, "След тянется за доской. Только для красоты!")
+	for _, t in ipairs(Config.Trails) do
+		local owned = data.trails[t.id]
+		local equipped = data.trail == t.id
+		local btn, color, click
+		if equipped then
+			btn, color = "НАДЕТ", C.blue
+		elseif owned then
+			btn, color = "НАДЕТЬ", C.blue
+			click = function()
+				ctx.request("BuyTrail", t.id)
+			end
+		elseif t.starter then
+			btn, color = "В НАБОРЕ", C.pink
+			click = function()
+				if data.starterLeft and data.starterLeft > 0 then
+					ctx.buy("product", "StarterPack")
+				else
+					UI.toast("Этот след был в стартовом наборе", "warn")
+				end
+			end
+		else
+			btn, color = fmt(t.price) .. " 💰", data.coins >= t.price and C.green or Color3.fromRGB(90, 90, 110)
+			click = function()
+				ctx.request("BuyTrail", t.id)
+			end
+		end
+		local f = row(list, { icon = "✨", title = t.name, subtitle = t.colors and "" or "Цвет как у доски", buttonText = btn, buttonColor = color, onClick = click, highlight = equipped and C.blue or nil })
+		if t.colors then
+			local keys = {}
+			for k, c in ipairs(t.colors) do
+				table.insert(keys, ColorSequenceKeypoint.new((k - 1) / math.max(1, #t.colors - 1), c))
+			end
+			local strip = new("Frame", { Size = UDim2.new(1, -230, 0, 12), Position = UDim2.new(0, 66, 0.62, 0), BackgroundColor3 = Color3.new(1, 1, 1), Parent = f }, { corner(6) })
+			new("UIGradient", { Color = ColorSequence.new(keys), Parent = strip })
+		end
+	end
+end
+
+-- Подарки за время
+local function giftReadyCount()
+	if not data then
+		return 0
+	end
+	local played = data.played + (os.clock() - (refs.dataTime or os.clock()))
+	local n = 0
+	for i, g in ipairs(Config.Gifts) do
+		if not data.gifts[i] and played >= g.minutes * 60 then
+			n += 1
+		end
+	end
+	return n
+end
+
+local function buildGifts(list)
+	header(list, "Играй дольше — получай подарки!")
+	local mult = Config.Zones[data.maxZone].mult
+	local played = data.played + (os.clock() - (refs.dataTime or os.clock()))
+	for i, g in ipairs(Config.Gifts) do
+		local claimed = data.gifts[i]
+		local left = g.minutes * 60 - played
+		local opts = { height = 56, icon = claimed and "✅" or "🎁", title = "+" .. fmt(g.coins * mult) .. " 💰", subtitle = "через " .. g.minutes .. " мин. игры" }
+		if claimed then
+			opts.buttonText, opts.buttonColor = "ЗАБРАН", Color3.fromRGB(90, 90, 110)
+		elseif left <= 0 then
+			opts.buttonText, opts.buttonColor, opts.highlight = "ЗАБРАТЬ", C.green, C.green
+			opts.onClick = function()
+				ctx.request("ClaimGift", i)
+			end
+		else
+			opts.buttonText, opts.buttonColor = timeText(left), Color3.fromRGB(90, 90, 110)
+		end
+		row(list, opts)
+	end
+end
+
+-- Настройки
+local function buildSettings(list)
+	local st = data.settings or { music = true, sfx = true, speedLimit = 100 }
+	local function save(changes)
+		local copy = { music = st.music, sfx = st.sfx, speedLimit = st.speedLimit }
+		for k, v in pairs(changes) do
+			copy[k] = v
+		end
+		ctx.request("SaveSettings", copy)
+	end
+	header(list, "Настройки")
+	row(list, { icon = "🎵", title = "Музыка", subtitle = st.music and "Включена" or "Выключена", buttonText = st.music and "ВКЛ" or "ВЫКЛ", buttonColor = st.music and C.green or C.red, onClick = function()
+		save({ music = not st.music })
+	end })
+	row(list, { icon = "🔊", title = "Звуки", subtitle = st.sfx and "Включены" or "Выключены", buttonText = st.sfx and "ВКЛ" or "ВЫКЛ", buttonColor = st.sfx and C.green or C.red, onClick = function()
+		save({ sfx = not st.sfx })
+	end })
+	header(list, "Ограничение скорости: " .. st.speedLimit .. "%")
+	row(list, { icon = "🐢", title = "Медленнее", subtitle = "Если слишком быстро и трудно управлять", buttonText = "−10%", buttonColor = C.blue, onClick = function()
+		save({ speedLimit = math.max(30, st.speedLimit - 10) })
+	end })
+	row(list, { icon = "🐇", title = "Быстрее", subtitle = "Максимум — 100%", buttonText = "+10%", buttonColor = C.blue, onClick = function()
+		save({ speedLimit = math.min(100, st.speedLimit + 10) })
+	end })
+end
+
 local windows = {
 	Boards = { "🛹 ДОСКИ", C.orange, buildBoards },
 	Speed = { "⚡ СКОРОСТЬ", C.blue, buildSpeed },
@@ -3010,6 +3757,9 @@ local windows = {
 	Daily = { "🎁 НАГРАДА", C.gold, buildDaily },
 	Codes = { "🎟️ КОДЫ", C.purple, buildCodes, true },
 	Rebirth = { "♻️ ПЕРЕРОЖДЕНИЕ", C.purple, buildRebirth },
+	Trails = { "✨ СЛЕДЫ", C.blue, buildTrails },
+	Gifts = { "🎁 ПОДАРКИ", C.green, buildGifts },
+	Settings = { "⚙️ НАСТРОЙКИ", Color3.fromRGB(120, 120, 150), buildSettings },
 }
 
 local function open(name)
@@ -3030,6 +3780,7 @@ end
 -- ---------- данные ----------
 function UI.setData(snap)
 	data = snap
+	refs.dataTime = os.clock()
 	boostEnds = os.clock() + (snap.boostLeft or 0)
 	if refs.level then
 		local need = Config.xpForLevel(snap.level)
@@ -3096,7 +3847,7 @@ local function buildHud()
 	refs.boost = textStroke(label({ Text = "", Size = UDim2.new(0.45, -12, 0, 24), Position = UDim2.new(0.55, 0, 0, 86), TextXAlignment = Enum.TextXAlignment.Right, TextColor3 = C.orange, MaxText = 18, Parent = stats }), 1)
 
 	-- кнопки меню слева
-	local menu = new("Frame", { Size = UDim2.fromOffset(160, 330), Position = UDim2.new(0, 16, 0, 144), BackgroundTransparency = 1, Parent = gui }, {
+	local menu = new("Frame", { Size = UDim2.fromOffset(160, 400), Position = UDim2.new(0, 16, 0, 144), BackgroundTransparency = 1, Parent = gui }, {
 		new("UIGridLayout", { CellSize = UDim2.fromOffset(74, 68), CellPadding = UDim2.fromOffset(8, 8), SortOrder = Enum.SortOrder.LayoutOrder }),
 	})
 	local items = {
@@ -3104,17 +3855,26 @@ local function buildHud()
 		{ "Speed", "⚡", "Скорость", C.blue },
 		{ "Zones", "🗺️", "Зоны", C.green },
 		{ "Shop", "💎", "Магазин", C.pink },
-		{ "Daily", "🎁", "Награда", C.gold },
+		{ "Daily", "📅", "Награда", C.gold },
+		{ "Gifts", "🎁", "Подарки", C.green },
+		{ "Trails", "✨", "Следы", C.blue },
 		{ "Codes", "🎟️", "Коды", C.purple },
 		{ "Rebirth", "♻️", "Перерожд.", C.purple },
+		{ "Settings", "⚙️", "Настройки", Color3.fromRGB(120, 120, 150) },
 	}
 	for i, it in ipairs(items) do
 		local b = new("TextButton", { Size = UDim2.fromOffset(72, 66), BackgroundColor3 = it[4], Text = "", AutoButtonColor = true, LayoutOrder = i, Parent = menu }, { corner(14), stroke(Color3.new(0, 0, 0), 2), gradient(Color3.new(1, 1, 1), Color3.fromRGB(170, 170, 170)) })
 		label({ Text = it[2], Size = UDim2.new(1, 0, 0.62, 0), MaxText = 30, Parent = b })
 		textStroke(label({ Text = it[3], Size = UDim2.new(1, -4, 0.32, 0), Position = UDim2.new(0, 2, 0.64, 0), MaxText = 13, Parent = b }), 1)
 		b.MouseButton1Click:Connect(function()
+			if ctx and ctx.sounds then
+				ctx.sounds.play("Click", 1, 0.4)
+			end
 			open(it[1])
 		end)
+		if it[1] == "Gifts" then
+			refs.giftDot = new("Frame", { Size = UDim2.fromOffset(18, 18), Position = UDim2.new(1, -12, 0, -6), BackgroundColor3 = C.red, Visible = false, Parent = b }, { corner(9), stroke(Color3.new(1, 1, 1), 2) })
+		end
 		if it[1] == "Daily" then
 			refs.dailyDot = new("Frame", { Size = UDim2.fromOffset(18, 18), Position = UDim2.new(1, -12, 0, -6), BackgroundColor3 = C.red, Visible = false, Parent = b }, { corner(9), stroke(Color3.new(1, 1, 1), 2) })
 		end
@@ -3175,8 +3935,27 @@ local function buildHud()
 		end
 	end
 
+	-- справа: стартовый набор и быстрый буст
+	local side = new("Frame", { Size = UDim2.fromOffset(200, 190), AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -16, 0, 12), BackgroundTransparency = 1, Parent = gui }, {
+		new("UIListLayout", { Padding = UDim.new(0, 10), HorizontalAlignment = Enum.HorizontalAlignment.Right, SortOrder = Enum.SortOrder.LayoutOrder }),
+	})
+	refs.starter = new("TextButton", { Size = UDim2.fromOffset(190, 120), BackgroundColor3 = C.pink, Text = "", AutoButtonColor = true, Visible = false, LayoutOrder = 1, Parent = side }, { corner(16), stroke(Color3.new(0, 0, 0), 3), gradient(Color3.fromRGB(255, 150, 220), Color3.fromRGB(200, 60, 255)) })
+	label({ Text = "🎁", Size = UDim2.fromOffset(60, 60), Position = UDim2.fromOffset(6, 6), MaxText = 46, Parent = refs.starter })
+	textStroke(label({ Text = "СТАРТОВЫЙ\nНАБОР", Size = UDim2.new(1, -72, 0, 50), Position = UDim2.fromOffset(66, 8), MaxText = 20, Parent = refs.starter }), 1.5)
+	refs.starterTimer = textStroke(label({ Text = "", Size = UDim2.new(0.5, -8, 0, 26), Position = UDim2.new(0, 8, 1, -34), TextColor3 = C.gold, MaxText = 20, Parent = refs.starter }), 1.5)
+	textStroke(label({ Text = "Только " .. Config.Products.StarterPack.price .. " R$", Size = UDim2.new(0.5, -8, 0, 26), Position = UDim2.new(0.5, 0, 1, -34), TextColor3 = C.text, MaxText = 20, Parent = refs.starter }), 1.5)
+	local starterScale = new("UIScale", { Parent = refs.starter })
+	TweenService:Create(starterScale, TweenInfo.new(0.7, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Scale = 1.05 }):Play()
+	refs.starter.MouseButton1Click:Connect(function()
+		ctx.buy("product", "StarterPack")
+	end)
+	local boostBtn = button({ Text = "⚡ x2 МОНЕТЫ  " .. Config.Products.Boost2x.price .. " R$", Size = UDim2.fromOffset(190, 52), Color = C.blue, LayoutOrder = 2, MaxText = 18, Parent = side }, function()
+		ctx.buy("product", "Boost2x")
+	end)
+	boostBtn.Name = "BoostQuick"
+
 	-- трюк-битва
-	refs.event = new("Frame", { Size = UDim2.fromOffset(260, 170), AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -16, 0, 12), BackgroundColor3 = C.panel, BackgroundTransparency = 0.15, Visible = false, Parent = gui }, { corner(14), stroke(C.purple, 3) })
+	refs.event = new("Frame", { Size = UDim2.fromOffset(260, 170), AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -228, 0, 12), BackgroundColor3 = C.panel, BackgroundTransparency = 0.15, Visible = false, Parent = gui }, { corner(14), stroke(C.purple, 3) })
 	refs.eventTitle = textStroke(label({ Text = "🏆 ТРЮК-БИТВА", Size = UDim2.new(1, -16, 0, 30), Position = UDim2.fromOffset(8, 6), TextColor3 = C.gold, MaxText = 22, Parent = refs.event }), 1)
 	refs.eventList = label({ Text = "", Size = UDim2.new(1, -16, 1, -44), Position = UDim2.fromOffset(8, 38), Font = Enum.Font.GothamBold, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, MaxText = 17, Parent = refs.event })
 
@@ -3256,9 +4035,311 @@ function UI.init(context)
 			local left = boostEnds - os.clock()
 			refs.boost.Text = left > 0 and ("⚡x2 " .. timeText(left)) or ""
 			updateEvent()
+			if data then
+				local sl = (data.starterLeft or 0) - (os.clock() - (refs.dataTime or os.clock()))
+				refs.starter.Visible = sl > 0
+				refs.starterTimer.Text = "⏰ " .. timeText(sl)
+				refs.giftDot.Visible = giftReadyCount() > 0
+			end
 		end
 	end)
 end
 
 return UI
-]]></ProtectedString></Properties></Item></Item></Item></Item><Item class="Lighting" referent="RBX0000000C"><Properties><string name="Name">Lighting</string><float name="ClockTime">14</float><float name="FogEnd">1100</float></Properties></Item></roblox>
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX00000006"><Properties><string name="Name">Rider</string><ProtectedString name="Source"><![CDATA[-- ============================================================
+--  Анимация скейтера кодом (без загрузки файлов анимаций).
+--  Каждый кадр ставим суставы персонажа в нужную позу:
+--  стойка боком, полуприсед, толчок ногой, наклон в поворотах,
+--  отдельные позы для трюков и падения.
+--  Работает для всех игроков на сервере, у кого есть доска.
+--  Только для персонажей R15 (стандарт Roblox).
+-- ============================================================
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local Rider = {}
+
+local rad = math.rad
+local A = CFrame.Angles
+
+local JOINTS = {
+	Root = "LowerTorso",
+	Waist = "UpperTorso",
+	Neck = "Head",
+	LeftHip = "LeftUpperLeg",
+	LeftKnee = "LeftLowerLeg",
+	LeftAnkle = "LeftFoot",
+	RightHip = "RightUpperLeg",
+	RightKnee = "RightLowerLeg",
+	RightAnkle = "RightFoot",
+	LeftShoulder = "LeftUpperArm",
+	LeftElbow = "LeftLowerArm",
+	LeftWrist = "LeftHand",
+	RightShoulder = "RightUpperArm",
+	RightElbow = "RightLowerArm",
+	RightWrist = "RightHand",
+}
+
+-- Поза собирается из «присед», «разворот корпуса», рук и ног.
+-- crouch — насколько присели (0..1), spread — ширина стойки,
+-- armsUp/armsOut — руки, tuck — колени к груди.
+local function buildPose(p)
+	local crouch = p.crouch or 0.3
+	local th = rad(10 + 45 * crouch) -- угол бедра
+	local drop = 1.9 * (1 - math.cos(th)) -- опускаем таз ровно настолько, чтобы ступни остались на доске
+	local spread = rad(p.spread or 14)
+	local tuck = rad(p.tuck or 0)
+	local yaw = rad(p.yaw or 80) -- стойка боком
+	local lean = p.lean or 0
+	local armsOut = rad(p.armsOut or 35)
+	local armsFwd = rad(p.armsFwd or 0)
+	local pose = {
+		Root = CFrame.new(0, -drop, 0) * A(0, yaw, 0) * A(rad(p.bend or 8), 0, lean),
+		Waist = A(rad(p.chest or 10), rad(p.twist or -35), 0),
+		Neck = A(rad(p.look or -5), rad(p.head or -40), 0),
+		LeftHip = A(th + tuck, 0, -spread),
+		LeftKnee = A(-2 * th - tuck * 1.4, 0, 0),
+		LeftAnkle = A(th * 0.9, 0, spread),
+		RightHip = A(th + tuck, 0, spread),
+		RightKnee = A(-2 * th - tuck * 1.4, 0, 0),
+		RightAnkle = A(th * 0.9, 0, -spread),
+		LeftShoulder = A(armsFwd, 0, -armsOut),
+		LeftElbow = A(rad(p.elbow or 15), 0, 0),
+		LeftWrist = CFrame.new(),
+		RightShoulder = A(armsFwd, 0, armsOut),
+		RightElbow = A(rad(p.elbow or 15), 0, 0),
+		RightWrist = CFrame.new(),
+	}
+	if p.override then
+		for k, v in pairs(p.override) do
+			pose[k] = v
+		end
+	end
+	return pose
+end
+
+local POSES = {
+	ride = { crouch = 0.3 },
+	air = { crouch = 0.55, armsOut = 60, tuck = 15 },
+	grind = { crouch = 0.45, armsOut = 75, spread = 16 },
+	Kickflip = { crouch = 0.6, tuck = 45, armsOut = 80, armsFwd = 20 },
+	Spin = { crouch = 0.4, armsOut = 95, tuck = 10 },
+	Grab = {
+		crouch = 0.75,
+		tuck = 50,
+		armsOut = 30,
+		override = { RightShoulder = A(rad(-30), 0, rad(15)), RightElbow = A(rad(5), 0, 0) },
+	},
+	Backflip = { crouch = 0.8, tuck = 70, armsFwd = 70, armsOut = 10, elbow = 70, chest = 25 },
+	bail = { crouch = 0.1, armsOut = 140, spread = 30, chest = -25, look = -30, bend = -10 },
+}
+
+local built = {}
+for name, p in pairs(POSES) do
+	built[name] = buildPose(p)
+end
+
+-- Толчок ногой: задняя нога опускается к земле и уходит назад
+local function pushPose(phase)
+	local base = buildPose({ crouch = 0.4 })
+	local s = math.sin(phase)
+	local down = math.max(0, s)
+	base.RightHip = A(rad(10 - 45 * s), 0, rad(14))
+	base.RightKnee = A(rad(-20 - 25 * (1 - down)), 0, 0)
+	base.RightAnkle = A(rad(20), 0, 0)
+	base.LeftHip = A(rad(45), 0, rad(-12))
+	base.LeftKnee = A(rad(-80), 0, 0)
+	base.LeftAnkle = A(rad(35), 0, 0)
+	base.LeftShoulder = A(rad(25 * s), 0, rad(-25))
+	base.RightShoulder = A(rad(-25 * s), 0, rad(25))
+	base.Waist = A(rad(18), rad(-60), 0)
+	base.Root = CFrame.new(0, -0.55, 0) * A(0, rad(70), 0) * A(rad(12), 0, 0)
+	return base
+end
+
+-- ---------- состояние по персонажам ----------
+local rigs = {} -- [character] = { motors = {}, current = {}, phase = 0 }
+
+local function getRig(char)
+	local r = rigs[char]
+	if r then
+		return r
+	end
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if not hum or hum.RigType ~= Enum.HumanoidRigType.R15 then
+		return nil
+	end
+	local motors = {}
+	for joint, partName in pairs(JOINTS) do
+		local p = char:FindFirstChild(partName)
+		local m = p and p:FindFirstChild(joint)
+		if m and m:IsA("Motor6D") then
+			motors[joint] = m
+		end
+	end
+	if not motors.Root then
+		return nil
+	end
+	r = { motors = motors, current = {}, phase = 0, hum = hum }
+	rigs[char] = r
+	char.AncestryChanged:Connect(function(_, parent)
+		if not parent then
+			rigs[char] = nil
+		end
+	end)
+	return r
+end
+
+-- Для своего персонажа состояние даёт главный скрипт (без задержки сети)
+local localState = "ride"
+local localLean = 0
+function Rider.setLocal(state, lean)
+	localState = state
+	localLean = lean or 0
+end
+
+local function targetFor(char, r, isLocal, dt)
+	local state = isLocal and localState or (char:GetAttribute("SkateAnim") or "ride")
+	local root = char:FindFirstChild("HumanoidRootPart")
+	local hum = r.hum
+	if state == "ride" and root then
+		local v = root.AssemblyLinearVelocity
+		local speed = Vector3.new(v.X, 0, v.Z).Magnitude
+		local moving = hum.MoveDirection.Magnitude > 0.1 or (not isLocal and speed > 4)
+		local maxSpeed = hum.WalkSpeed > 0 and hum.WalkSpeed or 16
+		-- толкаемся, пока не разогнались
+		if moving and speed < maxSpeed * 0.92 and hum.FloorMaterial ~= Enum.Material.Air then
+			r.phase += dt * 7
+			r.pushing = true
+			return pushPose(r.phase)
+		end
+		r.pushing = false
+	end
+	local pose = built[state] or built.ride
+	local lean = isLocal and localLean or 0
+	if lean ~= 0 then
+		local copy = table.clone(pose)
+		copy.Root = pose.Root * A(0, 0, lean)
+		return copy
+	end
+	return pose
+end
+
+function Rider.step(dt)
+	local me = Players.LocalPlayer
+	local alpha = 1 - math.exp(-dt * 14)
+	for _, player in ipairs(Players:GetPlayers()) do
+		local char = player.Character
+		if char and char:FindFirstChild("Skateboard") then
+			local r = getRig(char)
+			if r and r.hum.Health > 0 then
+				local target = targetFor(char, r, player == me, dt)
+				for joint, m in pairs(r.motors) do
+					local goal = target[joint] or CFrame.new()
+					local cur = r.current[joint] or CFrame.new()
+					cur = cur:Lerp(goal, alpha)
+					r.current[joint] = cur
+					m.Transform = cur
+				end
+			end
+		end
+	end
+end
+
+-- Позу ставим после того, как стандартные анимации Roblox отработали,
+-- поэтому персонаж больше не «бежит» по доске.
+RunService.Stepped:Connect(function(_, dt)
+	Rider.step(dt)
+end)
+
+return Rider
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX00000007"><Properties><string name="Name">Sounds</string><ProtectedString name="Source"><![CDATA[-- Звуки и музыка. Номера звуков — в Config.Sounds.
+local SoundService = game:GetService("SoundService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Config = require(ReplicatedStorage:WaitForChild("SkateShared"):WaitForChild("Config"))
+
+local Sounds = {}
+
+local enabled = true
+local musicEnabled = true
+local cache = {}
+local roll
+local music
+local currentMusic = ""
+
+local function make(id, volume, looped)
+	local s = Instance.new("Sound")
+	s.SoundId = id
+	s.Volume = volume or 0.6
+	s.Looped = looped == true
+	s.Parent = SoundService
+	return s
+end
+
+function Sounds.play(name, pitch, volume)
+	if not enabled then
+		return
+	end
+	local id = Config.Sounds[name]
+	if type(id) ~= "string" or id == "" then
+		return
+	end
+	local s = cache[name]
+	if not s then
+		s = make(id, 0.6)
+		cache[name] = s
+	end
+	s.PlaybackSpeed = pitch or 1
+	s.Volume = volume or 0.6
+	s:Play()
+end
+
+-- Звук колёс: громкость и высота зависят от скорости
+function Sounds.setRoll(speed, onGround)
+	local id = Config.Sounds.Roll
+	if not enabled or id == "" then
+		if roll then
+			roll.Volume = 0
+		end
+		return
+	end
+	if not roll then
+		roll = make(id, 0, true)
+		roll:Play()
+	end
+	local target = onGround and math.clamp(speed / 80, 0, 0.6) or 0
+	roll.Volume += (target - roll.Volume) * 0.2
+	roll.PlaybackSpeed = 0.8 + math.clamp(speed / 150, 0, 0.6)
+end
+
+function Sounds.setZoneMusic(zoneIndex)
+	local id = Config.Sounds.Music[zoneIndex] or ""
+	if id == currentMusic then
+		return
+	end
+	currentMusic = id
+	if music then
+		music:Stop()
+		music:Destroy()
+		music = nil
+	end
+	if id ~= "" then
+		music = make(id, musicEnabled and 0.35 or 0, true)
+		music:Play()
+	end
+end
+
+function Sounds.setEnabled(sfx, mus)
+	enabled = sfx
+	musicEnabled = mus
+	if music then
+		music.Volume = mus and 0.35 or 0
+	end
+	if roll and not sfx then
+		roll.Volume = 0
+	end
+end
+
+return Sounds
+]]></ProtectedString></Properties></Item></Item></Item></Item><Item class="Lighting" referent="RBX0000000E"><Properties><string name="Name">Lighting</string><float name="ClockTime">14</float><float name="FogEnd">1100</float></Properties></Item></roblox>

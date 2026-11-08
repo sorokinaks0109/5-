@@ -16,6 +16,8 @@ local player = Players.LocalPlayer
 local Config = require(ReplicatedStorage:WaitForChild("SkateShared"):WaitForChild("Config"))
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local UI = require(script:WaitForChild("UI"))
+local Rider = require(script:WaitForChild("Rider"))
+local Sounds = require(script:WaitForChild("Sounds"))
 
 local TWO_PI = math.pi * 2
 
@@ -35,6 +37,9 @@ local state = {
 	lastKick = 0,
 	zone = 0,
 	gateCooldown = 0,
+	boostUntil = 0,
+	anim = "ride",
+	lean = 0,
 }
 
 -- ---------- запросы к серверу ----------
@@ -151,6 +156,7 @@ local function bail(reason)
 	local lostCoins = #lost > 0 and estimate(lost) or 0
 	UI.comboEnd(false)
 	UI.bail(lostCoins, reason)
+	Sounds.play("Bail")
 
 	local yaw = tr and tr.yaw or yawOnly(root.CFrame)
 	hum.PlatformStand = true
@@ -191,6 +197,7 @@ local function startTrick(name)
 		hum.AutoRotate = false
 	end
 	UI.trickPop(cfg.display)
+	Sounds.play("Trick", 0.9 + math.random() * 0.3, 0.5)
 end
 
 local function completeTrick()
@@ -240,6 +247,9 @@ local function onLand()
 			return
 		end
 	end
+	if state.airTime > 0.3 then
+		Sounds.play("Land", 1, math.clamp(state.airTime, 0.3, 0.8))
+	end
 	if state.airTime > 0.5 then
 		local deck = boardPart("Deck")
 		if deck then
@@ -268,6 +278,7 @@ local function launch(kick)
 	end
 	hum:ChangeState(Enum.HumanoidStateType.Freefall)
 	root.AssemblyLinearVelocity = horiz + Vector3.new(0, power, 0)
+	Sounds.play("Jump", 0.8)
 	addEntryChecked("Air")
 	if kick:GetAttribute("Mega") then
 		UI.floatText("МЕГА-ПРЫЖОК!", Color3.fromRGB(255, 80, 200))
@@ -291,7 +302,7 @@ local function hookLava(lava)
 	lava.Touched:Connect(function(hit)
 		if char and hit:IsDescendantOf(char) and not state.bailing then
 			bail("Горячо! Лава!")
-			local zoneIndex = state.zone
+			local zoneIndex = math.max(1, state.zone)
 			task.delay(1.2, function()
 				if root and root.Parent then
 					root.CFrame = CFrame.new(0, 5, -(zoneIndex - 1) * Config.ZoneLength - 18)
@@ -305,6 +316,66 @@ for _, l in ipairs(CollectionService:GetTagged("Lava")) do
 	hookLava(l)
 end
 CollectionService:GetInstanceAddedSignal("Lava"):Connect(hookLava)
+
+-- ---------- ускорители ----------
+local function hookBoost(pad)
+	pad.Touched:Connect(function(hit)
+		if char and hit:IsDescendantOf(char) and not state.bailing then
+			if os.clock() > state.boostUntil - 1.5 then
+				UI.floatText("УСКОРЕНИЕ!", Color3.fromRGB(0, 230, 255), 0.9)
+				Sounds.play("Jump", 1.4, 0.4)
+			end
+			state.boostUntil = os.clock() + 2.5
+			local maxSpeed = player:GetAttribute("MaxSpeed") or Config.Speed.Base
+			state.speed = math.max(state.speed, maxSpeed)
+		end
+	end)
+end
+for _, p in ipairs(CollectionService:GetTagged("Boost")) do
+	hookBoost(p)
+end
+CollectionService:GetInstanceAddedSignal("Boost"):Connect(hookBoost)
+
+-- ---------- витрина досок в лобби ----------
+local showDecks = {}
+local function addShowDeck(d)
+	showDecks[d] = d.CFrame
+end
+for _, d in ipairs(CollectionService:GetTagged("ShowDeck")) do
+	addShowDeck(d)
+end
+CollectionService:GetInstanceAddedSignal("ShowDeck"):Connect(addShowDeck)
+
+local function refreshStands()
+	local data = state.data
+	if not data then
+		return
+	end
+	for _, stand in ipairs(CollectionService:GetTagged("BoardStand")) do
+		local id = stand:GetAttribute("BoardId")
+		local b = Config.getBoard(id)
+		local owned = (b.pass and data.passes[b.pass]) or data.boards[id]
+		local status
+		if data.equipped == id then
+			status = "✅ НАДЕТА"
+		elseif owned then
+			status = "Нажми E — надеть"
+		elseif b.pass then
+			status = "👑 за робуксы"
+		else
+			status = Config.formatNumber(b.price) .. " 💰"
+		end
+		local info = stand:FindFirstChild("Info")
+		local label = info and info:FindFirstChild("Text")
+		if label then
+			label.Text = string.format("%s\n⚡x%.2f  •  %s", b.name, b.speed, status)
+		end
+		local prompt = stand:FindFirstChildOfClass("ProximityPrompt")
+		if prompt then
+			prompt.ActionText = owned and "Надеть" or (b.pass and "Подробнее" or "Купить")
+		end
+	end
+end
 
 -- ---------- ворота зон ----------
 local function refreshGates()
@@ -364,6 +435,7 @@ remotes.PickupTaken.OnClientEvent:Connect(function(s, cooldown, coins)
 		end
 	end
 	UI.floatText("+" .. Config.formatNumber(coins) .. " 💰", Color3.fromRGB(255, 220, 60))
+	Sounds.play("Coin", 1.2, 0.4)
 end)
 
 -- ---------- зоны: свет и гравитация ----------
@@ -380,6 +452,15 @@ local function enterZone(i)
 		OutdoorAmbient = l.ambient,
 	}):Play()
 	workspace.Gravity = zone.gravity
+	local atm = Lighting:FindFirstChild("SkateAtmosphere")
+	if atm then
+		TweenService:Create(atm, TweenInfo.new(1.5), { Haze = l.haze or 1, Color = l.fog }):Play()
+	end
+	local cc = Lighting:FindFirstChild("SkateColor")
+	if cc then
+		TweenService:Create(cc, TweenInfo.new(1.5), { TintColor = l.tint or Color3.new(1, 1, 1) }):Play()
+	end
+	Sounds.setZoneMusic(i)
 	UI.zoneBanner(i)
 end
 
@@ -397,6 +478,18 @@ local function onCharacter(c)
 	state.inAir = false
 	state.speed = 0
 	UI.comboEnd(nil)
+	-- выключаем стандартный звук шагов: мы же на доске
+	task.spawn(function()
+		local running = root:WaitForChild("Running", 10)
+		if running and running:IsA("Sound") then
+			running.Volume = 0
+			running:GetPropertyChangedSignal("Volume"):Connect(function()
+				if running.Volume ~= 0 then
+					running.Volume = 0
+				end
+			end)
+		end
+	end)
 	hum.Died:Connect(function()
 		if #state.combo > 0 then
 			remotes.ComboBailed:FireServer(state.combo)
@@ -447,6 +540,14 @@ RunService.Heartbeat:Connect(function(dt)
 			s.CFrame = info.base + Vector3.new(0, math.sin(t * 2.5 + info.phase) * 0.7, 0)
 		else
 			stars[s] = nil
+		end
+	end
+
+	for d, base in pairs(showDecks) do
+		if d.Parent then
+			d.CFrame = base * CFrame.new(0, math.sin(t * 2) * 0.5, 0) * CFrame.Angles(0, t * 1.2, 0)
+		else
+			showDecks[d] = nil
 		end
 	end
 
@@ -531,18 +632,59 @@ RunService.Heartbeat:Connect(function(dt)
 	if hum.JumpPower ~= jump then
 		hum.JumpPower = jump
 	end
-	local cap = maxSpeed * (state.grinding and 1.2 or 1)
+	-- ограничение скорости из настроек (если слишком быстро)
+	local limit = (state.data and state.data.settings and state.data.settings.speedLimit or 100) / 100
+	maxSpeed *= limit
+	local boosted = t < state.boostUntil
+	local cap = maxSpeed * (state.grinding and 1.2 or 1) * (boosted and 1.45 or 1)
+	local startSpeed = maxSpeed * Config.Speed.StartFraction
 	if state.bailing then
-		state.speed = maxSpeed * 0.4
+		state.speed = startSpeed * 0.5
 	elseif hum.MoveDirection.Magnitude > 0.1 then
-		state.speed = math.min(cap, math.max(state.speed, maxSpeed * 0.45) + maxSpeed * 0.7 * dt)
+		state.speed = math.max(state.speed, startSpeed)
+		if state.speed < cap then
+			state.speed = math.min(cap, state.speed + maxSpeed * Config.Speed.Accel * dt)
+		else
+			state.speed = math.max(cap, state.speed - maxSpeed * 0.8 * dt)
+		end
 	else
-		state.speed = math.max(maxSpeed * 0.45, state.speed - maxSpeed * 1.5 * dt)
+		state.speed = math.max(startSpeed, state.speed - maxSpeed * 1.2 * dt)
 	end
 	hum.WalkSpeed = state.speed
 
+	-- наклон в поворотах (доска и тело)
+	local yawRate = root.AssemblyAngularVelocity.Y
+	local targetLean = state.inAir and 0 or math.clamp(yawRate * 0.06, -0.35, 0.35)
+	state.lean += (targetLean - state.lean) * math.min(1, dt * 8)
+	if not state.trick and not state.bailing then
+		local weld = getWeld()
+		if weld then
+			weld.C0 = boardBase() * CFrame.Angles(0, 0, -state.lean * 0.6)
+		end
+	end
+
+	-- поза скейтера для анимации
+	local anim
+	if state.bailing then
+		anim = "bail"
+	elseif state.trick then
+		anim = state.trick.name
+	elseif state.grinding then
+		anim = "grind"
+	elseif state.inAir then
+		anim = "air"
+	else
+		anim = "ride"
+	end
+	Rider.setLocal(anim, state.lean)
+	if anim ~= state.anim then
+		state.anim = anim
+		remotes.AnimState:FireServer(anim)
+	end
+	Sounds.setRoll(flat, not state.inAir and not state.bailing)
+
 	-- камера и след
-	local targetFov = 70 + math.clamp((flat - 20) / 100, 0, 1) * 22
+	local targetFov = 70 + math.clamp((flat - 25) / 120, 0, 1) * 25 + (boosted and 8 or 0)
 	camera.FieldOfView += (targetFov - camera.FieldOfView) * math.min(1, dt * 4)
 	local trail = boardPart("BoardTrail")
 	if trail then
@@ -564,16 +706,25 @@ end)
 -- ---------- данные с сервера ----------
 remotes.DataChanged.OnClientEvent:Connect(function(snap)
 	local first = state.data == nil
+	local prevLevel = state.data and state.data.level
 	state.data = snap
 	UI.setData(snap)
 	refreshGates()
+	refreshStands()
+	if snap.settings then
+		Sounds.setEnabled(snap.settings.sfx ~= false, snap.settings.music ~= false)
+	end
+	if prevLevel and snap.level > prevLevel then
+		Sounds.play("LevelUp", 1.3)
+	end
 	if first and snap.level <= 1 and snap.coins == 0 then
 		UI.tutorial()
 	end
 end)
 
-remotes.ComboResult.OnClientEvent:Connect(function(coins, xp, record)
-	UI.comboResult(coins, xp, record)
+remotes.ComboResult.OnClientEvent:Connect(function(coins, xp, record, mult)
+	UI.comboResult(coins, xp, record, mult)
+	Sounds.play("Coin", 1 + math.clamp((mult or 1) / 20, 0, 0.5))
 end)
 
 remotes.Notify.OnClientEvent:Connect(function(text, kind)
@@ -585,6 +736,7 @@ UI.init({
 	request = request,
 	buy = buy,
 	onTrick = startTrick,
+	sounds = Sounds,
 	getData = function()
 		return state.data
 	end,
