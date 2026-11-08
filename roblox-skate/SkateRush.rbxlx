@@ -1,0 +1,3260 @@
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><Item class="ReplicatedStorage" referent="RBX00000008"><Properties><string name="Name">ReplicatedStorage</string></Properties><Item class="Folder" referent="RBX00000007"><Properties><string name="Name">SkateShared</string></Properties><Item class="ModuleScript" referent="RBX00000001"><Properties><string name="Name">Config</string><ProtectedString name="Source"><![CDATA[-- ============================================================
+--  SKATE RUSH — все настройки игры в одном месте.
+--  Меняй цифры здесь, и игра поменяется сама: цены, зоны,
+--  доски, трюки, награды. Код трогать не нужно.
+-- ============================================================
+
+local Config = {}
+
+Config.GameName = "Skate Rush"
+
+-- ------------------------------------------------------------
+--  ДОНАТ (робуксы)
+--  ID создаются на сайте create.roblox.com (см. README).
+--  Пока ID = 0, в Roblox Studio покупка срабатывает бесплатно,
+--  чтобы можно было всё проверить. В опубликованной игре
+--  товар с ID = 0 просто не продаётся.
+--  price — только подпись на кнопке. Настоящую цену ставишь
+--  на сайте, и она должна совпадать с этой.
+-- ------------------------------------------------------------
+Config.GamePasses = {
+	Coins2x = { id = 0, price = 199, icon = "💰", name = "x2 Монеты навсегда", desc = "Все монеты удваиваются. Навсегда." },
+	Coins3x = { id = 0, price = 449, icon = "🤑", name = "x3 Монеты навсегда", desc = "Все монеты утраиваются. Вместе с x2 не складывается." },
+	GoldBoard = { id = 0, price = 299, icon = "👑", name = "Золотая доска", desc = "Быстрая доска с золотым следом и +25% к монетам." },
+}
+Config.GamePassOrder = { "Coins2x", "Coins3x", "GoldBoard" }
+
+Config.Products = {
+	SaveCombo = { id = 0, price = 5, icon = "🛟", name = "Спасти комбо", desc = "Упал? Получи монеты за потерянное комбо." },
+	SkipZone = { id = 0, price = 25, icon = "🚪", name = "Открыть следующую зону", desc = "Сразу открывает следующую зону без уровня и монет." },
+	Boost2x = { id = 0, price = 15, icon = "⚡", name = "Буст x2 на 15 минут", desc = "Двойные монеты на 15 минут. Складывается с геймпассами.", minutes = 15 },
+	CoinsSmall = { id = 0, price = 19, icon = "👜", name = "Мешок монет", desc = "Монеты. Чем дальше зона, тем больше." },
+	CoinsBig = { id = 0, price = 79, icon = "🧰", name = "Сундук монет", desc = "Много монет. Чем дальше зона, тем больше." },
+}
+Config.ProductOrder = { "Boost2x", "SkipZone", "CoinsSmall", "CoinsBig" }
+
+-- Сколько монет дают мешок и сундук (умножается на множитель лучшей открытой зоны)
+Config.CoinPackBase = { CoinsSmall = 1500, CoinsBig = 9000 }
+
+-- ------------------------------------------------------------
+--  ТРЮКИ
+--  points   — очки за трюк
+--  duration — сколько секунд длится трюк в воздухе.
+--             Не успел докрутить до приземления — падение!
+--  multiplier — растит ли трюк множитель комбо
+-- ------------------------------------------------------------
+Config.Tricks = {
+	Kickflip = { display = "Кикфлип", points = 25, duration = 0.42, multiplier = true },
+	Spin = { display = "Спин 360", points = 40, duration = 0.6, multiplier = true },
+	Grab = { display = "Грэб", points = 30, duration = 0.5, multiplier = true },
+	Backflip = { display = "Бэкфлип", points = 90, duration = 0.85, multiplier = true },
+	Rail = { display = "Рейл", points = 20, duration = 0.2, multiplier = true },
+	Grind = { display = "Грайнд", points = 6, duration = 0.2, multiplier = false },
+	Air = { display = "Полёт", points = 10, duration = 0.3, multiplier = false },
+}
+
+-- Кнопки трюков: клавиша на компьютере и подпись на телефоне
+Config.TrickButtons = {
+	{ trick = "Kickflip", key = Enum.KeyCode.E, label = "E", mobile = "ФЛИП", color = Color3.fromRGB(255, 196, 0) },
+	{ trick = "Spin", key = Enum.KeyCode.Q, label = "Q", mobile = "СПИН", color = Color3.fromRGB(0, 200, 255) },
+	{ trick = "Grab", key = Enum.KeyCode.R, label = "R", mobile = "ГРЭБ", color = Color3.fromRGB(120, 230, 90) },
+	{ trick = "Backflip", key = Enum.KeyCode.F, label = "F", mobile = "БЭК", color = Color3.fromRGB(255, 70, 140) },
+}
+
+Config.Combo = {
+	BankDelay = 1.3, -- сколько секунд надо проехать по земле, чтобы комбо засчиталось
+	MultStep = 0.5, -- каждый новый трюк в комбо добавляет +0.5 к множителю
+	MaxMult = 12,
+	RepeatPenalty = 0.5, -- повтор того же трюка в комбо даёт вдвое меньше очков
+	MaxEntries = 120,
+	SaveOfferMin = 40, -- кнопку «спасти комбо» показываем, если комбо дороже стольких монет
+}
+
+-- ------------------------------------------------------------
+--  ЗОНЫ (этапы). Идут друг за другом.
+--  level — нужный уровень, cost — цена в монетах,
+--  mult — во сколько раз больше монет за трюки в этой зоне.
+-- ------------------------------------------------------------
+Config.ZoneLength = 420
+Config.ZoneWidth = 170
+
+Config.Zones = {
+	{
+		name = "Двор",
+		theme = "park",
+		level = 1,
+		cost = 0,
+		mult = 1,
+		floor = Color3.fromRGB(150, 150, 155),
+		floorMaterial = Enum.Material.Concrete,
+		accent = Color3.fromRGB(255, 170, 0),
+		light = { clock = 14, brightness = 2.5, fog = Color3.fromRGB(190, 220, 255), fogEnd = 1100, ambient = Color3.fromRGB(110, 110, 120) },
+		gravity = 196.2,
+	},
+	{
+		name = "Неоновый город",
+		theme = "city",
+		level = 5,
+		cost = 750,
+		mult = 2,
+		floor = Color3.fromRGB(45, 45, 55),
+		floorMaterial = Enum.Material.Asphalt,
+		accent = Color3.fromRGB(255, 0, 200),
+		light = { clock = 20.5, brightness = 1.2, fog = Color3.fromRGB(60, 20, 90), fogEnd = 700, ambient = Color3.fromRGB(120, 80, 150) },
+		gravity = 196.2,
+	},
+	{
+		name = "Пляж",
+		theme = "beach",
+		level = 12,
+		cost = 8000,
+		mult = 3.5,
+		floor = Color3.fromRGB(240, 215, 150),
+		floorMaterial = Enum.Material.Sand,
+		accent = Color3.fromRGB(0, 210, 230),
+		light = { clock = 16.5, brightness = 3, fog = Color3.fromRGB(255, 220, 180), fogEnd = 1200, ambient = Color3.fromRGB(140, 120, 100) },
+		gravity = 196.2,
+	},
+	{
+		name = "Ледяной каньон",
+		theme = "ice",
+		level = 20,
+		cost = 60000,
+		mult = 6,
+		floor = Color3.fromRGB(200, 235, 255),
+		floorMaterial = Enum.Material.Ice,
+		accent = Color3.fromRGB(80, 200, 255),
+		light = { clock = 10, brightness = 2.2, fog = Color3.fromRGB(220, 240, 255), fogEnd = 600, ambient = Color3.fromRGB(130, 150, 180) },
+		gravity = 196.2,
+	},
+	{
+		name = "Вулкан",
+		theme = "volcano",
+		level = 30,
+		cost = 400000,
+		mult = 10,
+		floor = Color3.fromRGB(50, 40, 40),
+		floorMaterial = Enum.Material.Basalt,
+		accent = Color3.fromRGB(255, 80, 0),
+		light = { clock = 18.3, brightness = 1.5, fog = Color3.fromRGB(120, 30, 10), fogEnd = 500, ambient = Color3.fromRGB(150, 70, 50) },
+		gravity = 196.2,
+	},
+	{
+		name = "Космос",
+		theme = "space",
+		level = 42,
+		cost = 3000000,
+		mult = 16,
+		floor = Color3.fromRGB(25, 20, 45),
+		floorMaterial = Enum.Material.SmoothPlastic,
+		accent = Color3.fromRGB(150, 90, 255),
+		light = { clock = 0, brightness = 1, fog = Color3.fromRGB(10, 5, 30), fogEnd = 900, ambient = Color3.fromRGB(110, 90, 170) },
+		gravity = 70, -- низкая гравитация: прыжки выше, полёт дольше
+	},
+}
+
+-- ------------------------------------------------------------
+--  ДОСКИ
+--  speed — множитель скорости, jump — добавка к прыжку
+-- ------------------------------------------------------------
+Config.Boards = {
+	{ id = "basic", name = "Классика", price = 0, speed = 1.0, jump = 0, deck = Color3.fromRGB(200, 120, 60), stripe = Color3.fromRGB(40, 40, 40), trail = Color3.fromRGB(255, 255, 255) },
+	{ id = "street", name = "Уличная", price = 2500, speed = 1.08, jump = 4, deck = Color3.fromRGB(30, 30, 30), stripe = Color3.fromRGB(255, 60, 60), trail = Color3.fromRGB(255, 80, 80) },
+	{ id = "neon", name = "Неон", price = 15000, speed = 1.15, jump = 8, deck = Color3.fromRGB(20, 20, 40), stripe = Color3.fromRGB(0, 255, 200), trail = Color3.fromRGB(0, 255, 200), neon = true },
+	{ id = "fire", name = "Огонь", price = 90000, speed = 1.22, jump = 12, deck = Color3.fromRGB(120, 20, 0), stripe = Color3.fromRGB(255, 140, 0), trail = Color3.fromRGB(255, 90, 0), neon = true, fire = true },
+	{ id = "ice", name = "Лёд", price = 450000, speed = 1.3, jump = 16, deck = Color3.fromRGB(170, 230, 255), stripe = Color3.fromRGB(255, 255, 255), trail = Color3.fromRGB(150, 230, 255), neon = true },
+	{ id = "galaxy", name = "Галактика", price = 2500000, speed = 1.4, jump = 22, deck = Color3.fromRGB(60, 0, 120), stripe = Color3.fromRGB(255, 0, 255), trail = Color3.fromRGB(180, 100, 255), neon = true, sparkle = true },
+	{ id = "gold", name = "Золотая", pass = "GoldBoard", speed = 1.35, jump = 20, coinBonus = 0.25, deck = Color3.fromRGB(255, 200, 40), stripe = Color3.fromRGB(255, 255, 200), trail = Color3.fromRGB(255, 215, 0), neon = true, sparkle = true },
+}
+
+function Config.getBoard(id)
+	for _, b in ipairs(Config.Boards) do
+		if b.id == id then
+			return b
+		end
+	end
+	return Config.Boards[1]
+end
+
+-- ------------------------------------------------------------
+--  ПРОКАЧКА СКОРОСТИ
+-- ------------------------------------------------------------
+Config.Speed = {
+	Base = 20,
+	PerLevel = 1.6,
+	MaxLevel = 50,
+	CostBase = 30,
+	CostGrowth = 1.27,
+	MaxWalkSpeed = 140,
+}
+Config.BaseJump = 60
+
+function Config.speedCost(speedLevel)
+	return math.floor(Config.Speed.CostBase * Config.Speed.CostGrowth ^ speedLevel)
+end
+
+function Config.maxSpeed(speedLevel, boardId)
+	local b = Config.getBoard(boardId)
+	local s = (Config.Speed.Base + Config.Speed.PerLevel * speedLevel) * b.speed
+	return math.min(s, Config.Speed.MaxWalkSpeed)
+end
+
+function Config.jumpPower(boardId)
+	return Config.BaseJump + Config.getBoard(boardId).jump
+end
+
+-- ------------------------------------------------------------
+--  УРОВНИ
+-- ------------------------------------------------------------
+function Config.xpForLevel(level)
+	return math.floor(60 * level ^ 1.6)
+end
+
+-- ------------------------------------------------------------
+--  ПЕРЕРОЖДЕНИЕ: сбрасывает монеты и скорость,
+--  но навсегда даёт +50% к монетам
+-- ------------------------------------------------------------
+Config.Rebirth = { CostBase = 250000, CostGrowth = 4, Bonus = 0.5 }
+
+function Config.rebirthCost(rebirths)
+	return math.floor(Config.Rebirth.CostBase * Config.Rebirth.CostGrowth ^ rebirths)
+end
+
+-- ------------------------------------------------------------
+--  ЕЖЕДНЕВНАЯ НАГРАДА (дни подряд). Умножается на множитель зоны.
+-- ------------------------------------------------------------
+Config.Daily = { 200, 400, 700, 1000, 1500, 2200, 5000 }
+
+-- ------------------------------------------------------------
+--  КОДЫ (вводятся в меню «Коды»). Каждый код — один раз.
+--  Публикуй их в соцсетях, чтобы приводить игроков!
+-- ------------------------------------------------------------
+Config.Codes = {
+	SKATE = 500,
+	KICKFLIP = 1000,
+	RUSH2026 = 2500,
+}
+
+-- ------------------------------------------------------------
+--  ТРЮК-БИТВА: каждые несколько минут — соревнование на сервере
+-- ------------------------------------------------------------
+Config.Event = {
+	Interval = 240, -- секунд между битвами
+	Duration = 75, -- сколько длится битва
+	Rewards = { 1.0, 0.5, 0.25 }, -- 1-е место получает ещё 100% своих очков монетами, 2-е 50%, 3-е 25%
+}
+
+-- ------------------------------------------------------------
+--  Звёзды на карте
+-- ------------------------------------------------------------
+Config.Star = { Value = 25, Respawn = 45 }
+
+-- ------------------------------------------------------------
+--  Подсчёт комбо (одинаковый на сервере и у игрока)
+-- ------------------------------------------------------------
+function Config.comboScore(entries)
+	local base = 0
+	local count = 0
+	local seen = {}
+	for _, name in ipairs(entries) do
+		local t = Config.Tricks[name]
+		if t then
+			local pts = t.points
+			if t.multiplier then
+				local n = seen[name] or 0
+				pts = pts * Config.Combo.RepeatPenalty ^ n
+				seen[name] = n + 1
+				count += 1
+			end
+			base += pts
+		end
+	end
+	local mult = math.min(Config.Combo.MaxMult, 1 + Config.Combo.MultStep * math.max(0, count - 1))
+	return base, mult
+end
+
+-- Красивые числа: 1 250 / 12.5K / 3.4M
+function Config.formatNumber(n)
+	n = math.floor(n or 0)
+	local abs = math.abs(n)
+	if abs >= 1e12 then
+		return string.format("%.1fT", n / 1e12)
+	elseif abs >= 1e9 then
+		return string.format("%.1fB", n / 1e9)
+	elseif abs >= 1e6 then
+		return string.format("%.1fM", n / 1e6)
+	elseif abs >= 1e4 then
+		return string.format("%.1fK", n / 1e3)
+	end
+	local s = tostring(n)
+	local formatted = s:reverse():gsub("(%d%d%d)", "%1 "):reverse()
+	return (formatted:gsub("^%s+", ""))
+end
+
+return Config
+]]></ProtectedString></Properties></Item></Item></Item><Item class="ServerScriptService" referent="RBX00000009"><Properties><string name="Name">ServerScriptService</string></Properties><Item class="Script" referent="RBX00000004"><Properties><string name="Name">SkateServer</string><ProtectedString name="Source"><![CDATA[-- ============================================================
+--  SKATE RUSH — сервер
+--  Хранит монеты и уровни, проверяет трюки, продаёт товары,
+--  проводит трюк-битвы. Игрок не может сам себе начислить монеты:
+--  сервер сам пересчитывает каждое комбо.
+-- ============================================================
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local MarketplaceService = game:GetService("MarketplaceService")
+local CollectionService = game:GetService("CollectionService")
+local RunService = game:GetService("RunService")
+
+local Shared = ReplicatedStorage:WaitForChild("SkateShared")
+local Config = require(Shared:WaitForChild("Config"))
+local Data = require(script:WaitForChild("Data"))
+local World = require(script:WaitForChild("World"))
+
+World.build()
+
+-- ---------- remotes ----------
+local remotes = Instance.new("Folder")
+remotes.Name = "Remotes"
+
+local function newEvent(name)
+	local e = Instance.new("RemoteEvent")
+	e.Name = name
+	e.Parent = remotes
+	return e
+end
+local function newFunction(name)
+	local f = Instance.new("RemoteFunction")
+	f.Name = name
+	f.Parent = remotes
+	return f
+end
+
+local ComboBanked = newEvent("ComboBanked") -- клиент → сервер: комбо засчитано
+local ComboBailed = newEvent("ComboBailed") -- клиент → сервер: упал
+local ComboResult = newEvent("ComboResult") -- сервер → клиент: сколько начислено
+local DataChanged = newEvent("DataChanged") -- сервер → клиент: новые данные
+local Notify = newEvent("Notify") -- сервер → клиент: сообщение
+local PickupTaken = newEvent("PickupTaken") -- сервер → клиент: звезда собрана
+local Request = newFunction("Request") -- все покупки и кнопки меню
+remotes.Parent = ReplicatedStorage
+
+-- ---------- состояние ----------
+local profiles = {} -- [player] = data
+local canSave = {} -- [player] = bool
+local passes = {} -- [player] = { Coins2x = true, ... }
+local budget = {} -- [player] = { allowance, last } — защита от накрутки
+local pendingLost = {} -- [player] = { coins, xp, expires }
+local starCooldown = {} -- [player] = { [part] = time }
+local eventScores = {} -- [player] = score
+
+local productByKey = {}
+local productKeyById = {}
+for key, p in pairs(Config.Products) do
+	productByKey[key] = p
+	if p.id ~= 0 then
+		productKeyById[p.id] = key
+	end
+end
+local passKeyById = {}
+for key, p in pairs(Config.GamePasses) do
+	if p.id ~= 0 then
+		passKeyById[p.id] = key
+	end
+end
+
+-- ---------- расчёты ----------
+local function zoneMult(i)
+	return Config.Zones[math.clamp(i, 1, #Config.Zones)].mult
+end
+
+local function currentZone(player)
+	local data = profiles[player]
+	local char = player.Character
+	local rootPart = char and char:FindFirstChild("HumanoidRootPart")
+	if not data or not rootPart then
+		return 1
+	end
+	return math.min(World.zoneAt(rootPart.Position), data.maxZone)
+end
+
+local function coinMultiplier(player, zoneIndex)
+	local data = profiles[player]
+	local p = passes[player] or {}
+	local m = zoneMult(zoneIndex)
+	if p.Coins3x then
+		m *= 3
+	elseif p.Coins2x then
+		m *= 2
+	end
+	if data.boostUntil > os.time() then
+		m *= 2
+	end
+	m *= 1 + Config.Rebirth.Bonus * data.rebirths
+	local board = Config.getBoard(data.equipped)
+	if board.coinBonus then
+		m *= 1 + board.coinBonus
+	end
+	return m
+end
+
+local function snapshot(player)
+	local data = profiles[player]
+	local today = math.floor(os.time() / 86400)
+	return {
+		coins = data.coins,
+		xp = data.xp,
+		level = data.level,
+		speedLevel = data.speedLevel,
+		boards = data.boards,
+		equipped = data.equipped,
+		maxZone = data.maxZone,
+		rebirths = data.rebirths,
+		dailyStreak = data.dailyStreak,
+		dailyReady = data.lastDailyDay ~= today,
+		dailyNext = (data.lastDailyDay == today - 1) and (data.dailyStreak % #Config.Daily + 1) or 1,
+		boostLeft = math.max(0, data.boostUntil - os.time()),
+		bestCombo = data.bestCombo,
+		passes = passes[player] or {},
+		coinMult = coinMultiplier(player, currentZone(player)),
+		saving = canSave[player] == true,
+	}
+end
+
+local function applyStats(player)
+	local data = profiles[player]
+	if not data then
+		return
+	end
+	local speed = Config.maxSpeed(data.speedLevel, data.equipped)
+	local jump = Config.jumpPower(data.equipped)
+	player:SetAttribute("MaxSpeed", speed)
+	player:SetAttribute("JumpPower", jump)
+	local char = player.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if hum then
+		hum.UseJumpPower = true
+		hum.JumpPower = jump
+	end
+	local ls = player:FindFirstChild("leaderstats")
+	if ls then
+		ls["Монеты"].Value = math.floor(data.coins)
+		ls["Уровень"].Value = data.level
+		ls["Перерожд."].Value = data.rebirths
+	end
+end
+
+local function push(player)
+	if profiles[player] then
+		applyStats(player)
+		DataChanged:FireClient(player, snapshot(player))
+	end
+end
+
+local function notify(player, text, kind)
+	Notify:FireClient(player, text, kind or "info")
+end
+
+local function addCoins(player, amount)
+	local data = profiles[player]
+	data.coins += math.floor(amount)
+end
+
+local function addXp(player, amount)
+	local data = profiles[player]
+	data.xp += math.floor(amount)
+	local leveled = false
+	while data.xp >= Config.xpForLevel(data.level) do
+		data.xp -= Config.xpForLevel(data.level)
+		data.level += 1
+		leveled = true
+	end
+	if leveled then
+		notify(player, "НОВЫЙ УРОВЕНЬ " .. data.level .. "!", "level")
+		local nextZone = Config.Zones[data.maxZone + 1]
+		if nextZone and data.level == nextZone.level then
+			notify(player, "Теперь можно открыть зону «" .. nextZone.name .. "»!", "good")
+		end
+	end
+end
+
+-- ---------- данные: вход и выход ----------
+local function setupLeaderstats(player)
+	local ls = Instance.new("Folder")
+	ls.Name = "leaderstats"
+	for _, name in ipairs({ "Уровень", "Монеты", "Перерожд." }) do
+		local v = Instance.new("IntValue")
+		v.Name = name
+		v.Parent = ls
+	end
+	ls.Parent = player
+end
+
+local function checkPasses(player)
+	local owned = {}
+	for key, p in pairs(Config.GamePasses) do
+		if p.id ~= 0 then
+			local ok, has = pcall(function()
+				return MarketplaceService:UserOwnsGamePassAsync(player.UserId, p.id)
+			end)
+			if ok and has then
+				owned[key] = true
+			end
+		end
+	end
+	passes[player] = owned
+end
+
+-- ---------- доска на персонаже ----------
+local function attachBoard(player)
+	local data = profiles[player]
+	local char = player.Character
+	if not data or not char then
+		return
+	end
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	local rootPart = char:FindFirstChild("HumanoidRootPart")
+	if not hum or not rootPart then
+		return
+	end
+	local old = char:FindFirstChild("Skateboard")
+	if old then
+		old:Destroy()
+	end
+	local oldWeld = rootPart:FindFirstChild("BoardWeld")
+	if oldWeld then
+		oldWeld:Destroy()
+	end
+
+	-- поднимаем персонажа, чтобы он стоял НА доске
+	if char:GetAttribute("BaseHip") == nil then
+		char:SetAttribute("BaseHip", hum.HipHeight)
+		hum.HipHeight += 0.6
+	end
+	local baseHip = char:GetAttribute("BaseHip")
+	local legs = hum.RigType == Enum.HumanoidRigType.R15 and baseHip or 2
+	local offset = legs + rootPart.Size.Y / 2 + 0.1
+
+	local cfg = Config.getBoard(data.equipped)
+	local model = Instance.new("Model")
+	model.Name = "Skateboard"
+
+	local function bpart(name, size, color, material, shape)
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Size = size
+		p.Color = color
+		p.Material = material
+		if shape then
+			p.Shape = shape
+		end
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.Massless = true
+		p.TopSurface = Enum.SurfaceType.Smooth
+		p.BottomSurface = Enum.SurfaceType.Smooth
+		p.Parent = model
+		return p
+	end
+
+	local deck = bpart("Deck", Vector3.new(1.7, 0.2, 4.4), cfg.deck, Enum.Material.SmoothPlastic)
+	model.PrimaryPart = deck
+	local stripe = bpart("Stripe", Vector3.new(0.5, 0.22, 4.2), cfg.stripe, cfg.neon and Enum.Material.Neon or Enum.Material.SmoothPlastic)
+	stripe.CFrame = deck.CFrame
+	local nose = bpart("Nose", Vector3.new(1.7, 0.2, 0.7), cfg.deck, Enum.Material.SmoothPlastic)
+	nose.CFrame = deck.CFrame * CFrame.new(0, 0.12, -2.45) * CFrame.Angles(math.rad(20), 0, 0)
+	local tail = bpart("Tail", Vector3.new(1.7, 0.2, 0.7), cfg.deck, Enum.Material.SmoothPlastic)
+	tail.CFrame = deck.CFrame * CFrame.new(0, 0.12, 2.45) * CFrame.Angles(math.rad(-20), 0, 0)
+	for _, pos in ipairs({ Vector3.new(-0.65, -0.3, -1.5), Vector3.new(0.65, -0.3, -1.5), Vector3.new(-0.65, -0.3, 1.5), Vector3.new(0.65, -0.3, 1.5) }) do
+		local w = bpart("Wheel", Vector3.new(0.3, 0.42, 0.42), cfg.stripe, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
+		w.CFrame = deck.CFrame * CFrame.new(pos)
+	end
+	for _, p in ipairs(model:GetChildren()) do
+		if p ~= deck and p:IsA("BasePart") then
+			local w = Instance.new("Weld")
+			w.Part0 = deck
+			w.Part1 = p
+			w.C0 = deck.CFrame:Inverse() * p.CFrame
+			w.Parent = p
+		end
+	end
+
+	-- след за доской
+	local a0 = Instance.new("Attachment")
+	a0.Name = "TrailA"
+	a0.Position = Vector3.new(-0.7, 0, 2.2)
+	a0.Parent = deck
+	local a1 = Instance.new("Attachment")
+	a1.Name = "TrailB"
+	a1.Position = Vector3.new(0.7, 0, 2.2)
+	a1.Parent = deck
+	local trail = Instance.new("Trail")
+	trail.Name = "BoardTrail"
+	trail.Attachment0 = a0
+	trail.Attachment1 = a1
+	trail.Color = ColorSequence.new(cfg.trail)
+	trail.Transparency = NumberSequence.new(0.2, 1)
+	trail.Lifetime = 0.35
+	trail.LightEmission = cfg.neon and 1 or 0
+	trail.FaceCamera = true
+	trail.Enabled = false
+	trail.Parent = deck
+
+	-- искры для грайнда (включает клиент)
+	local sparkA = Instance.new("Attachment")
+	sparkA.Name = "SparkA"
+	sparkA.Position = Vector3.new(0, -0.4, 0)
+	sparkA.Parent = deck
+	local sparks = Instance.new("ParticleEmitter")
+	sparks.Name = "Sparks"
+	sparks.Color = ColorSequence.new(Color3.fromRGB(255, 230, 120), Color3.fromRGB(255, 120, 0))
+	sparks.LightEmission = 1
+	sparks.Size = NumberSequence.new(0.35, 0)
+	sparks.Lifetime = NumberRange.new(0.2, 0.4)
+	sparks.Speed = NumberRange.new(10, 18)
+	sparks.SpreadAngle = Vector2.new(60, 60)
+	sparks.Rate = 80
+	sparks.Enabled = false
+	sparks.Parent = sparkA
+
+	if cfg.fire then
+		local fire = Instance.new("Fire")
+		fire.Size = 3
+		fire.Heat = 4
+		fire.Color = Color3.fromRGB(255, 120, 0)
+		fire.SecondaryColor = Color3.fromRGB(255, 220, 0)
+		fire.Parent = deck
+	end
+	if cfg.sparkle then
+		local s = Instance.new("Sparkles")
+		s.SparkleColor = cfg.trail
+		s.Parent = deck
+	end
+
+	deck.CFrame = rootPart.CFrame * CFrame.new(0, -offset, 0)
+	model.Parent = char
+
+	local weld = Instance.new("Weld")
+	weld.Name = "BoardWeld"
+	weld.Part0 = rootPart
+	weld.Part1 = deck
+	weld.C0 = CFrame.new(0, -offset, 0)
+	weld:SetAttribute("BaseOffset", offset)
+	weld.Parent = rootPart
+end
+
+local function onCharacter(player, char)
+	local hum = char:WaitForChild("Humanoid", 10)
+	local rootPart = char:WaitForChild("HumanoidRootPart", 10)
+	if not hum or not rootPart then
+		return
+	end
+	-- ждём, пока загрузятся данные
+	local t = 0
+	while not profiles[player] and t < 15 do
+		t += task.wait(0.2)
+	end
+	local data = profiles[player]
+	if not data then
+		return
+	end
+	attachBoard(player)
+	applyStats(player)
+	-- появляемся в последней зоне
+	local zoneIndex = math.clamp(data.lastZone, 1, data.maxZone)
+	if zoneIndex > 1 then
+		task.wait(0.1)
+		char:PivotTo(World.zoneSpawn(zoneIndex))
+	end
+end
+
+local function onPlayerAdded(player)
+	setupLeaderstats(player)
+	checkPasses(player)
+	local data, ok = Data.load(player)
+	if not player.Parent then
+		return
+	end
+	profiles[player] = data
+	canSave[player] = ok
+	budget[player] = { allowance = 5, last = os.clock() }
+	starCooldown[player] = {}
+	push(player)
+	if not ok then
+		if RunService:IsStudio() then
+			notify(player, "Studio: сохранение выключено (включи API Services в Game Settings → Security)", "warn")
+		else
+			notify(player, "Не удалось загрузить прогресс. Перезайди, чтобы он сохранялся.", "warn")
+		end
+	end
+	if data.lastDailyDay ~= math.floor(os.time() / 86400) then
+		task.delay(3, function()
+			if player.Parent then
+				notify(player, "🎁 Ежедневная награда ждёт тебя!", "good")
+			end
+		end)
+	end
+
+	player.CharacterAdded:Connect(function(char)
+		onCharacter(player, char)
+	end)
+	if player.Character then
+		task.spawn(onCharacter, player, player.Character)
+	end
+end
+
+local function saveAndForget(player)
+	local data = profiles[player]
+	if data then
+		data.lastZone = currentZone(player)
+		if canSave[player] then
+			Data.save(player, data)
+		end
+	end
+	profiles[player] = nil
+	canSave[player] = nil
+	passes[player] = nil
+	budget[player] = nil
+	pendingLost[player] = nil
+	starCooldown[player] = nil
+	eventScores[player] = nil
+end
+
+Players.PlayerAdded:Connect(onPlayerAdded)
+for _, p in ipairs(Players:GetPlayers()) do
+	task.spawn(onPlayerAdded, p)
+end
+Players.PlayerRemoving:Connect(saveAndForget)
+
+game:BindToClose(function()
+	local threads = {}
+	for _, player in ipairs(Players:GetPlayers()) do
+		table.insert(threads, task.spawn(function()
+			local data = profiles[player]
+			if data and canSave[player] then
+				data.lastZone = currentZone(player)
+				Data.save(player, data)
+			end
+		end))
+	end
+	task.wait(RunService:IsStudio() and 1 or 5)
+end)
+
+-- автосохранение
+task.spawn(function()
+	while true do
+		task.wait(90)
+		for player, data in pairs(profiles) do
+			if canSave[player] then
+				data.lastZone = currentZone(player)
+				task.spawn(Data.save, player, data)
+			end
+		end
+	end
+end)
+
+-- ---------- проверка комбо ----------
+-- Каждый трюк «стоит» времени. Время копится в реальном темпе.
+-- Если игрок присылает трюков больше, чем физически успел бы сделать, — комбо не засчитывается.
+local function validateEntries(player, entries)
+	if type(entries) ~= "table" then
+		return nil
+	end
+	local count = #entries
+	if count == 0 or count > Config.Combo.MaxEntries then
+		return nil
+	end
+	local clean = {}
+	local cost = 0
+	for i = 1, count do
+		local name = entries[i]
+		if type(name) ~= "string" then
+			return nil
+		end
+		local t = Config.Tricks[name]
+		if not t then
+			return nil
+		end
+		cost += t.duration * 0.7
+		clean[i] = name
+	end
+	local b = budget[player]
+	local now = os.clock()
+	b.allowance = math.min(b.allowance + (now - b.last), 40)
+	b.last = now
+	if cost > b.allowance then
+		return nil
+	end
+	b.allowance -= cost
+	return clean
+end
+
+local function comboReward(player, entries)
+	local data = profiles[player]
+	local zone = currentZone(player)
+	local base, mult = Config.comboScore(entries)
+	local score = base * mult
+	local coins = math.floor(score * coinMultiplier(player, zone))
+	local xp = math.floor(score * (1 + (zoneMult(zone) - 1) * 0.5))
+	return coins, xp, score
+end
+
+local eventActive = false
+
+ComboBanked.OnServerEvent:Connect(function(player, entries)
+	local data = profiles[player]
+	if not data then
+		return
+	end
+	local clean = validateEntries(player, entries)
+	if not clean then
+		return
+	end
+	local coins, xp, score = comboReward(player, clean)
+	addCoins(player, coins)
+	addXp(player, xp)
+	data.totalTricks += #clean
+	local record = false
+	if coins > data.bestCombo then
+		data.bestCombo = coins
+		record = #clean >= 3
+	end
+	if eventActive then
+		eventScores[player] = (eventScores[player] or 0) + math.floor(score)
+		player:SetAttribute("EventScore", eventScores[player])
+	end
+	ComboResult:FireClient(player, coins, xp, record)
+	push(player)
+end)
+
+ComboBailed.OnServerEvent:Connect(function(player, entries)
+	if not profiles[player] then
+		return
+	end
+	local clean = validateEntries(player, entries)
+	if not clean then
+		return
+	end
+	local coins, xp = comboReward(player, clean)
+	pendingLost[player] = { coins = coins, xp = xp, expires = os.clock() + 25 }
+end)
+
+-- ---------- звёзды ----------
+local function hookStar(starPart)
+	starPart.Touched:Connect(function(hit)
+		local char = hit.Parent
+		local player = char and Players:GetPlayerFromCharacter(char)
+		if not player or not profiles[player] then
+			return
+		end
+		local cd = starCooldown[player]
+		local now = os.clock()
+		if cd[starPart] and cd[starPart] > now then
+			return
+		end
+		cd[starPart] = now + Config.Star.Respawn
+		local value = starPart:GetAttribute("Value") or Config.Star.Value
+		local zone = World.zoneAt(starPart.Position)
+		local coins = math.floor(value * coinMultiplier(player, math.min(zone, profiles[player].maxZone)))
+		addCoins(player, coins)
+		addXp(player, value)
+		PickupTaken:FireClient(player, starPart, Config.Star.Respawn, coins)
+		push(player)
+	end)
+end
+for _, s in ipairs(CollectionService:GetTagged("Pickup")) do
+	hookStar(s)
+end
+
+-- ---------- покупки за робуксы ----------
+local function grantProduct(player, key)
+	local data = profiles[player]
+	if not data then
+		return false
+	end
+	if key == "SaveCombo" then
+		local lost = pendingLost[player]
+		if lost and lost.expires > os.clock() then
+			addCoins(player, lost.coins)
+			addXp(player, lost.xp)
+			notify(player, "Комбо спасено! +" .. Config.formatNumber(lost.coins) .. " 💰", "good")
+		else
+			local c = 100 * data.level
+			addCoins(player, c)
+			notify(player, "+" .. Config.formatNumber(c) .. " 💰", "good")
+		end
+		pendingLost[player] = nil
+	elseif key == "SkipZone" then
+		if data.maxZone < #Config.Zones then
+			data.maxZone += 1
+			notify(player, "Открыта зона «" .. Config.Zones[data.maxZone].name .. "»!", "good")
+		else
+			local c = Config.CoinPackBase.CoinsBig * zoneMult(data.maxZone)
+			addCoins(player, c)
+			notify(player, "Все зоны уже открыты, держи монеты: +" .. Config.formatNumber(c) .. " 💰", "good")
+		end
+	elseif key == "Boost2x" then
+		local minutes = Config.Products.Boost2x.minutes
+		data.boostUntil = math.max(data.boostUntil, os.time()) + minutes * 60
+		notify(player, "⚡ Буст x2 включён на " .. minutes .. " минут!", "good")
+	elseif key == "CoinsSmall" or key == "CoinsBig" then
+		local c = Config.CoinPackBase[key] * zoneMult(data.maxZone)
+		addCoins(player, c)
+		notify(player, "+" .. Config.formatNumber(c) .. " 💰", "good")
+	else
+		return false
+	end
+	push(player)
+	return true
+end
+
+MarketplaceService.ProcessReceipt = function(info)
+	local player = Players:GetPlayerByUserId(info.PlayerId)
+	local data = player and profiles[player]
+	if not data then
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+	if table.find(data.receipts, info.PurchaseId) then
+		return Enum.ProductPurchaseDecision.PurchaseGranted
+	end
+	local key = productKeyById[info.ProductId]
+	if not key or not grantProduct(player, key) then
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+	table.insert(data.receipts, info.PurchaseId)
+	while #data.receipts > 50 do
+		table.remove(data.receipts, 1)
+	end
+	if canSave[player] then
+		Data.save(player, data)
+	end
+	return Enum.ProductPurchaseDecision.PurchaseGranted
+end
+
+local function grantPass(player, key)
+	passes[player] = passes[player] or {}
+	passes[player][key] = true
+	local cfg = Config.GamePasses[key]
+	notify(player, "Спасибо! " .. cfg.name .. " — твой!", "good")
+	if key == "GoldBoard" and profiles[player] then
+		profiles[player].equipped = "gold"
+		attachBoard(player)
+	end
+	push(player)
+end
+
+MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, passId, purchased)
+	local key = passKeyById[passId]
+	if purchased and key then
+		grantPass(player, key)
+	end
+end)
+
+-- ---------- кнопки меню ----------
+local handlers = {}
+
+function handlers.BuySpeed(player, data)
+	if data.speedLevel >= Config.Speed.MaxLevel then
+		return false, "Скорость уже максимальная!"
+	end
+	local cost = Config.speedCost(data.speedLevel)
+	if data.coins < cost then
+		return false, "Не хватает монет"
+	end
+	data.coins -= cost
+	data.speedLevel += 1
+	return true
+end
+
+function handlers.BuySpeedMax(player, data)
+	local bought = 0
+	while data.speedLevel < Config.Speed.MaxLevel and data.coins >= Config.speedCost(data.speedLevel) do
+		data.coins -= Config.speedCost(data.speedLevel)
+		data.speedLevel += 1
+		bought += 1
+	end
+	if bought == 0 then
+		return false, "Не хватает монет"
+	end
+	return true, "+" .. bought .. " к скорости!"
+end
+
+function handlers.BuyBoard(player, data, id)
+	local b = Config.getBoard(id)
+	if b.id ~= id then
+		return false, "Нет такой доски"
+	end
+	if b.pass then
+		local owned = passes[player] and passes[player][b.pass]
+		if not owned then
+			return false, "Эта доска продаётся за робуксы"
+		end
+		data.equipped = id
+		attachBoard(player)
+		return true
+	end
+	if data.boards[id] then
+		data.equipped = id
+		attachBoard(player)
+		return true
+	end
+	if data.coins < b.price then
+		return false, "Не хватает монет"
+	end
+	data.coins -= b.price
+	data.boards[id] = true
+	data.equipped = id
+	attachBoard(player)
+	return true, "Новая доска: " .. b.name .. "!"
+end
+
+function handlers.UnlockZone(player, data, index)
+	if type(index) ~= "number" or index ~= data.maxZone + 1 then
+		return false, "Сначала открой предыдущие зоны"
+	end
+	local z = Config.Zones[index]
+	if not z then
+		return false, "Это последняя зона"
+	end
+	if data.level < z.level then
+		return false, "Нужен уровень " .. z.level
+	end
+	if data.coins < z.cost then
+		return false, "Не хватает монет"
+	end
+	data.coins -= z.cost
+	data.maxZone = index
+	return true, "Открыта зона «" .. z.name .. "»!"
+end
+
+function handlers.Teleport(player, data, index)
+	if type(index) ~= "number" or index < 1 or index > data.maxZone then
+		return false, "Зона закрыта"
+	end
+	local char = player.Character
+	if char then
+		char:PivotTo(World.zoneSpawn(index))
+	end
+	return true
+end
+
+function handlers.Rebirth(player, data)
+	local cost = Config.rebirthCost(data.rebirths)
+	if data.coins < cost then
+		return false, "Нужно " .. Config.formatNumber(cost) .. " 💰"
+	end
+	data.coins = 0
+	data.speedLevel = 0
+	data.rebirths += 1
+	return true, "ПЕРЕРОЖДЕНИЕ! Теперь монет +" .. math.floor(Config.Rebirth.Bonus * data.rebirths * 100) .. "% навсегда"
+end
+
+function handlers.ClaimDaily(player, data)
+	local today = math.floor(os.time() / 86400)
+	if data.lastDailyDay == today then
+		return false, "Уже забрано. Приходи завтра!"
+	end
+	if data.lastDailyDay == today - 1 then
+		data.dailyStreak = data.dailyStreak % #Config.Daily + 1
+	else
+		data.dailyStreak = 1
+	end
+	data.lastDailyDay = today
+	local c = Config.Daily[data.dailyStreak] * zoneMult(data.maxZone)
+	addCoins(player, c)
+	return true, "День " .. data.dailyStreak .. ": +" .. Config.formatNumber(c) .. " 💰"
+end
+
+function handlers.RedeemCode(player, data, code)
+	if type(code) ~= "string" then
+		return false, "Введи код"
+	end
+	code = code:upper():gsub("%s", "")
+	local reward = Config.Codes[code]
+	if not reward then
+		return false, "Неверный код"
+	end
+	if data.codes[code] then
+		return false, "Этот код уже использован"
+	end
+	data.codes[code] = true
+	addCoins(player, reward)
+	return true, "Код принят: +" .. Config.formatNumber(reward) .. " 💰"
+end
+
+-- В Studio товары с ID = 0 выдаются бесплатно, чтобы всё можно было проверить
+function handlers.StudioPurchase(player, data, kind, key)
+	if not RunService:IsStudio() then
+		return false, "Товар ещё не настроен"
+	end
+	if kind == "product" and productByKey[key] then
+		grantProduct(player, key)
+		return true, "(Studio) бесплатная проверка покупки"
+	elseif kind == "pass" and Config.GamePasses[key] then
+		grantPass(player, key)
+		return true, "(Studio) бесплатная проверка геймпасса"
+	end
+	return false, "Нет такого товара"
+end
+
+Request.OnServerInvoke = function(player, action, ...)
+	local data = profiles[player]
+	if not data or type(action) ~= "string" then
+		return false, "Подожди, данные загружаются"
+	end
+	local h = handlers[action]
+	if not h then
+		return false, "?"
+	end
+	local ok, msg = h(player, data, ...)
+	push(player)
+	return ok, msg
+end
+
+-- ---------- трюк-битва ----------
+task.spawn(function()
+	while true do
+		task.wait(Config.Event.Interval)
+		eventScores = {}
+		for _, p in ipairs(Players:GetPlayers()) do
+			p:SetAttribute("EventScore", 0)
+		end
+		eventActive = true
+		ReplicatedStorage:SetAttribute("EventEnds", workspace:GetServerTimeNow() + Config.Event.Duration)
+		ReplicatedStorage:SetAttribute("EventActive", true)
+		for _, p in ipairs(Players:GetPlayers()) do
+			notify(p, "🏆 ТРЮК-БИТВА началась! Набери больше всех очков!", "event")
+		end
+		task.wait(Config.Event.Duration)
+		eventActive = false
+		ReplicatedStorage:SetAttribute("EventActive", false)
+
+		local ranking = {}
+		for p, score in pairs(eventScores) do
+			if p.Parent and score > 0 then
+				table.insert(ranking, { player = p, score = score })
+			end
+		end
+		table.sort(ranking, function(a, b)
+			return a.score > b.score
+		end)
+		local summary = {}
+		for place, entry in ipairs(ranking) do
+			local factor = Config.Event.Rewards[place]
+			if not factor then
+				break
+			end
+			local data = profiles[entry.player]
+			if data then
+				local coins = math.floor(entry.score * factor * coinMultiplier(entry.player, data.maxZone))
+				addCoins(entry.player, coins)
+				notify(entry.player, place .. " место в битве! +" .. Config.formatNumber(coins) .. " 💰", "good")
+				push(entry.player)
+			end
+			table.insert(summary, place .. ". " .. entry.player.DisplayName)
+		end
+		if #summary > 0 then
+			for _, p in ipairs(Players:GetPlayers()) do
+				notify(p, "🏆 Итоги битвы: " .. table.concat(summary, "   "), "event")
+			end
+		end
+	end
+end)
+
+-- раз в 10 секунд обновляем таймер буста и множитель зоны
+task.spawn(function()
+	while true do
+		task.wait(10)
+		for player in pairs(profiles) do
+			push(player)
+		end
+	end
+end)
+]]></ProtectedString></Properties><Item class="ModuleScript" referent="RBX00000002"><Properties><string name="Name">Data</string><ProtectedString name="Source"><![CDATA[-- Сохранение прогресса игроков (DataStore).
+-- В Roblox Studio сохранение работает, только если включено:
+-- Game Settings → Security → Enable Studio Access to API Services.
+
+local DataStoreService = game:GetService("DataStoreService")
+local RunService = game:GetService("RunService")
+
+local Data = {}
+
+local STORE_NAME = "SkateRush_v1"
+
+local store = nil
+do
+	local ok, result = pcall(function()
+		return DataStoreService:GetDataStore(STORE_NAME)
+	end)
+	if ok then
+		store = result
+	else
+		warn("[SkateRush] DataStore недоступен, прогресс не будет сохраняться:", result)
+	end
+end
+
+function Data.default()
+	return {
+		coins = 0,
+		xp = 0,
+		level = 1,
+		speedLevel = 0,
+		boards = { basic = true },
+		equipped = "basic",
+		maxZone = 1,
+		lastZone = 1,
+		rebirths = 0,
+		dailyStreak = 0,
+		lastDailyDay = 0,
+		codes = {},
+		receipts = {},
+		boostUntil = 0,
+		bestCombo = 0,
+		totalTricks = 0,
+	}
+end
+
+local function reconcile(saved)
+	local fresh = Data.default()
+	if type(saved) ~= "table" then
+		return fresh
+	end
+	for k, v in pairs(fresh) do
+		if saved[k] == nil or type(saved[k]) ~= type(v) then
+			saved[k] = v
+		end
+	end
+	return saved
+end
+
+local function key(player)
+	return "player_" .. player.UserId
+end
+
+-- Возвращает data, loadedOk. Если загрузка сломалась на живом сервере,
+-- loadedOk = false, и мы такой профиль НЕ сохраняем, чтобы не стереть прогресс.
+function Data.load(player)
+	if not store then
+		return Data.default(), false
+	end
+	for attempt = 1, 3 do
+		local ok, result = pcall(function()
+			return store:GetAsync(key(player))
+		end)
+		if ok then
+			return reconcile(result), true
+		end
+		warn("[SkateRush] Ошибка загрузки (попытка " .. attempt .. "):", result)
+		if RunService:IsStudio() and tostring(result):find("API") then
+			break
+		end
+		task.wait(1.5 * attempt)
+	end
+	return Data.default(), false
+end
+
+function Data.save(player, data)
+	if not store or not data then
+		return false
+	end
+	for attempt = 1, 3 do
+		local ok, err = pcall(function()
+			store:UpdateAsync(key(player), function()
+				return data
+			end)
+		end)
+		if ok then
+			return true
+		end
+		warn("[SkateRush] Ошибка сохранения (попытка " .. attempt .. "):", err)
+		task.wait(1 * attempt)
+	end
+	return false
+end
+
+return Data
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX00000003"><Properties><string name="Name">World</string><ProtectedString name="Source"><![CDATA[-- Строит всю карту кодом: 6 зон с трамплинами, перилами, звёздами и декором.
+-- Хочешь поменять карту — меняй функции ниже или достраивай руками в Studio
+-- поверх (то, что построено руками, скрипт не трогает).
+
+local CollectionService = game:GetService("CollectionService")
+
+local Shared = game:GetService("ReplicatedStorage"):WaitForChild("SkateShared")
+local Config = require(Shared:WaitForChild("Config"))
+
+local World = {}
+
+local L = Config.ZoneLength
+local W = Config.ZoneWidth
+
+local root -- папка Workspace.SkateWorld
+
+-- ---------- helpers ----------
+
+local function part(props, parent)
+	local p = Instance.new(props.ClassName or "Part")
+	p.Anchored = true
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	for k, v in pairs(props) do
+		if k ~= "ClassName" then
+			p[k] = v
+		end
+	end
+	p.Parent = parent
+	return p
+end
+
+local function zoneStartZ(i)
+	return -(i - 1) * L
+end
+
+function World.zoneSpawn(i)
+	return CFrame.new(0, 4, zoneStartZ(i) - 18) * CFrame.Angles(0, 0, 0)
+end
+
+-- Номер зоны по позиции (зоны идут вдоль -Z)
+function World.zoneAt(position)
+	local i = math.floor(-position.Z / L) + 1
+	return math.clamp(i, 1, #Config.Zones)
+end
+
+-- Наклонная плита-рампа. Поднимается в сторону -Z (вперёд по ходу игры).
+-- x,z — середина нижнего края, height — высота верхнего края.
+local function ramp(parent, x, z, width, height, angleDeg, props)
+	local a = math.rad(angleDeg)
+	local len = height / math.sin(a)
+	local depth = len * math.cos(a)
+	local cf = CFrame.new(x, height / 2 - 0.5 * math.cos(a), z - depth / 2) * CFrame.Angles(a, 0, 0)
+	local p = part({
+		Name = "Ramp",
+		Size = Vector3.new(width, 1, len),
+		CFrame = cf,
+		Color = props.Color,
+		Material = props.Material or Enum.Material.Wood,
+	}, parent)
+	-- опора под высоким краем
+	part({
+		Name = "Support",
+		Size = Vector3.new(width, height, 2),
+		CFrame = CFrame.new(x, height / 2 - 0.5, z - depth + 1),
+		Color = props.SupportColor or Color3.fromRGB(90, 90, 95),
+		Material = Enum.Material.Metal,
+	}, parent)
+	return p, depth
+end
+
+local function kicker(parent, x, z, width, power, color)
+	local p = ramp(parent, x, z, width, 3.2, 26, { Color = color, Material = Enum.Material.SmoothPlastic })
+	p.Name = "Kicker"
+	p:SetAttribute("Power", power)
+	CollectionService:AddTag(p, "Kicker")
+	-- неоновая полоска на краю, чтобы было видно трамплин
+	local a = math.rad(26)
+	local len = 3.2 / math.sin(a)
+	part({
+		Name = "KickerStripe",
+		Size = Vector3.new(width, 1.05, 0.8),
+		CFrame = p.CFrame * CFrame.new(0, 0.02, -len / 2 + 0.4),
+		Color = Color3.fromRGB(255, 255, 255),
+		Material = Enum.Material.Neon,
+		CanCollide = false,
+		CanQuery = false,
+	}, parent)
+	-- стрелка на земле перед трамплином
+	part({
+		Name = "Arrow",
+		Size = Vector3.new(width * 0.6, 0.1, 3),
+		CFrame = CFrame.new(x, 0.06, z + 6),
+		Color = color,
+		Material = Enum.Material.Neon,
+		CanCollide = false,
+		CanQuery = false,
+		Transparency = 0.3,
+	}, parent)
+	return p
+end
+
+local function rail(parent, x, z, length, height, accent)
+	height = height or 2.4
+	local r = part({
+		Name = "Rail",
+		Size = Vector3.new(1.6, 0.5, length),
+		CFrame = CFrame.new(x, height, z - length / 2),
+		Color = Color3.fromRGB(200, 200, 210),
+		Material = Enum.Material.DiamondPlate,
+	}, parent)
+	r:SetAttribute("Rail", true)
+	CollectionService:AddTag(r, "Rail")
+	-- светящаяся кромка
+	part({
+		Name = "RailGlow",
+		Size = Vector3.new(0.4, 0.2, length),
+		CFrame = r.CFrame * CFrame.new(0, -0.35, 0),
+		Color = accent,
+		Material = Enum.Material.Neon,
+		CanCollide = false,
+		CanQuery = false,
+	}, parent)
+	local posts = math.max(2, math.floor(length / 12))
+	for k = 0, posts do
+		local pz = z - (length * k / posts)
+		part({
+			Name = "RailPost",
+			Size = Vector3.new(0.6, height, 0.6),
+			CFrame = CFrame.new(x, height / 2 - 0.2, pz),
+			Color = Color3.fromRGB(70, 70, 75),
+			Material = Enum.Material.Metal,
+			CanQuery = false,
+		}, parent)
+	end
+	-- низкий заезд на перила
+	ramp(parent, x, z + 7, 4, height - 0.3, 18, { Color = Color3.fromRGB(110, 110, 115), Material = Enum.Material.Metal })
+	return r
+end
+
+local function funbox(parent, x, z, color, accent)
+	local h, len, w = 3, 18, 22
+	local _, d = ramp(parent, x, z, w, h, 20, { Color = color })
+	local boxZ = z - d - len / 2
+	part({
+		Name = "Funbox",
+		Size = Vector3.new(w, h, len),
+		CFrame = CFrame.new(x, h / 2, boxZ),
+		Color = color,
+		Material = Enum.Material.Concrete,
+	}, parent)
+	-- спуск с другой стороны (развёрнутая рампа)
+	local a = math.rad(20)
+	local rl = h / math.sin(a)
+	local rd = rl * math.cos(a)
+	part({
+		Name = "RampDown",
+		Size = Vector3.new(w, 1, rl),
+		CFrame = CFrame.new(x, h / 2 - 0.5 * math.cos(a), boxZ - len / 2 - rd / 2) * CFrame.Angles(-a, 0, 0),
+		Color = color,
+		Material = Enum.Material.Wood,
+	}, parent)
+	-- перила на фанбоксе
+	local r = part({
+		Name = "Rail",
+		Size = Vector3.new(1.6, 0.5, len - 2),
+		CFrame = CFrame.new(x, h + 1.4, boxZ),
+		Color = Color3.fromRGB(220, 220, 230),
+		Material = Enum.Material.DiamondPlate,
+	}, parent)
+	r:SetAttribute("Rail", true)
+	CollectionService:AddTag(r, "Rail")
+	part({
+		Name = "RailGlow",
+		Size = Vector3.new(0.4, 0.2, len - 2),
+		CFrame = r.CFrame * CFrame.new(0, -0.35, 0),
+		Color = accent,
+		Material = Enum.Material.Neon,
+		CanCollide = false,
+		CanQuery = false,
+	}, parent)
+end
+
+-- Мега-рампа: долгий подъём, большой трамплин наверху и площадка для приземления
+local function megaRamp(parent, x, z, zone)
+	local height = 16
+	local _, d = ramp(parent, x, z, 30, height, 17, { Color = zone.accent:Lerp(Color3.new(1, 1, 1), 0.3), Material = Enum.Material.SmoothPlastic })
+	local topZ = z - d
+	part({
+		Name = "MegaTop",
+		Size = Vector3.new(30, height, 14),
+		CFrame = CFrame.new(x, height / 2 - 0.5, topZ - 7),
+		Color = Color3.fromRGB(80, 80, 90),
+		Material = Enum.Material.Metal,
+	}, parent)
+	local k = part({
+		Name = "Kicker",
+		Size = Vector3.new(30, 1, 8),
+		CFrame = CFrame.new(x, height + 1.2, topZ - 13) * CFrame.Angles(math.rad(28), 0, 0),
+		Color = zone.accent,
+		Material = Enum.Material.Neon,
+	}, parent)
+	k:SetAttribute("Power", 125)
+	k:SetAttribute("Mega", true)
+	CollectionService:AddTag(k, "Kicker")
+	-- табличка
+	local sign = part({
+		Name = "MegaSign",
+		Size = Vector3.new(30, 5, 1),
+		CFrame = CFrame.new(x, height + 8, topZ - 14),
+		Transparency = 1,
+		CanCollide = false,
+		CanQuery = false,
+	}, parent)
+	local bb = Instance.new("BillboardGui")
+	bb.Size = UDim2.fromScale(18, 4)
+	bb.AlwaysOnTop = false
+	bb.LightInfluence = 0
+	bb.Parent = sign
+	local t = Instance.new("TextLabel")
+	t.Size = UDim2.fromScale(1, 1)
+	t.BackgroundTransparency = 1
+	t.Text = "МЕГА-ТРАМПЛИН"
+	t.TextScaled = true
+	t.Font = Enum.Font.GothamBlack
+	t.TextColor3 = Color3.new(1, 1, 1)
+	t.TextStrokeTransparency = 0
+	t.Parent = bb
+	return topZ - 17
+end
+
+local function star(parent, pos, value)
+	local s = part({
+		Name = "Star",
+		Shape = Enum.PartType.Ball,
+		Size = Vector3.new(2.6, 2.6, 2.6),
+		CFrame = CFrame.new(pos),
+		Color = Color3.fromRGB(255, 215, 0),
+		Material = Enum.Material.Neon,
+		CanCollide = false,
+		CanQuery = false,
+	}, parent)
+	s:SetAttribute("Value", value)
+	CollectionService:AddTag(s, "Pickup")
+	local light = Instance.new("PointLight")
+	light.Color = s.Color
+	light.Range = 8
+	light.Brightness = 1.5
+	light.Parent = s
+	return s
+end
+
+-- ---------- декор по темам ----------
+
+local function tree(parent, x, z, rng)
+	local h = rng:NextNumber(8, 14)
+	part({ Name = "Trunk", Shape = Enum.PartType.Cylinder, Size = Vector3.new(h, 1.6, 1.6), CFrame = CFrame.new(x, h / 2, z) * CFrame.Angles(0, 0, math.rad(90)), Color = Color3.fromRGB(110, 75, 45), Material = Enum.Material.Wood, CanQuery = false }, parent)
+	local r = rng:NextNumber(6, 9)
+	part({ Name = "Leaves", Shape = Enum.PartType.Ball, Size = Vector3.new(r, r, r), CFrame = CFrame.new(x, h + r * 0.3, z), Color = Color3.fromRGB(60, rng:NextInteger(140, 190), 60), Material = Enum.Material.Grass, CanCollide = false, CanQuery = false }, parent)
+end
+
+local function palm(parent, x, z, rng)
+	local h = rng:NextNumber(12, 18)
+	part({ Name = "PalmTrunk", Shape = Enum.PartType.Cylinder, Size = Vector3.new(h, 1.3, 1.3), CFrame = CFrame.new(x, h / 2, z) * CFrame.Angles(0, 0, math.rad(90 + rng:NextNumber(-8, 8))), Color = Color3.fromRGB(150, 110, 70), Material = Enum.Material.Wood, CanQuery = false }, parent)
+	for k = 1, 6 do
+		local ang = k * math.pi / 3
+		part({ Name = "PalmLeaf", Size = Vector3.new(1.5, 0.3, 8), CFrame = CFrame.new(x, h, z) * CFrame.Angles(0, ang, 0) * CFrame.new(0, 0, -3.5) * CFrame.Angles(math.rad(-25), 0, 0), Color = Color3.fromRGB(40, 170, 70), Material = Enum.Material.Grass, CanCollide = false, CanQuery = false }, parent)
+	end
+end
+
+local function building(parent, x, z, rng, accent)
+	local w = rng:NextNumber(18, 30)
+	local d = rng:NextNumber(18, 30)
+	local h = rng:NextNumber(40, 110)
+	part({ Name = "Building", Size = Vector3.new(w, h, d), CFrame = CFrame.new(x, h / 2, z), Color = Color3.fromRGB(25, 25, 35), Material = Enum.Material.Concrete, CanQuery = false }, parent)
+	local colors = { accent, Color3.fromRGB(0, 220, 255), Color3.fromRGB(255, 230, 120) }
+	local side = x > 0 and -1 or 1
+	for row = 1, math.floor(h / 8) do
+		if rng:NextNumber() < 0.7 then
+			part({ Name = "Window", Size = Vector3.new(0.3, 2.5, d * 0.8), CFrame = CFrame.new(x + side * (w / 2 + 0.1), row * 8 - 2, z), Color = colors[rng:NextInteger(1, #colors)], Material = Enum.Material.Neon, CanCollide = false, CanQuery = false }, parent)
+		end
+	end
+end
+
+local function crystal(parent, x, z, rng)
+	local h = rng:NextNumber(8, 22)
+	part({ Name = "Crystal", Size = Vector3.new(h * 0.3, h, h * 0.3), CFrame = CFrame.new(x, h / 2 - 1, z) * CFrame.Angles(math.rad(rng:NextNumber(-20, 20)), rng:NextNumber(0, 6), math.rad(rng:NextNumber(-20, 20))), Color = Color3.fromRGB(140, 220, 255), Material = Enum.Material.Glass, Transparency = 0.25, CanQuery = false }, parent)
+end
+
+local function rock(parent, x, z, rng, color)
+	local s = rng:NextNumber(5, 14)
+	part({ Name = "Rock", Size = Vector3.new(s, s * 0.8, s), CFrame = CFrame.new(x, s * 0.3, z) * CFrame.Angles(rng:NextNumber(0, 1), rng:NextNumber(0, 6), rng:NextNumber(0, 1)), Color = color, Material = Enum.Material.Slate, CanQuery = false }, parent)
+end
+
+local function lavaPool(parent, x, z, rng)
+	local w = rng:NextNumber(10, 18)
+	local d = rng:NextNumber(10, 18)
+	local lava = part({ Name = "Lava", Size = Vector3.new(w, 0.3, d), CFrame = CFrame.new(x, 0.1, z), Color = Color3.fromRGB(255, 90, 0), Material = Enum.Material.Neon, CanCollide = false, CanQuery = false }, parent)
+	CollectionService:AddTag(lava, "Lava")
+	local fire = Instance.new("ParticleEmitter")
+	fire.Color = ColorSequence.new(Color3.fromRGB(255, 160, 0), Color3.fromRGB(255, 40, 0))
+	fire.LightEmission = 1
+	fire.Size = NumberSequence.new(1.5, 0)
+	fire.Lifetime = NumberRange.new(0.6, 1.2)
+	fire.Rate = 12
+	fire.Speed = NumberRange.new(4, 8)
+	fire.SpreadAngle = Vector2.new(20, 20)
+	fire.EmissionDirection = Enum.NormalId.Top
+	fire.Parent = lava
+end
+
+local function planet(parent, pos, size, color)
+	part({ Name = "Planet", Shape = Enum.PartType.Ball, Size = Vector3.new(size, size, size), CFrame = CFrame.new(pos), Color = color, Material = Enum.Material.SmoothPlastic, CanCollide = false, CanQuery = false }, parent)
+end
+
+local function decorate(folder, i, zone, rng)
+	local z0 = zoneStartZ(i)
+	local theme = zone.theme
+	local edge = W / 2
+	for k = 1, 14 do
+		local z = z0 - k * (L / 15)
+		for _, side in ipairs({ -1, 1 }) do
+			local x = side * (edge + rng:NextNumber(8, 30))
+			if theme == "park" then
+				tree(folder, x, z, rng)
+			elseif theme == "city" then
+				building(folder, side * (edge + 20), z, rng, zone.accent)
+			elseif theme == "beach" then
+				if side == 1 then
+					palm(folder, x, z, rng)
+				end
+			elseif theme == "ice" then
+				crystal(folder, x, z, rng)
+			elseif theme == "volcano" then
+				rock(folder, x, z, rng, Color3.fromRGB(60, 45, 40))
+			end
+		end
+	end
+
+	if theme == "park" then
+		-- трава по краям
+		for _, side in ipairs({ -1, 1 }) do
+			part({ Name = "Grass", Size = Vector3.new(60, 1, L), CFrame = CFrame.new(side * (edge + 30), -0.4, z0 - L / 2), Color = Color3.fromRGB(80, 170, 70), Material = Enum.Material.Grass }, folder)
+		end
+	elseif theme == "city" then
+		-- разметка дороги
+		for k = 1, 20 do
+			part({ Name = "RoadLine", Size = Vector3.new(0.8, 0.05, 8), CFrame = CFrame.new(0, 0.03, z0 - k * (L / 21)), Color = Color3.fromRGB(255, 220, 0), Material = Enum.Material.Neon, CanCollide = false, CanQuery = false }, folder)
+		end
+		for _, side in ipairs({ -1, 1 }) do
+			part({ Name = "Sidewalk", Size = Vector3.new(60, 1, L), CFrame = CFrame.new(side * (edge + 30), -0.3, z0 - L / 2), Color = Color3.fromRGB(70, 70, 80), Material = Enum.Material.Concrete }, folder)
+		end
+	elseif theme == "beach" then
+		part({ Name = "Sea", Size = Vector3.new(400, 1, L), CFrame = CFrame.new(-(edge + 200), -0.8, z0 - L / 2), Color = Color3.fromRGB(0, 160, 220), Material = Enum.Material.Glass, Transparency = 0.2, CanQuery = false }, folder)
+		part({ Name = "Sand", Size = Vector3.new(80, 1, L), CFrame = CFrame.new(edge + 40, -0.4, z0 - L / 2), Color = zone.floor, Material = Enum.Material.Sand }, folder)
+	elseif theme == "ice" then
+		for _, side in ipairs({ -1, 1 }) do
+			part({ Name = "CanyonWall", Size = Vector3.new(30, 70, L), CFrame = CFrame.new(side * (edge + 25), 35, z0 - L / 2), Color = Color3.fromRGB(170, 210, 240), Material = Enum.Material.Glacier, CanQuery = false }, folder)
+		end
+	elseif theme == "volcano" then
+		local vz = z0 - L / 2
+		for k = 0, 5 do
+			local r = 160 - k * 25
+			part({ Name = "Volcano", Shape = Enum.PartType.Cylinder, Size = Vector3.new(20, r, r), CFrame = CFrame.new(edge + 160, 10 + k * 20, vz) * CFrame.Angles(0, 0, math.rad(90)), Color = Color3.fromRGB(70 - k * 5, 45, 40), Material = Enum.Material.Basalt, CanQuery = false }, folder)
+		end
+		part({ Name = "Crater", Shape = Enum.PartType.Cylinder, Size = Vector3.new(2, 30, 30), CFrame = CFrame.new(edge + 160, 130, vz) * CFrame.Angles(0, 0, math.rad(90)), Color = Color3.fromRGB(255, 80, 0), Material = Enum.Material.Neon, CanQuery = false }, folder)
+		for _ = 1, 7 do
+			lavaPool(folder, rng:NextNumber(-edge + 15, edge - 15), z0 - rng:NextNumber(50, L - 40), rng)
+		end
+	elseif theme == "space" then
+		planet(folder, Vector3.new(-260, 120, z0 - 120), 120, Color3.fromRGB(255, 120, 80))
+		planet(folder, Vector3.new(300, 200, z0 - 300), 200, Color3.fromRGB(80, 140, 255))
+		planet(folder, Vector3.new(-200, 260, z0 - 380), 60, Color3.fromRGB(200, 255, 200))
+		-- неоновая сетка на полу
+		for k = 1, 12 do
+			part({ Name = "Grid", Size = Vector3.new(W, 0.05, 0.4), CFrame = CFrame.new(0, 0.03, z0 - k * (L / 13)), Color = zone.accent, Material = Enum.Material.Neon, CanCollide = false, CanQuery = false }, folder)
+		end
+		-- летающие платформы со звёздами
+		for k = 1, 6 do
+			local px = rng:NextNumber(-edge + 20, edge - 20)
+			local pz = z0 - rng:NextNumber(60, L - 60)
+			local py = rng:NextNumber(14, 26)
+			part({ Name = "FloatPad", Size = Vector3.new(14, 1, 14), CFrame = CFrame.new(px, py, pz), Color = zone.accent, Material = Enum.Material.Neon }, folder)
+			star(folder, Vector3.new(px, py + 4, pz), Config.Star.Value * 3)
+		end
+	end
+end
+
+-- ---------- зона целиком ----------
+
+local function buildZone(i)
+	local zone = Config.Zones[i]
+	local folder = Instance.new("Folder")
+	folder.Name = string.format("Zone%d_%s", i, zone.name)
+	folder.Parent = root
+
+	local rng = Random.new(i * 7919)
+	local z0 = zoneStartZ(i)
+	local edge = W / 2
+
+	-- пол
+	part({
+		Name = "Floor",
+		Size = Vector3.new(W, 4, L),
+		CFrame = CFrame.new(0, -2, z0 - L / 2),
+		Color = zone.floor,
+		Material = zone.floorMaterial,
+	}, folder)
+
+	-- невидимые бортики, чтобы не выпадать
+	for _, side in ipairs({ -1, 1 }) do
+		part({
+			Name = "Border",
+			Size = Vector3.new(2, 60, L),
+			CFrame = CFrame.new(side * (edge + 1), 30, z0 - L / 2),
+			Transparency = 1,
+			CanQuery = false,
+		}, folder)
+		part({
+			Name = "BorderGlow",
+			Size = Vector3.new(1, 1, L),
+			CFrame = CFrame.new(side * edge, 0.5, z0 - L / 2),
+			Color = zone.accent,
+			Material = Enum.Material.Neon,
+			CanQuery = false,
+		}, folder)
+	end
+
+	-- ворота в начале зоны (кроме первой)
+	if i > 1 then
+		local gate = part({
+			Name = "Gate",
+			Size = Vector3.new(W, 50, 2),
+			CFrame = CFrame.new(0, 25, z0),
+			Color = zone.accent,
+			Material = Enum.Material.ForceField,
+			Transparency = 0.2,
+		}, folder)
+		gate:SetAttribute("ZoneIndex", i)
+		CollectionService:AddTag(gate, "Gate")
+		for _, face in ipairs({ Enum.NormalId.Front, Enum.NormalId.Back }) do
+			local sg = Instance.new("SurfaceGui")
+			sg.Face = face
+			sg.CanvasSize = Vector2.new(1700, 500)
+			sg.LightInfluence = 0
+			sg.Parent = gate
+			local t = Instance.new("TextLabel")
+			t.Size = UDim2.fromScale(1, 0.6)
+			t.Position = UDim2.fromScale(0, 0.2)
+			t.BackgroundTransparency = 1
+			t.TextScaled = true
+			t.Font = Enum.Font.GothamBlack
+			t.TextColor3 = Color3.new(1, 1, 1)
+			t.TextStrokeTransparency = 0
+			t.Text = string.format("🔒 %s\nУровень %d  •  %s 💰  •  монеты x%s", zone.name:upper(), zone.level, Config.formatNumber(zone.cost), tostring(zone.mult))
+			t.Parent = sg
+		end
+	end
+
+	-- препятствия рядами
+	local lanes = { -52, 0, 52 }
+	local z = z0 - 40
+	local rowIndex = 0
+	local megaAt = math.floor(L * 0.55)
+	local megaDone = false
+	while z > z0 - L + 40 do
+		rowIndex += 1
+		if not megaDone and (z0 - z) >= megaAt then
+			z = megaRamp(folder, 0, z, zone) - 30
+			megaDone = true
+			-- звёзды в воздухе после мега-трамплина
+			for k = 1, 5 do
+				star(folder, Vector3.new(0, 26 + k * 2, z + 10 - k * 9), Config.Star.Value * 2)
+			end
+		else
+			for _, x in ipairs(lanes) do
+				local roll = rng:NextNumber()
+				local jitter = rng:NextNumber(-8, 8)
+				if roll < 0.32 then
+					kicker(folder, x + jitter, z, 12, rng:NextNumber(70, 90), zone.accent)
+					star(folder, Vector3.new(x + jitter, rng:NextNumber(12, 18), z - 16), Config.Star.Value)
+				elseif roll < 0.58 then
+					rail(folder, x + jitter, z, rng:NextInteger(26, 44), nil, zone.accent)
+				elseif roll < 0.74 then
+					funbox(folder, x + jitter, z, zone.floor:Lerp(Color3.new(1, 1, 1), 0.25), zone.accent)
+				elseif roll < 0.9 then
+					star(folder, Vector3.new(x + jitter, 3, z), Config.Star.Value)
+					star(folder, Vector3.new(x + jitter, 3, z - 8), Config.Star.Value)
+				end
+			end
+			z -= rng:NextNumber(48, 62)
+		end
+	end
+
+	decorate(folder, i, zone, rng)
+
+	-- финишная надпись в конце зоны
+	if i == #Config.Zones then
+		part({
+			Name = "EndWall",
+			Size = Vector3.new(W, 60, 2),
+			CFrame = CFrame.new(0, 30, z0 - L),
+			Color = zone.accent,
+			Material = Enum.Material.ForceField,
+			Transparency = 0.3,
+		}, folder)
+	end
+end
+
+function World.build()
+	local existing = workspace:FindFirstChild("SkateWorld")
+	if existing then
+		existing:Destroy()
+	end
+	root = Instance.new("Folder")
+	root.Name = "SkateWorld"
+	root.Parent = workspace
+
+	for i = 1, #Config.Zones do
+		buildZone(i)
+	end
+
+	-- точка появления
+	local spawn = Instance.new("SpawnLocation")
+	spawn.Name = "SkateSpawn"
+	spawn.Anchored = true
+	spawn.Neutral = true
+	spawn.Duration = 0
+	spawn.Size = Vector3.new(12, 1, 12)
+	spawn.CFrame = CFrame.new(0, 0.5, -12)
+	spawn.Color = Config.Zones[1].accent
+	spawn.Material = Enum.Material.Neon
+	spawn.TopSurface = Enum.SurfaceType.Smooth
+	spawn.Parent = root
+
+	-- стенка позади старта
+	part({
+		Name = "BackWall",
+		Size = Vector3.new(W, 60, 2),
+		CFrame = CFrame.new(0, 30, 1),
+		Transparency = 1,
+	}, root)
+
+	workspace.FallenPartsDestroyHeight = -150
+	return root
+end
+
+return World
+]]></ProtectedString></Properties></Item></Item></Item><Item class="StarterPlayer" referent="RBX0000000B"><Properties><string name="Name">StarterPlayer</string><bool name="CharacterUseJumpPower">true</bool><float name="CharacterJumpPower">60</float><float name="CameraMaxZoomDistance">60</float></Properties><Item class="StarterPlayerScripts" referent="RBX0000000A"><Properties><string name="Name">StarterPlayerScripts</string></Properties><Item class="LocalScript" referent="RBX00000006"><Properties><string name="Name">SkateClient</string><ProtectedString name="Source"><![CDATA[-- ============================================================
+--  SKATE RUSH — управление скейтом (работает у каждого игрока)
+--  Разгон, трюки в воздухе, комбо, падения, трамплины, перила.
+-- ============================================================
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local CollectionService = game:GetService("CollectionService")
+local Lighting = game:GetService("Lighting")
+local TweenService = game:GetService("TweenService")
+local MarketplaceService = game:GetService("MarketplaceService")
+
+local player = Players.LocalPlayer
+local Config = require(ReplicatedStorage:WaitForChild("SkateShared"):WaitForChild("Config"))
+local remotes = ReplicatedStorage:WaitForChild("Remotes")
+local UI = require(script:WaitForChild("UI"))
+
+local TWO_PI = math.pi * 2
+
+local char, hum, root
+local state = {
+	data = nil,
+	combo = {},
+	trick = nil,
+	queued = nil,
+	inAir = false,
+	airTime = 0,
+	groundTime = 0,
+	grinding = false,
+	grindTick = 0,
+	bailing = false,
+	speed = 0,
+	lastKick = 0,
+	zone = 0,
+	gateCooldown = 0,
+}
+
+-- ---------- запросы к серверу ----------
+local function request(action, ...)
+	local ok, msg = remotes.Request:InvokeServer(action, ...)
+	if msg then
+		UI.toast(msg, ok and "good" or "warn")
+	end
+	return ok
+end
+
+local function buy(kind, key)
+	local cfg = kind == "pass" and Config.GamePasses[key] or Config.Products[key]
+	if not cfg then
+		return
+	end
+	if cfg.id == 0 then
+		request("StudioPurchase", kind, key)
+	elseif kind == "pass" then
+		MarketplaceService:PromptGamePassPurchase(player, cfg.id)
+	else
+		MarketplaceService:PromptProductPurchase(player, cfg.id)
+	end
+end
+
+-- ---------- доска ----------
+local function getWeld()
+	return root and root:FindFirstChild("BoardWeld")
+end
+
+local function boardBase()
+	local weld = getWeld()
+	local off = weld and weld:GetAttribute("BaseOffset") or 3
+	return CFrame.new(0, -off, 0), off
+end
+
+local function boardPart(name)
+	local model = char and char:FindFirstChild("Skateboard")
+	local deck = model and model:FindFirstChild("Deck")
+	if not deck then
+		return nil
+	end
+	if name == "Deck" then
+		return deck
+	end
+	return deck:FindFirstChild(name, true)
+end
+
+local function yawOnly(cf)
+	local look = cf.LookVector * Vector3.new(1, 0, 1)
+	if look.Magnitude < 0.01 then
+		return CFrame.new()
+	end
+	return CFrame.lookAt(Vector3.zero, look.Unit)
+end
+
+-- ---------- комбо ----------
+local function estimate(entries)
+	local base, mult = Config.comboScore(entries)
+	local cm = state.data and state.data.coinMult or 1
+	return math.floor(base * mult * cm), base, mult
+end
+
+local function addEntry(name)
+	table.insert(state.combo, name)
+	state.groundTime = 0
+	local coins, base, mult = estimate(state.combo)
+	UI.comboUpdate(state.combo, base, mult, coins)
+end
+
+local function bank()
+	if #state.combo == 0 then
+		return
+	end
+	local entries = state.combo
+	state.combo = {}
+	remotes.ComboBanked:FireServer(entries)
+	UI.comboEnd(true)
+end
+
+-- слишком длинное комбо засчитываем сразу (сервер не примет больше MaxEntries)
+local function addEntryChecked(name)
+	addEntry(name)
+	if #state.combo >= Config.Combo.MaxEntries - 2 then
+		bank()
+	end
+end
+
+local function resetTrickVisuals()
+	local weld = getWeld()
+	if weld then
+		weld.C0 = boardBase()
+	end
+	if hum then
+		hum.AutoRotate = true
+	end
+end
+
+local function bail(reason)
+	if state.bailing or not hum or not root then
+		return
+	end
+	state.bailing = true
+	local tr = state.trick
+	state.trick = nil
+	state.queued = nil
+	resetTrickVisuals()
+
+	local lost = state.combo
+	state.combo = {}
+	if #lost > 0 then
+		remotes.ComboBailed:FireServer(lost)
+	end
+	local lostCoins = #lost > 0 and estimate(lost) or 0
+	UI.comboEnd(false)
+	UI.bail(lostCoins, reason)
+
+	local yaw = tr and tr.yaw or yawOnly(root.CFrame)
+	hum.PlatformStand = true
+	root.AssemblyAngularVelocity = Vector3.new(math.random(-8, 8), math.random(-3, 3), math.random(-8, 8))
+	state.speed = 0
+	local myHum, myRoot = hum, root
+	task.delay(1.1, function()
+		if myHum.Parent and myRoot.Parent and myHum.Health > 0 then
+			myHum.PlatformStand = false
+			myRoot.AssemblyAngularVelocity = Vector3.zero
+			myRoot.CFrame = CFrame.new(myRoot.Position + Vector3.new(0, 2.5, 0)) * yaw
+			myHum:ChangeState(Enum.HumanoidStateType.GettingUp)
+		end
+		state.bailing = false
+	end)
+end
+
+-- ---------- трюки ----------
+local function startTrick(name)
+	if state.bailing or not hum or not root or hum.Health <= 0 then
+		return
+	end
+	if state.trick then
+		return
+	end
+	local cfg = Config.Tricks[name]
+	if not cfg then
+		return
+	end
+	if not state.inAir then
+		-- на земле: прыгаем и делаем трюк сразу после отрыва
+		state.queued = { name = name, time = os.clock() }
+		hum.Jump = true
+		return
+	end
+	state.trick = { name = name, t = 0, dur = cfg.duration, yaw = yawOnly(root.CFrame) }
+	if name == "Spin" or name == "Backflip" then
+		hum.AutoRotate = false
+	end
+	UI.trickPop(cfg.display)
+end
+
+local function completeTrick()
+	local tr = state.trick
+	state.trick = nil
+	resetTrickVisuals()
+	if tr.name == "Spin" or tr.name == "Backflip" then
+		root.CFrame = CFrame.new(root.Position) * tr.yaw
+	end
+	addEntryChecked(tr.name)
+end
+
+local function updateTrick(dt)
+	local tr = state.trick
+	if not tr then
+		return
+	end
+	tr.t += dt
+	local p = math.min(tr.t / tr.dur, 1)
+	local weld = getWeld()
+	local base = boardBase()
+	if tr.name == "Kickflip" and weld then
+		weld.C0 = base * CFrame.Angles(0, 0, p * TWO_PI)
+	elseif tr.name == "Grab" and weld then
+		local lift = math.sin(p * math.pi)
+		weld.C0 = base * CFrame.new(0, lift * 1.3, 0) * CFrame.Angles(lift * 0.6, 0, lift * 0.4)
+	elseif tr.name == "Spin" then
+		root.CFrame = CFrame.new(root.Position) * tr.yaw * CFrame.Angles(0, p * TWO_PI, 0)
+	elseif tr.name == "Backflip" then
+		root.CFrame = CFrame.new(root.Position) * tr.yaw * CFrame.Angles(p * TWO_PI, 0, 0)
+		if weld then
+			weld.C0 = base * CFrame.Angles(0, p * TWO_PI, 0)
+		end
+	end
+	if p >= 1 then
+		completeTrick()
+	end
+end
+
+local function onLand()
+	local tr = state.trick
+	if tr then
+		if tr.t / tr.dur >= 0.8 then
+			completeTrick() -- почти докрутил — засчитываем
+		else
+			bail("Не докрутил трюк!")
+			return
+		end
+	end
+	if state.airTime > 0.5 then
+		local deck = boardPart("Deck")
+		if deck then
+			UI.landBurst(deck.Position)
+		end
+	end
+end
+
+-- ---------- трамплины ----------
+local function launch(kick)
+	if not root or not hum or state.bailing then
+		return
+	end
+	if os.clock() - state.lastKick < 0.8 then
+		return
+	end
+	state.lastKick = os.clock()
+	local power = kick:GetAttribute("Power") or 80
+	local v = root.AssemblyLinearVelocity
+	local horiz = Vector3.new(v.X, 0, v.Z)
+	if horiz.Magnitude < 25 then
+		local look = kick.CFrame.LookVector * Vector3.new(1, 0, 1)
+		if look.Magnitude > 0.01 then
+			horiz = look.Unit * math.max(state.speed, 30)
+		end
+	end
+	hum:ChangeState(Enum.HumanoidStateType.Freefall)
+	root.AssemblyLinearVelocity = horiz + Vector3.new(0, power, 0)
+	addEntryChecked("Air")
+	if kick:GetAttribute("Mega") then
+		UI.floatText("МЕГА-ПРЫЖОК!", Color3.fromRGB(255, 80, 200))
+	end
+end
+
+local function hookKicker(kick)
+	kick.Touched:Connect(function(hit)
+		if char and hit:IsDescendantOf(char) then
+			launch(kick)
+		end
+	end)
+end
+for _, k in ipairs(CollectionService:GetTagged("Kicker")) do
+	hookKicker(k)
+end
+CollectionService:GetInstanceAddedSignal("Kicker"):Connect(hookKicker)
+
+-- ---------- лава ----------
+local function hookLava(lava)
+	lava.Touched:Connect(function(hit)
+		if char and hit:IsDescendantOf(char) and not state.bailing then
+			bail("Горячо! Лава!")
+			local zoneIndex = state.zone
+			task.delay(1.2, function()
+				if root and root.Parent then
+					root.CFrame = CFrame.new(0, 5, -(zoneIndex - 1) * Config.ZoneLength - 18)
+					root.AssemblyLinearVelocity = Vector3.zero
+				end
+			end)
+		end
+	end)
+end
+for _, l in ipairs(CollectionService:GetTagged("Lava")) do
+	hookLava(l)
+end
+CollectionService:GetInstanceAddedSignal("Lava"):Connect(hookLava)
+
+-- ---------- ворота зон ----------
+local function refreshGates()
+	local maxZone = state.data and state.data.maxZone or 1
+	for _, gate in ipairs(CollectionService:GetTagged("Gate")) do
+		local idx = gate:GetAttribute("ZoneIndex") or 99
+		local open = idx <= maxZone
+		gate.CanCollide = not open
+		gate.Transparency = open and 0.92 or 0.2
+		for _, g in ipairs(gate:GetChildren()) do
+			if g:IsA("SurfaceGui") then
+				g.Enabled = not open
+			end
+		end
+	end
+end
+
+local function hookGate(gate)
+	gate.Touched:Connect(function(hit)
+		if not char or not hit:IsDescendantOf(char) then
+			return
+		end
+		local idx = gate:GetAttribute("ZoneIndex")
+		local maxZone = state.data and state.data.maxZone or 1
+		if idx and idx > maxZone and os.clock() > state.gateCooldown then
+			state.gateCooldown = os.clock() + 3
+			UI.openZones()
+		end
+	end)
+end
+for _, g in ipairs(CollectionService:GetTagged("Gate")) do
+	hookGate(g)
+end
+CollectionService:GetInstanceAddedSignal("Gate"):Connect(function(g)
+	hookGate(g)
+	refreshGates()
+end)
+
+-- ---------- звёзды ----------
+local stars = {}
+local function addStar(s)
+	stars[s] = { base = s.CFrame, phase = math.random() * TWO_PI, hiddenUntil = 0 }
+end
+for _, s in ipairs(CollectionService:GetTagged("Pickup")) do
+	addStar(s)
+end
+CollectionService:GetInstanceAddedSignal("Pickup"):Connect(addStar)
+
+remotes.PickupTaken.OnClientEvent:Connect(function(s, cooldown, coins)
+	local info = stars[s]
+	if info then
+		info.hiddenUntil = os.clock() + cooldown
+		s.Transparency = 1
+		local light = s:FindFirstChildOfClass("PointLight")
+		if light then
+			light.Enabled = false
+		end
+	end
+	UI.floatText("+" .. Config.formatNumber(coins) .. " 💰", Color3.fromRGB(255, 220, 60))
+end)
+
+-- ---------- зоны: свет и гравитация ----------
+local function enterZone(i)
+	state.zone = i
+	local zone = Config.Zones[i]
+	local l = zone.light
+	TweenService:Create(Lighting, TweenInfo.new(1.5), {
+		ClockTime = l.clock,
+		Brightness = l.brightness,
+		FogColor = l.fog,
+		FogEnd = l.fogEnd,
+		Ambient = l.ambient,
+		OutdoorAmbient = l.ambient,
+	}):Play()
+	workspace.Gravity = zone.gravity
+	UI.zoneBanner(i)
+end
+
+-- ---------- персонаж ----------
+local function onCharacter(c)
+	char = c
+	hum = c:WaitForChild("Humanoid")
+	root = c:WaitForChild("HumanoidRootPart")
+	hum.UseJumpPower = true
+	state.combo = {}
+	state.trick = nil
+	state.queued = nil
+	state.bailing = false
+	state.grinding = false
+	state.inAir = false
+	state.speed = 0
+	UI.comboEnd(nil)
+	hum.Died:Connect(function()
+		if #state.combo > 0 then
+			remotes.ComboBailed:FireServer(state.combo)
+		end
+		state.combo = {}
+		UI.comboEnd(false)
+	end)
+end
+if player.Character then
+	task.spawn(onCharacter, player.Character)
+end
+player.CharacterAdded:Connect(onCharacter)
+
+-- ---------- ввод ----------
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed then
+		return
+	end
+	for _, b in ipairs(Config.TrickButtons) do
+		if input.KeyCode == b.key then
+			startTrick(b.trick)
+			return
+		end
+	end
+end)
+
+-- ---------- главный цикл ----------
+local rayParams = RaycastParams.new()
+rayParams.FilterType = Enum.RaycastFilterType.Exclude
+
+local camera = workspace.CurrentCamera
+local zoneCheck = 0
+
+RunService.Heartbeat:Connect(function(dt)
+	local t = os.clock()
+
+	-- звёзды покачиваются
+	for s, info in pairs(stars) do
+		if s.Parent then
+			if info.hiddenUntil > 0 and t > info.hiddenUntil then
+				info.hiddenUntil = 0
+				s.Transparency = 0
+				local light = s:FindFirstChildOfClass("PointLight")
+				if light then
+					light.Enabled = true
+				end
+			end
+			s.CFrame = info.base + Vector3.new(0, math.sin(t * 2.5 + info.phase) * 0.7, 0)
+		else
+			stars[s] = nil
+		end
+	end
+
+	if not hum or not root or hum.Health <= 0 or not root.Parent then
+		return
+	end
+
+	-- в каком мы состоянии
+	local nowAir = hum.FloorMaterial == Enum.Material.Air
+	if nowAir then
+		if not state.inAir then
+			state.inAir = true
+			state.airTime = 0
+			if state.queued and t - state.queued.time < 0.5 then
+				local name = state.queued.name
+				state.queued = nil
+				startTrick(name)
+			end
+		end
+		state.airTime += dt
+	elseif state.inAir then
+		state.inAir = false
+		if not state.bailing then
+			onLand()
+		end
+	end
+	if state.queued and t - state.queued.time > 0.5 then
+		state.queued = nil
+	end
+
+	if not state.bailing then
+		updateTrick(dt)
+	end
+
+	local v = root.AssemblyLinearVelocity
+	local flat = Vector3.new(v.X, 0, v.Z).Magnitude
+
+	-- перила (стоя на месте грайнд не считается)
+	local _, offset = boardBase()
+	rayParams.FilterDescendantsInstances = { char }
+	local hit = not state.bailing and workspace:Raycast(root.Position, Vector3.new(0, -(offset + 1.4), 0), rayParams)
+	local onRail = hit and hit.Instance:GetAttribute("Rail") == true and flat > 8
+	local sparks = boardPart("Sparks")
+	if onRail then
+		if not state.grinding then
+			state.grinding = true
+			state.grindTick = 0
+			addEntryChecked("Rail")
+		end
+		state.grindTick += dt
+		if state.grindTick >= 0.25 then
+			state.grindTick -= 0.25
+			addEntryChecked("Grind")
+		end
+		-- магнит: держим игрока по центру перил
+		local railCF = hit.Instance.CFrame
+		local lp = railCF:PointToObjectSpace(root.Position)
+		local target = railCF:PointToWorldSpace(Vector3.new(lp.X * 0.75, lp.Y, lp.Z))
+		root.CFrame = root.CFrame.Rotation + target
+		state.groundTime = 0
+	elseif state.grinding then
+		state.grinding = false
+	end
+	if sparks then
+		sparks.Enabled = state.grinding
+	end
+
+	-- засчитываем комбо, если долго едем по земле
+	if #state.combo > 0 and not state.inAir and not state.grinding and not state.trick and not state.bailing then
+		state.groundTime += dt
+		UI.comboTimer(1 - state.groundTime / Config.Combo.BankDelay)
+		if state.groundTime >= Config.Combo.BankDelay then
+			bank()
+		end
+	elseif #state.combo > 0 then
+		UI.comboTimer(1)
+	end
+
+	-- разгон как на скейте
+	local maxSpeed = player:GetAttribute("MaxSpeed") or Config.Speed.Base
+	local jump = player:GetAttribute("JumpPower") or Config.BaseJump
+	if hum.JumpPower ~= jump then
+		hum.JumpPower = jump
+	end
+	local cap = maxSpeed * (state.grinding and 1.2 or 1)
+	if state.bailing then
+		state.speed = maxSpeed * 0.4
+	elseif hum.MoveDirection.Magnitude > 0.1 then
+		state.speed = math.min(cap, math.max(state.speed, maxSpeed * 0.45) + maxSpeed * 0.7 * dt)
+	else
+		state.speed = math.max(maxSpeed * 0.45, state.speed - maxSpeed * 1.5 * dt)
+	end
+	hum.WalkSpeed = state.speed
+
+	-- камера и след
+	local targetFov = 70 + math.clamp((flat - 20) / 100, 0, 1) * 22
+	camera.FieldOfView += (targetFov - camera.FieldOfView) * math.min(1, dt * 4)
+	local trail = boardPart("BoardTrail")
+	if trail then
+		trail.Enabled = flat > 25 or state.inAir
+	end
+	UI.setSpeed(flat)
+
+	-- зона
+	zoneCheck -= dt
+	if zoneCheck <= 0 then
+		zoneCheck = 0.4
+		local i = math.clamp(math.floor(-root.Position.Z / Config.ZoneLength) + 1, 1, #Config.Zones)
+		if i ~= state.zone then
+			enterZone(i)
+		end
+	end
+end)
+
+-- ---------- данные с сервера ----------
+remotes.DataChanged.OnClientEvent:Connect(function(snap)
+	local first = state.data == nil
+	state.data = snap
+	UI.setData(snap)
+	refreshGates()
+	if first and snap.level <= 1 and snap.coins == 0 then
+		UI.tutorial()
+	end
+end)
+
+remotes.ComboResult.OnClientEvent:Connect(function(coins, xp, record)
+	UI.comboResult(coins, xp, record)
+end)
+
+remotes.Notify.OnClientEvent:Connect(function(text, kind)
+	UI.toast(text, kind)
+end)
+
+UI.init({
+	Config = Config,
+	request = request,
+	buy = buy,
+	onTrick = startTrick,
+	getData = function()
+		return state.data
+	end,
+})
+]]></ProtectedString></Properties><Item class="ModuleScript" referent="RBX00000005"><Properties><string name="Name">UI</string><ProtectedString name="Source"><![CDATA[-- ============================================================
+--  SKATE RUSH — интерфейс. Всё рисуется кодом, картинки не нужны.
+-- ============================================================
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local Config = require(ReplicatedStorage:WaitForChild("SkateShared"):WaitForChild("Config"))
+local fmt = Config.formatNumber
+
+local UI = {}
+
+local ctx -- колбэки из главного скрипта
+local data -- последние данные с сервера
+local gui
+local refs = {}
+local openWindowRefresh = nil
+local displayedCoins = 0
+local boostEnds = 0
+
+-- ---------- цвета ----------
+local C = {
+	panel = Color3.fromRGB(18, 18, 32),
+	panel2 = Color3.fromRGB(32, 32, 54),
+	text = Color3.fromRGB(255, 255, 255),
+	dim = Color3.fromRGB(170, 170, 200),
+	gold = Color3.fromRGB(255, 205, 40),
+	green = Color3.fromRGB(60, 220, 110),
+	red = Color3.fromRGB(255, 70, 90),
+	blue = Color3.fromRGB(40, 170, 255),
+	pink = Color3.fromRGB(255, 60, 170),
+	orange = Color3.fromRGB(255, 140, 0),
+	purple = Color3.fromRGB(150, 90, 255),
+}
+
+-- ---------- helpers ----------
+local function new(class, props, children)
+	local o = Instance.new(class)
+	for k, v in pairs(props or {}) do
+		if k ~= "Parent" then
+			o[k] = v
+		end
+	end
+	for _, ch in ipairs(children or {}) do
+		ch.Parent = o
+	end
+	if props and props.Parent then
+		o.Parent = props.Parent
+	end
+	return o
+end
+
+local function corner(r)
+	return new("UICorner", { CornerRadius = UDim.new(0, r or 12) })
+end
+
+local function stroke(color, th)
+	return new("UIStroke", { Color = color or Color3.new(0, 0, 0), Thickness = th or 2, ApplyStrokeMode = Enum.ApplyStrokeMode.Border })
+end
+
+local function gradient(c1, c2, rot)
+	return new("UIGradient", { Color = ColorSequence.new(c1, c2), Rotation = rot or 90 })
+end
+
+local function label(props)
+	local maxText = props.MaxText or 40
+	props.MaxText = nil
+	props.BackgroundTransparency = props.BackgroundTransparency or 1
+	props.Font = props.Font or Enum.Font.GothamBlack
+	props.TextColor3 = props.TextColor3 or C.text
+	props.TextScaled = props.TextScaled ~= false
+	local l = new("TextLabel", props)
+	if props.TextScaled ~= false then
+		new("UITextSizeConstraint", { MaxTextSize = maxText, Parent = l })
+	end
+	return l
+end
+
+local function textStroke(l, th)
+	new("UIStroke", { Color = Color3.new(0, 0, 0), Thickness = th or 2, ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual, Parent = l })
+	return l
+end
+
+local function button(props, onClick)
+	local color = props.Color or C.green
+	local maxText = props.MaxText or 26
+	props.Color = nil
+	props.MaxText = nil
+	props.BackgroundColor3 = color
+	props.AutoButtonColor = true
+	props.Font = props.Font or Enum.Font.GothamBlack
+	props.TextColor3 = props.TextColor3 or C.text
+	props.TextScaled = true
+	local b = new("TextButton", props, { corner(10), gradient(Color3.new(1, 1, 1), Color3.fromRGB(190, 190, 190)) })
+	new("UITextSizeConstraint", { MaxTextSize = maxText, Parent = b })
+	new("UIPadding", { PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 6), PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 4), Parent = b })
+	textStroke(b, 1.5)
+	b.MouseButton1Click:Connect(function()
+		local s = b:FindFirstChildOfClass("UIScale") or new("UIScale", { Parent = b })
+		s.Scale = 0.9
+		TweenService:Create(s, TweenInfo.new(0.25, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+		onClick()
+	end)
+	return b
+end
+
+local function pop(obj, from)
+	local s = obj:FindFirstChild("PopScale") or new("UIScale", { Name = "PopScale", Parent = obj })
+	s.Scale = from or 1.35
+	TweenService:Create(s, TweenInfo.new(0.35, Enum.EasingStyle.Back), { Scale = 1 }):Play()
+end
+
+local function timeText(sec)
+	sec = math.max(0, math.floor(sec))
+	return string.format("%d:%02d", math.floor(sec / 60), sec % 60)
+end
+
+-- ---------- уведомления ----------
+function UI.toast(text, kind)
+	if not refs.toasts then
+		return
+	end
+	local color = ({ good = C.green, warn = C.red, level = C.gold, event = C.purple })[kind] or C.blue
+	local f = new("Frame", {
+		Size = UDim2.new(1, 0, 0, 40),
+		BackgroundColor3 = C.panel,
+		BackgroundTransparency = 0.15,
+		Parent = refs.toasts,
+	}, { corner(10), stroke(color, 2) })
+	local l = textStroke(label({ Text = text, Size = UDim2.new(1, -16, 1, -8), Position = UDim2.fromOffset(8, 4), TextColor3 = kind == "level" and C.gold or C.text, MaxText = 22, Parent = f }), 1)
+	pop(f, 0.6)
+	task.delay(3.2, function()
+		TweenService:Create(f, TweenInfo.new(0.4), { BackgroundTransparency = 1 }):Play()
+		TweenService:Create(l, TweenInfo.new(0.4), { TextTransparency = 1 }):Play()
+		local st = f:FindFirstChildOfClass("UIStroke")
+		if st then
+			TweenService:Create(st, TweenInfo.new(0.4), { Transparency = 1 }):Play()
+		end
+		task.wait(0.45)
+		f:Destroy()
+	end)
+	if kind == "level" then
+		UI.floatText(text, C.gold, 1.6)
+	end
+end
+
+function UI.floatText(text, color, size)
+	if not gui then
+		return
+	end
+	local l = textStroke(label({
+		Text = text,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5 + (math.random() - 0.5) * 0.12, 0.55),
+		Size = UDim2.fromScale(0.5 * (size or 1), 0.07 * (size or 1)),
+		TextColor3 = color or C.gold,
+		MaxText = 60,
+		ZIndex = 20,
+		Parent = gui,
+	}), 3)
+	pop(l, 0.3)
+	TweenService:Create(l, TweenInfo.new(1.3, Enum.EasingStyle.Quad), { Position = l.Position - UDim2.fromScale(0, 0.12), TextTransparency = 1 }):Play()
+	task.delay(1.35, function()
+		l:Destroy()
+	end)
+end
+
+-- ---------- комбо ----------
+local function compress(entries)
+	-- «Грайнд, Грайнд, Грайнд» → «Грайнд x3»; показываем последние 4 трюка
+	local out = {}
+	for _, name in ipairs(entries) do
+		local display = Config.Tricks[name] and Config.Tricks[name].display or name
+		local last = out[#out]
+		if last and last.name == display then
+			last.n += 1
+		else
+			table.insert(out, { name = display, n = 1 })
+		end
+	end
+	local parts = {}
+	for i = math.max(1, #out - 3), #out do
+		local e = out[i]
+		table.insert(parts, e.n > 1 and (e.name .. " x" .. e.n) or e.name)
+	end
+	return table.concat(parts, " + ")
+end
+
+function UI.comboUpdate(entries, base, mult, coins)
+	local f = refs.combo
+	if not f then
+		return
+	end
+	f.Visible = true
+	refs.comboTricks.Text = compress(entries)
+	local multText = "x" .. (mult % 1 == 0 and tostring(mult) or string.format("%.1f", mult))
+	if refs.comboMult.Text ~= multText then
+		refs.comboMult.Text = multText
+		pop(refs.comboMult, 1.6)
+	end
+	local hue = math.clamp((mult - 1) / 10, 0, 1)
+	refs.comboMult.TextColor3 = C.gold:Lerp(C.pink, hue)
+	refs.comboCoins.Text = "+" .. fmt(coins) .. " 💰"
+	refs.comboBar.Size = UDim2.fromScale(1, 1)
+end
+
+function UI.comboTimer(p)
+	if refs.comboBar then
+		refs.comboBar.Size = UDim2.fromScale(math.clamp(p, 0, 1), 1)
+	end
+end
+
+function UI.comboEnd(banked)
+	if refs.combo then
+		refs.combo.Visible = false
+	end
+end
+
+function UI.comboResult(coins, xp, record)
+	UI.floatText("+" .. fmt(coins) .. " 💰", C.gold, coins > 1000 and 1.4 or 1.1)
+	if record then
+		task.delay(0.4, function()
+			UI.floatText("НОВЫЙ РЕКОРД КОМБО!", C.pink, 1.3)
+		end)
+	end
+end
+
+function UI.trickPop(text)
+	UI.floatText(text, C.text, 0.8)
+end
+
+function UI.bail(lostCoins, reason)
+	UI.floatText(reason or "ПАДЕНИЕ!", C.red, 1.2)
+	local f = refs.bail
+	if not f or lostCoins < Config.Combo.SaveOfferMin then
+		return
+	end
+	refs.bailText.Text = "Комбо потеряно: " .. fmt(lostCoins) .. " 💰"
+	f.Visible = true
+	pop(f, 0.5)
+	local token = {}
+	refs.bailToken = token
+	task.delay(6, function()
+		if refs.bailToken == token then
+			f.Visible = false
+		end
+	end)
+end
+
+function UI.landBurst(position)
+	local p = new("Part", {
+		Anchored = true,
+		CanCollide = false,
+		CanQuery = false,
+		CanTouch = false,
+		Transparency = 1,
+		Size = Vector3.new(1, 1, 1),
+		CFrame = CFrame.new(position),
+		Parent = workspace,
+	})
+	local e = new("ParticleEmitter", {
+		Color = ColorSequence.new(Color3.fromRGB(230, 230, 230)),
+		Size = NumberSequence.new(1.2, 0),
+		Transparency = NumberSequence.new(0.3, 1),
+		Lifetime = NumberRange.new(0.3, 0.6),
+		Speed = NumberRange.new(8, 14),
+		SpreadAngle = Vector2.new(80, 10),
+		Enabled = false,
+		Parent = p,
+	})
+	e:Emit(18)
+	task.delay(1, function()
+		p:Destroy()
+	end)
+end
+
+-- ---------- зоны ----------
+function UI.zoneBanner(i)
+	local zone = Config.Zones[i]
+	if not gui or not zone then
+		return
+	end
+	local l = textStroke(label({
+		Text = zone.name:upper() .. "\nмонеты x" .. tostring(zone.mult),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.3),
+		Size = UDim2.fromScale(0.6, 0.14),
+		TextColor3 = zone.accent:Lerp(Color3.new(1, 1, 1), 0.35),
+		MaxText = 70,
+		ZIndex = 15,
+		Parent = gui,
+	}), 4)
+	pop(l, 0.4)
+	task.delay(2, function()
+		TweenService:Create(l, TweenInfo.new(0.8), { TextTransparency = 1 }):Play()
+		task.wait(0.85)
+		l:Destroy()
+	end)
+end
+
+-- ---------- окна ----------
+local function closeWindow()
+	if refs.window then
+		refs.window.Visible = false
+	end
+	openWindowRefresh = nil
+end
+
+local function openWindow(title, color, build, manual)
+	local w = refs.window
+	refs.windowTitle.Text = title
+	refs.windowHeader.BackgroundColor3 = color
+	refs.windowManual = manual
+	local function refresh()
+		local list = refs.windowList
+		local scroll = list.CanvasPosition
+		task.defer(function()
+			list.CanvasPosition = scroll
+		end)
+		for _, ch in ipairs(list:GetChildren()) do
+			if not ch:IsA("UIListLayout") and not ch:IsA("UIPadding") then
+				ch:Destroy()
+			end
+		end
+		if data then
+			build(list)
+		end
+	end
+	openWindowRefresh = refresh
+	refs.windowList.CanvasPosition = Vector2.zero
+	refresh()
+	w.Visible = true
+	pop(w, 0.7)
+end
+
+local rowOrder = 0
+local function row(parent, opts)
+	rowOrder += 1
+	local f = new("Frame", {
+		Size = UDim2.new(1, 0, 0, opts.height or 74),
+		BackgroundColor3 = opts.highlight and C.panel2:Lerp(opts.highlight, 0.25) or C.panel2,
+		LayoutOrder = rowOrder,
+		Parent = parent,
+	}, { corner(12) })
+	if opts.highlight then
+		stroke(opts.highlight, 2).Parent = f
+	end
+	label({ Text = opts.icon or "", Size = UDim2.new(0, 56, 1, -12), Position = UDim2.fromOffset(6, 6), MaxText = 38, Parent = f })
+	textStroke(label({ Text = opts.title, Size = UDim2.new(1, -210, 0.45, 0), Position = UDim2.new(0, 66, 0.08, 0), TextXAlignment = Enum.TextXAlignment.Left, MaxText = 22, Parent = f }), 1)
+	label({ Text = opts.subtitle or "", Size = UDim2.new(1, -210, 0.38, 0), Position = UDim2.new(0, 66, 0.55, 0), TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.GothamBold, TextColor3 = C.dim, MaxText = 16, Parent = f })
+	if opts.buttonText then
+		local b = button({
+			Text = opts.buttonText,
+			Size = UDim2.new(0, 132, 0, 46),
+			AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, -10, 0.5, 0),
+			Color = opts.disabled and Color3.fromRGB(90, 90, 110) or (opts.buttonColor or C.green),
+			MaxText = 20,
+			Parent = f,
+		}, function()
+			if opts.onClick then
+				opts.onClick()
+			end
+		end)
+		b.AutoButtonColor = not opts.disabled
+	end
+	return f
+end
+
+local function header(parent, text)
+	rowOrder += 1
+	textStroke(label({ Text = text, Size = UDim2.new(1, 0, 0, 30), TextColor3 = C.gold, MaxText = 22, LayoutOrder = rowOrder, Parent = parent }), 1)
+end
+
+-- Доски
+local function buildBoards(list)
+	header(list, "Доски дают скорость и прыжок")
+	for _, b in ipairs(Config.Boards) do
+		local owned = (b.pass and data.passes[b.pass]) or data.boards[b.id]
+		local equipped = data.equipped == b.id
+		local btn, color, click
+		if equipped then
+			btn, color = "НАДЕТА", C.blue
+		elseif owned then
+			btn, color = "НАДЕТЬ", C.blue
+			click = function()
+				ctx.request("BuyBoard", b.id)
+			end
+		elseif b.pass then
+			btn, color = Config.GamePasses[b.pass].price .. " R$", C.pink
+			click = function()
+				ctx.buy("pass", b.pass)
+			end
+		else
+			btn, color = fmt(b.price) .. " 💰", data.coins >= b.price and C.green or Color3.fromRGB(90, 90, 110)
+			click = function()
+				ctx.request("BuyBoard", b.id)
+			end
+		end
+		local sub = string.format("Скорость x%.2f  •  Прыжок +%d", b.speed, b.jump)
+		if b.coinBonus then
+			sub ..= "  •  Монеты +" .. math.floor(b.coinBonus * 100) .. "%"
+		end
+		row(list, { icon = b.pass and "👑" or "🛹", title = b.name, subtitle = sub, buttonText = btn, buttonColor = color, onClick = click, highlight = equipped and b.trail or nil })
+	end
+end
+
+-- Скорость
+local function buildSpeed(list)
+	local lvl = data.speedLevel
+	local maxLvl = Config.Speed.MaxLevel
+	local now = math.floor(Config.maxSpeed(lvl, data.equipped))
+	header(list, "Скорость " .. now .. "  •  Ступень " .. lvl .. " из " .. maxLvl)
+	if lvl >= maxLvl then
+		row(list, { icon = "⚡", title = "Максимум!", subtitle = "Сделай перерождение, чтобы монет стало больше" })
+		return
+	end
+	local cost = Config.speedCost(lvl)
+	local nextSpeed = math.floor(Config.maxSpeed(lvl + 1, data.equipped))
+	row(list, {
+		icon = "⚡",
+		title = "+1 к скорости",
+		subtitle = now .. " → " .. nextSpeed,
+		buttonText = fmt(cost) .. " 💰",
+		buttonColor = data.coins >= cost and C.green or Color3.fromRGB(90, 90, 110),
+		onClick = function()
+			ctx.request("BuySpeed")
+		end,
+	})
+	row(list, {
+		icon = "⏩",
+		title = "Купить на все монеты",
+		subtitle = "Максимум, что можешь себе позволить",
+		buttonText = "МАКС",
+		buttonColor = C.orange,
+		onClick = function()
+			ctx.request("BuySpeedMax")
+		end,
+	})
+end
+
+-- Зоны
+local function buildZones(list)
+	header(list, "Открывай зоны: чем дальше, тем больше монет")
+	for i, z in ipairs(Config.Zones) do
+		local opts = { icon = i <= data.maxZone and "🗺️" or "🔒", title = i .. ". " .. z.name, highlight = i == data.maxZone and z.accent or nil }
+		if i <= data.maxZone then
+			opts.subtitle = "Монеты x" .. tostring(z.mult) .. "  •  открыта"
+			opts.buttonText = "ПОЕХАЛИ"
+			opts.buttonColor = C.blue
+			opts.onClick = function()
+				if ctx.request("Teleport", i) then
+					closeWindow()
+				end
+			end
+		elseif i == data.maxZone + 1 then
+			local canLevel = data.level >= z.level
+			local canCoins = data.coins >= z.cost
+			opts.subtitle = string.format("Нужен ур. %d %s  •  %s 💰 %s", z.level, canLevel and "✅" or "❌", fmt(z.cost), canCoins and "✅" or "❌")
+			opts.buttonText = "ОТКРЫТЬ"
+			opts.buttonColor = (canLevel and canCoins) and C.green or Color3.fromRGB(90, 90, 110)
+			opts.onClick = function()
+				ctx.request("UnlockZone", i)
+			end
+		else
+			opts.subtitle = "Уровень " .. z.level .. "  •  монеты x" .. tostring(z.mult)
+		end
+		row(list, opts)
+	end
+	if data.maxZone < #Config.Zones then
+		local p = Config.Products.SkipZone
+		row(list, { icon = p.icon, title = p.name, subtitle = p.desc, buttonText = p.price .. " R$", buttonColor = C.pink, onClick = function()
+			ctx.buy("product", "SkipZone")
+		end, highlight = C.pink })
+	end
+end
+
+-- Магазин
+local function buildShop(list)
+	header(list, "Навсегда")
+	for _, key in ipairs(Config.GamePassOrder) do
+		local p = Config.GamePasses[key]
+		local owned = data.passes[key]
+		row(list, {
+			icon = p.icon,
+			title = p.name,
+			subtitle = p.desc,
+			buttonText = owned and "ЕСТЬ ✅" or (p.price .. " R$"),
+			buttonColor = owned and C.blue or C.pink,
+			disabled = owned,
+			highlight = (not owned) and C.gold or nil,
+			onClick = function()
+				if not owned then
+					ctx.buy("pass", key)
+				end
+			end,
+		})
+	end
+	header(list, "Бусты и монеты")
+	for _, key in ipairs(Config.ProductOrder) do
+		local p = Config.Products[key]
+		local sub = p.desc
+		if Config.CoinPackBase[key] then
+			sub = "+" .. fmt(Config.CoinPackBase[key] * Config.Zones[data.maxZone].mult) .. " 💰 прямо сейчас"
+		end
+		row(list, { icon = p.icon, title = p.name, subtitle = sub, buttonText = p.price .. " R$", buttonColor = C.pink, onClick = function()
+			ctx.buy("product", key)
+		end })
+	end
+end
+
+-- Ежедневная награда
+local function buildDaily(list)
+	header(list, "Заходи каждый день — награда растёт!")
+	local mult = Config.Zones[data.maxZone].mult
+	local nextDay = data.dailyReady and data.dailyNext or data.dailyStreak
+	local streakShown = data.dailyReady and (nextDay - 1) or data.dailyStreak
+	for day, amount in ipairs(Config.Daily) do
+		local isNext = data.dailyReady and day == nextDay
+		local done = day <= streakShown
+		row(list, {
+			height = 54,
+			icon = day == #Config.Daily and "💎" or "🎁",
+			title = "День " .. day,
+			subtitle = "+" .. fmt(amount * mult) .. " 💰",
+			buttonText = isNext and "ЗАБРАТЬ" or (done and "✅" or nil),
+			buttonColor = isNext and C.green or C.blue,
+			highlight = isNext and C.green or nil,
+			onClick = function()
+				if isNext then
+					ctx.request("ClaimDaily")
+				end
+			end,
+		})
+	end
+	if not data.dailyReady then
+		header(list, "Следующая награда — завтра")
+	end
+end
+
+-- Коды
+local function buildCodes(list)
+	header(list, "Коды ищи в соцсетях игры")
+	rowOrder += 1
+	local f = new("Frame", { Size = UDim2.new(1, 0, 0, 64), BackgroundColor3 = C.panel2, LayoutOrder = rowOrder, Parent = list }, { corner(12) })
+	local box = new("TextBox", {
+		Size = UDim2.new(1, -160, 0, 44),
+		Position = UDim2.fromOffset(10, 10),
+		BackgroundColor3 = Color3.fromRGB(12, 12, 22),
+		PlaceholderText = "Введи код...",
+		Text = "",
+		ClearTextOnFocus = false,
+		Font = Enum.Font.GothamBold,
+		TextColor3 = C.text,
+		PlaceholderColor3 = C.dim,
+		TextScaled = true,
+		Parent = f,
+	}, { corner(8), new("UITextSizeConstraint", { MaxTextSize = 22 }) })
+	button({ Text = "ВВЕСТИ", Size = UDim2.new(0, 130, 0, 44), AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -10, 0, 10), Color = C.green, Parent = f }, function()
+		ctx.request("RedeemCode", box.Text)
+	end)
+end
+
+-- Перерождение
+local function buildRebirth(list)
+	local cost = Config.rebirthCost(data.rebirths)
+	local bonusNow = math.floor(Config.Rebirth.Bonus * data.rebirths * 100)
+	local bonusNext = math.floor(Config.Rebirth.Bonus * (data.rebirths + 1) * 100)
+	header(list, "Перерождений: " .. data.rebirths .. "  •  бонус к монетам +" .. bonusNow .. "%")
+	row(list, { height = 90, icon = "♻️", title = "Сбросить монеты и скорость", subtitle = "Зоны, доски и уровень останутся.\nБонус станет +" .. bonusNext .. "% навсегда" })
+	row(list, {
+		icon = "🔥",
+		title = "ПЕРЕРОДИТЬСЯ",
+		subtitle = "Нужно " .. fmt(cost) .. " 💰",
+		buttonText = fmt(cost) .. " 💰",
+		buttonColor = data.coins >= cost and C.purple or Color3.fromRGB(90, 90, 110),
+		onClick = function()
+			ctx.request("Rebirth")
+		end,
+	})
+end
+
+local windows = {
+	Boards = { "🛹 ДОСКИ", C.orange, buildBoards },
+	Speed = { "⚡ СКОРОСТЬ", C.blue, buildSpeed },
+	Zones = { "🗺️ ЗОНЫ", C.green, buildZones },
+	Shop = { "💎 МАГАЗИН", C.pink, buildShop },
+	Daily = { "🎁 НАГРАДА", C.gold, buildDaily },
+	Codes = { "🎟️ КОДЫ", C.purple, buildCodes, true },
+	Rebirth = { "♻️ ПЕРЕРОЖДЕНИЕ", C.purple, buildRebirth },
+}
+
+local function open(name)
+	local w = windows[name]
+	if refs.window.Visible and refs.windowTitle.Text == w[1] then
+		closeWindow()
+		return
+	end
+	openWindow(w[1], w[2], w[3], w[4])
+end
+
+function UI.openZones()
+	if data then
+		open("Zones")
+	end
+end
+
+-- ---------- данные ----------
+function UI.setData(snap)
+	data = snap
+	boostEnds = os.clock() + (snap.boostLeft or 0)
+	if refs.level then
+		local need = Config.xpForLevel(snap.level)
+		refs.level.Text = "УР. " .. snap.level
+		TweenService:Create(refs.xpFill, TweenInfo.new(0.3), { Size = UDim2.fromScale(math.clamp(snap.xp / need, 0, 1), 1) }):Play()
+		refs.xpText.Text = fmt(snap.xp) .. " / " .. fmt(need)
+		refs.mult.Text = string.format("монеты x%s", (snap.coinMult % 1 == 0) and tostring(snap.coinMult) or string.format("%.1f", snap.coinMult))
+		refs.dailyDot.Visible = snap.dailyReady
+	end
+	if openWindowRefresh and not refs.windowManual then
+		openWindowRefresh()
+	end
+end
+
+function UI.setSpeed(v)
+	if refs.speed then
+		refs.speed.Text = tostring(math.floor(v))
+	end
+end
+
+-- ---------- обучение ----------
+function UI.tutorial()
+	local touch = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+	local tips = {
+		"Разгоняйся и заезжай на трамплины со стрелками!",
+		touch and "В воздухе жми кнопки ФЛИП, СПИН, ГРЭБ, БЭК" or "В воздухе жми E, Q, R, F — это трюки",
+		"Не успел докрутить трюк до приземления — упадёшь!",
+		"Трюки подряд = множитель комбо. Разные трюки дают больше",
+		"Заезжай на перила — это грайнд, он не даёт комбо закончиться",
+		"Прокачивай скорость, покупай доски и открывай новые зоны!",
+	}
+	task.spawn(function()
+		task.wait(2)
+		for _, t in ipairs(tips) do
+			UI.toast("💡 " .. t, "info")
+			task.wait(4)
+		end
+	end)
+end
+
+-- ---------- построение интерфейса ----------
+local function buildHud()
+	local screen = new("ScreenGui", { Name = "SkateRushUI", ResetOnSpawn = false, IgnoreGuiInset = false, ZIndexBehavior = Enum.ZIndexBehavior.Sibling, Parent = player:WaitForChild("PlayerGui") })
+	-- весь интерфейс рисуем в «виртуальных» пикселях и масштабируем под экран телефона/компьютера
+	gui = new("Frame", { Name = "Root", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Parent = screen })
+	local scale = new("UIScale", { Parent = gui })
+	local function rescale()
+		local vp = workspace.CurrentCamera.ViewportSize
+		local s = math.clamp(math.min(vp.X / 1280, vp.Y / 680), 0.5, 1.15)
+		scale.Scale = s
+		gui.Size = UDim2.fromScale(1 / s, 1 / s)
+	end
+	rescale()
+	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(rescale)
+
+	-- монеты и уровень
+	local stats = new("Frame", { Size = UDim2.fromOffset(300, 118), Position = UDim2.fromOffset(16, 12), BackgroundColor3 = C.panel, BackgroundTransparency = 0.2, Parent = gui }, { corner(16), stroke(C.gold, 2) })
+	refs.coins = textStroke(label({ Text = "💰 0", Size = UDim2.new(1, -20, 0, 44), Position = UDim2.fromOffset(12, 6), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = C.gold, MaxText = 38, Parent = stats }), 2)
+	refs.level = textStroke(label({ Text = "УР. 1", Size = UDim2.new(0, 90, 0, 24), Position = UDim2.fromOffset(12, 54), TextXAlignment = Enum.TextXAlignment.Left, MaxText = 20, Parent = stats }), 1)
+	local xpBg = new("Frame", { Size = UDim2.new(1, -116, 0, 20), Position = UDim2.fromOffset(104, 56), BackgroundColor3 = Color3.fromRGB(10, 10, 20), Parent = stats }, { corner(10) })
+	refs.xpFill = new("Frame", { Size = UDim2.fromScale(0, 1), BackgroundColor3 = C.blue, Parent = xpBg }, { corner(10), gradient(C.blue, C.purple, 0) })
+	refs.xpText = label({ Text = "", Size = UDim2.fromScale(1, 1), Font = Enum.Font.GothamBold, MaxText = 14, ZIndex = 2, Parent = xpBg })
+	refs.mult = textStroke(label({ Text = "монеты x1", Size = UDim2.new(0.55, 0, 0, 24), Position = UDim2.fromOffset(12, 86), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = C.green, MaxText = 18, Parent = stats }), 1)
+	refs.boost = textStroke(label({ Text = "", Size = UDim2.new(0.45, -12, 0, 24), Position = UDim2.new(0.55, 0, 0, 86), TextXAlignment = Enum.TextXAlignment.Right, TextColor3 = C.orange, MaxText = 18, Parent = stats }), 1)
+
+	-- кнопки меню слева
+	local menu = new("Frame", { Size = UDim2.fromOffset(160, 330), Position = UDim2.new(0, 16, 0, 144), BackgroundTransparency = 1, Parent = gui }, {
+		new("UIGridLayout", { CellSize = UDim2.fromOffset(74, 68), CellPadding = UDim2.fromOffset(8, 8), SortOrder = Enum.SortOrder.LayoutOrder }),
+	})
+	local items = {
+		{ "Boards", "🛹", "Доски", C.orange },
+		{ "Speed", "⚡", "Скорость", C.blue },
+		{ "Zones", "🗺️", "Зоны", C.green },
+		{ "Shop", "💎", "Магазин", C.pink },
+		{ "Daily", "🎁", "Награда", C.gold },
+		{ "Codes", "🎟️", "Коды", C.purple },
+		{ "Rebirth", "♻️", "Перерожд.", C.purple },
+	}
+	for i, it in ipairs(items) do
+		local b = new("TextButton", { Size = UDim2.fromOffset(72, 66), BackgroundColor3 = it[4], Text = "", AutoButtonColor = true, LayoutOrder = i, Parent = menu }, { corner(14), stroke(Color3.new(0, 0, 0), 2), gradient(Color3.new(1, 1, 1), Color3.fromRGB(170, 170, 170)) })
+		label({ Text = it[2], Size = UDim2.new(1, 0, 0.62, 0), MaxText = 30, Parent = b })
+		textStroke(label({ Text = it[3], Size = UDim2.new(1, -4, 0.32, 0), Position = UDim2.new(0, 2, 0.64, 0), MaxText = 13, Parent = b }), 1)
+		b.MouseButton1Click:Connect(function()
+			open(it[1])
+		end)
+		if it[1] == "Daily" then
+			refs.dailyDot = new("Frame", { Size = UDim2.fromOffset(18, 18), Position = UDim2.new(1, -12, 0, -6), BackgroundColor3 = C.red, Visible = false, Parent = b }, { corner(9), stroke(Color3.new(1, 1, 1), 2) })
+		end
+		if it[1] == "Shop" then
+			-- магазин мягко пульсирует, чтобы его замечали
+			local s = new("UIScale", { Parent = b })
+			TweenService:Create(s, TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Scale = 1.07 }):Play()
+		end
+	end
+
+	-- комбо
+	refs.combo = new("Frame", { Size = UDim2.fromOffset(560, 130), AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 16), BackgroundTransparency = 1, Visible = false, Parent = gui })
+	refs.comboMult = textStroke(label({ Text = "x1", Size = UDim2.new(1, 0, 0, 56), MaxText = 56, TextColor3 = C.gold, Parent = refs.combo }), 3)
+	refs.comboTricks = textStroke(label({ Text = "", Size = UDim2.new(1, 0, 0, 30), Position = UDim2.fromOffset(0, 56), MaxText = 24, Parent = refs.combo }), 2)
+	refs.comboCoins = textStroke(label({ Text = "", Size = UDim2.new(1, 0, 0, 26), Position = UDim2.fromOffset(0, 88), MaxText = 22, TextColor3 = C.gold, Parent = refs.combo }), 2)
+	local barBg = new("Frame", { Size = UDim2.new(0.6, 0, 0, 8), Position = UDim2.new(0.2, 0, 0, 118), BackgroundColor3 = Color3.fromRGB(0, 0, 0), BackgroundTransparency = 0.4, Parent = refs.combo }, { corner(4) })
+	refs.comboBar = new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = C.gold, Parent = barBg }, { corner(4) })
+
+	-- уведомления
+	refs.toasts = new("Frame", { Size = UDim2.fromOffset(520, 300), AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 160), BackgroundTransparency = 1, Parent = gui }, {
+		new("UIListLayout", { Padding = UDim.new(0, 6), HorizontalAlignment = Enum.HorizontalAlignment.Center, SortOrder = Enum.SortOrder.LayoutOrder }),
+	})
+
+	-- падение: спасти комбо
+	refs.bail = new("Frame", { Size = UDim2.fromOffset(380, 120), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.68), BackgroundColor3 = C.panel, BackgroundTransparency = 0.1, Visible = false, Parent = gui }, { corner(16), stroke(C.red, 3) })
+	refs.bailText = textStroke(label({ Text = "", Size = UDim2.new(1, -20, 0, 36), Position = UDim2.fromOffset(10, 8), MaxText = 22, Parent = refs.bail }), 1)
+	button({ Text = "🛟 ВЕРНУТЬ ЗА " .. Config.Products.SaveCombo.price .. " R$", Size = UDim2.new(1, -40, 0, 56), Position = UDim2.fromOffset(20, 52), Color = C.green, Parent = refs.bail }, function()
+		refs.bail.Visible = false
+		ctx.buy("product", "SaveCombo")
+	end)
+
+	-- спидометр
+	local speedBox = new("Frame", { Size = UDim2.fromOffset(140, 70), AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 16, 1, -16), BackgroundColor3 = C.panel, BackgroundTransparency = 0.25, Parent = gui }, { corner(14), stroke(C.blue, 2) })
+	refs.speed = textStroke(label({ Text = "0", Size = UDim2.new(1, -10, 0.65, 0), Position = UDim2.fromOffset(5, 2), MaxText = 40, TextColor3 = C.blue, Parent = speedBox }), 2)
+	label({ Text = "скорость", Size = UDim2.new(1, 0, 0.3, 0), Position = UDim2.fromScale(0, 0.66), Font = Enum.Font.GothamBold, TextColor3 = C.dim, MaxText = 14, Parent = speedBox })
+
+	-- подсказка по клавишам (на компьютере)
+	if UserInputService.KeyboardEnabled then
+		local parts = {}
+		for _, b in ipairs(Config.TrickButtons) do
+			table.insert(parts, b.label .. " " .. Config.Tricks[b.trick].display)
+		end
+		textStroke(label({ Text = "В воздухе:  " .. table.concat(parts, "   ") .. "   •   Пробел — прыжок", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -12), Size = UDim2.fromOffset(760, 26), Font = Enum.Font.GothamBold, MaxText = 18, TextColor3 = C.text, Parent = gui }), 1)
+	end
+
+	-- кнопки трюков на телефоне
+	if UserInputService.TouchEnabled then
+		local pad = new("Frame", { Size = UDim2.fromOffset(200, 200), AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -16, 1, -240), BackgroundTransparency = 1, Parent = gui })
+		local spots = { UDim2.fromOffset(100, 0), UDim2.fromOffset(0, 60), UDim2.fromOffset(100, 120), UDim2.fromOffset(0, 140) }
+		for i, b in ipairs(Config.TrickButtons) do
+			local tb = new("TextButton", { Size = UDim2.fromOffset(90, 60), Position = spots[i], BackgroundColor3 = b.color, Text = b.mobile, Font = Enum.Font.GothamBlack, TextScaled = true, TextColor3 = C.text, Parent = pad }, { corner(30), stroke(Color3.new(0, 0, 0), 2), new("UITextSizeConstraint", { MaxTextSize = 20 }) })
+			textStroke(tb, 1.5)
+			tb.InputBegan:Connect(function(input)
+				if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+					ctx.onTrick(b.trick)
+				end
+			end)
+		end
+	end
+
+	-- трюк-битва
+	refs.event = new("Frame", { Size = UDim2.fromOffset(260, 170), AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -16, 0, 12), BackgroundColor3 = C.panel, BackgroundTransparency = 0.15, Visible = false, Parent = gui }, { corner(14), stroke(C.purple, 3) })
+	refs.eventTitle = textStroke(label({ Text = "🏆 ТРЮК-БИТВА", Size = UDim2.new(1, -16, 0, 30), Position = UDim2.fromOffset(8, 6), TextColor3 = C.gold, MaxText = 22, Parent = refs.event }), 1)
+	refs.eventList = label({ Text = "", Size = UDim2.new(1, -16, 1, -44), Position = UDim2.fromOffset(8, 38), Font = Enum.Font.GothamBold, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, MaxText = 17, Parent = refs.event })
+
+	-- окно меню
+	refs.window = new("Frame", { Size = UDim2.fromOffset(600, 470), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.52), BackgroundColor3 = C.panel, Visible = false, ZIndex = 30, Parent = gui }, { corner(18), stroke(Color3.new(0, 0, 0), 3) })
+	refs.windowHeader = new("Frame", { Size = UDim2.new(1, 0, 0, 58), BackgroundColor3 = C.orange, Parent = refs.window }, { corner(18), gradient(Color3.new(1, 1, 1), Color3.fromRGB(180, 180, 180)) })
+	refs.windowTitle = textStroke(label({ Text = "", Size = UDim2.new(1, -90, 1, -12), Position = UDim2.fromOffset(16, 6), TextXAlignment = Enum.TextXAlignment.Left, MaxText = 32, Parent = refs.windowHeader }), 2)
+	button({ Text = "✕", Size = UDim2.fromOffset(46, 46), AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -8, 0.5, 0), Color = C.red, Parent = refs.windowHeader }, closeWindow)
+	refs.windowList = new("ScrollingFrame", {
+		Size = UDim2.new(1, -24, 1, -74),
+		Position = UDim2.fromOffset(12, 66),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ScrollBarThickness = 6,
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		CanvasSize = UDim2.new(),
+		Parent = refs.window,
+	}, {
+		new("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }),
+		new("UIPadding", { PaddingRight = UDim.new(0, 8) }),
+	})
+end
+
+local function updateEvent()
+	local active = ReplicatedStorage:GetAttribute("EventActive") == true
+	refs.event.Visible = active
+	if not active then
+		return
+	end
+	local left = (ReplicatedStorage:GetAttribute("EventEnds") or 0) - workspace:GetServerTimeNow()
+	refs.eventTitle.Text = "🏆 ТРЮК-БИТВА " .. timeText(left)
+	local list = {}
+	for _, p in ipairs(Players:GetPlayers()) do
+		table.insert(list, { name = p.DisplayName, score = p:GetAttribute("EventScore") or 0, me = p == player })
+	end
+	table.sort(list, function(a, b)
+		return a.score > b.score
+	end)
+	local lines = {}
+	local medals = { "🥇", "🥈", "🥉" }
+	local myPlace
+	for i, e in ipairs(list) do
+		if e.me then
+			myPlace = i
+		end
+		if i <= 3 then
+			table.insert(lines, (medals[i] or "") .. " " .. e.name .. " — " .. fmt(e.score))
+		end
+	end
+	if myPlace and myPlace > 3 then
+		table.insert(lines, "…\n" .. myPlace .. ". Ты — " .. fmt(list[myPlace].score))
+	end
+	refs.eventList.Text = table.concat(lines, "\n")
+end
+
+function UI.init(context)
+	ctx = context
+	buildHud()
+	if data then
+		UI.setData(data)
+	end
+
+	local acc = 0
+	RunService.RenderStepped:Connect(function(dt)
+		-- монеты плавно «набегают»
+		if data then
+			local target = data.coins
+			displayedCoins += (target - displayedCoins) * math.min(1, dt * 8)
+			if math.abs(target - displayedCoins) < 1 then
+				displayedCoins = target
+			end
+			refs.coins.Text = "💰 " .. fmt(displayedCoins)
+		end
+		acc += dt
+		if acc >= 0.25 then
+			acc = 0
+			local left = boostEnds - os.clock()
+			refs.boost.Text = left > 0 and ("⚡x2 " .. timeText(left)) or ""
+			updateEvent()
+		end
+	end)
+end
+
+return UI
+]]></ProtectedString></Properties></Item></Item></Item></Item><Item class="Lighting" referent="RBX0000000C"><Properties><string name="Name">Lighting</string><float name="ClockTime">14</float><float name="FogEnd">1100</float></Properties></Item></roblox>

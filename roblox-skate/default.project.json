@@ -1,0 +1,44 @@
+{
+  "name": "SkateRush",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "SkateShared": {
+        "$path": "src/shared"
+      }
+    },
+    "ServerScriptService": {
+      "SkateServer": {
+        "$path": "src/server"
+      }
+    },
+    "StarterPlayer": {
+      "$properties": {
+        "CameraMaxZoomDistance": 60,
+        "CharacterJumpPower": 60,
+        "CharacterUseJumpPower": true
+      },
+      "StarterPlayerScripts": {
+        "SkateClient": {
+          "$path": "src/client"
+        }
+      }
+    },
+    "Lighting": {
+      "$properties": {
+        "ClockTime": 14,
+        "Brightness": 2.5,
+        "GlobalShadows": true,
+        "FogEnd": 1200,
+        "FogColor": [0.75, 0.85, 1.0],
+        "Ambient": [0.35, 0.35, 0.4],
+        "OutdoorAmbient": [0.55, 0.55, 0.6]
+      }
+    },
+    "Workspace": {
+      "$properties": {
+        "Gravity": 196.2
+      }
+    }
+  }
+}
