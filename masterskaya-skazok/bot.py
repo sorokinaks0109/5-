@@ -373,6 +373,7 @@ async def knopka(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def tekst(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await razreshen(update, context):
         return
+    log.info("Сообщение: %s", (update.message.text or "")[:50])
     chat = update.effective_chat.id
     t = update.message.text or ""
     if context.user_data.pop("zhdu_imya", False):
@@ -381,6 +382,12 @@ async def tekst(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await pokazat_zadanie(update, context, z)
         return
     z = tekushchiy(chat)
+    if z is None:
+        # бот перезапускали после /new — считаем это имя новым заказом
+        z = Zakaz.novyy(ZAKAZY, SHABLON, t)
+        sdelat_aktivnym(chat, z.papka)
+        await pokazat_zadanie(update, context, z)
+        return
     if z and not z.anketa_gotova:
         key, _ = z.sleduyushchiy_vopros()
         try:
@@ -418,6 +425,7 @@ def opisanie_fayla(msg):
 async def fayl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await razreshen(update, context):
         return
+    log.info("Получен файл")
     msg = update.message
     chat = update.effective_chat.id
     obj, vid, ext, razmer = opisanie_fayla(msg)
@@ -510,6 +518,8 @@ def nayti_proksi():
 
 def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    # httpx пишет каждый запрос вместе с токеном бота — прячем, чтобы токен не попадал на скриншоты
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     token = os.environ.get("BOT_TOKEN")
     if not token:
         raise SystemExit("Не задан BOT_TOKEN в файле .env")
