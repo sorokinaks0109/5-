@@ -494,6 +494,8 @@ def main():
     app.add_handler(MessageHandler(
         filters.PHOTO | filters.VIDEO | filters.ANIMATION | filters.AUDIO | filters.VOICE
         | filters.Document.ALL, fayl))
+    # В Python 3.14+ цикл событий не создаётся сам — создаём его явно
+    asyncio.set_event_loop(asyncio.new_event_loop())
     app.run_polling()
 
 
