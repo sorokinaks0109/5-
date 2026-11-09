@@ -40,6 +40,8 @@ local state = {
 	gateCooldown = 0,
 	boostUntil = 0,
 	anim = "ride",
+	ollieT = 0,
+	usedDouble = false,
 	lean = 0,
 }
 
@@ -283,6 +285,16 @@ local function updateTrick(dt)
 	end
 end
 
+local function board()
+	return Config.getBoard(state.data and state.data.equipped or "basic")
+end
+
+local function playShot(name)
+	Rider.play(name)
+	state.anim = name
+	remotes.AnimState:FireServer(name)
+end
+
 local function onLand()
 	local tr = state.trick
 	if tr then
@@ -293,8 +305,12 @@ local function onLand()
 			return
 		end
 	end
+	state.usedDouble = false
 	if state.airTime > 0.3 then
 		Sounds.play("Land", 1, math.clamp(state.airTime, 0.3, 0.8))
+		if not state.bailing and not Rider.busy() then
+			playShot("land")
+		end
 	end
 	if state.airTime > 0.5 then
 		local deck = boardPart("Deck")
@@ -373,7 +389,7 @@ local function hookBoost(pad)
 				UI.floatText("УСКОРЕНИЕ!", Color3.fromRGB(0, 230, 255), 0.9)
 				Sounds.play("Jump", 1.4, 0.4)
 			end
-			state.boostUntil = os.clock() + 2.5
+			state.boostUntil = os.clock() + 2.5 * (board().ability == "boostMaster" and 2 or 1)
 			local maxSpeed = player:GetAttribute("MaxSpeed") or Config.Speed.Base
 			state.speed = math.max(state.speed, maxSpeed)
 		end
@@ -385,9 +401,15 @@ end
 CollectionService:GetInstanceAddedSignal("Boost"):Connect(hookBoost)
 
 -- ---------- витрина досок в лобби ----------
+local beltStripes = {}
+for i, st in ipairs(CollectionService:GetTagged("BeltStripe")) do
+	st:SetAttribute("Phase", (i % 6) * 2.2)
+	beltStripes[st] = st:GetAttribute("BeltZ") or st.Position.Z
+end
+
 local showDecks = {}
 local function addShowDeck(d)
-	showDecks[d] = d.CFrame
+	showDecks[d] = d:IsA("Model") and d:GetPivot() or d.CFrame
 end
 for _, d in ipairs(CollectionService:GetTagged("ShowDeck")) do
 	addShowDeck(d)
@@ -545,6 +567,26 @@ local function onCharacter(c)
 			end)
 		end
 	end)
+	-- встаёт на доску, как только она появилась
+	c.ChildAdded:Connect(function(ch)
+		if ch.Name == "Skateboard" then
+			task.wait(0.05)
+			playShot("mount")
+		end
+	end)
+	if c:FindFirstChild("Skateboard") then
+		playShot("mount")
+	end
+	-- олли при прыжке
+	hum.StateChanged:Connect(function(_, new)
+		if new == Enum.HumanoidStateType.Jumping and not state.bailing then
+			state.ollieT = os.clock()
+			if not state.trick then
+				playShot("ollie")
+			end
+			Sounds.play("Jump", 1.1, 0.5)
+		end
+	end)
 	hum.Died:Connect(function()
 		if #state.combo > 0 then
 			remotes.ComboBailed:FireServer(state.combo)
@@ -559,6 +601,29 @@ end
 player.CharacterAdded:Connect(onCharacter)
 
 -- ---------- ввод ----------
+-- двойной прыжок
+UserInputService.JumpRequest:Connect(function()
+	if not hum or not root or state.bailing or not state.inAir or state.usedDouble then
+		return
+	end
+	if state.airTime < 0.2 or board().ability ~= "doubleJump" then
+		return
+	end
+	state.usedDouble = true
+	local vel = root.AssemblyLinearVelocity
+	local jp = player:GetAttribute("JumpPower") or Config.BaseJump
+	root.AssemblyLinearVelocity = Vector3.new(vel.X, jp * 0.9, vel.Z)
+	state.ollieT = os.clock()
+	playShot("ollie")
+	UI.floatText("ДВОЙНОЙ ПРЫЖОК!", Color3.fromRGB(0, 255, 210), 0.8)
+	Sounds.play("Jump", 1.4, 0.5)
+end)
+
+-- монеты с беговой дорожки
+remotes:WaitForChild("AfkCoins").OnClientEvent:Connect(function(coins)
+	UI.floatText("+" .. Config.formatNumber(coins) .. " 💰", Color3.fromRGB(255, 220, 60), 0.7)
+end)
+
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then
 		return
@@ -600,9 +665,23 @@ RunService.Heartbeat:Connect(function(dt)
 
 	for d, base in pairs(showDecks) do
 		if d.Parent then
-			d.CFrame = base * CFrame.new(0, math.sin(t * 2) * 0.5, 0) * CFrame.Angles(0, t * 1.2, 0)
+			local cf = CFrame.new(base.Position + Vector3.new(0, math.sin(t * 2) * 0.5, 0)) * CFrame.Angles(0, t * 1.2, 0) * base.Rotation
+			if d:IsA("Model") then
+				d:PivotTo(cf)
+			else
+				d.CFrame = cf
+			end
 		else
 			showDecks[d] = nil
+		end
+	end
+	-- лента беговых дорожек едет
+	for stripe, z in pairs(beltStripes) do
+		if stripe.Parent then
+			local offset = ((t * 6 + stripe:GetAttribute("Phase")) % 13) - 6.5
+			stripe.CFrame = CFrame.new(stripe.Position.X, stripe.Position.Y, z + offset)
+		else
+			beltStripes[stripe] = nil
 		end
 	end
 
@@ -715,7 +794,21 @@ RunService.Heartbeat:Connect(function(dt)
 	if not state.trick and not state.bailing then
 		local weld = getWeld()
 		if weld then
-			weld.C0 = boardBase() * CFrame.Angles(0, 0, -state.lean * 0.6)
+			-- олли: нос доски подпрыгивает вверх
+			local pop = 0
+			local since = t - state.ollieT
+			if since < 0.3 then
+				pop = math.sin(since / 0.3 * math.pi) * 0.45
+			end
+			weld.C0 = boardBase() * CFrame.Angles(pop, 0, -state.lean * 0.6)
+		end
+	end
+
+	-- парение: держи прыжок в воздухе
+	if state.inAir and board().ability == "glide" and hum.Jump and state.airTime > 0.25 then
+		local vel = root.AssemblyLinearVelocity
+		if vel.Y < -14 then
+			root.AssemblyLinearVelocity = Vector3.new(vel.X, -14, vel.Z)
 		end
 	end
 
@@ -733,7 +826,7 @@ RunService.Heartbeat:Connect(function(dt)
 		anim = "ride"
 	end
 	Rider.setLocal(anim, state.lean)
-	if anim ~= state.anim then
+	if anim ~= state.anim and not Rider.busy() then
 		state.anim = anim
 		remotes.AnimState:FireServer(anim)
 	end

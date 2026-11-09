@@ -92,6 +92,88 @@ for name, p in pairs(POSES) do
 	built[name] = buildPose(p)
 end
 
+-- ---------- позы для коротких анимаций ----------
+-- стоит прямо, лицом вперёд (до того как встать на доску)
+local STAND = buildPose({ crouch = 0, yaw = 0, spread = 5, armsOut = 8, twist = 0, head = 0, bend = 0, chest = 0, look = 0, elbow = 8 })
+-- заносит ногу на доску
+local STEP = buildPose({ crouch = 0.1, yaw = 30, spread = 6, armsOut = 30, twist = -10, head = -20, bend = 4 })
+STEP.RightHip = A(rad(55), 0, rad(8))
+STEP.RightKnee = A(rad(-70), 0, 0)
+STEP.RightAnkle = A(rad(15), 0, 0)
+-- олли: глубокий присед и толчок вверх
+local OLLIE_DOWN = buildPose({ crouch = 0.85, armsOut = 25, armsFwd = 25, chest = 22 })
+local OLLIE_UP = buildPose({ crouch = 0.25, tuck = 40, armsOut = 70, armsFwd = -10, chest = 0, look = -15 })
+-- приземление: пружиним
+local LAND = buildPose({ crouch = 0.9, armsOut = 45, chest = 25 })
+
+local function lerpPose(a, b, t)
+	local out = {}
+	for joint, cf in pairs(a) do
+		out[joint] = cf:Lerp(b[joint] or cf, t)
+	end
+	return out
+end
+
+local function smooth(t)
+	return t * t * (3 - 2 * t)
+end
+
+local ONE_SHOT = { mount = 0.9, ollie = 0.38, land = 0.25 }
+
+local function oneShotPose(name, p)
+	if name == "mount" then
+		if p < 0.3 then
+			return STAND
+		elseif p < 0.65 then
+			return lerpPose(STAND, STEP, smooth((p - 0.3) / 0.35))
+		end
+		return lerpPose(STEP, built.ride, smooth((p - 0.65) / 0.35))
+	elseif name == "ollie" then
+		if p < 0.35 then
+			return lerpPose(built.ride, OLLIE_DOWN, smooth(p / 0.35))
+		elseif p < 0.7 then
+			return lerpPose(OLLIE_DOWN, OLLIE_UP, smooth((p - 0.35) / 0.35))
+		end
+		return lerpPose(OLLIE_UP, built.air, smooth((p - 0.7) / 0.3))
+	elseif name == "land" then
+		if p < 0.4 then
+			return lerpPose(built.ride, LAND, smooth(p / 0.4))
+		end
+		return lerpPose(LAND, built.ride, smooth((p - 0.4) / 0.6))
+	end
+	return built.ride
+end
+
+-- бег на беговой дорожке (без доски)
+local function runPose(phase)
+	local s = math.sin(phase)
+	local pose = buildPose({ crouch = 0.05, yaw = 0, spread = 3, twist = 0, head = 0, bend = 6, chest = 6, look = 0 })
+	pose.Root = CFrame.new(0, -0.05 + math.abs(math.cos(phase)) * 0.15, 0) * A(rad(6), 0, 0)
+	pose.LeftHip = A(rad(40 * s), 0, 0)
+	pose.RightHip = A(rad(-40 * s), 0, 0)
+	pose.LeftKnee = A(rad(-10 - 45 * math.max(0, -s)), 0, 0)
+	pose.RightKnee = A(rad(-10 - 45 * math.max(0, s)), 0, 0)
+	pose.LeftAnkle = CFrame.new()
+	pose.RightAnkle = CFrame.new()
+	pose.LeftShoulder = A(rad(-45 * s), 0, rad(-8))
+	pose.RightShoulder = A(rad(45 * s), 0, rad(8))
+	pose.LeftElbow = A(rad(60), 0, 0)
+	pose.RightElbow = A(rad(60), 0, 0)
+	return pose
+end
+
+local localShot = nil -- { name, start, dur } для своего персонажа
+function Rider.play(name)
+	local dur = ONE_SHOT[name]
+	if dur then
+		localShot = { name = name, start = os.clock(), dur = dur }
+	end
+end
+
+function Rider.busy()
+	return localShot ~= nil and os.clock() - localShot.start < localShot.dur
+end
+
 -- Толчок ногой: задняя нога опускается к земле и уходит назад
 local function pushPose(phase)
 	local base = buildPose({ crouch = 0.4 })
@@ -181,10 +263,43 @@ function Rider.setLocal(state, lean)
 	localLean = lean or 0
 end
 
+local TRICKS = { Kickflip = true, Spin = true, Grab = true, Backflip = true, bail = true }
+
 local function targetFor(char, r, isLocal, dt)
 	local state = isLocal and localState or (char:GetAttribute("SkateAnim") or "ride")
 	local root = char:FindFirstChild("HumanoidRootPart")
 	local hum = r.hum
+	if char:GetAttribute("OnTreadmill") then
+		r.phase += dt * 11
+		return runPose(r.phase)
+	end
+	-- короткие анимации: встать на доску, олли, приземление
+	if not TRICKS[state] then
+		local shot
+		if isLocal then
+			shot = localShot
+		else
+			if state ~= r.lastAttr then
+				r.lastAttr = state
+				r.attrStart = os.clock()
+			end
+			if ONE_SHOT[state] then
+				shot = { name = state, start = r.attrStart, dur = ONE_SHOT[state] }
+			end
+		end
+		if shot then
+			local p = (os.clock() - shot.start) / shot.dur
+			if p < 1 then
+				return oneShotPose(shot.name, p)
+			end
+			if isLocal then
+				localShot = nil
+			end
+		end
+		if not isLocal and ONE_SHOT[state] then
+			state = state == "ollie" and "air" or "ride"
+		end
+	end
 	if state == "ride" and root then
 		local v = root.AssemblyLinearVelocity
 		local speed = Vector3.new(v.X, 0, v.Z).Magnitude
@@ -215,6 +330,16 @@ function Rider.step(dt)
 		local char = player.Character
 		if char and char:FindFirstChild("Skateboard") then
 			local r = getRig(char)
+			-- на беговой дорожке доску прячем
+			local hide = char:GetAttribute("OnTreadmill") == true
+			if r and r.hidden ~= hide then
+				r.hidden = hide
+				for _, d in ipairs(char.Skateboard:GetDescendants()) do
+					if d:IsA("BasePart") then
+						d.LocalTransparencyModifier = hide and 1 or 0
+					end
+				end
+			end
 			if r and r.hum.Health > 0 then
 				local target = targetFor(char, r, player == me, dt)
 				for joint, m in pairs(r.motors) do

@@ -7,7 +7,7 @@
 local Config = {}
 
 Config.GameName = "Skate Rush"
-Config.Version = "v3" -- видно в углу экрана: так легко проверить, что открыта новая версия
+Config.Version = "v4" -- видно в углу экрана: так легко проверить, что открыта новая версия
 
 -- ------------------------------------------------------------
 --  ДОНАТ (робуксы)
@@ -190,16 +190,22 @@ Config.Zones = {
 --  ДОСКИ
 --  speed — множитель скорости, jump — добавка к прыжку
 -- ------------------------------------------------------------
+-- ability — особая способность доски:
+--   doubleJump — второй прыжок в воздухе (ещё раз пробел)
+--   glide      — держи пробел в воздухе, чтобы парить
+--   magnet     — звёзды сами летят к тебе (радиус magnet)
+--   boostMaster — ускорители действуют вдвое дольше
+-- effect — красивый эффект: fire, sparkle, hearts, snow, stars
 Config.Boards = {
-	{ id = "basic", name = "Классика", price = 0, speed = 1.0, jump = 0, deck = Color3.fromRGB(230, 120, 60), stripe = Color3.fromRGB(40, 40, 40), trail = Color3.fromRGB(255, 255, 255) },
-	{ id = "sakura", name = "Сакура", price = 1500, speed = 1.06, jump = 3, deck = Color3.fromRGB(255, 160, 200), stripe = Color3.fromRGB(255, 255, 255), trail = Color3.fromRGB(255, 170, 210) },
-	{ id = "lemon", name = "Лимонад", price = 6000, speed = 1.12, jump = 6, deck = Color3.fromRGB(255, 230, 60), stripe = Color3.fromRGB(80, 220, 120), trail = Color3.fromRGB(255, 240, 120) },
-	{ id = "mint", name = "Мята", price = 25000, speed = 1.18, jump = 9, deck = Color3.fromRGB(110, 240, 200), stripe = Color3.fromRGB(255, 255, 255), trail = Color3.fromRGB(110, 255, 210), neon = true },
-	{ id = "neon", name = "Неон", price = 90000, speed = 1.25, jump = 12, deck = Color3.fromRGB(20, 20, 40), stripe = Color3.fromRGB(0, 255, 200), trail = Color3.fromRGB(0, 255, 200), neon = true },
-	{ id = "fire", name = "Огонь", price = 350000, speed = 1.32, jump = 15, deck = Color3.fromRGB(150, 30, 0), stripe = Color3.fromRGB(255, 150, 0), trail = Color3.fromRGB(255, 90, 0), neon = true, fire = true },
-	{ id = "ice", name = "Лёд", price = 1500000, speed = 1.4, jump = 18, deck = Color3.fromRGB(170, 230, 255), stripe = Color3.fromRGB(255, 255, 255), trail = Color3.fromRGB(150, 230, 255), neon = true },
-	{ id = "galaxy", name = "Галактика", price = 8000000, speed = 1.5, jump = 24, deck = Color3.fromRGB(60, 0, 120), stripe = Color3.fromRGB(255, 0, 255), trail = Color3.fromRGB(180, 100, 255), neon = true, sparkle = true },
-	{ id = "gold", name = "Золотая", pass = "GoldBoard", speed = 1.45, jump = 22, coinBonus = 0.25, deck = Color3.fromRGB(255, 200, 40), stripe = Color3.fromRGB(255, 255, 200), trail = Color3.fromRGB(255, 215, 0), neon = true, sparkle = true },
+	{ id = "basic", name = "Классика", price = 0, speed = 1.0, jump = 0, deck = Color3.fromRGB(225, 140, 80), stripe = Color3.fromRGB(60, 60, 70), wheel = Color3.fromRGB(250, 245, 230), trail = Color3.fromRGB(255, 255, 255), desc = "Обычная доска для старта" },
+	{ id = "sakura", name = "Сакура", price = 1500, speed = 1.04, jump = 16, deck = Color3.fromRGB(255, 170, 205), stripe = Color3.fromRGB(255, 255, 255), wheel = Color3.fromRGB(255, 220, 235), trail = Color3.fromRGB(255, 170, 210), effect = "hearts", desc = "🦘 Высокий прыжок + сердечки" },
+	{ id = "lemon", name = "Лимонад", price = 6000, speed = 1.3, jump = 2, deck = Color3.fromRGB(255, 225, 70), stripe = Color3.fromRGB(80, 210, 120), wheel = Color3.fromRGB(120, 230, 150), trail = Color3.fromRGB(255, 240, 120), desc = "🚀 Очень быстрая" },
+	{ id = "mint", name = "Мята", price = 25000, speed = 1.18, jump = 8, ability = "magnet", magnet = 26, deck = Color3.fromRGB(120, 235, 200), stripe = Color3.fromRGB(255, 255, 255), wheel = Color3.fromRGB(200, 255, 240), trail = Color3.fromRGB(110, 255, 210), desc = "🧲 Магнит для звёзд" },
+	{ id = "neon", name = "Неон", price = 90000, speed = 1.25, jump = 12, ability = "doubleJump", deck = Color3.fromRGB(25, 20, 45), stripe = Color3.fromRGB(0, 255, 210), wheel = Color3.fromRGB(0, 255, 210), trail = Color3.fromRGB(0, 255, 210), neon = true, effect = "sparkle", desc = "⏫ Двойной прыжок" },
+	{ id = "fire", name = "Огонь", price = 350000, speed = 1.38, jump = 12, ability = "boostMaster", deck = Color3.fromRGB(150, 30, 10), stripe = Color3.fromRGB(255, 160, 0), wheel = Color3.fromRGB(255, 120, 0), trail = Color3.fromRGB(255, 90, 0), neon = true, effect = "fire", desc = "🔥 Огонь + ускорители вдвое дольше" },
+	{ id = "ice", name = "Лёд", price = 1500000, speed = 1.4, jump = 18, ability = "glide", deck = Color3.fromRGB(170, 225, 255), stripe = Color3.fromRGB(255, 255, 255), wheel = Color3.fromRGB(220, 245, 255), trail = Color3.fromRGB(160, 230, 255), neon = true, effect = "snow", desc = "🪂 Парение (держи пробел) + снежинки" },
+	{ id = "galaxy", name = "Галактика", price = 8000000, speed = 1.55, jump = 24, ability = "doubleJump", magnet = 30, deck = Color3.fromRGB(55, 10, 110), stripe = Color3.fromRGB(255, 80, 230), wheel = Color3.fromRGB(180, 120, 255), trail = Color3.fromRGB(180, 100, 255), neon = true, effect = "stars", desc = "🌌 Двойной прыжок + магнит + звёзды" },
+	{ id = "gold", name = "Золотая", pass = "GoldBoard", speed = 1.45, jump = 20, ability = "glide", coinBonus = 0.25, deck = Color3.fromRGB(255, 200, 40), stripe = Color3.fromRGB(255, 255, 210), wheel = Color3.fromRGB(255, 240, 180), trail = Color3.fromRGB(255, 215, 0), neon = true, effect = "sparkle", desc = "👑 +25% монет + парение" },
 }
 
 function Config.getBoard(id)
@@ -319,6 +325,38 @@ Config.Quests = {
 	{ kind = "board", text = "Купи новую доску (в лобби или меню 🛹)", reward = 1000 },
 	{ kind = "combo5", text = "Сделай комбо x5", reward = 2000 },
 	{ kind = "zone3", text = "Открой Солнечный пляж", reward = 5000 },
+}
+
+-- ------------------------------------------------------------
+--  БЕГОВЫЕ ДОРОЖКИ в лобби: встань и стой — монеты капают сами
+--  coins — монет каждые 2 секунды (умножается на множитель лучшей зоны)
+-- ------------------------------------------------------------
+Config.Treadmills = {
+	{ name = "Дорожка новичка", level = 1, coins = 4, color = Color3.fromRGB(150, 220, 255) },
+	{ name = "Дорожка профи", level = 8, coins = 12, color = Color3.fromRGB(255, 170, 210) },
+	{ name = "Дорожка чемпиона", level = 18, coins = 30, color = Color3.fromRGB(255, 215, 90) },
+}
+
+-- ОББИ в лобби: награда за прохождение и перерыв между наградами
+Config.Obby = { Reward = 400, Cooldown = 300 }
+
+-- ------------------------------------------------------------
+--  КАРТИНКИ для кнопок меню (аниме-иконки из папки icons/).
+--  Загрузи PNG в Studio (Asset Manager → Import) и вставь
+--  "rbxassetid://НОМЕР". Пусто = вместо картинки эмодзи.
+-- ------------------------------------------------------------
+Config.Icons = {
+	Boards = "",
+	Speed = "",
+	Zones = "",
+	Shop = "",
+	Daily = "",
+	Gifts = "",
+	Trails = "",
+	Codes = "",
+	Rebirth = "",
+	Settings = "",
+	Starter = "",
 }
 
 -- Надписи после комбо (по множителю)

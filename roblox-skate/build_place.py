@@ -50,7 +50,9 @@ def read(rel):
 
 
 def main():
-    shared = script_item("ModuleScript", "Config", read("shared/Config.luau"))
+    shared = script_item("ModuleScript", "Config", read("shared/Config.luau")) + script_item(
+        "ModuleScript", "BoardBuilder", read("shared/BoardBuilder.luau")
+    )
 
     server_children = script_item("ModuleScript", "Data", read("server/Data.luau")) + script_item(
         "ModuleScript", "World", read("server/World.luau")

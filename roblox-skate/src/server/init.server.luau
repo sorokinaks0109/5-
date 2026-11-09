@@ -15,6 +15,7 @@ local Shared = ReplicatedStorage:WaitForChild("SkateShared")
 local Config = require(Shared:WaitForChild("Config"))
 local Data = require(script:WaitForChild("Data"))
 local World = require(script:WaitForChild("World"))
+local BoardBuilder = require(Shared:WaitForChild("BoardBuilder"))
 
 print("[SkateRush] Сервер запущен, версия", Config.Version)
 local okWorld, worldErr = pcall(World.build)
@@ -256,11 +257,12 @@ local function attachBoard(player)
 	-- поднимаем персонажа, чтобы он стоял НА доске
 	if char:GetAttribute("BaseHip") == nil then
 		char:SetAttribute("BaseHip", hum.HipHeight)
-		hum.HipHeight += 0.6
+		hum.HipHeight += BoardBuilder.WheelDrop + BoardBuilder.TopOffset
 	end
 	local baseHip = char:GetAttribute("BaseHip")
 	local legs = hum.RigType == Enum.HumanoidRigType.R15 and baseHip or 2
-	local offset = legs + rootPart.Size.Y / 2 + 0.1
+	-- центр деки чуть ниже ступней: ноги стоят на шкурке
+	local offset = legs + rootPart.Size.Y / 2 + BoardBuilder.TopOffset
 
 	local cfg = Config.getBoard(data.equipped)
 	local model = Instance.new("Model")
@@ -318,45 +320,24 @@ local function attachBoard(player)
 		end
 	end
 	if not deck then
-		deck = bpart("Deck", Vector3.new(1.7, 0.2, 3.6), cfg.deck, cfg.neon and Enum.Material.Glass or Enum.Material.SmoothPlastic)
+		-- детальная доска: дека с носом и хвостом, подвески, колёса
+		local built = BoardBuilder.build(cfg)
+		deck = built.PrimaryPart
+		for _, ch in ipairs(built:GetChildren()) do
+			ch.Parent = model
+		end
+		built:Destroy()
 		model.PrimaryPart = deck
-		-- круглые нос и хвост (диски), чуть загнутые вверх
-		for _, sign in ipairs({ -1, 1 }) do
-			local cap = bpart("End", Vector3.new(0.2, 1.7, 1.7), cfg.deck, deck.Material, Enum.PartType.Cylinder)
-			cap.CFrame = deck.CFrame * CFrame.new(0, 0.12, sign * 1.95) * CFrame.Angles(sign * math.rad(-18), 0, 0) * CFrame.Angles(0, 0, math.rad(90))
-		end
-		local stripe = bpart("Stripe", Vector3.new(0.5, 0.22, 3.4), cfg.stripe, cfg.neon and Enum.Material.Neon or Enum.Material.SmoothPlastic)
-		stripe.CFrame = deck.CFrame
-		local grip = bpart("Grip", Vector3.new(1.5, 0.05, 3.4), Color3.fromRGB(35, 35, 40), Enum.Material.Sand)
-		grip.CFrame = deck.CFrame * CFrame.new(0, 0.11, 0)
-		-- подвески и колёса
-		for _, zpos in ipairs({ -1.35, 1.35 }) do
-			local truck = bpart("Truck", Vector3.new(1.3, 0.18, 0.3), Color3.fromRGB(190, 195, 205), Enum.Material.Metal)
-			truck.CFrame = deck.CFrame * CFrame.new(0, -0.2, zpos)
-			for _, xpos in ipairs({ -0.68, 0.68 }) do
-				local w = bpart("Wheel", Vector3.new(0.32, 0.46, 0.46), cfg.stripe, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
-				w.CFrame = deck.CFrame * CFrame.new(xpos, -0.32, zpos)
-			end
-		end
-		for _, p in ipairs(model:GetChildren()) do
-			if p ~= deck and p:IsA("BasePart") then
-				local w = Instance.new("Weld")
-				w.Part0 = deck
-				w.Part1 = p
-				w.C0 = deck.CFrame:Inverse() * p.CFrame
-				w.Parent = p
-			end
-		end
 	end
 
 	-- след за доской
 	local a0 = Instance.new("Attachment")
 	a0.Name = "TrailA"
-	a0.Position = Vector3.new(-0.7, 0, 2.2)
+	a0.Position = Vector3.new(-0.7, 0, 2.3)
 	a0.Parent = deck
 	local a1 = Instance.new("Attachment")
 	a1.Name = "TrailB"
-	a1.Position = Vector3.new(0.7, 0, 2.2)
+	a1.Position = Vector3.new(0.7, 0, 2.3)
 	a1.Parent = deck
 	local trail = Instance.new("Trail")
 	trail.Name = "BoardTrail"
@@ -396,18 +377,46 @@ local function attachBoard(player)
 	sparks.Enabled = false
 	sparks.Parent = sparkA
 
-	if cfg.fire then
+	-- красивый эффект доски
+	local effectA = Instance.new("Attachment")
+	effectA.Name = "EffectA"
+	effectA.Position = Vector3.new(0, -0.2, 1.6)
+	effectA.Parent = deck
+	local fx = cfg.effect
+	if fx == "fire" then
 		local fire = Instance.new("Fire")
 		fire.Size = 3
 		fire.Heat = 4
 		fire.Color = Color3.fromRGB(255, 120, 0)
 		fire.SecondaryColor = Color3.fromRGB(255, 220, 0)
 		fire.Parent = deck
-	end
-	if cfg.sparkle then
-		local s = Instance.new("Sparkles")
-		s.SparkleColor = cfg.trail
-		s.Parent = deck
+	elseif fx then
+		local e = Instance.new("ParticleEmitter")
+		e.Name = "BoardEffect"
+		e.LightEmission = 0.7
+		e.Lifetime = NumberRange.new(0.6, 1.2)
+		e.Speed = NumberRange.new(1, 3)
+		e.SpreadAngle = Vector2.new(60, 60)
+		e.Rate = 10
+		e.Rotation = NumberRange.new(0, 360)
+		e.RotSpeed = NumberRange.new(-60, 60)
+		if fx == "hearts" then
+			e.Color = ColorSequence.new(Color3.fromRGB(255, 120, 170), Color3.fromRGB(255, 200, 220))
+			e.Size = NumberSequence.new(0.4, 0)
+			e.Acceleration = Vector3.new(0, 3, 0)
+		elseif fx == "snow" then
+			e.Color = ColorSequence.new(Color3.new(1, 1, 1))
+			e.Size = NumberSequence.new(0.3, 0)
+			e.Acceleration = Vector3.new(0, -2, 0)
+		elseif fx == "stars" then
+			e.Color = ColorSequence.new(Color3.fromRGB(255, 120, 255), Color3.fromRGB(120, 220, 255))
+			e.Size = NumberSequence.new(0.5, 0)
+			e.Rate = 16
+		else -- sparkle
+			e.Color = ColorSequence.new(cfg.trail)
+			e.Size = NumberSequence.new(0.35, 0)
+		end
+		e.Parent = effectA
 	end
 
 	deck.CFrame = rootPart.CFrame * CFrame.new(0, -offset, 0)
@@ -627,30 +636,144 @@ ComboBailed.OnServerEvent:Connect(function(player, entries)
 end)
 
 -- ---------- звёзды ----------
+local function awardStar(player, starPart)
+	local cd = starCooldown[player]
+	local now = os.clock()
+	if not cd or (cd[starPart] and cd[starPart] > now) then
+		return
+	end
+	cd[starPart] = now + Config.Star.Respawn
+	local value = starPart:GetAttribute("Value") or Config.Star.Value
+	local zone = World.zoneAt(starPart.Position)
+	local coins = math.floor(value * coinMultiplier(player, math.min(zone, profiles[player].maxZone)))
+	addCoins(player, coins)
+	addXp(player, value)
+	PickupTaken:FireClient(player, starPart, Config.Star.Respawn, coins)
+	push(player)
+end
+
 local function hookStar(starPart)
 	starPart.Touched:Connect(function(hit)
 		local char = hit.Parent
 		local player = char and Players:GetPlayerFromCharacter(char)
-		if not player or not profiles[player] then
-			return
+		if player and profiles[player] then
+			awardStar(player, starPart)
 		end
-		local cd = starCooldown[player]
-		local now = os.clock()
-		if cd[starPart] and cd[starPart] > now then
-			return
-		end
-		cd[starPart] = now + Config.Star.Respawn
-		local value = starPart:GetAttribute("Value") or Config.Star.Value
-		local zone = World.zoneAt(starPart.Position)
-		local coins = math.floor(value * coinMultiplier(player, math.min(zone, profiles[player].maxZone)))
-		addCoins(player, coins)
-		addXp(player, value)
-		PickupTaken:FireClient(player, starPart, Config.Star.Respawn, coins)
-		push(player)
 	end)
 end
-for _, s in ipairs(CollectionService:GetTagged("Pickup")) do
+local allStars = CollectionService:GetTagged("Pickup")
+for _, s in ipairs(allStars) do
 	hookStar(s)
+end
+
+-- Магнит: доски с magnet сами собирают звёзды вокруг
+task.spawn(function()
+	while true do
+		task.wait(0.3)
+		for player, data in pairs(profiles) do
+			local board = Config.getBoard(data.equipped)
+			local radius = board.magnet
+			local char = player.Character
+			local rootPart = char and char:FindFirstChild("HumanoidRootPart")
+			if radius and rootPart then
+				for _, starPart in ipairs(allStars) do
+					if (starPart.Position - rootPart.Position).Magnitude <= radius then
+						awardStar(player, starPart)
+					end
+				end
+			end
+		end
+	end
+end)
+
+-- ---------- беговые дорожки: стоишь — копишь монеты ----------
+local AfkCoins = Instance.new("RemoteEvent")
+AfkCoins.Name = "AfkCoins"
+AfkCoins.Parent = remotes
+local treadmillZones = CollectionService:GetTagged("Treadmill")
+local afkTimer = {}
+local afkWarned = {}
+local function treadmillAt(position)
+	for _, zonePart in ipairs(treadmillZones) do
+		local rel = zonePart.CFrame:PointToObjectSpace(position)
+		local half = zonePart.Size / 2
+		if math.abs(rel.X) <= half.X and math.abs(rel.Y) <= half.Y and math.abs(rel.Z) <= half.Z then
+			return zonePart:GetAttribute("Index")
+		end
+	end
+	return nil
+end
+task.spawn(function()
+	while true do
+		local dt = task.wait(0.25)
+		for player, data in pairs(profiles) do
+			local char = player.Character
+			local rootPart = char and char:FindFirstChild("HumanoidRootPart")
+			local idx = rootPart and treadmillAt(rootPart.Position)
+			local t = idx and Config.Treadmills[idx]
+			if t and data.level < t.level then
+				if not afkWarned[player] then
+					afkWarned[player] = true
+					notify(player, "Эта дорожка открывается с " .. t.level .. " уровня", "warn")
+				end
+				t = nil
+			elseif not t then
+				afkWarned[player] = nil
+			end
+			if char then
+				char:SetAttribute("OnTreadmill", t ~= nil)
+			end
+			if t then
+				afkTimer[player] = (afkTimer[player] or 0) + dt
+				if afkTimer[player] >= 2 then
+					afkTimer[player] -= 2
+					local c = math.floor(t.coins * coinMultiplier(player, data.maxZone))
+					addCoins(player, c)
+					AfkCoins:FireClient(player, c)
+					push(player)
+				end
+			else
+				afkTimer[player] = 0
+			end
+		end
+	end
+end)
+Players.PlayerRemoving:Connect(function(player)
+	afkTimer[player] = nil
+	afkWarned[player] = nil
+end)
+
+-- ---------- обби: финиш ----------
+local obbyLast = {}
+for _, finish in ipairs(CollectionService:GetTagged("ObbyFinish")) do
+	finish.Touched:Connect(function(hit)
+		local char = hit.Parent
+		local player = char and Players:GetPlayerFromCharacter(char)
+		local data = player and profiles[player]
+		if not data then
+			return
+		end
+		local now = os.time()
+		if obbyLast[player] and now - obbyLast[player] < 3 then
+			return
+		end
+		obbyLast[player] = now
+		local wait = (data.obbyTime or 0) + Config.Obby.Cooldown - now
+		if wait > 0 then
+			notify(player, "Обби пройдено! Награду можно снова получить через " .. math.ceil(wait / 60) .. " мин.", "info")
+		else
+			data.obbyTime = now
+			local c = math.floor(Config.Obby.Reward * zoneMult(data.maxZone))
+			addCoins(player, c)
+			notify(player, "🏆 Обби пройдено! +" .. Config.formatNumber(c) .. " 💰", "good")
+			push(player)
+		end
+		task.delay(1.5, function()
+			if char.Parent then
+				char:PivotTo(World.lobbySpawn())
+			end
+		end)
+	end)
 end
 
 -- ---------- покупки за робуксы ----------
@@ -996,7 +1119,7 @@ Request.OnServerInvoke = function(player, action, ...)
 end
 
 -- ---------- поза на доске для других игроков ----------
-local ANIM_STATES = { ride = true, air = true, grind = true, bail = true, Kickflip = true, Spin = true, Grab = true, Backflip = true }
+local ANIM_STATES = { ride = true, air = true, grind = true, bail = true, Kickflip = true, Spin = true, Grab = true, Backflip = true, mount = true, ollie = true, land = true }
 local animStamp = {}
 AnimState.OnServerEvent:Connect(function(player, state)
 	if type(state) ~= "string" or not ANIM_STATES[state] then

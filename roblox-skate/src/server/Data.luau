@@ -44,6 +44,7 @@ function Data.default()
 		firstJoin = 0,
 		starterBought = false,
 		quest = 1,
+		obbyTime = 0,
 		settings = { music = true, sfx = true, speedLimit = 100 },
 	}
 end

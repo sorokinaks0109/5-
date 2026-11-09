@@ -446,7 +446,7 @@ local function buildBoards(list)
 				ctx.request("BuyBoard", b.id)
 			end
 		end
-		local sub = string.format("Скорость x%.2f  •  Прыжок +%d", b.speed, b.jump)
+		local sub = string.format("%s  •  ⚡x%.2f  ⤒+%d", b.desc or "", b.speed, b.jump)
 		if b.coinBonus then
 			sub ..= "  •  Монеты +" .. math.floor(b.coinBonus * 100) .. "%"
 		end
@@ -869,7 +869,13 @@ local function buildHud()
 	}
 	for i, it in ipairs(items) do
 		local b = new("TextButton", { Size = UDim2.fromOffset(72, 66), BackgroundColor3 = it[4], Text = "", AutoButtonColor = true, LayoutOrder = i, Parent = menu }, { corner(14), stroke(Color3.new(0, 0, 0), 2), gradient(Color3.new(1, 1, 1), Color3.fromRGB(170, 170, 170)) })
-		label({ Text = it[2], Size = UDim2.new(1, 0, 0.62, 0), MaxText = 30, Parent = b })
+		local iconId = Config.Icons and Config.Icons[it[1]]
+		if iconId and iconId ~= "" then
+			-- аниме-картинка вместо эмодзи
+			new("ImageLabel", { Image = iconId, BackgroundTransparency = 1, Size = UDim2.new(1, 6, 0.8, 4), Position = UDim2.new(0, -3, 0, -6), ScaleType = Enum.ScaleType.Fit, Parent = b })
+		else
+			label({ Text = it[2], Size = UDim2.new(1, 0, 0.62, 0), MaxText = 30, Parent = b })
+		end
 		textStroke(label({ Text = it[3], Size = UDim2.new(1, -4, 0.32, 0), Position = UDim2.new(0, 2, 0.64, 0), MaxText = 13, Parent = b }), 1)
 		b.MouseButton1Click:Connect(function()
 			if ctx and ctx.sounds then
@@ -952,7 +958,11 @@ local function buildHud()
 		new("UIListLayout", { Padding = UDim.new(0, 10), HorizontalAlignment = Enum.HorizontalAlignment.Right, SortOrder = Enum.SortOrder.LayoutOrder }),
 	})
 	refs.starter = new("TextButton", { Size = UDim2.fromOffset(190, 120), BackgroundColor3 = C.pink, Text = "", AutoButtonColor = true, Visible = false, LayoutOrder = 1, Parent = side }, { corner(16), stroke(Color3.new(0, 0, 0), 3), gradient(Color3.fromRGB(255, 150, 220), Color3.fromRGB(200, 60, 255)) })
-	label({ Text = "🎁", Size = UDim2.fromOffset(60, 60), Position = UDim2.fromOffset(6, 6), MaxText = 46, Parent = refs.starter })
+	if Config.Icons and Config.Icons.Starter ~= "" then
+		new("ImageLabel", { Image = Config.Icons.Starter, BackgroundTransparency = 1, Size = UDim2.fromOffset(70, 70), Position = UDim2.fromOffset(0, 0), ScaleType = Enum.ScaleType.Fit, Parent = refs.starter })
+	else
+		label({ Text = "🎁", Size = UDim2.fromOffset(60, 60), Position = UDim2.fromOffset(6, 6), MaxText = 46, Parent = refs.starter })
+	end
 	textStroke(label({ Text = "СТАРТОВЫЙ\nНАБОР", Size = UDim2.new(1, -72, 0, 50), Position = UDim2.fromOffset(66, 8), MaxText = 20, Parent = refs.starter }), 1.5)
 	refs.starterTimer = textStroke(label({ Text = "", Size = UDim2.new(0.5, -8, 0, 26), Position = UDim2.new(0, 8, 1, -34), TextColor3 = C.gold, MaxText = 20, Parent = refs.starter }), 1.5)
 	textStroke(label({ Text = "Только " .. Config.Products.StarterPack.price .. " R$", Size = UDim2.new(0.5, -8, 0, 26), Position = UDim2.new(0.5, 0, 1, -34), TextColor3 = C.text, MaxText = 20, Parent = refs.starter }), 1.5)
