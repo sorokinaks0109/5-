@@ -108,31 +108,102 @@ local function ramp(parent, x, z, width, height, angleDeg, color, material)
 	return p, depth
 end
 
-local function kicker(parent, x, z, width, power, color)
-	local p = ramp(parent, x, z, width, 3.4, 26, color)
-	p.Name = "Kicker"
-	p:SetAttribute("Power", power)
-	CollectionService:AddTag(p, "Kicker")
-	local len = 3.4 / math.sin(math.rad(26))
-	deco({ Name = "KickerStripe", Size = Vector3.new(width + 0.2, 1.25, 0.9), CFrame = p.CFrame * CFrame.new(0, 0.02, -len / 2 + 0.45), Color = Color3.new(1, 1, 1), Material = Enum.Material.Neon }, parent)
-	for k = 0, 1 do
-		deco({ Name = "Arrow", Size = Vector3.new(width * 0.5, 0.1, 2), CFrame = CFrame.new(x, 0.25, z + 5 + k * 4), Color = color, Material = Enum.Material.Neon, Transparency = 0.2 }, parent)
+-- Изогнутый трамплин как в скейт-парке: несколько секций с нарастающим
+-- наклоном, боковые стенки, металлическая кромка (coping) и неоновая полоса.
+local WOOD = Color3.fromRGB(214, 176, 128)
+local WOOD_DARK = Color3.fromRGB(150, 110, 75)
+local function curvedRamp(parent, x, z, width, height, angles, surfaceColor, tag, power)
+	local sumSin = 0
+	for _, a in ipairs(angles) do
+		sumSin += math.sin(math.rad(a))
 	end
-	return p
+	local l = height / sumSin
+	local p = Vector3.new(x, 0, z)
+	local segs = {}
+	for i, aDeg in ipairs(angles) do
+		local a = math.rad(aDeg)
+		local d = Vector3.new(0, math.sin(a), -math.cos(a))
+		local up = Vector3.new(0, math.cos(a), math.sin(a))
+		local center = p + d * (l / 2) - up * 0.5
+		local seg = part({ Name = "RampSurface", Size = Vector3.new(width, 1, l + 0.05), CFrame = CFrame.new(center) * CFrame.Angles(a, 0, 0), Color = surfaceColor }, parent)
+		-- полоски-доски на поверхности
+		deco({ Name = "RampPlank", Size = Vector3.new(width - 0.6, 0.06, 0.25), CFrame = seg.CFrame * CFrame.new(0, 0.53, 0), Color = surfaceColor:Lerp(Color3.new(0, 0, 0), 0.18), CastShadow = false }, parent)
+		local pEnd = p + d * l
+		-- заполнение и боковые стенки
+		local hMid = (p.Y + pEnd.Y) / 2
+		local depth = l * math.cos(a)
+		if hMid > 0.3 then
+			deco({ Name = "RampFill", Size = Vector3.new(width - 0.4, hMid - 0.2, depth), CFrame = CFrame.new(x, (hMid - 0.2) / 2, (p.Z + pEnd.Z) / 2), Color = WOOD_DARK }, parent)
+		end
+		for _, sx in ipairs({ -1, 1 }) do
+			deco({ Name = "RampSide", Size = Vector3.new(0.35, math.max(0.3, pEnd.Y), depth + 0.02), CFrame = CFrame.new(x + sx * (width / 2 + 0.05), math.max(0.3, pEnd.Y) / 2 - 0.05, (p.Z + pEnd.Z) / 2), Color = WOOD, CanCollide = true }, parent)
+		end
+		if tag and i >= #angles - 1 then
+			seg.Name = "Kicker"
+			seg:SetAttribute("Power", power)
+			CollectionService:AddTag(seg, tag)
+		end
+		table.insert(segs, seg)
+		p = pEnd
+	end
+	-- задняя стенка, металлическая кромка и неоновая полоса
+	deco({ Name = "RampBack", Size = Vector3.new(width + 0.7, p.Y, 0.4), CFrame = CFrame.new(x, p.Y / 2, p.Z - 0.2), Color = WOOD, CanCollide = true }, parent)
+	deco({ Name = "Coping", Shape = Enum.PartType.Cylinder, Size = Vector3.new(width + 0.6, 0.55, 0.55), CFrame = CFrame.new(x, p.Y, p.Z), Color = Color3.fromRGB(215, 220, 230), Material = Enum.Material.Metal }, parent)
+	return segs, p
+end
+
+local function kicker(parent, x, z, width, power, color)
+	local segs, top = curvedRamp(parent, x, z, width, 3.6, { 6, 14, 24, 34 }, color:Lerp(Color3.new(1, 1, 1), 0.35), "Kicker", power)
+	deco({ Name = "KickerStripe", Size = Vector3.new(width + 0.1, 0.12, 0.6), CFrame = CFrame.new(x, top.Y - 0.25, top.Z + 0.6) * CFrame.Angles(math.rad(34), 0, 0), Color = color, Material = Enum.Material.Neon }, parent)
+	for k = 0, 1 do
+		deco({ Name = "Arrow", Size = Vector3.new(width * 0.5, 0.1, 2), CFrame = CFrame.new(x, 0.25, z + 4 + k * 4), Color = color, Material = Enum.Material.Neon, Transparency = 0.2 }, parent)
+	end
+	return segs[#segs]
 end
 
 local function rail(parent, x, z, length, accent)
 	local height = 2.4
-	local r = part({ Name = "Rail", Size = Vector3.new(1.6, 0.5, length), CFrame = CFrame.new(x, height, z - length / 2), Color = Color3.fromRGB(235, 235, 245), Material = Enum.Material.Metal }, parent)
+	-- невидимая «ступенька» для грайнда и красивая круглая труба поверх
+	local r = part({ Name = "Rail", Size = Vector3.new(1.6, 0.5, length), CFrame = CFrame.new(x, height, z - length / 2), Transparency = 1 }, parent)
 	r:SetAttribute("Rail", true)
 	CollectionService:AddTag(r, "Rail")
-	deco({ Name = "RailGlow", Size = Vector3.new(0.5, 0.2, length), CFrame = r.CFrame * CFrame.new(0, -0.35, 0), Color = accent, Material = Enum.Material.Neon }, parent)
-	local posts = math.max(2, math.floor(length / 12))
+	deco({ Name = "RailPipe", Shape = Enum.PartType.Cylinder, Size = Vector3.new(length, 0.7, 0.7), CFrame = CFrame.new(x, height + 0.05, z - length / 2) * CFrame.Angles(0, math.rad(90), 0), Color = Color3.fromRGB(225, 230, 240), Material = Enum.Material.Metal }, parent)
+	deco({ Name = "RailGlow", Size = Vector3.new(0.25, 0.15, length), CFrame = CFrame.new(x, height - 0.38, z - length / 2), Color = accent, Material = Enum.Material.Neon }, parent)
+	local posts = math.max(2, math.floor(length / 10))
 	for k = 0, posts do
-		deco({ Name = "RailPost", Size = Vector3.new(0.6, height, 0.6), CFrame = CFrame.new(x, height / 2 - 0.2, z - length * k / posts), Color = accent:Lerp(Color3.new(1, 1, 1), 0.3), CanCollide = true }, parent)
+		local pz = z - length * k / posts
+		deco({ Name = "RailPost", Shape = Enum.PartType.Cylinder, Size = Vector3.new(height, 0.4, 0.4), CFrame = CFrame.new(x, height / 2 - 0.2, pz) * CFrame.Angles(0, 0, math.rad(90)), Color = accent:Lerp(Color3.new(1, 1, 1), 0.3), CanCollide = true }, parent)
+		deco({ Name = "RailBase", Size = Vector3.new(1.4, 0.15, 1.4), CFrame = CFrame.new(x, 0.3, pz), Color = Color3.fromRGB(120, 120, 130), Material = Enum.Material.DiamondPlate }, parent)
 	end
-	ramp(parent, x, z + 7, 4, height - 0.3, 18, Color3.fromRGB(200, 200, 215))
+	curvedRamp(parent, x, z + 7, 4, height - 0.3, { 8, 16, 22 }, Color3.fromRGB(205, 205, 220))
 	return r
+end
+
+-- Гирлянда флажков над трассой
+local function garland(parent, z, colors)
+	local edge = W / 2 - 4
+	for _, sx in ipairs({ -1, 1 }) do
+		deco({ Name = "GarlandPole", Shape = Enum.PartType.Cylinder, Size = Vector3.new(20, 0.6, 0.6), CFrame = CFrame.new(sx * edge, 10, z) * CFrame.Angles(0, 0, math.rad(90)), Color = Color3.fromRGB(240, 240, 245), CanCollide = true }, parent)
+		deco({ Name = "GarlandTop", Shape = Enum.PartType.Ball, Size = Vector3.new(1.4, 1.4, 1.4), CFrame = CFrame.new(sx * edge, 20.4, z), Color = colors[1] }, parent)
+	end
+	local n = 30
+	for k = 0, n do
+		local t = k / n
+		local px = -edge + t * edge * 2
+		local sag = 4 * (1 - (2 * t - 1) ^ 2)
+		local py = 19.5 - sag
+		if k < n then
+			local t2 = (k + 1) / n
+			local px2 = -edge + t2 * edge * 2
+			local py2 = 19.5 - 4 * (1 - (2 * t2 - 1) ^ 2)
+			local mid = Vector3.new((px + px2) / 2, (py + py2) / 2, z)
+			local len = (Vector3.new(px2, py2, z) - Vector3.new(px, py, z)).Magnitude
+			deco({ Name = "GarlandString", Size = Vector3.new(len, 0.12, 0.12), CFrame = CFrame.new(mid) * CFrame.Angles(0, 0, math.atan2(py2 - py, px2 - px)), Color = Color3.fromRGB(250, 250, 250), CastShadow = false }, parent)
+			do
+				deco({ Name = "Flag", Size = Vector3.new(1.3, 1.3, 0.08), CFrame = CFrame.new(mid.X, mid.Y - 0.9, z) * CFrame.Angles(0, 0, math.rad(45)), Color = colors[k % #colors + 1], CastShadow = false }, parent)
+			end
+		end
+	end
 end
 
 local function funbox(parent, x, z, color, accent)
@@ -953,6 +1024,12 @@ local function buildZone(i)
 	end
 
 	decorate(folder, i, zone, rng)
+
+	-- гирлянды флажков над трассой
+	local flagColors = { zone.accent, zone.floor2, Color3.new(1, 1, 1), zone.cliff2 }
+	for k = 1, 5 do
+		garland(folder, z0 - k * (L / 6) + 12, flagColors)
+	end
 
 	if i == #Config.Zones then
 		part({ Name = "EndWall", Size = Vector3.new(W, 60, 2), CFrame = CFrame.new(0, 30, z0 - L), Color = zone.accent, Material = Enum.Material.ForceField, Transparency = 0.3 }, folder)

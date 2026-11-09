@@ -205,6 +205,39 @@ local JOINTS_R6 = {
 -- ---------- состояние по персонажам ----------
 local rigs = {} -- [character] = { motors = {}, current = {}, phase = 0 }
 
+-- Имена суставов R6 → наши имена
+local R6_NAMES = {
+	RootJoint = "Root",
+	Neck = "Neck",
+	["Left Hip"] = "LeftHip",
+	["Right Hip"] = "RightHip",
+	["Left Shoulder"] = "LeftShoulder",
+	["Right Shoulder"] = "RightShoulder",
+}
+
+local function setStatus(char, text)
+	if Players:GetPlayerFromCharacter(char) == Players.LocalPlayer then
+		Players.LocalPlayer:SetAttribute("RiderStatus", text)
+	end
+end
+
+-- Ищет суставы любого типа: старые Motor6D и новые AnimationConstraint
+-- (в новых версиях Roblox суставы аватара сделаны на AnimationConstraint)
+local function findJoints(char, isR6)
+	local joints = {}
+	local count = 0
+	for _, d in ipairs(char:GetDescendants()) do
+		if d:IsA("Motor6D") or d:IsA("AnimationConstraint") then
+			local key = isR6 and R6_NAMES[d.Name] or (JOINTS[d.Name] and d.Name)
+			if key and not joints[key] then
+				joints[key] = d
+				count += 1
+			end
+		end
+	end
+	return joints, count
+end
+
 local function getRig(char)
 	local r = rigs[char]
 	if r then
@@ -212,43 +245,31 @@ local function getRig(char)
 	end
 	local hum = char:FindFirstChildOfClass("Humanoid")
 	if not hum then
+		setStatus(char, "нет Humanoid")
 		return nil
 	end
 	local isR6 = hum.RigType == Enum.HumanoidRigType.R6
-	local motors = {}
-	if isR6 then
-		for joint, path in pairs(JOINTS_R6) do
-			local p = char:FindFirstChild(path[1])
-			local m = p and p:FindFirstChild(path[2])
-			if m and m:IsA("Motor6D") then
-				motors[joint] = m
-			end
-		end
-	else
-		for joint, partName in pairs(JOINTS) do
-			local p = char:FindFirstChild(partName)
-			local m = p and p:FindFirstChild(joint)
-			if m and m:IsA("Motor6D") then
-				motors[joint] = m
-			end
-		end
-	end
-	if not motors.Root then
+	local motors, count = findJoints(char, isR6)
+	if count < 3 then
+		setStatus(char, "суставы не найдены (" .. count .. ")")
 		return nil
 	end
-	-- запоминаем исходное положение суставов: позу ставим через C0,
-	-- его стандартные анимации Roblox никогда не трогают
-	local orig, rot, rotInv = {}, {}, {}
+	local orig, rot, rotInv, kind = {}, {}, {}, {}
+	local kindName = "Motor6D"
 	for joint, m in pairs(motors) do
-		orig[joint] = m.C0
-		rot[joint] = m.C0.Rotation
-		rotInv[joint] = m.C0.Rotation:Inverse()
+		if m:IsA("Motor6D") then
+			kind[joint] = "motor"
+			orig[joint] = m.C0
+			rot[joint] = m.C0.Rotation
+			rotInv[joint] = m.C0.Rotation:Inverse()
+		else
+			kind[joint] = "constraint"
+			kindName = "новые суставы"
+		end
 	end
-	print("[SkateRush] Поза скейтера включена, тип аватара:", isR6 and "R6" or "R15")
-	if Players:GetPlayerFromCharacter(char) == Players.LocalPlayer then
-		Players.LocalPlayer:SetAttribute("RiderStatus", "работает (" .. (isR6 and "R6" or "R15") .. ")")
-	end
-	r = { motors = motors, current = {}, phase = 0, hum = hum, isR6 = isR6, orig = orig, rot = rot, rotInv = rotInv }
+	print("[SkateRush] Поза скейтера включена:", isR6 and "R6" or "R15", kindName, "суставов:", count)
+	setStatus(char, "работает (" .. (isR6 and "R6" or "R15") .. ", " .. kindName .. ")")
+	r = { motors = motors, kind = kind, current = {}, phase = 0, hum = hum, isR6 = isR6, orig = orig, rot = rot, rotInv = rotInv }
 	rigs[char] = r
 	char.AncestryChanged:Connect(function(_, parent)
 		if not parent then
@@ -335,13 +356,30 @@ local function targetFor(char, r, isLocal, dt)
 	return copy
 end
 
+local noRigTime = 0
+local fallbackOn = false
+
 function Rider.step(dt)
 	local me = Players.LocalPlayer
 	local alpha = dt > 0 and (1 - math.exp(-dt * 14)) or 0
 	for _, player in ipairs(Players:GetPlayers()) do
 		local char = player.Character
+		if char and not char:FindFirstChild("Skateboard") and player == me then
+			setStatus(char, "нет доски")
+		end
 		if char and char:FindFirstChild("Skateboard") then
 			local r = getRig(char)
+			if not r and player == me then
+				noRigTime += dt
+				if noRigTime > 3 and not fallbackOn then
+					fallbackOn = true
+					local animate = char:FindFirstChild("Animate")
+					if animate and animate:IsA("LocalScript") then
+						animate.Enabled = true -- запасной вариант: обычная анимация Roblox
+					end
+					warn("[SkateRush] Не удалось включить позу скейтера, включена обычная анимация")
+				end
+			end
 			-- на беговой дорожке доску прячем
 			local hide = char:GetAttribute("OnTreadmill") == true
 			if r and r.hidden ~= hide then
@@ -363,9 +401,14 @@ function Rider.step(dt)
 					local cur = r.current[joint] or CFrame.new()
 					cur = cur:Lerp(goal, alpha)
 					r.current[joint] = cur
-					-- поворот задан в осях тела, переводим в оси сустава
-					m.C0 = r.orig[joint] * (r.rotInv[joint] * cur * r.rot[joint])
-					m.Transform = CFrame.new()
+					if r.kind[joint] == "motor" then
+						-- поворот задан в осях тела, переводим в оси сустава
+						m.C0 = r.orig[joint] * (r.rotInv[joint] * cur * r.rot[joint])
+						m.Transform = CFrame.new()
+					else
+						-- новые суставы: поза через Transform
+						m.Transform = cur
+					end
 				end
 			end
 		end
@@ -375,6 +418,9 @@ end
 -- Стандартный бег Roblox выключаем совсем, пока игрок на доске:
 -- останавливаем все его анимации каждый кадр.
 local function stopDefaultAnimations()
+	if fallbackOn then
+		return
+	end
 	for _, player in ipairs(Players:GetPlayers()) do
 		local char = player.Character
 		if char and char:FindFirstChild("Skateboard") then
