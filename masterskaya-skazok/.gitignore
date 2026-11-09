@@ -11,3 +11,4 @@ zakazy/
 .venv/
 __pycache__/
 fal_nastroyki.json
+*.bak
