@@ -26,13 +26,13 @@ Config.GamePasses = {
 Config.GamePassOrder = { "Coins2x", "Coins3x", "GoldBoard" }
 
 Config.Products = {
-	SaveCombo = { id = 0, price = 5, icon = "🛟", name = "Спасти комбо", desc = "Упал? Получи монеты за потерянное комбо." },
-	SkipZone = { id = 0, price = 25, icon = "🚪", name = "Открыть следующую зону", desc = "Сразу открывает следующую зону без уровня и монет." },
-	Boost2x = { id = 0, price = 15, icon = "⚡", name = "Буст x2 на 15 минут", desc = "Двойные монеты на 15 минут. Складывается с геймпассами.", minutes = 15 },
-	CoinsSmall = { id = 0, price = 19, icon = "👜", name = "Мешок монет", desc = "Монеты. Чем дальше зона, тем больше." },
-	CoinsBig = { id = 0, price = 79, icon = "🧰", name = "Сундук монет", desc = "Много монет. Чем дальше зона, тем больше." },
-	LevelUp = { id = 0, price = 19, icon = "⭐", name = "+1 уровень", desc = "Сразу поднимает уровень на 1." },
-	StarterPack = { id = 0, price = 5, icon = "🎁", name = "Стартовый набор", desc = "Монеты, буст x2 на 15 минут и радужный след. Только для новичков!" },
+	SaveCombo = { id = 3729983321, price = 5, icon = "🛟", name = "Спасти комбо", desc = "Упал? Получи монеты за потерянное комбо." },
+	SkipZone = { id = 3729983615, price = 25, icon = "🚪", name = "Открыть следующую зону", desc = "Сразу открывает следующую зону без уровня и монет." },
+	Boost2x = { id = 3729983717, price = 15, icon = "⚡", name = "Буст x2 на 15 минут", desc = "Двойные монеты на 15 минут. Складывается с геймпассами.", minutes = 15 },
+	CoinsSmall = { id = 3729983786, price = 19, icon = "👜", name = "Мешок монет", desc = "Монеты. Чем дальше зона, тем больше." },
+	CoinsBig = { id = 3729983878, price = 79, icon = "🧰", name = "Сундук монет", desc = "Много монет. Чем дальше зона, тем больше." },
+	LevelUp = { id = 3729983965, price = 19, icon = "⭐", name = "+1 уровень", desc = "Сразу поднимает уровень на 1." },
+	StarterPack = { id = 3729984127, price = 5, icon = "🎁", name = "Стартовый набор", desc = "Монеты, буст x2 на 15 минут и радужный след. Только для новичков!" },
 }
 Config.ProductOrder = { "Boost2x", "LevelUp", "SkipZone", "CoinsSmall", "CoinsBig" }
 
