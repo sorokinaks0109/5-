@@ -20,6 +20,7 @@ PAPKA = Path(__file__).resolve().parent
 GEROI = PAPKA / "personazhi"
 REB = GEROI / "yaseniya_v1.png"
 DRAKON = GEROI / "drakonchik_list.png"
+RAZMERY = GEROI / "razmery.png"   # лист размеров: ребёнок, дракончик и звезда в одном масштабе
 STIL = PAPKA.parent / "chasy-deda-moroza" / "kadry" / "01_original_ded_moroz.png"
 
 M_KADR = "openai/gpt-image-2.6/flare/edit"
@@ -30,6 +31,11 @@ OBSHCHEE = ("Vertical 9:16 frame from a high-quality 3D animated feature film, e
             "The baby dragon must look exactly like the red dragon on the dragon reference sheet: red scaly body, "
             "golden-cream belly, small cream horns, red-orange wings, big brown eyes, small golden flame on the tail tip, "
             "cute, chubby and a bit clumsy, about the size of a 5-year-old child. No text, no letters.")
+# Постоянное правило пропорций — одно для всех кадров (и для будущих сказок)
+PROPORTSII = ("STRICT CONSISTENT PROPORTIONS exactly as on the size reference sheet: the girl is a 5-year-old child with "
+              "child proportions (big head, short legs, head is about 1/5 of her height, NOT long-legged, NOT a teenager); "
+              "the baby dragon standing upright reaches the girl's chest; the golden star is big — about as wide as the "
+              "girl's torso — in every scene where it appears. Keep these relative sizes in every frame.")
 REB_OPIS = ("The girl must look exactly like the girl on the character reference: wavy ginger-blond hair, grey-green eyes, "
             "white puffer jacket with fur hood, light-blue knitted hat with white pompom, light-blue snowflake scarf, "
             "light-blue jeans, white winter boots.")
@@ -68,7 +74,7 @@ SCENY = [
      "dvizh": "The girl carefully lifts the frozen golden star out of the snowdrift and brushes off the snow. The dragon puffs "
               "and tries to breathe fire, but only a tiny spark pops out; it looks puzzled and the girl smiles at it."},
     {"id": "07", "reb": True,
-     "kadr": "Close shot: the girl holds the golden star close in her palms, warming it; the little red dragon breathes a gentle "
+     "kadr": "Medium shot: the kneeling girl holds the same BIG golden star (as wide as her torso, the same star as in the previous scene) with both hands against her chest, warming it; the little red dragon breathes a gentle "
              "stream of golden flame onto it; the star begins to glow warmly, lighting up their happy faces.",
      "dvizh": "The girl warms the star in her palms, the dragon breathes a gentle golden flame on it, the ice melts and the star "
               "bursts into bright warm golden light; the flame on the dragon's tail lights up again. Both are amazed and happy."},
@@ -105,15 +111,17 @@ def s_povtorom(model, args, imya):
 def kadry(nomera):
     up = fal_client.upload_file
     url_reb, url_drakon, url_stil = up(REB), up(DRAKON), up(STIL)
+    url_razmery = up(RAZMERY) if RAZMERY.exists() else None
 
     def odin(s):
         put = PAPKA / "kadry" / f"{s['id']}.png"
         if put.exists():
             return f"{s['id']}: уже есть"
         if s["reb"]:
-            urls = [url_stil, url_drakon, url_reb]
-            p = (f"{s['kadr']} {OBSHCHEE} {REB_OPIS} References: image 1 = style and world, image 2 = dragon reference "
-                 f"sheet, image 3 = girl character reference.")
+            urls = [url_stil, url_drakon, url_reb] + ([url_razmery] if url_razmery else [])
+            p = (f"{s['kadr']} {OBSHCHEE} {REB_OPIS} {PROPORTSII} References: image 1 = style and world, image 2 = dragon "
+                 f"reference sheet, image 3 = girl character reference"
+                 + (", image 4 = size reference sheet (girl, dragon and star in correct scale)." if url_razmery else "."))
         else:
             urls = [url_stil, url_drakon]
             p = f"{s['kadr']} {OBSHCHEE} References: image 1 = style and world, image 2 = dragon reference sheet."
@@ -129,6 +137,23 @@ def kadry(nomera):
                 log(f.result())
             except Exception as e:  # noqa: BLE001
                 log("ОШИБКА:", e)
+
+
+def razmery():
+    """Один раз: лист размеров — девочка, дракончик и звезда рядом в правильном масштабе."""
+    if RAZMERY.exists():
+        log("Лист размеров уже есть")
+        return
+    up = fal_client.upload_file
+    p = ("Size reference lineup sheet in the same 3D animated cartoon style: standing side by side on a plain light background, "
+         "full body, front view, same scale: (1) the girl from image 1, a 5-year-old child with child proportions — big head, "
+         "short legs, head is 1/5 of her height; (2) the baby dragon from image 2 standing upright, the top of its head at the "
+         "girl's chest level; (3) the golden New Year star held by nobody, floating, as wide as the girl's torso. "
+         "A thin horizontal line at the girl's chest height. No text.")
+    r = fal_client.subscribe(M_KADR, arguments={"prompt": p, "image_urls": [up(REB), up(DRAKON)], "quality": "medium",
+                                                "image_size": "landscape_4_3", "num_images": 1, "output_format": "png"})
+    skachat(r["images"][0]["url"], RAZMERY)
+    log("Лист размеров готов")
 
 
 def klipy(nomera):
@@ -152,6 +177,9 @@ def klipy(nomera):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2 or sys.argv[1] not in ("kadry", "klipy"):
+    if len(sys.argv) < 2 or sys.argv[1] not in ("kadry", "klipy", "razmery"):
         raise SystemExit(__doc__)
-    {"kadry": kadry, "klipy": klipy}[sys.argv[1]](set(sys.argv[2:]))
+    if sys.argv[1] == "razmery":
+        razmery()
+    else:
+        {"kadry": kadry, "klipy": klipy}[sys.argv[1]](set(sys.argv[2:]))
