@@ -448,16 +448,33 @@ local function refreshStands()
 end
 
 -- ---------- ворота зон ----------
+local function zoneReady(idx)
+	local data = state.data
+	local z = Config.Zones[idx]
+	return data and z and idx == data.maxZone + 1 and data.level >= z.level and data.coins >= z.cost
+end
+
 local function refreshGates()
 	local maxZone = state.data and state.data.maxZone or 1
 	for _, gate in ipairs(CollectionService:GetTagged("Gate")) do
 		local idx = gate:GetAttribute("ZoneIndex") or 99
 		local open = idx <= maxZone
+		local ready = zoneReady(idx)
 		gate.CanCollide = not open
-		gate.Transparency = open and 0.92 or 0.2
+		gate.Transparency = open and 1 or 0.2
+		gate.Color = ready and Color3.fromRGB(80, 230, 120) or (Config.Zones[idx] and Config.Zones[idx].accent or gate.Color)
 		for _, g in ipairs(gate:GetChildren()) do
 			if g:IsA("SurfaceGui") then
 				g.Enabled = not open
+				local t = g:FindFirstChildOfClass("TextLabel")
+				local z = Config.Zones[idx]
+				if t and z then
+					if ready then
+						t.Text = string.format("✅ %s\nВсё готово! Въезжай в ворота — откроются за %s 💰", z.name, Config.formatNumber(z.cost))
+					else
+						t.Text = string.format("🔒 %s\nУровень %d  •  %s 💰  •  монеты x%s", z.name, z.level, Config.formatNumber(z.cost), tostring(z.mult))
+					end
+				end
 			end
 		end
 	end
@@ -472,7 +489,17 @@ local function hookGate(gate)
 		local maxZone = state.data and state.data.maxZone or 1
 		if idx and idx > maxZone and os.clock() > state.gateCooldown then
 			state.gateCooldown = os.clock() + 3
-			UI.openZones()
+			if zoneReady(idx) then
+				-- всё выполнено: открываем сразу
+				task.spawn(function()
+					if request("UnlockZone", idx) then
+						Sounds.play("LevelUp", 1)
+						UI.floatText("ВОРОТА ОТКРЫТЫ!", Color3.fromRGB(80, 230, 120), 1.3)
+					end
+				end)
+			else
+				UI.openZones()
+			end
 		end
 	end)
 end

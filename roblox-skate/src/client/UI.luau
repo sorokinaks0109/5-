@@ -80,6 +80,26 @@ local function label(props)
 	return l
 end
 
+-- плавно прячет текст вместе с обводкой
+local function fadeAll(obj, dur)
+	local info = TweenInfo.new(dur)
+	local function fade(o)
+		if o:IsA("TextLabel") or o:IsA("TextButton") then
+			TweenService:Create(o, info, { TextTransparency = 1 }):Play()
+		end
+		if o:IsA("UIStroke") then
+			TweenService:Create(o, info, { Transparency = 1 }):Play()
+		end
+		if o:IsA("Frame") then
+			TweenService:Create(o, info, { BackgroundTransparency = 1 }):Play()
+		end
+	end
+	fade(obj)
+	for _, d in ipairs(obj:GetDescendants()) do
+		fade(d)
+	end
+end
+
 local function textStroke(l, th)
 	new("UIStroke", { Color = Color3.new(0, 0, 0), Thickness = th or 2, ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual, Parent = l })
 	return l
@@ -137,12 +157,7 @@ function UI.toast(text, kind)
 	local l = textStroke(label({ Text = text, Size = UDim2.new(1, -16, 1, -8), Position = UDim2.fromOffset(8, 4), TextColor3 = kind == "level" and C.gold or C.text, MaxText = 22, Parent = f }), 1)
 	pop(f, 0.6)
 	task.delay(3.2, function()
-		TweenService:Create(f, TweenInfo.new(0.4), { BackgroundTransparency = 1 }):Play()
-		TweenService:Create(l, TweenInfo.new(0.4), { TextTransparency = 1 }):Play()
-		local st = f:FindFirstChildOfClass("UIStroke")
-		if st then
-			TweenService:Create(st, TweenInfo.new(0.4), { Transparency = 1 }):Play()
-		end
+		fadeAll(f, 0.4)
 		task.wait(0.45)
 		f:Destroy()
 	end)
@@ -164,9 +179,12 @@ function UI.floatText(text, color, size)
 		MaxText = 60,
 		ZIndex = 20,
 		Parent = gui,
-	}), 3)
+	}), 1.6)
 	pop(l, 0.3)
-	TweenService:Create(l, TweenInfo.new(1.3, Enum.EasingStyle.Quad), { Position = l.Position - UDim2.fromScale(0, 0.12), TextTransparency = 1 }):Play()
+	TweenService:Create(l, TweenInfo.new(1.3, Enum.EasingStyle.Quad), { Position = l.Position - UDim2.fromScale(0, 0.12) }):Play()
+	task.delay(0.5, function()
+		fadeAll(l, 0.8)
+	end)
 	task.delay(1.35, function()
 		l:Destroy()
 	end)
@@ -245,10 +263,10 @@ local function comboWord(mult)
 		Rotation = -8,
 		ZIndex = 25,
 		Parent = gui,
-	}, { corner(26), stroke(Color3.new(0, 0, 0), 4), gradient(Color3.fromRGB(255, 240, 120), Color3.fromRGB(255, 150, 0)) })
+	}, { corner(26), stroke(Color3.new(0, 0, 0), 2.5), gradient(Color3.fromRGB(255, 240, 120), Color3.fromRGB(255, 150, 0)) })
 	local multText = "x" .. (mult % 1 == 0 and tostring(mult) or string.format("%.1f", mult))
-	textStroke(label({ Text = word, Size = UDim2.new(1, -16, 0.55, 0), Position = UDim2.new(0, 8, 0.06, 0), MaxText = 34, ZIndex = 26, Parent = burst }), 2.5)
-	textStroke(label({ Text = multText, Size = UDim2.new(1, -16, 0.4, 0), Position = UDim2.new(0, 8, 0.56, 0), MaxText = 34, TextColor3 = C.pink, ZIndex = 26, Parent = burst }), 2.5)
+	textStroke(label({ Text = word, Size = UDim2.new(1, -16, 0.55, 0), Position = UDim2.new(0, 8, 0.06, 0), MaxText = 34, ZIndex = 26, Parent = burst }), 1.6)
+	textStroke(label({ Text = multText, Size = UDim2.new(1, -16, 0.4, 0), Position = UDim2.new(0, 8, 0.56, 0), MaxText = 34, TextColor3 = C.pink, ZIndex = 26, Parent = burst }), 1.6)
 	pop(burst, 0.2)
 	task.delay(1.4, function()
 		TweenService:Create(burst, TweenInfo.new(0.3), { Position = burst.Position - UDim2.fromScale(0, 0.06), BackgroundTransparency = 1 }):Play()
@@ -338,10 +356,10 @@ function UI.zoneBanner(i)
 		MaxText = 70,
 		ZIndex = 15,
 		Parent = gui,
-	}), 4)
+	}), 2)
 	pop(l, 0.4)
 	task.delay(2, function()
-		TweenService:Create(l, TweenInfo.new(0.8), { TextTransparency = 1 }):Play()
+		fadeAll(l, 0.8)
 		task.wait(0.85)
 		l:Destroy()
 	end)
@@ -780,6 +798,9 @@ function UI.setData(snap)
 		refs.dailyDot.Visible = snap.dailyReady
 	end
 	updateQuest()
+	if refs.saveWarn then
+		refs.saveWarn.Visible = snap.saving == false
+	end
 	if openWindowRefresh and not refs.windowManual then
 		openWindowRefresh()
 	end
@@ -916,6 +937,11 @@ local function buildHud()
 		refs.bail.Visible = false
 		ctx.buy("product", "SaveCombo")
 	end)
+
+	-- предупреждение, если прогресс не сохраняется
+	refs.saveWarn = textStroke(label({ Text = "⚠ Прогресс не сохраняется: опубликуй игру и включи API Services (см. инструкцию)", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 150), Size = UDim2.fromOffset(700, 22), Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(255, 120, 120), MaxText = 16, Visible = false, Parent = gui }), 1)
+	-- состояние анимации (для проверки)
+	refs.riderStatus = label({ Text = "", AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -8, 1, -22), Size = UDim2.fromOffset(320, 16), Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1), TextTransparency = 0.3, TextXAlignment = Enum.TextXAlignment.Right, MaxText = 12, Parent = gui })
 
 	-- номер версии в углу
 	label({ Text = Config.GameName .. " " .. (Config.Version or ""), AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -8, 1, -4), Size = UDim2.fromOffset(200, 18), Font = Enum.Font.GothamBold, TextColor3 = Color3.new(1, 1, 1), TextTransparency = 0.3, TextXAlignment = Enum.TextXAlignment.Right, MaxText = 14, Parent = gui })
@@ -1057,6 +1083,10 @@ function UI.init(context)
 			local left = boostEnds - os.clock()
 			refs.boost.Text = left > 0 and ("⚡x2 " .. timeText(left)) or ""
 			updateEvent()
+			if refs.riderStatus then
+				local st = player:GetAttribute("RiderStatus")
+				refs.riderStatus.Text = st and ("анимация: " .. st) or "анимация: ждём доску…"
+			end
 			if data then
 				local sl = (data.starterLeft or 0) - (os.clock() - (refs.dataTime or os.clock()))
 				refs.starter.Visible = sl > 0

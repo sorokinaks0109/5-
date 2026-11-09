@@ -245,6 +245,9 @@ local function getRig(char)
 		rotInv[joint] = m.C0.Rotation:Inverse()
 	end
 	print("[SkateRush] Поза скейтера включена, тип аватара:", isR6 and "R6" or "R15")
+	if Players:GetPlayerFromCharacter(char) == Players.LocalPlayer then
+		Players.LocalPlayer:SetAttribute("RiderStatus", "работает (" .. (isR6 and "R6" or "R15") .. ")")
+	end
 	r = { motors = motors, current = {}, phase = 0, hum = hum, isR6 = isR6, orig = orig, rot = rot, rotInv = rotInv }
 	rigs[char] = r
 	char.AncestryChanged:Connect(function(_, parent)
@@ -315,12 +318,21 @@ local function targetFor(char, r, isLocal, dt)
 	end
 	local pose = built[state] or built.ride
 	local lean = isLocal and localLean or 0
-	if lean ~= 0 then
-		local copy = table.clone(pose)
-		copy.Root = pose.Root * A(0, 0, lean)
-		return copy
+	local t = os.clock()
+	local copy = table.clone(pose)
+	if state == "ride" or state == "grind" then
+		-- лёгкое покачивание: колени пружинят, руки балансируют
+		local bob = math.sin(t * 5) * 0.06
+		copy.Root = pose.Root * CFrame.new(0, bob, 0)
+		copy.LeftShoulder = pose.LeftShoulder * A(rad(math.sin(t * 2.2) * 8), 0, rad(math.sin(t * 1.7) * 6))
+		copy.RightShoulder = pose.RightShoulder * A(rad(math.sin(t * 2.2 + 1) * 8), 0, rad(math.sin(t * 1.7 + 1) * 6))
+		copy.Neck = pose.Neck * A(0, rad(math.sin(t * 0.8) * 6), 0)
 	end
-	return pose
+	if lean ~= 0 then
+		copy.Root = copy.Root * A(0, 0, lean)
+		copy.Waist = pose.Waist * A(0, 0, -lean * 0.5)
+	end
+	return copy
 end
 
 function Rider.step(dt)
@@ -379,12 +391,22 @@ end
 
 -- Позу ставим и до физики, и прямо перед отрисовкой кадра,
 -- чтобы стандартные анимации точно не перебили её.
+-- если что-то сломается, игра не упадёт, а в Output будет понятная строка
+local warned = false
+local function safeStep(dt)
+	local ok, err = pcall(Rider.step, dt)
+	if not ok and not warned then
+		warned = true
+		warn("[SkateRush] Ошибка анимации скейтера:", err)
+		Players.LocalPlayer:SetAttribute("RiderStatus", "ошибка: " .. tostring(err))
+	end
+end
 RunService.Stepped:Connect(function(_, dt)
-	stopDefaultAnimations()
-	Rider.step(dt)
+	pcall(stopDefaultAnimations)
+	safeStep(dt)
 end)
 RunService:BindToRenderStep("SkateRiderPose", Enum.RenderPriority.Character.Value + 5, function()
-	Rider.step(0)
+	safeStep(0)
 end)
 
 return Rider

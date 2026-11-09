@@ -172,8 +172,10 @@ local function applyStats(player)
 	end
 end
 
+local dirty = {} -- кому нужно сохраниться
 local function push(player)
 	if profiles[player] then
+		dirty[player] = true
 		applyStats(player)
 		DataChanged:FireClient(player, snapshot(player))
 	end
@@ -538,9 +540,10 @@ end)
 -- автосохранение
 task.spawn(function()
 	while true do
-		task.wait(90)
+		task.wait(30)
 		for player, data in pairs(profiles) do
-			if canSave[player] then
+			if canSave[player] and dirty[player] then
+				dirty[player] = nil
 				data.lastZone = currentZone(player)
 				task.spawn(Data.save, player, data)
 			end
@@ -945,6 +948,9 @@ function handlers.UnlockZone(player, data, index)
 	end
 	data.coins -= z.cost
 	data.maxZone = index
+	if canSave[player] then
+		task.spawn(Data.save, player, data) -- важная покупка: сохраняем сразу
+	end
 	return true, "Открыта зона «" .. z.name .. "»!"
 end
 
