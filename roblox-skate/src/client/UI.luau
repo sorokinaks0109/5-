@@ -1011,7 +1011,7 @@ local function buildHud()
 	refs.window = new("Frame", { Size = UDim2.fromOffset(600, 470), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.52), BackgroundColor3 = C.panel, Visible = false, ZIndex = 30, Parent = gui }, { corner(18), stroke(Color3.new(0, 0, 0), 3) })
 	refs.windowHeader = new("Frame", { Size = UDim2.new(1, 0, 0, 58), BackgroundColor3 = C.orange, Parent = refs.window }, { corner(18), gradient(Color3.new(1, 1, 1), Color3.fromRGB(180, 180, 180)) })
 	refs.windowTitle = textStroke(label({ Text = "", Size = UDim2.new(1, -90, 1, -12), Position = UDim2.fromOffset(16, 6), TextXAlignment = Enum.TextXAlignment.Left, MaxText = 32, Parent = refs.windowHeader }), 2)
-	button({ Text = "✕", Size = UDim2.fromOffset(46, 46), AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -8, 0.5, 0), Color = C.red, Parent = refs.windowHeader }, closeWindow)
+	button({ Text = "X", Size = UDim2.fromOffset(46, 46), AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -8, 0.5, 0), Color = C.red, Parent = refs.windowHeader }, closeWindow)
 	refs.windowList = new("ScrollingFrame", {
 		Size = UDim2.new(1, -24, 1, -74),
 		Position = UDim2.fromOffset(12, 66),
