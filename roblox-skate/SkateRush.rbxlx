@@ -3515,7 +3515,7 @@ end
 
 local function boardPart(name)
 	local model = char and char:FindFirstChild("Skateboard")
-	local deck = model and model:FindFirstChild("Deck")
+	local deck = model and model:FindFirstChild("Deck", true)
 	if not deck then
 		return nil
 	end
