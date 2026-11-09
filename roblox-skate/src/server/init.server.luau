@@ -295,6 +295,15 @@ local function attachBoard(player)
 	local custom = assets and (assets:FindFirstChild("Board_" .. cfg.id) or assets:FindFirstChild("Board"))
 	if custom and custom:IsA("Model") then
 		local clone = custom:Clone()
+		-- подгоняем размер: длина доски около 4.6 стада
+		local _, size = clone:GetBoundingBox()
+		local long = math.max(size.X, size.Z)
+		if long > 0.01 then
+			clone:ScaleTo(clone:GetScale() * 4.6 / long)
+		end
+		local _, newSize = clone:GetBoundingBox()
+		-- ступни стоят на верхней поверхности модели
+		offset = legs + rootPart.Size.Y / 2 + newSize.Y / 2
 		deck = clone.PrimaryPart or clone:FindFirstChildWhichIsA("BasePart", true)
 		if deck then
 			for _, d in ipairs(clone:GetDescendants()) do

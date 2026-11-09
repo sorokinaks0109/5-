@@ -232,22 +232,133 @@ end
 
 local function megaRamp(parent, x, z, zone)
 	local height = 16
-	local _, d = ramp(parent, x, z, 30, height, 17, zone.floor2:Lerp(zone.accent, 0.35))
+	local width = 30
+	local surface = zone.floor2:Lerp(zone.accent, 0.35)
+	local rampPart, d = ramp(parent, x, z, width, height, 17, surface)
 	local topZ = z - d
-	part({ Name = "MegaTop", Size = Vector3.new(30, height, 14), CFrame = CFrame.new(x, height / 2 - 0.5, topZ - 7), Color = zone.cliff }, parent)
-	local k = part({ Name = "Kicker", Size = Vector3.new(30, 1, 8), CFrame = CFrame.new(x, height + 1.2, topZ - 13) * CFrame.Angles(math.rad(28), 0, 0), Color = zone.accent, Material = Enum.Material.Neon }, parent)
+	local a = math.rad(17)
+	-- шахматные полосы на подъёме
+	local len = height / math.sin(a)
+	for k = 0, 7 do
+		local light = k % 2 == 0
+		deco({ Name = "MegaStripe", Size = Vector3.new(width - 2, 0.06, len / 8), CFrame = rampPart.CFrame * CFrame.new(0, 0.53, -len / 2 + (k + 0.5) * len / 8), Color = light and Color3.new(1, 1, 1) or zone.accent, CastShadow = false }, parent)
+	end
+	-- боковые стенки с бортиками, фонариками и звёздами
+	for _, sx in ipairs({ -1, 1 }) do
+		local wx = x + sx * (width / 2 + 0.6)
+		deco({ Name = "MegaSideWall", Size = Vector3.new(1.2, 2.4, len + 1), CFrame = rampPart.CFrame * CFrame.new(sx * (width / 2 + 0.6), 0.9, 0), Color = zone.accent, CanCollide = true }, parent)
+		deco({ Name = "MegaRailTop", Shape = Enum.PartType.Cylinder, Size = Vector3.new(len + 1, 0.6, 0.6), CFrame = rampPart.CFrame * CFrame.new(sx * (width / 2 + 0.6), 2.4, 0) * CFrame.Angles(0, math.rad(90), 0), Color = Color3.fromRGB(240, 240, 250), Material = Enum.Material.Metal }, parent)
+		for k = 0, 9 do
+			local bulb = deco({ Name = "MegaBulb", Shape = Enum.PartType.Ball, Size = Vector3.new(0.7, 0.7, 0.7), CFrame = rampPart.CFrame * CFrame.new(sx * (width / 2 + 0.6), 2.9, -len / 2 + (k + 0.5) * len / 10), Color = (k % 2 == 0) and Color3.fromRGB(255, 230, 120) or zone.accent:Lerp(Color3.new(1, 1, 1), 0.3), Material = Enum.Material.Neon, CastShadow = false }, parent)
+			bulb:SetAttribute("Blink", k % 2)
+			CollectionService:AddTag(bulb, "BlinkBulb")
+		end
+		-- стойки-фермы под рампой
+		for k = 1, 3 do
+			local zz = z - d * k / 4
+			local hh = height * k / 4
+			deco({ Name = "MegaTruss", Size = Vector3.new(0.8, hh, 0.8), CFrame = CFrame.new(wx, hh / 2 - 0.5, zz), Color = Color3.fromRGB(200, 200, 215), Material = Enum.Material.Metal, CanCollide = true }, parent)
+		end
+	end
+	-- верхняя площадка
+	part({ Name = "MegaTop", Size = Vector3.new(width, height, 14), CFrame = CFrame.new(x, height / 2 - 0.5, topZ - 7), Color = zone.cliff }, parent)
+	deco({ Name = "MegaTopEdge", Size = Vector3.new(width + 0.4, 0.5, 14.4), CFrame = CFrame.new(x, height - 0.4, topZ - 7), Color = zone.accent, Material = Enum.Material.Neon }, parent)
+	-- трамплин на вершине
+	local k = part({ Name = "Kicker", Size = Vector3.new(width, 1, 8), CFrame = CFrame.new(x, height + 1.2, topZ - 13) * CFrame.Angles(math.rad(28), 0, 0), Color = zone.accent, Material = Enum.Material.Neon }, parent)
 	k:SetAttribute("Power", 125)
 	k:SetAttribute("Mega", true)
 	CollectionService:AddTag(k, "Kicker")
-	local sign = deco({ Name = "MegaSign", Size = Vector3.new(1, 1, 1), CFrame = CFrame.new(x, height + 9, topZ - 14), Transparency = 1 }, parent)
-	billboard(sign, "МЕГА-ТРАМПЛИН", Vector2.new(20, 4), 0)
+	deco({ Name = "MegaCoping", Shape = Enum.PartType.Cylinder, Size = Vector3.new(width + 0.6, 0.7, 0.7), CFrame = k.CFrame * CFrame.new(0, 0.5, -4), Color = Color3.fromRGB(230, 235, 245), Material = Enum.Material.Metal }, parent)
+	-- арка с вывеской над вершиной
+	for _, sx in ipairs({ -1, 1 }) do
+		deco({ Name = "MegaArchPost", Shape = Enum.PartType.Cylinder, Size = Vector3.new(14, 1.4, 1.4), CFrame = CFrame.new(x + sx * (width / 2 + 1), height + 7, topZ - 3) * CFrame.Angles(0, 0, math.rad(90)), Color = Color3.fromRGB(245, 245, 250), CanCollide = true }, parent)
+		deco({ Name = "MegaFlag", Size = Vector3.new(0.15, 3, 4), CFrame = CFrame.new(x + sx * (width / 2 + 1), height + 15.5, topZ - 1.2), Color = zone.accent }, parent)
+		deco({ Name = "MegaArchBall", Shape = Enum.PartType.Ball, Size = Vector3.new(2.2, 2.2, 2.2), CFrame = CFrame.new(x + sx * (width / 2 + 1), height + 14.2, topZ - 3), Color = Color3.fromRGB(255, 215, 80), Material = Enum.Material.Neon }, parent)
+	end
+	local board = deco({ Name = "MegaBanner", Size = Vector3.new(width + 2, 4.5, 0.8), CFrame = CFrame.new(x, height + 12, topZ - 3), Color = Color3.fromRGB(35, 25, 55) }, parent)
+	deco({ Name = "MegaBannerFrame", Size = Vector3.new(width + 2.6, 5.1, 0.6), CFrame = CFrame.new(x, height + 12, topZ - 2.9), Color = zone.accent, Material = Enum.Material.Neon }, parent)
+	for _, face in ipairs({ Enum.NormalId.Front, Enum.NormalId.Back }) do
+		local sg = Instance.new("SurfaceGui")
+		sg.Face = face
+		sg.CanvasSize = Vector2.new(640, 90)
+		sg.LightInfluence = 0
+		sg.Parent = board
+		local t = Instance.new("TextLabel")
+		t.Size = UDim2.fromScale(1, 1)
+		t.BackgroundTransparency = 1
+		t.TextScaled = true
+		t.Font = Enum.Font.GothamBlack
+		t.Text = "★ МЕГА-ТРАМПЛИН ★"
+		t.TextColor3 = Color3.fromRGB(255, 225, 90)
+		t.Parent = sg
+	end
 	return topZ - 17
 end
 
+-- Монета: золотой диск с ободком, звездой на обеих сторонах и блеском.
+-- Клиент крутит её и покачивает; сервер считает касание.
+local function coinFace(partObj, face)
+	local sg = Instance.new("SurfaceGui")
+	sg.Name = "CoinFace"
+	sg.Face = face
+	sg.CanvasSize = Vector2.new(200, 200)
+	sg.LightInfluence = 0.3
+	sg.Parent = partObj
+	local ring = Instance.new("Frame")
+	ring.AnchorPoint = Vector2.new(0.5, 0.5)
+	ring.Position = UDim2.fromScale(0.5, 0.5)
+	ring.Size = UDim2.fromScale(0.78, 0.78)
+	ring.BackgroundColor3 = Color3.fromRGB(255, 196, 40)
+	ring.Parent = sg
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0.5, 0)
+	corner.Parent = ring
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(200, 120, 0)
+	stroke.Thickness = 6
+	stroke.Parent = ring
+	local grad = Instance.new("UIGradient")
+	grad.Color = ColorSequence.new(Color3.fromRGB(255, 245, 170), Color3.fromRGB(255, 170, 20))
+	grad.Rotation = 45
+	grad.Parent = ring
+	local starText = Instance.new("TextLabel")
+	starText.BackgroundTransparency = 1
+	starText.Size = UDim2.fromScale(1, 1)
+	starText.Text = "★"
+	starText.TextScaled = true
+	starText.Font = Enum.Font.GothamBlack
+	starText.TextColor3 = Color3.fromRGB(255, 255, 255)
+	starText.Parent = ring
+	local st = Instance.new("UIStroke")
+	st.Color = Color3.fromRGB(210, 130, 0)
+	st.Thickness = 3
+	st.Parent = starText
+end
+
 local function star(parent, pos, value)
-	local s = part({ Name = "Star", Shape = Enum.PartType.Ball, Size = Vector3.new(2.6, 2.6, 2.6), CFrame = CFrame.new(pos), Color = Color3.fromRGB(255, 215, 0), Material = Enum.Material.Neon, CanCollide = false, CanQuery = false }, parent)
+	local big = value > Config.Star.Value
+	local d = big and 3.6 or 2.8
+	-- цилиндр стоит ребром: ось вдоль Z
+	local s = part({ Name = "Coin", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.5, d, d), CFrame = CFrame.new(pos) * CFrame.Angles(0, math.rad(90), 0), Color = Color3.fromRGB(255, 190, 30), Material = Enum.Material.Metal, Reflectance = 0.15, CanCollide = false, CanQuery = false }, parent)
 	s:SetAttribute("Value", value)
 	CollectionService:AddTag(s, "Pickup")
+	coinFace(s, Enum.NormalId.Right)
+	coinFace(s, Enum.NormalId.Left)
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(255, 210, 90)
+	light.Range = 7
+	light.Brightness = 0.8
+	light.Parent = s
+	local shine = Instance.new("ParticleEmitter")
+	shine.Name = "Shine"
+	shine.Color = ColorSequence.new(Color3.fromRGB(255, 250, 200))
+	shine.LightEmission = 1
+	shine.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 0.35), NumberSequenceKeypoint.new(1, 0) })
+	shine.Lifetime = NumberRange.new(0.5, 0.9)
+	shine.Rate = big and 5 or 3
+	shine.Speed = NumberRange.new(0.5, 1)
+	shine.SpreadAngle = Vector2.new(180, 180)
+	shine.Parent = s
 	return s
 end
 
@@ -255,6 +366,9 @@ end
 -- Положи модель в ReplicatedStorage → SkateAssets с нужным именем
 -- (например Tree_sakura, Palm, Lollipop, Cloud), и игра поставит её
 -- вместо простой фигуры. Имена — в инструкции.
+-- нужная высота моделей (в студах): модель любого размера подгоняется сама
+local ASSET_HEIGHT = { Tree_sakura = 17, Palm = 20, Lollipop = 18, CandyCane = 16, Crystal = 14, Snowman = 9, Rock = 7, Umbrella = 10, PineTree = 20, Cloud = 14 }
+
 local function asset(name, cf, parent, ground)
 	local folder = game:GetService("ReplicatedStorage"):FindFirstChild("SkateAssets")
 	local src = folder and folder:FindFirstChild(name)
@@ -262,6 +376,13 @@ local function asset(name, cf, parent, ground)
 		return false
 	end
 	local c = src:Clone()
+	local target = ASSET_HEIGHT[name]
+	if target and c:IsA("Model") then
+		local _, size = c:GetBoundingBox()
+		if size.Y > 0.01 then
+			c:ScaleTo(c:GetScale() * target / size.Y)
+		end
+	end
 	if c:IsA("BasePart") then
 		c.Anchored = true
 		c.CFrame = cf

@@ -401,6 +401,7 @@ end
 CollectionService:GetInstanceAddedSignal("Boost"):Connect(hookBoost)
 
 -- ---------- витрина досок в лобби ----------
+local lastBlink = 0
 local beltStripes = {}
 for i, st in ipairs(CollectionService:GetTagged("BeltStripe")) do
 	st:SetAttribute("Phase", (i % 6) * 2.2)
@@ -526,9 +527,10 @@ remotes.PickupTaken.OnClientEvent:Connect(function(s, cooldown, coins)
 	if info then
 		info.hiddenUntil = os.clock() + cooldown
 		s.Transparency = 1
-		local light = s:FindFirstChildOfClass("PointLight")
-		if light then
-			light.Enabled = false
+		for _, ch in ipairs(s:GetChildren()) do
+			if ch:IsA("PointLight") or ch:IsA("ParticleEmitter") or ch:IsA("SurfaceGui") then
+				ch.Enabled = false
+			end
 		end
 	end
 	UI.floatText("+" .. Config.formatNumber(coins) .. " 💰", Color3.fromRGB(255, 220, 60))
@@ -679,12 +681,14 @@ RunService.Heartbeat:Connect(function(dt)
 			if info.hiddenUntil > 0 and t > info.hiddenUntil then
 				info.hiddenUntil = 0
 				s.Transparency = 0
-				local light = s:FindFirstChildOfClass("PointLight")
-				if light then
-					light.Enabled = true
+				for _, ch in ipairs(s:GetChildren()) do
+					if ch:IsA("PointLight") or ch:IsA("ParticleEmitter") or ch:IsA("SurfaceGui") then
+						ch.Enabled = true
+					end
 				end
 			end
-			s.CFrame = info.base + Vector3.new(0, math.sin(t * 2.5 + info.phase) * 0.7, 0)
+			-- монета крутится и покачивается
+			s.CFrame = CFrame.new(info.base.Position + Vector3.new(0, math.sin(t * 2.5 + info.phase) * 0.6, 0)) * CFrame.Angles(0, t * 2.2 + info.phase, 0) * info.base.Rotation
 		else
 			stars[s] = nil
 		end
@@ -700,6 +704,13 @@ RunService.Heartbeat:Connect(function(dt)
 			end
 		else
 			showDecks[d] = nil
+		end
+	end
+	-- фонарики на мега-трамплинах мигают
+	if math.floor(t * 2) ~= lastBlink then
+		lastBlink = math.floor(t * 2)
+		for _, bulb in ipairs(CollectionService:GetTagged("BlinkBulb")) do
+			bulb.Transparency = ((bulb:GetAttribute("Blink") or 0) + lastBlink) % 2 == 0 and 0 or 0.6
 		end
 	end
 	-- лента беговых дорожек едет
