@@ -22,6 +22,7 @@ PAPKA = Path(__file__).resolve().parent
 SH = PAPKA.parent
 GEROI = PAPKA / "personazhi"
 REB = SH.parent / "zakazy" / "maksim-fal" / "personazh.jpg"
+REB_FOTO = SH.parent / "zakazy" / "maksim-fal" / "foto_tort.jpg"   # настоящее фото: только для сходства лица
 LISENOK = SH / "chasy-deda-moroza" / "kadry" / "03_original_lisenok.jpg"
 DRAKON = SH / "drakonchik" / "personazhi" / "drakonchik_list.png"
 STIL = SH / "drakonchik" / "kadry" / "01.png"
@@ -148,7 +149,8 @@ def razmery():
 
 def kadry(nomera):
     up = fal_client.upload_file
-    u = {"stil": up(STIL), "lis": up(LISENOK), "poezd": up(POEZD), "razm": up(RAZMERY), "reb": up(REB), "drakon": up(DRAKON)}
+    u = {"stil": up(STIL), "lis": up(LISENOK), "poezd": up(POEZD), "razm": up(RAZMERY), "reb": up(REB), "drakon": up(DRAKON),
+         "foto": up(REB_FOTO) if REB_FOTO.exists() else None}
 
     def odin(s):
         put = PAPKA / "kadry" / f"{s['id']}.png"
@@ -158,6 +160,10 @@ def kadry(nomera):
         sp = "image 1 = style, image 2 = fox cub, image 3 = train design, image 4 = size reference sheet"
         if s["reb"]:
             urls.append(u["reb"]); sp += f", image {len(urls)} = boy character reference"
+        if s["reb"] and u["foto"]:
+            urls.append(u["foto"]); sp += (f", image {len(urls)} = real photo of the same boy, use it ONLY for his face: "
+                                           f"keep his exact face shape, round cheeks, ears, nose, dark brown eyes and smile, "
+                                           f"the face must be clearly recognizable and look the same as in the character reference")
         if s["drakon"]:
             urls.append(u["drakon"]); sp += f", image {len(urls)} = red baby dragon reference"
         p = (f"{s['kadr']} {OBSHCHEE} " + (f"{REB_OPIS} " if s["reb"] else "")
