@@ -48,6 +48,14 @@ PROPORTSII = ("STRICT CONSISTENT PROPORTIONS exactly as on the size reference sh
               "locomotive cab is just big enough for the boy to stand inside, the cab roof is a little above his hat. "
               "Keep these relative sizes in every frame.")
 
+# Правила целостности для оживления: ничего не меняется по сравнению с первым кадром
+TSELOSTNOST = ("CONTINUITY RULES — keep everything exactly as in the start image: every character keeps the same face, "
+               "clothes, colors and size from start to end; scarves stay wrapped around the neck and hang down in front, "
+               "they do not fly or flutter behind; caps and hats stay on the heads and do not change shape or color; "
+               "the star on top of the tree always has exactly five points; the locomotive stays emerald-green and gold "
+               "with exactly two gift wagons; no new characters, objects or text appear; no extra fingers, paws or limbs; "
+               "no morphing, no flicker. Calm, gentle, natural motion.")
+
 SCENY = [
     {"id": "01", "reb": False, "drakon": False,
      "kadr": "Wide shot: NO children anywhere, the fox cub is the only character and the only driver. The little steam train with the fox cub driver alone in the cab rides along snowy rails through the "
@@ -78,7 +86,7 @@ SCENY = [
      "kadr": "The little train bursts through the snowdrift, snow flies around like fireworks; the boy in the navy driver cap "
              "leans out of the cab window laughing, the fox cub beside him; dynamic three-quarter view.",
      "dvizh": "The train speeds up and bursts through the snowdrift, snow explodes around it like fireworks, the boy leans "
-              "out of the cab laughing with the wind in his scarf, the camera follows the train."},
+              "out of the cab laughing, the camera follows the train."},
     {"id": "07", "reb": True, "furazhka": True, "drakon": False,
      "kadr": "The little train crosses a small wooden bridge above a sleeping snowy village at night; the boy in the cab "
              "pulls the whistle cord; the windows of the little houses below are still dark.",
@@ -186,7 +194,7 @@ def klipy(nomera):
         if put.exists():
             return f"{s['id']}: уже есть"
         url_k = fal_client.upload_file(PAPKA / "kadry" / f"{s['id']}.png")
-        p = s["dvizh"] + " Smooth, high-quality 3D animated cartoon motion, consistent characters."
+        p = s["dvizh"] + " Smooth, high-quality 3D animated cartoon motion. " + TSELOSTNOST
         r = s_povtorom(M_KLIP, {"prompt": p, "start_image_url": url_k, "duration": 5, "resolution": "720p"}, s["id"])
         skachat(r["video"]["url"], put)
         return f"{s['id']}: готов"
