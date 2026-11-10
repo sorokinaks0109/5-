@@ -18,7 +18,7 @@ FIT = f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},setsar=1
 def me(n, v, a, b, zoom=1.0):
     z = f"scale={int(W*zoom)}:{int(H*zoom)},crop={W}:{H}," if zoom != 1 else ""
     run(["-ss", f"{a}", "-t", f"{b-a}", "-i", str(R/f"v{v}.mp4"), "-map", "0:v:0", "-an",
-         "-vf", f"{FIT},{z}{LOOK}", "-c:v", "libx264", "-crf", "18", "-preset", "fast", str(TMP/f"{n}.mp4")])
+         "-vf", f"{FIT},{z}{LOOK},format=yuv420p", "-c:v", "libx264", "-crf", "18", "-preset", "fast", str(TMP/f"{n}.mp4")])
 
 def klip(n, src, a, d, flash=True):
     fl = ",fade=t=in:st=0:d=0.18:color=white" if flash else ""
@@ -138,6 +138,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 (TMP/"sub.ass").write_text(ass, encoding="utf-8")
 
 run(["-i", str(TMP/"video.mp4"), "-i", str(TMP/"audio.wav"), "-vf", f"ass={TMP/'sub.ass'}",
-     "-map", "0:v", "-map", "1:a", "-c:v", "libx264", "-crf", "19", "-preset", "medium",
-     "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", "-t", f"{TOTAL:.3f}", str(OUT)])
+     "-map", "0:v:0", "-map", "1:a:0", "-c:v", "libx264", "-profile:v", "high", "-level", "4.0",
+     "-pix_fmt", "yuv420p", "-crf", "19", "-preset", "medium", "-r", str(FPS),
+     "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2", "-map_metadata", "-1", "-movflags", "+faststart", "-t", f"{TOTAL:.3f}", str(OUT)])
 print("Готово", OUT, round(TOTAL, 2), "с")
