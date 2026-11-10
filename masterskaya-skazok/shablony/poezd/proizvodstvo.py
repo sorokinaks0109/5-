@@ -67,11 +67,13 @@ SCENY = [
              "night forest, golden sparks fly from the chimney, wagons full of gifts.",
      "dvizh": "The little train chugs along the snowy rails through the forest, golden sparks puff from the chimney, the "
               "fox cub driver waves happily from the cab, gentle snowfall, the camera tracks alongside."},
-    {"id": "02", "reb": False, "drakon": False,
+    {"id": "02", "reb": False, "drakon": False, "sost": POTUH, "konec_kak_nachalo": True,
      "kadr": "The little train is stuck in a huge snowdrift on the rails, its chimney is covered with snow, the lamps on "
              "the locomotive are dark; the fox cub in the cab grabs its head with its paws in dismay.",
-     "dvizh": "The train slows down and gets stuck in the huge snowdrift with a soft puff of snow, the chimney gets covered "
-              "with snow, the lamps fade out, the fox cub clutches its head in dismay."},
+     "dvizh": "The train is already stuck and does not move. The snow on the chimney and on the locomotive stays in place "
+              "the whole time, nothing falls off, no lamps light up, no smoke. Only the fox cub moves: it looks at the "
+              "snowdrift, gasps, clutches its head with its paws in dismay and shakes its head. Gentle snowflakes fall "
+              "from the sky. The camera slowly pushes in."},
     {"id": "03", "reb": False, "drakon": False, "sost": POTUH,
      "kadr": "Inside the cab of the stuck dark train the fox cub is UPSET and about to cry: NO smile, mouth turned down in a frown, teary eyes, worried eyebrows, ears flattened down; pulls a big "
              "brass lever with all its strength but it does not move; a falling star streaks across the night sky.",
@@ -202,7 +204,11 @@ def klipy(nomera):
             return f"{s['id']}: уже есть"
         url_k = fal_client.upload_file(PAPKA / "kadry" / f"{s['id']}.png")
         p = s.get("sost", "") + s["dvizh"] + " Smooth, high-quality 3D animated cartoon motion. " + TSELOSTNOST
-        r = s_povtorom(M_KLIP, {"prompt": p, "start_image_url": url_k, "duration": 5, "resolution": "720p"}, s["id"])
+        args = {"prompt": p, "start_image_url": url_k, "duration": 5, "resolution": "720p"}
+        if s.get("konec_kak_nachalo"):
+            # последний кадр = первый: сцена не может «уйти» в другое состояние (снег, свет, предметы)
+            args["end_image_url"] = url_k
+        r = s_povtorom(M_KLIP, args, s["id"])
         skachat(r["video"]["url"], put)
         return f"{s['id']}: готов"
 
