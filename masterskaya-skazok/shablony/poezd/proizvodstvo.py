@@ -35,8 +35,10 @@ OBSHCHEE = ("Vertical 9:16 frame from a high-quality 3D animated feature film, e
             "the style reference: magical snowy winter forest at night, aurora in the sky, soft cinematic light. "
             "The fox cub looks exactly like the fox cub reference (orange fluffy fox cub, big eyes) and wears a small "
             "navy-blue train driver cap. The little steam train looks exactly like the train design reference: a small "
-            "red-and-gold toy-like steam locomotive with a round boiler, tall chimney and a brass bell, pulling two little "
+            "deep emerald-green-and-gold toy-like steam locomotive with a round boiler, tall chimney and a brass bell, pulling two little "
             "open wagons full of wrapped gifts. No text, no letters.")
+FURAZHKA = ("IMPORTANT: on his head the boy wears a navy-blue train driver cap with a golden badge (the same cap the "
+            "fox cub wears) INSTEAD of the knitted hat; no knitted hat, no pompom. ")
 REB_OPIS = ("The boy must look exactly like the boy on the character reference: 3-year-old, very short light-brown hair, "
             "dark brown eyes, white puffer jacket with fur hood, light-blue knitted hat with white pompom, light-blue "
             "snowflake scarf, light-blue jeans, white winter boots.")
@@ -66,23 +68,23 @@ SCENY = [
              "wonder; the happy fox cub holds out a small navy-blue train driver cap to him.",
      "dvizh": "The falling star turns into a swirl of golden light and the boy steps out of it onto the snow, the fox cub "
               "jumps with joy and puts the train driver cap on the boy's head, the boy laughs."},
-    {"id": "05", "reb": True, "drakon": False,
-     "kadr": "Inside the cozy cab of the little train: the boy in the train driver cap pulls the big brass lever with both "
+    {"id": "05", "reb": True, "furazhka": True, "drakon": False,
+     "kadr": "Inside the cozy cab of the little train: the boy in the navy train driver cap pulls the big brass lever with both "
              "hands, the fox cub beside him cheers; through the window the snowy forest.",
      "dvizh": "The boy pulls the big brass lever with both hands, steam whistles, the lamps of the locomotive light up, "
               "golden sparks burst from the chimney, the fox cub cheers and claps its paws."},
-    {"id": "06", "reb": True, "drakon": False,
-     "kadr": "The little train bursts through the snowdrift, snow flies around like fireworks; the boy in the driver cap "
+    {"id": "06", "reb": True, "furazhka": True, "drakon": False,
+     "kadr": "The little train bursts through the snowdrift, snow flies around like fireworks; the boy in the navy driver cap "
              "leans out of the cab window laughing, the fox cub beside him; dynamic three-quarter view.",
      "dvizh": "The train speeds up and bursts through the snowdrift, snow explodes around it like fireworks, the boy leans "
               "out of the cab laughing with the wind in his scarf, the camera follows the train."},
-    {"id": "07", "reb": True, "drakon": False,
+    {"id": "07", "reb": True, "furazhka": True, "drakon": False,
      "kadr": "The little train crosses a small wooden bridge above a sleeping snowy village at night; the boy in the cab "
              "pulls the whistle cord; the windows of the little houses below are still dark.",
      "dvizh": "The train rolls across the bridge, the boy pulls the whistle cord, a cloud of golden steam rises, and one by "
               "one the windows and garlands of the houses in the village below light up with warm New Year lights."},
-    {"id": "08", "reb": True, "drakon": True,
-     "kadr": "The little train arrives at a station next to a giant glowing New Year tree; the boy in the driver cap stands "
+    {"id": "08", "reb": True, "furazhka": True, "drakon": True,
+     "kadr": "The little train arrives at a station next to a giant glowing New Year tree; the boy in the navy driver cap stands "
              "next to the locomotive, the fox cub and the little red baby dragon (from the dragon reference) hug him "
              "happily; the gift wagons are open; fireworks in the sky.",
      "dvizh": "The train stops by the giant glowing tree, the fox cub and the little red dragon run to the boy and hug him, "
@@ -123,7 +125,7 @@ def dizayn():
         return log("Дизайн уже есть")
     up = fal_client.upload_file
     p = ("Character and prop design sheet in the same 3D animated cartoon style as the references: (1) a small magical "
-         "red-and-gold toy-like steam locomotive with a round boiler, tall chimney with golden sparks, a brass bell, warm "
+         "deep emerald-green-and-gold toy-like steam locomotive with a round boiler, tall chimney with golden sparks, a brass bell, warm "
          "round headlamp and a cozy open cab, pulling two little open wagons full of wrapped gifts — three-quarter view; "
          "(2) the fox cub from image 1 wearing a small navy-blue train driver cap, sitting in the cab, waving. "
          "Plain soft light-blue background, no text.")
@@ -158,7 +160,8 @@ def kadry(nomera):
             urls.append(u["reb"]); sp += f", image {len(urls)} = boy character reference"
         if s["drakon"]:
             urls.append(u["drakon"]); sp += f", image {len(urls)} = red baby dragon reference"
-        p = f"{s['kadr']} {OBSHCHEE} " + (f"{REB_OPIS} " if s["reb"] else "") + f"{PROPORTSII} References: {sp}."
+        p = (f"{s['kadr']} {OBSHCHEE} " + (f"{REB_OPIS} " if s["reb"] else "")
+             + (FURAZHKA if s.get("furazhka") else "") + f"{PROPORTSII} References: {sp}.")
         risovat(p, urls, put)
         return f"{s['id']}: готов"
 
