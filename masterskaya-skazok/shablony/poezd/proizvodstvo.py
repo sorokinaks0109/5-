@@ -56,6 +56,11 @@ TSELOSTNOST = ("CONTINUITY RULES — keep everything exactly as in the start ima
                "with exactly two gift wagons; no new characters, objects or text appear; no extra fingers, paws or limbs; "
                "no morphing, no flicker. Calm, gentle, natural motion.")
 
+# Состояние мира между сценами: паровоз «потух» в 02 и оживает только в 05
+POTUH = ("TRAIN STATE (very important): the locomotive is STUCK deep in a huge snowdrift on the rails, snow up to "
+         "its wheels and piled on the front, the chimney is plugged with snow, NO smoke and NO steam at all, the "
+         "headlamp and all lamps are OFF and completely dark, the train is cold and still. ")
+
 SCENY = [
     {"id": "01", "reb": False, "drakon": False,
      "kadr": "Wide shot: NO children anywhere, the fox cub is the only character and the only driver. The little steam train with the fox cub driver alone in the cab rides along snowy rails through the "
@@ -67,16 +72,18 @@ SCENY = [
              "the locomotive are dark; the fox cub in the cab grabs its head with its paws in dismay.",
      "dvizh": "The train slows down and gets stuck in the huge snowdrift with a soft puff of snow, the chimney gets covered "
               "with snow, the lamps fade out, the fox cub clutches its head in dismay."},
-    {"id": "03", "reb": False, "drakon": False,
-     "kadr": "Inside the cab of the stuck train the fox cub tries with all its strength to pull a big brass lever but it "
-             "does not move; then it looks up at the starry sky with hope; a falling star streaks across the sky.",
-     "dvizh": "The fox cub pulls the big lever with all its strength but it does not move, the fox sighs, looks up at the "
-              "sky, closes its eyes and makes a wish; a bright falling star streaks across the sky."},
+    {"id": "03", "reb": False, "drakon": False, "sost": POTUH,
+     "kadr": "Inside the cab of the stuck dark train the fox cub is UPSET and about to cry: NO smile, mouth turned down in a frown, teary eyes, worried eyebrows, ears flattened down; pulls a big "
+             "brass lever with all its strength but it does not move; a falling star streaks across the night sky.",
+     "dvizh": "The sad fox cub pulls the big lever with all its strength but it does not move; the fox sighs, ears droop, "
+              "then looks up at the falling star with hope, still sad and worried, presses its paws together and makes a "
+              "wish with a hopeful but anxious face. The train stays dark, no smoke, no light, stuck in snow."},
     {"id": "04", "reb": True, "drakon": False,
-     "kadr": "Next to the stuck train in the snow a swirl of golden starlight; the boy steps out of it smiling with "
+     "sost": POTUH,
+     "kadr": "Next to the stuck dark train in the snow a swirl of golden starlight; the boy steps out of it smiling with "
              "wonder; the happy fox cub holds out a small navy-blue train driver cap to him.",
      "dvizh": "The falling star turns into a swirl of golden light and the boy steps out of it onto the snow, the fox cub "
-              "jumps with joy and puts the train driver cap on the boy's head, the boy laughs."},
+              "jumps with joy and puts the train driver cap on the boy's head, the boy laughs. The train behind them stays dark, no smoke, no light."},
     {"id": "05", "reb": True, "furazhka": True, "drakon": False,
      "kadr": "Inside the cozy cab of the little train: the boy in the navy train driver cap pulls the big brass lever with both "
              "hands, the fox cub beside him cheers; through the window the snowy forest.",
@@ -174,7 +181,7 @@ def kadry(nomera):
                                            f"the face must be clearly recognizable and look the same as in the character reference")
         if s["drakon"]:
             urls.append(u["drakon"]); sp += f", image {len(urls)} = red baby dragon reference"
-        p = (f"{s['kadr']} {OBSHCHEE} " + (f"{REB_OPIS} " if s["reb"] else "")
+        p = (s.get("sost", "") + f"{s['kadr']} {OBSHCHEE} " + (f"{REB_OPIS} " if s["reb"] else "")
              + (FURAZHKA if s.get("furazhka") else "") + f"{PROPORTSII} References: {sp}.")
         risovat(p, urls, put)
         return f"{s['id']}: готов"
@@ -194,7 +201,7 @@ def klipy(nomera):
         if put.exists():
             return f"{s['id']}: уже есть"
         url_k = fal_client.upload_file(PAPKA / "kadry" / f"{s['id']}.png")
-        p = s["dvizh"] + " Smooth, high-quality 3D animated cartoon motion. " + TSELOSTNOST
+        p = s.get("sost", "") + s["dvizh"] + " Smooth, high-quality 3D animated cartoon motion. " + TSELOSTNOST
         r = s_povtorom(M_KLIP, {"prompt": p, "start_image_url": url_k, "duration": 5, "resolution": "720p"}, s["id"])
         skachat(r["video"]["url"], put)
         return f"{s['id']}: готов"
