@@ -90,9 +90,9 @@ def sdelat(name, pol="d", out=None):
             im.alpha_composite(sh_img, (int(bx0 + (bx1 - bx0 - sw) / 2), int(by0 + (by1 - by0 - sh) / 2)))
             im.convert("RGB").save(fp, compress_level=1)
         subprocess.run(["ffmpeg", "-v", "error", "-y", "-framerate", str(FPS), "-i", f"{tmp}/%04d.png",
-                        "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo", "-shortest",
+                        "-i", str(P / "muzyka" / "kolokolchiki_norm.wav"), "-shortest",
                         "-c:v", "libx264", "-preset", "fast", "-profile:v", "high", "-pix_fmt", "yuv420p", "-crf", "21",
-                        "-c:a", "aac", "-b:a", "96k", "-movflags", "+faststart", str(out)], check=True)
+                        "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", str(out)], check=True)
     print("Готово:", out); return out
 
 if __name__ == "__main__":
