@@ -10,7 +10,7 @@ D={
 "a_privivka":"The mother hugs her little son on her lap and gently strokes his hair, kisses his forehead, the boy stops being scared and smiles at her, the nurse smiles and finishes putting on the plaster. Slow camera push-in.",
 "b_luzhi":"The mother and her little son jump together into the puddle holding hands, water splashes in slow motion, both laugh joyfully, sunlight sparkles in the drops. Slow tracking camera.",
 "c_risuem":"The boy proudly shows his drawing to his mother, she laughs, gently touches the paint on his nose with her finger, he giggles. Sunlight, cozy kitchen. Slow camera push-in.",
-"05":"The son and the mother hug tightly cheek to cheek, swaying gently, she smiles through happy tears, he hugs her closer. Warm light, soft bokeh. Very slow camera push-in.",
+"05":"The son and the mother hug cheek to cheek, swaying very gently, arms stay in place, her sleeves stay burgundy, his sleeves stay green, she smiles through happy tears, he hugs her closer. Warm light, soft bokeh. Very slow camera push-in.",
 }
 def odin(k):
     out=f"klipy/{k}.mp4"
