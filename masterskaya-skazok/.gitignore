@@ -14,3 +14,5 @@ fal_nastroyki.json
 *.bak
 staryy_krasnyy/
 pisma/
+shablony/vau/*.mp4
+shablony/vau/*.png
