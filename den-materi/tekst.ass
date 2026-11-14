@@ -1,0 +1,16 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 720
+PlayResY: 1280
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: T,Playfair Display Black,54,&H00FFFFFF,&H00FFFFFF,&H20140A28,&H80000000,0,0,0,0,100,100,1,0,1,5,4,2,30,30,250,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.30,0:00:03.20,T,,0,0,0,,{\fad(350,300)}Она не спала ночами,\Nкогда ты плакал
+Dialogue: 0,0:00:03.50,0:00:06.30,T,,0,0,0,,{\fad(350,300)}Плакала от счастья\Nв твой первый школьный день
+Dialogue: 0,0:00:06.60,0:00:09.80,T,,0,0,0,,{\fad(350,300)}И до сих пор\Nждёт твоего звонка
+Dialogue: 0,0:00:10.10,0:00:13.50,T,,0,0,0,,{\fad(350,300)}Теперь твоя очередь\Nрассказать ей сказку
+Dialogue: 0,0:00:14.60,0:00:19.40,T,,0,0,0,,{\fad(350,300)}{\fs50}Мультфильм о маме\Nко Дню матери\N{\fs38\c&H00A8E6FF&}Заказы до 22 ноября\Nссылка в профиле

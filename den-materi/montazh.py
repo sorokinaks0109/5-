@@ -17,7 +17,7 @@ ev=[(st[0]+0.3,st[1]+0.1,"Она не спала ночами,\\Nкогда ты
     (st[1]+0.4,st[2]+0.1,"Плакала от счастья\\Nв твой первый школьный день"),
     (st[2]+0.4,st[3]+0.1,"И до сих пор\\Nждёт твоего звонка"),
     (st[3]+0.4,st[4]+0.1,"Теперь твоя очередь\\Nрассказать ей сказку"),
-    (st[4]+1.2,tot,"{\\fs40}Мультфильм о маме\\Nко Дню матери\\N{\\fs30\\c&H00A8E6FF&}Заказы до 22 ноября · ссылка в профиле")]
+    (st[4]+1.2,tot,"{\\fs50}Мультфильм о маме\\Nко Дню матери\\N{\\fs38\\c&H00A8E6FF&}Заказы до 22 ноября\\Nссылка в профиле")]
 ass=f"""[Script Info]
 ScriptType: v4.00+
 PlayResX: 720
@@ -25,7 +25,7 @@ PlayResY: 1280
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: T,Playfair Display Black,46,&H00FFFFFF,&H00FFFFFF,&H64200C00,&H96000000,0,0,0,0,100,100,0,0,1,3,2,2,40,40,250,1
+Style: T,Playfair Display Black,54,&H00FFFFFF,&H00FFFFFF,&H20140A28,&H80000000,0,0,0,0,100,100,1,0,1,5,4,2,30,30,250,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
