@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Памятка «8 шагов»</title>
+<style>
+:root{--blue:#00478D;--sky:#0094DF;--cyan:#00A8B5;--navy:#042746;--green:#3E8E41;--red:#C0392B;--brick:#C0573A;--purple:#4F177E;--amber:#E39B1B;--ink:#1d2733;--muted:#5d6b7a;--line:#D5DEE9;--soft:#EEF4FA}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#dfe6ee;font-family:"Segoe UI",Arial,sans-serif;color:var(--ink);font-size:10.6pt;line-height:1.38}
+.page{width:210mm;min-height:297mm;margin:12px auto;background:#fff;padding:11mm 12mm 10mm;position:relative;box-shadow:0 2px 14px rgba(0,0,0,.12)}
+@page{size:A4;margin:0}
+@media print{body{background:#fff}.page{margin:0;box-shadow:none;page-break-after:always;height:297mm;overflow:hidden}.page:last-child{page-break-after:auto}}
+@media (max-width:820px){.page{width:auto;min-height:0;margin:8px;padding:16px}.g2,.g3,.g4,.loss{grid-template-columns:1fr!important}}
+h1{font-family:"Arial Narrow","Segoe UI",Arial,sans-serif;font-size:27pt;line-height:1.02;color:#fff;letter-spacing:.3px}
+h2{font-family:"Arial Narrow","Segoe UI",Arial,sans-serif;font-size:15pt;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;margin:0 0 2.2mm;display:flex;align-items:center;gap:2.5mm}
+h2 .n{background:var(--blue);color:#fff;border-radius:50%;width:8mm;height:8mm;display:inline-flex;align-items:center;justify-content:center;font-size:12pt;flex:none}
+h3{font-size:11pt;color:var(--navy);margin-bottom:1mm}
+p+p{margin-top:1.4mm}
+b{color:var(--navy)}
+.hero{background:linear-gradient(120deg,var(--navy),var(--blue) 60%,var(--sky));color:#fff;border-radius:5mm;padding:7mm 8mm;margin-bottom:5mm;position:relative;overflow:hidden}
+.hero:after{content:"";position:absolute;right:-18mm;top:-18mm;width:70mm;height:70mm;border-radius:50%;background:rgba(255,255,255,.08)}
+.hero .sub{font-size:11.5pt;margin-top:2.5mm;opacity:.95;max-width:150mm}
+.hero .tag{display:inline-block;background:rgba(255,255,255,.18);border-radius:10mm;padding:.8mm 3.5mm;font-size:9pt;margin-bottom:3mm;letter-spacing:.4px}
+.sec{margin-bottom:4.5mm}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:3.5mm}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:3mm}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:2.5mm}
+.card{background:var(--soft);border-radius:3mm;padding:3mm 3.5mm;border-left:1.4mm solid var(--blue)}
+.card.g{border-color:var(--green)}.card.r{border-color:var(--red)}.card.c{border-color:var(--cyan)}.card.p{border-color:var(--purple)}.card.a{border-color:var(--amber)}
+.big{font-family:"Arial Narrow",Arial,sans-serif;font-size:22pt;font-weight:700;line-height:1;color:var(--blue)}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:2.2mm}
+.st{border-radius:3mm;padding:2.2mm 3mm;color:#fff}
+.st .k{font-family:"Arial Narrow",Arial,sans-serif;font-size:17pt;font-weight:700;line-height:1;opacity:.9}
+.st b{color:#fff;display:block;font-size:10.4pt;margin:.6mm 0 .6mm}
+.st span{font-size:9pt;opacity:.95;display:block}
+.s1{background:var(--blue)}.s2{background:var(--sky)}.s3{background:var(--cyan)}.s4{background:var(--green)}
+.grp{font-size:8.6pt;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:0 0 1mm;font-weight:700}
+.flow{display:flex;gap:1.6mm;align-items:stretch}
+.flow div{flex:1;background:#fff;border:.35mm solid var(--line);border-radius:2.5mm;padding:2mm 2.4mm;font-size:9.3pt}
+.flow div b{display:block;color:var(--blue)}
+.flow i{align-self:center;color:var(--sky);font-style:normal;font-weight:700}
+.loss{display:grid;grid-template-columns:repeat(2,1fr);gap:2.4mm}
+.l{display:grid;grid-template-columns:10mm 1fr;gap:2.5mm;border:.35mm solid var(--line);border-radius:3mm;padding:2.4mm 3mm;background:#fff}
+.l .num{background:var(--red);color:#fff;border-radius:2mm;font-family:"Arial Narrow",Arial,sans-serif;font-weight:700;font-size:17pt;display:flex;align-items:center;justify-content:center}
+.l h3{color:var(--red);margin-bottom:.5mm}
+.l .our{font-size:9.4pt}
+.l .q{font-size:9.2pt;color:var(--muted);margin-top:.8mm}
+.l .sov{font-size:8.8pt;color:var(--brick);margin-top:.8mm}
+.sov{color:var(--brick)}
+.tip{background:#FFF6E3;border-radius:3mm;padding:3mm 4mm;border-left:1.4mm solid var(--amber)}
+.warn{background:#FDECEA;border-radius:3mm;padding:3mm 4mm;border-left:1.4mm solid var(--red)}
+.ok{background:#E9F5EA;border-radius:3mm;padding:3mm 4mm;border-left:1.4mm solid var(--green)}
+ul{padding-left:4.5mm}li{margin:.5mm 0}
+table{width:100%;border-collapse:collapse;font-size:9.6pt}
+th{background:var(--blue);color:#fff;text-align:left;padding:1.6mm 2.2mm;font-weight:600}
+td{border-bottom:.3mm solid var(--line);padding:1.5mm 2.2mm;vertical-align:top}
+tr:nth-child(even) td{background:#F7FAFD}
+.why{display:flex;flex-direction:column;gap:1mm}
+.why div{background:#fff;border:.35mm solid var(--line);border-radius:2mm;padding:1.2mm 2.5mm;font-size:9.4pt}
+.why div:last-child{border-color:var(--green);background:#E9F5EA}
+.why div b{color:var(--sky)}
+.fish{display:grid;grid-template-columns:repeat(3,1fr);gap:1.6mm;font-size:9.2pt}
+.fish div{background:#fff;border:.35mm solid var(--line);border-radius:2mm;padding:1.2mm 2mm}
+.fish div b{color:var(--blue)}
+.mx{display:grid;grid-template-columns:repeat(2,1fr);gap:1.4mm;font-size:9.2pt;text-align:center}
+.mx div{border-radius:2mm;padding:2.4mm 1.5mm;background:#EEF1F5}
+.mx .top{background:var(--green);color:#fff;font-weight:700}
+.foot span:last-child{white-space:nowrap;margin-left:4mm}
+.tl{display:grid;grid-template-columns:repeat(7,1fr);gap:1.6mm}
+.tl div{border-top:1.2mm solid var(--sky);padding-top:1.4mm;font-size:8.8pt;line-height:1.3}
+.tl div b{display:block;font-family:"Arial Narrow",Arial,sans-serif;font-size:13pt;color:var(--blue)}
+@media (max-width:820px){.tl{grid-template-columns:repeat(2,1fr)}}
+.foot{position:absolute;left:12mm;right:12mm;bottom:5mm;font-size:8pt;color:var(--muted);display:flex;justify-content:space-between;border-top:.3mm solid var(--line);padding-top:1.5mm}
+@media (max-width:820px){.foot{position:static;margin-top:12px}}
+.task{background:linear-gradient(120deg,var(--green),#5aa95d);color:#fff;border-radius:4mm;padding:5mm 6mm}
+.task b{color:#fff}
+.task h2{color:#fff}
+.small{font-size:9pt;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<!-- СТРАНИЦА 1 -->
+<div class="page">
+  <div class="hero">
+    <div class="tag">ПАМЯТКА УЧАСТНИКА</div>
+    <h1>8 шагов решения проблем</h1>
+    <div class="sub">Всё главное с тренинга на пяти страницах: как отличить проблему от жалобы, где искать потери и какой инструмент брать на каждом шаге.</div>
+  </div>
+
+  <div class="sec g2">
+    <div class="card">
+      <h3>Что такое проблема</h3>
+      <p>Препятствие на пути к цели или отклонение от регламента, норматива, стандарта, которое требует управленческого решения.</p>
+      <p><b>Проблема = возможность.</b> Пока проблему прячут, её никто не решит. Первый шаг: признать, что она есть.</p>
+    </div>
+    <div class="card r">
+      <h3>Почему проблемы молчат</h3>
+      <ul>
+        <li>«Мне попадёт за проблему»</li>
+        <li>«Всё из-за других служб»</li>
+        <li>«Инициатива наказуема»</li>
+        <li>«Всё равно не решится»</li>
+      </ul>
+      <p class="small">Наша задача как руководителей и коллег: сделать так, чтобы об этих фразах никто не думал.</p>
+    </div>
+  </div>
+
+  <div class="sec">
+    <h2>Какие бывают проблемы</h2>
+    <div class="g3">
+      <div class="card g"><div class="big" style="color:var(--green)">≈70%</div><h3>Простые</h3><p>Знаете, как устранить. <b>Делайте сразу.</b></p></div>
+      <div class="card"><div class="big">≈25%</div><h3>Сложные</h3><p>Нужны данные, коллеги, анализ причин. <b>8 шагов</b>, группа 1–5 человек, от недели до месяца.</p></div>
+      <div class="card p"><div class="big" style="color:var(--purple)">≈5%</div><h3>Комплексные</h3><p>Касаются всего предприятия, нужны вложения. Проекты ТОС, ТРИЗ, Лин 6 Сигма.</p></div>
+    </div>
+    <p class="small" style="margin-top:1.8mm"><b>Признаки сложной проблемы:</b> повторяется, хотя кажется простой; затрагивает несколько служб; без данных и анализа причин решения не видно.</p>
+  </div>
+
+  <div class="sec">
+    <h2>Путь проблемы в компании</h2>
+    <div class="flow">
+      <div><b>1. Выявить</b>Записать на стенд визуального управления, раздел «Проблемы и риски»</div><i>›</i>
+      <div><b>2. Решить самому</b>Пройти 8 шагов в зоне своего влияния</div><i>›</i>
+      <div><b>3. Коллеги</b>Привлечь коллег, старшего специалиста</div><i>›</i>
+      <div><b>4. Беседа</b>По эффективности с руководителем отдела или управления</div><i>›</i>
+      <div><b>5. Решение</b>Задача, идея на портал инициатив, реестр проблем или устранено своими силами</div>
+    </div>
+    <p class="small" style="margin-top:1.8mm">По проблеме со стенда решение принимают <b>в течение 10 рабочих дней</b>, потом её снимают со стенда.</p>
+  </div>
+
+  <div class="sec">
+    <h2>Откуда взялся метод</h2>
+    <div class="tl">
+      <div><b>1913</b>Форд запускает конвейер: поток и стандарт</div>
+      <div class="sov"><b style="color:var(--brick)">1921</b>Гастев создаёт Центральный институт труда</div>
+      <div><b>1920-е</b>Сакити Тоёда: спроси «почему?» пять раз</div>
+      <div><b>1930–50-е</b>Шухарт и Деминг: цикл PDCA</div>
+      <div><b>1943</b>Исикава придумывает диаграмму причин</div>
+      <div><b>1950–70-е</b>Тайити Оно строит систему Toyota</div>
+      <div><b>1988–90</b>Появляется слово Lean, «бережливое»</div>
+    </div>
+    <p class="small" style="margin-top:2mm"><b>Круг мелом.</b> Оно ставил молодого инженера в круг на полу цеха и просил смотреть, пока тот сам не увидит потери. Отсюда правило «иди и смотри»: проблему изучают на месте, а не по отчётам.</p>
+  </div>
+
+  <div class="foot"><span>8 шагов решения проблем · памятка участника</span><span>1 / 5</span></div>
+</div>
+
+<!-- СТРАНИЦА 2 -->
+<div class="page">
+  <div class="sec">
+    <h2>8 шагов на одной странице</h2>
+    <div class="grp">Шаги 1–3 · формулируем проблему и ищем причины</div>
+    <div class="steps" style="grid-template-columns:repeat(3,1fr)">
+      <div class="st s1"><div class="k">1</div><b>Определить проблему</b><span>Что хотим улучшить, насколько и когда? · 5W1H</span></div>
+      <div class="st s1"><div class="k">2</div><b>Собрать информацию</b><span>Какие нужны данные? Какая цель? · SMART, графики</span></div>
+      <div class="st s1"><div class="k">3</div><b>Найти корневые причины</b><span>Что на самом деле вызывает проблему? · Исикава, 5 почему, Парето</span></div>
+    </div>
+    <div class="grp" style="margin-top:2mm">Шаги 4–5 · ищем решение</div>
+    <div class="steps" style="grid-template-columns:repeat(2,1fr)">
+      <div class="st s3"><div class="k">4</div><b>Сгенерировать решения</b><span>Какие идеи? Что мешает? · мозговой штурм</span></div>
+      <div class="st s3"><div class="k">5</div><b>Выбрать решение</b><span>Какие идеи лучшие? · матрица 2×2, голосование</span></div>
+    </div>
+    <div class="grp" style="margin-top:2mm">Шаги 6–8 · внедряем</div>
+    <div class="steps" style="grid-template-columns:repeat(3,1fr)">
+      <div class="st s4"><div class="k">6</div><b>План мероприятий</b><span>Что первым? Кто и когда?</span></div>
+      <div class="st s4"><div class="k">7</div><b>Реализация и отслеживание</b><span>Идём ли к цели? «Было – стало»</span></div>
+      <div class="st s4"><div class="k">8</div><b>Стандарт и тиражирование</b><span>Сработало? Где ещё применить?</span></div>
+    </div>
+    <p class="small" style="margin-top:1.8mm">Метод проходят в одиночку, командой с лидером или командой с модератором, который владеет инструментами.</p>
+  </div>
+
+  <div class="sec g2">
+    <div class="card p">
+      <h3>Три «М»</h3>
+      <p><b>Муда</b>: потери. <b>Мура</b>: неравномерность, то аврал, то простой. <b>Мури</b>: перегрузка людей и техники.</p>
+      <p class="sov" style="font-size:9.2pt">Штурмовщина: в начале месяца завод простаивал, в конце работал без выходных. Узнаёте конец квартала?</p>
+    </div>
+    <div class="card g">
+      <h3>Как охотиться на потери</h3>
+      <p style="font-size:9.6pt">1. Ценность глазами клиента · 2. Иди и смотри · 3. Раздели: ценность, необходимое, потеря · 4. Назови вид · 5. Измерь: часы, рубли, тонны · 6. Устрани причину, а не следствие и не человека</p>
+    </div>
+  </div>
+
+
+  <div class="sec">
+    <h2>Шпаргалка: инструменты на каждом шаге</h2>
+    <table>
+      <tr><th style="width:9%">Шаг</th><th style="width:38%">Что делаем</th><th>Инструменты</th></tr>
+      <tr><td>0</td><td>Видим проблему</td><td>8 видов потерь, стенд визуального управления</td></tr>
+      <tr><td>1</td><td>Определяем проблему</td><td>5W1H</td></tr>
+      <tr><td>2</td><td>Собираем данные, ставим цель</td><td>SMART, графики, контрольные карты</td></tr>
+      <tr><td>3</td><td>Ищем корневые причины</td><td>Диаграмма Исикавы, 5 почему, Парето</td></tr>
+      <tr><td>4</td><td>Генерируем решения</td><td>Мозговой штурм, СОП, пока-ёкэ</td></tr>
+      <tr><td>5</td><td>Выбираем решение</td><td>Матрица 2×2, рейтинговое голосование</td></tr>
+      <tr><td>6–8</td><td>Внедряем и закрепляем</td><td>План мероприятий, «было – стало», А3, стандарт</td></tr>
+    </table>
+  </div>
+
+  <div class="sec">
+      <h2>Формат А3</h2>
+      <div class="card a">
+        <p style="font-size:9.6pt">Все 8 шагов на одном листе: слева проблема, данные, цель и причины, справа решения, план, «было – стало» и стандарт.</p>
+        <p style="font-size:9.6pt">В Toyota отчёт обязан был помещаться на А3. <b>Не помещается: значит, команда ещё не разобралась в проблеме.</b></p>
+      </div>
+    </div>
+
+  <div class="foot"><span>8 шагов решения проблем · памятка участника</span><span>2 / 5</span></div>
+</div>
+
+<!-- СТРАНИЦА 3 -->
+<div class="page">
+  <div class="sec">
+    <h2><span class="n">0</span>Где прячутся проблемы: 8 видов потерь</h2>
+    <div class="g2" style="margin-bottom:2.6mm">
+      <div class="card"><h3>Ценность</h3><p>То, за что клиент готов платить. <b>Потери</b> (муда): всё, что тратит время, деньги и место, но ценности клиенту не добавляет.</p></div>
+      <div class="card a"><h3>Всего &lt;5% времени</h3><p>создаёт ценность в процессе, который никто не изучал. Остальное время заказ, груз или документ лежит и ждёт.</p></div>
+    </div>
+    <div class="g3" style="margin-bottom:2.6mm">
+      <div class="card g" style="padding:2.4mm 3mm"><b>Создаёт ценность</b><br><span class="small">клиент платит: развиваем</span></div>
+      <div class="card c" style="padding:2.4mm 3mm"><b>Нужно, но ценности нет</b><br><span class="small">контроль, документы: сокращаем</span></div>
+      <div class="card r" style="padding:2.4mm 3mm"><b>Потеря</b><br><span class="small">не нужна никому: устраняем</span></div>
+    </div>
+
+    <div class="loss">
+      <div class="l"><div class="num">1</div><div><h3>Перепроизводство</h3><div class="our">Сделано больше или раньше, чем нужно. Отчёт, который никто не читает; материал на объект «с запасом».</div><div class="q">Вопрос себе: кто это ждёт и когда?</div><div class="sov">СССР: план «по валу» в тоннах и рублях, склады полны ненужного.</div></div></div>
+      <div class="l"><div class="num">2</div><div><h3>Избыточные запасы</h3><div class="our">Замороженные деньги. Неликвиды, страховой запас «на всякий случай».</div><div class="q">Запас как вода в реке: прячет камни, то есть проблемы.</div><div class="sov">СССР: из-за перебоев заводы копили сверхнормативные запасы.</div></div></div>
+      <div class="l"><div class="num">3</div><div><h3>Лишняя транспортировка</h3><div class="our">Груз или документ едет, а ценности не прибавляется. Промежуточный склад вместо прямой поставки.</div><div class="q">Каждая перевалка ещё и риск повреждения.</div><div class="sov">Канторович, 1939: линейное программирование против «встречных перевозок». Нобелевская премия, 1975.</div></div></div>
+      <div class="l"><div class="num">4</div><div><h3>Лишние движения</h3><div class="our">Двигается человек: поиск инструмента, документа, лишние шаги, неудобное место.</div><div class="q">Не путать с транспортировкой: там перемещается груз.</div><div class="sov">Гастев и Центральный институт труда, 1921: изучали каждое движение.</div></div></div>
+      <div class="l"><div class="num">5</div><div><h3>Лишняя обработка</h3><div class="our">Работа, за которую никто не платит: согласование в пять подписей, один реестр в двух местах.</div><div class="q">Вопрос себе: что будет, если этот шаг убрать?</div><div class="sov">Маяковский, «Прозаседавшиеся», 1922.</div></div></div>
+      <div class="l"><div class="num">6</div><div><h3>Дефекты</h3><div class="our">Исправление, переделка, повреждения. Ошибка в номенклатуре и возврат, повреждение МТР.</div><div class="q">Чем позже нашли дефект, тем дороже он обходится.</div><div class="sov">Саратовская система бездефектного изготовления, 1955; Знак качества, 1967.</div></div></div>
+      <div class="l"><div class="num">7</div><div><h3>Ожидания и простои</h3><div class="our">Люди, техника, документы ждут. Машина под выгрузкой ждёт кладовщика, заявка ждёт подписи.</div><div class="q">Самая заметная и самая недооценённая потеря.</div><div class="sov">Бригадный подряд Злобина, 1970: бригада отвечает за объект целиком.</div></div></div>
+      <div class="l"><div class="num">8</div><div><h3>Неиспользованный интеллект</h3><div class="our">Знания и идеи людей никому не нужны. Кладовщик знает, как ускорить приёмку, но его не спросили.</div><div class="q">Часто самая дорогая из восьми.</div><div class="sov">СССР: бюро рационализации и изобретательства (БРИЗ) на каждом заводе.</div></div></div>
+    </div>
+  </div>
+
+  <div class="foot"><span>Семь потерь описал Тайити Оно (Toyota), восьмую добавили позже. В наших НМД видов восемь.</span><span>3 / 5</span></div>
+</div>
+
+<!-- СТРАНИЦА 4 -->
+<div class="page">
+  <div class="sec">
+    <h2><span class="n">1</span>Определить проблему: 5W1H</h2>
+    <table>
+      <tr><th style="width:24%">Вопрос</th><th>Что выясняем</th></tr>
+      <tr><td><b>What</b> · Что?</td><td>Что наблюдаем? Как проявляется проблема?</td></tr>
+      <tr><td><b>Why</b> · Почему, зачем?</td><td>Что будет, если ничего не делать? Почему решать сейчас?</td></tr>
+      <tr><td><b>Where</b> · Где?</td><td>Где возникает? Есть ли похожий процесс, где её нет?</td></tr>
+      <tr><td><b>Who</b> · Кто?</td><td>Кто вовлечён? От кого зависит решение?</td></tr>
+      <tr><td><b>When</b> · Когда?</td><td>Когда возникает и когда нет?</td></tr>
+      <tr><td><b>How</b> · Как?</td><td>Как действуем сейчас? Всё ли по стандарту?</td></tr>
+    </table>
+    <div class="g2" style="margin-top:2.4mm">
+      <div class="warn"><b>Было:</b> «Не хватает финансирования, нужны дополнительные площади для разгрузки судов». Это готовое решение, а не проблема.</div>
+      <div class="ok"><b>Стало:</b> «Как успеть разгрузить судно за 24 часа вместо 36?» Есть цифра, есть цель, решений можно найти много.</div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <h2><span class="n">2</span>Собрать данные и поставить цель</h2>
+    <div class="g2">
+      <div class="card"><h3>Что договариваемся собрать</h3><p>Перечень данных · критерии полноты · откуда берём (учётные системы, интервью) · как анализируем (графики, контрольные карты, таблицы) · кто отвечает за сбор.</p></div>
+      <div class="card c"><h3>Цель по SMART</h3><p>Конкретная · измеримая · достижимая · значимая · ограничена по времени. Формулируем позитивно: не «брака не больше 20%», а <b>«качественной продукции больше 80%»</b>.</p></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <h2><span class="n">3</span>Найти корневые причины</h2>
+    <div class="g2">
+      <div>
+        <h3>Диаграмма Исикавы: собираем все причины</h3>
+        <div class="fish">
+          <div><b>Люди</b> · Man</div><div><b>Оборудование</b> · Machine</div><div><b>Материалы</b> · Material</div>
+          <div><b>Методы</b> · Method</div><div><b>Измерения</b> · Measurement</div><div><b>Среда</b> · Mother Nature</div>
+        </div>
+        <p class="small" style="margin-top:1.4mm">Проблема в «голове», каждая причина на свою кость. Для офиса подходит 6П: персонал, процесс, политики, процедуры, цена, продукт.</p>
+        <h3 style="margin-top:2.4mm">Парето: выбираем главные</h3>
+        <p style="font-size:9.6pt">Около 80% проблем дают примерно 20% причин. Сначала убираем эти немногие.</p>
+      </div>
+      <div>
+        <h3>5 почему: копаем до корня одной ветки</h3>
+        <div class="why">
+          <div>Поставку задержали на 16 дней. <b>Почему?</b></div>
+          <div>Задержали оплату. <b>Почему?</b></div>
+          <div>Не было свободных средств. <b>Почему?</b></div>
+          <div>Не заложили в план. <b>Почему?</b></div>
+          <div>Поздно сообщили в финансовый отдел. <b>Почему?</b></div>
+          <div><b style="color:var(--green)">Корень:</b> нет процедуры, которая описывает процесс. Это можно устранить.</div>
+        </div>
+        <p class="small" style="margin-top:1.4mm"><b>Проверка звена:</b> причина прямо влияет на проблему? Была в этом случае? Два «да»: звено верное.</p>
+      </div>
+    </div>
+    <div class="warn" style="margin-top:2.4mm;font-size:9.6pt"><b>Типичные ошибки:</b> пять проблем по одному «почему» вместо одной проблемы с пятью · остановились раньше корня · ищем виноватого, а не причину · анализ из кабинета без «иди и смотри».</div>
+  </div>
+
+  <div class="foot"><span>Шаги 1–3 · формулируем проблему и ищем причины</span><span>4 / 5</span></div>
+</div>
+
+<!-- СТРАНИЦА 5 -->
+<div class="page">
+  <div class="sec">
+    <h2><span class="n">3</span>Какие причины устранять первыми</h2>
+    <table>
+      <tr><th>Критерий</th><th>V · высокий</th><th>S · средний</th><th>N · низкий</th></tr>
+      <tr><td>Вероятность влияния</td><td>≥ 30% случаев</td><td>10–30%</td><td>&lt; 10%</td></tr>
+      <tr><td>Сложность устранения</td><td>легко, до 2 недель</td><td>2 недели – 2 месяца</td><td>больше 2 месяцев</td></tr>
+      <tr><td>Эффект</td><td>&gt; 1 млн руб./год</td><td>100 тыс. – 1 млн</td><td>&lt; 100 тыс.</td></tr>
+    </table>
+    <p class="small" style="margin-top:1.2mm">Порядок: <b>VVV</b>, затем VSV, SVV, VVS. Сортируем по данным, а не по мнению экспертов.</p>
+  </div>
+
+  <div class="sec g2">
+    <div>
+      <h2><span class="n">4</span>Сгенерировать решения</h2>
+      <div class="card c">
+        <h3>Правила мозгового штурма</h3>
+        <ul style="font-size:9.6pt">
+          <li>6–12 человек, 40–60 минут</li>
+          <li>сначала количество, качество потом</li>
+          <li>никакой критики, пока идёт поток идей</li>
+          <li>записываем слово в слово</li>
+          <li>чужие идеи можно и нужно развивать</li>
+          <li>говорим по очереди, от младшего к старшему</li>
+        </ul>
+        <p style="font-size:9.6pt;margin-top:1.4mm"><b>Простые сильные решения:</b> визуализация, стандартная операционная процедура, быстрая переналадка, защита от ошибок (пока-ёкэ).</p>
+      </div>
+    </div>
+    <div>
+      <h2><span class="n">5</span>Выбрать решение</h2>
+      <div class="card g">
+        <h3>Матрица 2×2: ресурсы и эффект</h3>
+        <div class="mx">
+          <div>Трудоёмко,<br>высокий эффект</div><div class="top">Легко,<br>высокий эффект<br>ПРИОРИТЕТ</div>
+          <div>Трудоёмко,<br>низкий эффект</div><div>Легко,<br>низкий эффект</div>
+        </div>
+        <p style="font-size:9.4pt;margin-top:1.6mm">Сначала убираем повторы и маловероятные идеи, остальные раскладываем по квадрантам. Ещё способ: <b>рейтинговое голосование</b>, у каждого ограниченное число голосов.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <h2><span class="n">6</span><span class="n" style="margin-left:-1mm">7</span>План и отслеживание</h2>
+    <table>
+      <tr><th>Первопричина</th><th>Мероприятие</th><th>Ответственный</th><th>Срок</th><th>Ожидаемый результат</th></tr>
+      <tr><td>Нет единого шаблона заявки</td><td>Разработать шаблон с примером заполнения</td><td>Руководитель группы</td><td>01.12–08.12</td><td>Возвратов на 50% меньше</td></tr>
+    </table>
+    <p style="font-size:9.6pt;margin-top:1.4mm">Затраты согласуем с заказчиком до начала работ. Встречаемся с заказчиком не реже раза в две недели. Результат проверяем по фактическим данным: <b>«было – стало»</b>.</p>
+  </div>
+
+  <div class="sec">
+    <div>
+      <h2><span class="n">8</span>Закрепить и растиражировать</h2>
+      <div class="card">
+        <p style="font-size:9.6pt">Проверить результат · исправить недочёты · найти, где ещё применить · внести в стандарты и НМД, обучить людей.</p>
+        <p style="font-size:9.6pt"><b>Решение не закончено, пока его нет в стандарте</b> и о нём не узнали коллеги через портал знаний.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="warn" style="font-size:9.4pt"><b>Как не надо</b><br>Искать потери в людях: их начнут прятать · «сокращение потерь = сокращение людей» · убрать потерю у себя и передать соседям · внедрять решение дороже самой потери.</div>
+    <div class="task">
+      <h2 style="margin-bottom:1.4mm">Задание после тренинга</h2>
+      <p>Возьмите <b>одну</b> свою рабочую проблему и пройдите по ней <b>шаги 1–3 в формате А3</b>: 5W1H, данные и цель, корневые причины.</p>
+    </div>
+  </div>
+
+  <div class="foot"><span>НМД: М-00.05-10 «8-шаговый метод решения проблем для непроизводственных ДО и КЦ» (2024); М-01.09.02-01 (2019); обучающие материалы СУОД «Эталон»</span><span>5 / 5</span></div>
+</div>
+
+</body>
+</html>
