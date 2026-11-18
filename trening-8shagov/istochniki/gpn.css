@@ -113,3 +113,10 @@ html,body{background:#1d2733}
 .lossd .ld .sov{font-size:20px;line-height:1.4}
 .lossd .ld .sov h3{font-size:20px}
 .lossd .ld p.world{font-size:19px}
+
+/* ===== Слайд «Корни проблемы»: картинка с подписями ===== */
+.rootpic{position:relative;flex:0 0 400px;height:540px;border-radius:8px;overflow:hidden;display:flex}
+.rootpic .picbox{flex:1;min-height:0}
+.rootpic .lbl{position:absolute;left:14px;right:14px;font-weight:700;font-size:21px;padding:6px 12px;border-radius:6px;text-align:center}
+.rootpic .lbl.t{top:12px;background:rgba(255,255,255,.88);color:var(--blue)}
+.rootpic .lbl.b{bottom:12px;background:rgba(4,39,70,.82);color:#fff}
