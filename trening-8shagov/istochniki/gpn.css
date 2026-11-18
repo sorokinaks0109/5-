@@ -78,3 +78,38 @@ html,body{background:#1d2733}
 .titlebg{background:#fff url(slaidy/fon.jpg) left top/62% auto no-repeat}
 
 .card.col{display:block}
+
+/* ===== Блок «Потери»: детальные карточки, советский опыт, картинки ===== */
+.picbox{flex:1;min-height:260px;border-radius:8px;overflow:hidden;background:var(--soft);display:flex}
+.picbox img{width:100%;height:100%;object-fit:cover;display:block}
+.picbox.side{flex:0 0 330px}
+.big3{gap:14px}.big3 .card{font-size:19px;padding:14px 18px}.big3 b.k{font-size:46px;margin-bottom:6px}
+.grp3{display:flex;flex-direction:column;gap:10px}
+.grp3 .g{border-radius:6px;padding:12px 18px;color:#fff;font-size:19px;display:grid;grid-template-columns:1fr auto;column-gap:16px;align-items:center}
+.grp3 .g b{grid-column:1;font-size:22px}.grp3 .g span{grid-column:2;grid-row:1/3;font-weight:700;text-transform:uppercase;letter-spacing:.5px;font-size:17px;background:rgba(255,255,255,.18);padding:6px 12px;border-radius:4px}
+.grp3 .g1{background:var(--green)}.grp3 .g2{background:var(--sky)}.grp3 .g3{background:var(--red)}
+.bigk{font-size:72px;line-height:1;color:var(--blue);font-family:"GPN_DIN Condensed Bold","Arial Narrow","Segoe UI",sans-serif;flex:none}
+.card.sov,.sov{border:0;border-left:8px solid #C0573A;background:#FBF1EA;border-radius:6px;padding:12px 16px}
+.sov h3{color:#9B3F22;font-size:19px;margin:0 0 4px;letter-spacing:.3px}
+.sov h3::before{content:"СОВЕТСКИЙ ОПЫТ · ";color:#B07A62;font-weight:600}
+.card.warn{border:0;border-left:8px solid var(--red);background:#FDF0EE}.card.warn h3{color:var(--red)}
+.lossd{display:flex;gap:18px;align-items:stretch;flex:1}
+.lossd .ld{flex:1;border:1px solid var(--line);border-top:6px solid var(--blue);border-radius:6px;padding:14px 18px;display:flex;flex-direction:column;gap:9px;font-size:18px;line-height:1.32;background:#fff}
+.lossd .lh{font-size:24px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.3px;display:flex;align-items:center;gap:12px}
+.lossd .lh i{font-style:normal;width:40px;height:40px;border-radius:50%;background:var(--blue);color:#fff;display:grid;place-items:center;font-size:21px;flex:none}
+.lossd p{margin:0}.lossd p b{color:var(--blue)}
+.lossd .our{background:var(--soft);border-radius:4px;padding:7px 12px}
+.lossd .world{color:var(--muted);font-size:16.5px}.lossd .world b{color:var(--muted)}
+.lossd .sov{font-size:17px}
+.loss.l2{grid-template-columns:repeat(2,1fr)}
+.lossd .ld p{font-size:20px;line-height:1.35}
+.lossd .ld .sov{font-size:18px;line-height:1.35}
+.lossd .ld p.world{font-size:17px}
+.picstack{flex:0 0 330px;display:flex;flex-direction:column;gap:12px}
+.picstack .picbox{min-height:0}
+.lossd .ld{gap:12px}
+.lossd .lh{font-size:26px}
+.lossd .ld p{font-size:23px;line-height:1.38}
+.lossd .ld .sov{font-size:20px;line-height:1.4}
+.lossd .ld .sov h3{font-size:20px}
+.lossd .ld p.world{font-size:19px}

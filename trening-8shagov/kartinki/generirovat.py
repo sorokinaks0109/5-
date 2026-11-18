@@ -14,7 +14,7 @@ from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CFG = json.load(open(os.path.join(HERE, "spisok.json"), encoding="utf-8"))
-MODELS = ["openai/gpt-image-2.6/flare", "fal-ai/flux-pro/v1.1", "fal-ai/flux/dev"]
+MODELS = ["fal-ai/flux-pro/v1.1", "fal-ai/flux/dev"]  # gpt-image-2.6 на fal.ai нет (404)
 
 def one(name):
     out = os.path.join(HERE, name + ".jpg")
@@ -28,7 +28,7 @@ def one(name):
             if m.startswith("openai/"):
                 args.update(image_size="landscape_16_9", quality="medium", output_format="png")
             else:
-                args.update(image_size="landscape_16_9")
+                args.update(image_size={"width": 1344, "height": 768})  # >1280, потом ужимаем
             r = fal_client.subscribe(m, arguments=args)
             url = r["images"][0]["url"]
             raw = urllib.request.urlopen(url).read()
