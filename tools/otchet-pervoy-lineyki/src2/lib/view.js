@@ -444,6 +444,41 @@
           '<div class="ch-val">' + (c.total ? c.done + ' из ' + c.total + ' выполнено' : 'нет поручений') + (c.overdue ? ' · <span class="late">срок прошёл: ' + c.overdue + '</span>' : '') + '</div></div>';
       }).join('') + '</div>';
   }
+  // ---------- динамика по неделям (из reg.history — запись раз в неделю) ----------
+  const wk = (iso) => iso.slice(8, 10) + '.' + iso.slice(5, 7);
+  // Поручения на контроле по неделям: столбик — сколько на контроле, сегменты — статусы, над столбиком — сколько с прошедшим сроком
+  function chartTrend(reg, weeks) {
+    const h = (reg.history || []).slice(-(weeks || 13));
+    if (h.length < 2) return '<div class="chart"><div class="ch-title">Поручения по неделям</div><div class="muted small">Статистика копится раз в неделю — график появится со второй недели.</div></div>';
+    const max = Math.max(1, ...h.map((x) => x.total));
+    const order = ['done', 'work', 'fail', 'none', 'na'];
+    const legend = '<div class="ch-legend">' + order.map((k) => SEG.find((s) => s[0] === k)).filter(Boolean).map(([k, t]) => '<span><i class="sw sw-' + k + '"></i>' + t + '</span>').join('') + '<span class="late">● срок прошёл (число над столбиком)</span></div>';
+    const cols = h.map((x) => {
+      const tip = 'Неделя с ' + wk(x.week) + ': на контроле ' + x.total + ', выполнено ' + x.done + ', в работе ' + x.work + ', не выполнено ' + x.fail + ', без статуса ' + x.none + ', срок прошёл ' + x.overdue;
+      const segs = order.filter((k) => x[k]).map((k) => '<span class="seg sw-' + k + '" style="flex:' + x[k] + '"></span>').join('');
+      return '<div class="tc" title="' + esc(tip) + '"><div class="tc-od">' + (x.overdue ? '<span class="late">' + x.overdue + '</span>' : '') + '</div>' +
+        '<div class="tc-plot"><div class="tc-stack" style="height:' + (100 * x.total / max).toFixed(1) + '%">' + segs + '</div></div><div class="tc-lb">' + wk(x.week) + '</div></div>';
+    }).join('');
+    const a = h[0], b = h[h.length - 1];
+    const d = (v, w) => (v === w ? 'без изменений' : (v > w ? '+' : '−') + Math.abs(v - w));
+    return '<div class="chart ch-trend"><div class="ch-title">Поручения на контроле по неделям</div>' + legend + '<div class="tc-row">' + cols + '</div>' +
+      '<div class="ch-val" style="margin-top:6px">За ' + h.length + ' нед.: на контроле ' + a.total + ' → ' + b.total + ' (' + d(b.total, a.total) + '), срок прошёл ' + a.overdue + ' → ' + b.overdue + ' (' + d(b.overdue, a.overdue) + ').</div></div>';
+  }
+  // Дисциплина отчётности: кто обновлял отчёт к совещанию, по неделям
+  function chartDiscipline(reg, weeks) {
+    const h = (reg.history || []).slice(-(weeks || 13));
+    if (h.length < 2) return '';
+    const rows = M().reportPeople(reg).map((p) => {
+      const cells = h.map((x) => ((x.people || []).includes(p.id) ? ((x.fresh || []).includes(p.id) ? 1 : 0) : null));
+      const n = cells.filter((c) => c !== null).length, ok = cells.filter((c) => c === 1).length;
+      return { p, cells, n, ok };
+    }).filter((r) => r.n).sort((x, y) => x.ok / x.n - y.ok / y.n);
+    return '<div class="chart ch-disc"><div class="ch-title">Обновляли отчёт к совещанию</div><div class="ch-legend"><span><i class="sw sw-done"></i>обновил</span><span><i class="sw sw-fail"></i>не обновил</span><span><i class="sw sw-rest"></i>не участвовал</span><span>сверху — те, кто чаще не обновляет</span></div>' +
+      '<div class="dg-row dg-head"><div class="ch-name"></div><div class="dg-cells">' + h.map((x) => '<span class="dg-w">' + wk(x.week) + '</span>').join('') + '</div><div></div></div>' +
+      rows.map((r) => '<div class="dg-row"><div class="ch-name">' + esc(r.p.fio) + '</div><div class="dg-cells">' +
+        r.cells.map((c, i) => '<span class="dg ' + (c === null ? 'sw-rest' : c ? 'sw-done' : 'sw-fail') + '" title="' + esc(r.p.fio + ', неделя с ' + wk(h[i].week) + ': ' + (c === null ? 'не участвовал' : c ? 'обновил' : 'не обновил')) + '"></span>').join('') +
+        '</div><div class="ch-val">' + r.ok + ' из ' + r.n + ' нед.</div></div>').join('') + '</div>';
+  }
   const num = (s) => { const t = String(s === null || s === undefined ? '' : s).replace(/\s/g, '').replace(',', '.'); return /^-?\d+(\.\d+)?$/.test(t) ? +t : null; };
   const fmtN = (x) => (Math.abs(x) >= 100 ? Math.round(x) : Math.abs(x) >= 1 || x === 0 ? Math.round(x * 100) / 100 : +x.toPrecision(2)).toLocaleString('ru-RU', { maximumFractionDigits: 6 });
   function chartKpi(reg, data) {
@@ -670,6 +705,6 @@
   root.View = {
     esc, $, $$, badge, due, ago, statusSelect, tile, countTiles, freshBadge, itemCard, freeTable, kpiHead, eventsTable, personReport,
     hydrateAttachments, xlsxToHtml, memoTable, upcOverview, whoCards, printHtml, mailto, copyHtml, download, saveFile, toast, folderScreen,
-    chartMemo, chartKpi, changesHtml, attentionHtml, personCard, noteHtml, notesBlock, FILTERS, flagPass, filterChips, filterCounts, notesHtml, fileKind, fileIcon, attHtml, docxToHtml, activatePdf, b64, ta, autoGrow, mail, mailUrl, mailMode, MAIL_MODES, copyText, MIME, EXT,
+    chartMemo, chartKpi, chartTrend, chartDiscipline, changesHtml, attentionHtml, personCard, noteHtml, notesBlock, FILTERS, flagPass, filterChips, filterCounts, notesHtml, fileKind, fileIcon, attHtml, docxToHtml, activatePdf, b64, ta, autoGrow, mail, mailUrl, mailMode, MAIL_MODES, copyText, MIME, EXT,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

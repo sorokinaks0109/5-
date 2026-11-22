@@ -122,9 +122,41 @@
       '<div class="row"><label class="small">Последнее совещание <input type="date" id="lastMeeting" value="' + esc(st.lastMeeting || '') + '"></label>' +
       '<button data-act="meetingToday">Совещание прошло сегодня</button><button data-act="reload">Обновить</button></div></div>' +
       '<div class="msg ' + (stale.length ? 'bad' : 'ok') + '" style="margin-top:10px">' + (stale.length ? 'Не обновили: ' + stale.map((p) => esc(p.fio)).join(', ') : 'Все обновили отчёт') + '</div>' +
-      '<div class="row">' + (stale.length ? '<button data-act="remind">Написать напоминание не обновившим</button>' : '') +
+      '<div class="row">' + (stale.length ? '<button data-act="remind">Написать напоминание не обновившим</button>' : '') + '<button data-act="remindOpen">' + (S.remindOpen ? 'Скрыть личные напоминания' : 'Личные напоминания') + '</button>' +
       '<label class="button">Загрузить отчёты из файлов (присланные по почте)<input type="file" id="importFiles" multiple hidden></label></div>' +
-      '<div class="muted small">Отчёты из папки «Входящие» забираются сами, когда вы открываете эту страницу или нажимаете «Обновить».</div></div>' + safetyPanel() + avrReqPanel() + View.chartMemo(S.reg, S.data, today()) + View.whoCards(S.reg, S.data, today());
+      '<div class="muted small">Отчёты из папки «Входящие» забираются сами, когда вы открываете эту страницу или нажимаете «Обновить».</div></div>' + (S.remindOpen ? remindPanel() : '') + safetyPanel() + avrReqPanel() + View.chartMemo(S.reg, S.data, today()) + View.whoCards(S.reg, S.data, today());
+  }
+  // ---------- личные напоминания: каждому — его пункты ----------
+  const cut = (t, n) => { t = String(t || '').replace(/\s+/g, ' ').trim(); return t.length > (n || 70) ? t.slice(0, n || 70) + '…' : t; };
+  function remindItems(pid) {
+    const t = today(); const v = Model.personView(S.reg, S.data, pid, t); const out = [];
+    if (v.fresh !== 'fresh') out.push('Обновите отчёт и поставьте дату «Отчёт актуален на»' + (v.reportDate ? ' (сейчас стоит ' + Model.fmtISO(v.reportDate) + ')' : '') + '.');
+    const lateM = v.memo.filter((m) => Model.isOverdue(m.due, m.st.flag, t));
+    lateM.forEach((m) => out.push('Срок прошёл (' + Model.fmtISO(m.due) + '): поручение «' + cut(m.text) + '» — ' + (m.st.flag ? Model.statusLabel(m.st.flag) : 'нет статуса') + '.'));
+    const mineEv = [].concat(...v.kpiOwn.map((k) => k.events.filter((e) => e.mine)), ...v.kpiOther.map((k) => k.events));
+    mineEv.filter((e) => Model.isOverdue(e.due, e.st.flag, t)).forEach((e) => out.push('Срок прошёл (' + Model.fmtISO(e.due) + '): мероприятие УПЦ «' + cut(e.text) + '».'));
+    Model.attention(S.reg, S.data, t, pid).filter((x) => !x.late).slice(0, 6).forEach((x) => out.push((x.kind === 'm' ? 'Поручение' : 'Мероприятие') + ' «' + cut(x.text) + '»: ' + x.reasons.join('; ') + '.'));
+    Model.dirNotes(S.reg, pid).filter((n) => Model.noteState(S.data, n) === 'open').forEach((n) => out.push('Комментарий директора без ответа (' + Model.noteItem(S.reg, n).what + ' «' + cut(Model.noteItem(S.reg, n).text, 50) + '»): ' + cut(n.text, 120)));
+    const pl = Model.planOn(S.reg) && Model.planProgress(S.reg, S.data, pid);
+    if (pl && pl.total && pl.done < pl.total) out.push('Цели УПЦ на ' + S.reg.plan.year + ' год: проверено ' + pl.done + ' из ' + pl.total + (S.reg.plan.due ? ', срок до ' + Model.fmtISO(S.reg.plan.due) : '') + ' — кнопка «Заполнить цели УПЦ» вверху отчёта.');
+    const aq = Model.avrqProgress(S.reg, S.data, pid);
+    if (aq && aq.total && aq.done < aq.total) out.push('Итоги за ' + Model.avrReq(S.reg).period + ': заполнено ' + aq.done + ' из ' + aq.total + '.');
+    return out;
+  }
+  function remindPanel() {
+    const rows = Model.reportPeople(S.reg).concat(S.reg.people.filter((p) => p.extra)).map((p) => ({ p, items: remindItems(p.id) })).filter((x) => x.items.length);
+    S.reminded = S.reminded || {};
+    return '<div class="panel"><h2>Личные напоминания</h2><p class="muted small">Каждому — его пункты: отчёт не обновлён, срок прошёл, пояснение давно не меняется, комментарий директора без ответа, цели на следующий год. ' +
+      '«Открыть письмо» откроет письмо этому человеку; если текст длинный, он будет в буфере — в письме нажмите Ctrl+V.</p>' +
+      (rows.length ? rows.map(({ p, items }) => '<details class="remind"><summary><b>' + esc(p.fio) + '</b> — пунктов: ' + items.length + ' ' +
+        (p.email ? '<button class="mini' + (S.reminded[p.id] ? '' : ' primary') + '" data-remind="' + esc(p.id) + '">' + (S.reminded[p.id] ? '✓ открыто, ещё раз' : 'Открыть письмо') + '</button>' : '<span class="late small">нет почты в «Настройках»</span>') +
+        '</summary><ul class="small">' + items.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul></details>').join('') : '<div class="msg ok">Напоминать некому — у всех всё в порядке.</div>') + '</div>';
+  }
+  function remindMail(pid) {
+    const p = Model.personById(S.reg, pid); const items = remindItems(pid);
+    const body = 'Добрый день!\n\nПо вашему отчёту первой линейки:\n' + items.map((x) => '— ' + x).join('\n') + '\n\nПрошу обновить отчёт и нажать «Сохранить».\n\nСпасибо!';
+    View.mail(S.reg.settings, [p.email], 'Отчёт первой линейки: что обновить', body);
+    S.reminded = S.reminded || {}; S.reminded[pid] = true; render();
   }
   // Ход запроса итогов за квартал (АВР): кто сколько заполнил
   function avrReqPanel() {
@@ -555,6 +587,7 @@
       h += '<div class="panel"><div class="row between"><h2>Ход сбора</h2>' + (left.length ? '<button data-act="planRemind">Напомнить не заполнившим</button>' : '') + '</div><div class="nums">' +
         rows.map((x) => '<span class="badge ' + (x.g.done >= x.g.total ? 's-done' : x.g.done ? 's-work' : 's-fail') + '">' + esc(x.p.fio) + ': ' + x.g.done + ' из ' + x.g.total + (x.bi ? ' · БИ: ' + x.bi : '') + '</span>').join('') + '</div></div>';
     }
+    h += yearPanel();
     // показатели проекта
     h += '<div class="panel"><div class="row between"><h2>Показатели и мероприятия на ' + esc(P.year) + ' год: ' + P.kpis.length + '</h2><span class="row">' +
       '<label class="button">Загрузить проект карты УПЦ (xlsx)<input type="file" id="planCardFile" accept=".xlsx" hidden></label><button data-act="planCopy">Взять показатели и мероприятия текущего года</button><button data-act="planKpiAdd">+ Показатель</button>' +
@@ -650,6 +683,40 @@
       if (await saveReg('Проект загружен: ' + r.kpis.length + ' показателей, ' + r.events.length + ' мероприятий')) render();
     } catch (e) { View.toast('Файл не прочитан: ' + e.message, 'bad'); }
   }
+  // ---------- переход на новый год ----------
+  function yearPanel() {
+    const P = planOf(); if (!P.kpis.length) return '';
+    if (S.reg.settings.year >= P.year) return '<div class="panel msg ok">' + esc(P.year) + ' год начат ' + esc(Model.fmtISO(S.reg.settings.yearStarted || '')) + ': карта УПЦ и мероприятия взяты из плана. Архив прошлого года — «Данные/архив/год ' + (P.year - 1) + '». Официальную карту УПЦ ' + esc(P.year) + ' загружайте как обычно на вкладке «УПЦ» — показатели, у которых сменится код, сохранят мероприятия.</div>';
+    const parts = P.kpis.map((k) => Model.planFinal(S.reg, S.data, k));
+    const notDone = parts.filter((f) => f.st !== 'ok' && f.st !== 'edit').length;
+    const noFill = P.kpis.filter((k) => !Model.planFillers(k).length).length;
+    return '<div class="panel year-panel"><div class="row between"><div><h2>Начать ' + esc(P.year) + ' год</h2><div class="muted small">Когда план утверждён (январь): прошлый год уходит в архив, карта УПЦ и мероприятия в отчётах берутся из этого плана. ' +
+      'Каждое мероприятие встанет тому, кто его писал; «Отчитывается» — лидер или первый из заполнявших. Статусы начнутся с чистого листа. Поручения не меняются.</div></div>' +
+      '<button class="primary" data-act="yearStart">Начать ' + esc(P.year) + ' год</button></div>' +
+      (notDone ? '<div class="msg warn small">Не подтверждены заполнявшими: ' + notDone + ' показателей — по ним возьмутся предложенные мероприятия.</div>' : '') +
+      (noFill ? '<div class="msg warn small">Некому заполнять: ' + noFill + ' — у таких показателей «Отчитывается» будет пусто, назначите на вкладке «УПЦ».</div>' : '') + '</div>';
+  }
+  async function yearStart() {
+    const P = planOf(); const prev = P.year - 1;
+    let r; try { r = Model.startYear(S.reg, S.data); } catch (e) { View.toast(e.message, 'bad'); return; }
+    if (!confirm('Начать ' + P.year + ' год?\n\n— Реестр и отчёты ' + prev + ' года сохранятся в «Данные/архив/год ' + prev + '», свод ' + prev + ' года — в «Своды».\n— Карта УПЦ заменится показателями плана: ' + r.kpis.length + ', мероприятий: ' + r.events.length + '.\n— Статусы и пояснения по мероприятиям начнутся с чистого листа.\n— Поручения останутся как есть.\n\nОтменить можно только восстановлением из архива.')) return;
+    if (!S.demo) {
+      try {
+        const A = [Store.DATA, Store.ARCH, 'год ' + prev];
+        const copy = async (from, to) => { try { const { bytes } = await Store.readBytes(S.dir, from); await Store.writeBytes(S.dir, A.concat(to), bytes); } catch (e) { if (!Store.isNotFound(e)) throw e; } };
+        await copy([Store.DATA, Store.REG], [Store.REG]);
+        for (const p of S.reg.people) await copy([Store.DATA, Store.PEOPLE, p.slug + '.json'], [Store.PEOPLE, p.slug + '.json']);
+        await copy([Store.DATA, 'АВР', 'работа.json'], ['АВР', 'работа.json']);
+        const wb = Model.buildSummary(ExcelJS, S.reg, S.data, today());
+        await Store.writeBytes(S.dir, ['Своды', 'Итоги ' + prev + ' — свод.xlsx'], new Uint8Array(await wb.xlsx.writeBuffer()));
+      } catch (e) { View.toast('Архив не записан — год не начат: ' + e.message, 'bad'); return; }
+    }
+    S.reg.kpis = r.kpis; S.reg.events = r.events;
+    S.reg.settings.cardDate = today(); S.reg.settings.year = P.year; S.reg.settings.yearStarted = today();
+    S.reg.settings.avrPrev = { map: S.reg.settings.avrMap, excluded: S.reg.settings.avrExcluded }; delete S.reg.settings.avrMap; delete S.reg.settings.avrExcluded;
+    P.on = false;
+    if (await saveReg(P.year + ' год начат: ' + r.kpis.length + ' показателей, ' + r.events.length + ' мероприятий. Архив — «Данные/архив/год ' + prev + '».')) { S.tab = 'upc'; render(); }
+  }
   // Показатели и мероприятия текущего года — основа проекта на следующий
   function planCopy() {
     const P = planOf();
@@ -732,6 +799,7 @@
       '<h3 class="sec">Новые показатели</h3>' + li(d.added, (k) => '<li>' + esc(Model.shortKpi(k.name)) + ' — лидер ' + esc(k.leader) + '</li>') +
       '<h3 class="sec">Уйдут из отчётов (их нет в карте)</h3>' + li(d.removed, (k) => '<li>' + esc(Model.shortKpi(k.name)) + (k.eventCount ? ' — и ' + k.eventCount + ' мероприятий' : '') + '</li>') +
       (d.manualDup && d.manualDup.length ? '<div class="msg warn">Есть в карте и уже добавлены вручную: ' + d.manualDup.map((k) => esc(Model.shortKpi(k.name))).join(', ') + '. После применения перенесите мероприятия на показатель из карты и удалите ручной.</div>' : '') +
+      (d.recoded && d.recoded.length ? '<h3 class="sec">Сменится код (мероприятия и «Отчитывается» сохранятся)</h3>' + li(d.recoded, (r) => '<li>' + esc(Model.shortKpi(r.neu.name)) + ': ' + esc(r.old.id) + ' → ' + esc(r.neu.id) + '</li>') : '') +
       '<h3 class="sec">Изменятся</h3>' + li(d.changed, (c) => '<li>' + esc(Model.shortKpi(c.name)) + ': ' + c.fields.map((f) => ({ fact: 'факт', forecast: 'прогноз', grade: 'оценка', goal: 'цель', stretch: 'напр. цель', team: 'команда', leader: '<b>лидер: ' + esc(c.neu.leader) + '</b> — отчитывающийся будет переназначен', unit: 'ед.', type: 'тип', name: 'название', top3: 'ТОП-3' }[f] || f)).join(', ') + '</li>') +
       '<p class="muted small">Статусы, пояснения и комментарии руководителей по остающимся показателям сохранятся.</p>' +
       '<div class="row"><button class="primary" data-act="cardApply">Применить</button><button data-act="cardCancel">Отмена</button></div></div>';
@@ -970,6 +1038,8 @@
       '<li><b>Поручение нескольким</b>: отметьте нескольких ответственных (или «Все на совещании»). У каждого свой статус, у поручения — «выполнили N из M». Снимается, когда выполнили все (или вручную).</li>' +
       '<li><b>Соисполнители</b> пишут свой комментарий по поручению в своём отчёте — он виден у ответственного и на совещании.</li>' +
       '<li><b>Комментарии директора</b>: директор нажимает у пункта «Комментарий» или «Снять с контроля» — вам приходит письмо с кодом пункта. Скопируйте текст письма во вкладку «Директор» → «Разобрать» → «Внести». Руководитель видит комментарий у пункта и отвечает там же; директор видит ответ. Комментарий, сказанный на совещании, — кнопка «+ комментарий директора» у пункта на экране «Совещание».</li>' +
+      '<li><b>Личные напоминания</b>: «Кто обновил» → «Личные напоминания» — каждому письмо с его пунктами (просрочки, давно не менявшиеся пояснения, комментарии директора без ответа, цели на следующий год).</li>' +
+      '<li><b>Январь</b>: «План на год» → «Начать … год» — прошлый год в архив, карта УПЦ и мероприятия из плана. Потом официальную карту УПЦ — на вкладке «УПЦ», показатели со сменившимся кодом сохранят мероприятия.</li>' +
       '<li><b>«Требуют внимания»</b> у директора и пометки ⚠ на совещании собираются сами: пояснение не менялось 3 недели и больше, срок прошёл без движения, срок переносили 2 раза и больше, пояснения нет. Считается с первого открытия этой страницы после обновления.</li>' +
       '<li><b>Раз в месяц</b>: «УПЦ» → «Загрузить новую карту УПЦ». Сборщик покажет, что добавится, уйдёт и изменится.</li>' +
       '<li><b>Ноябрь–декабрь</b>: вкладка «План на год» → «Взять показатели и мероприятия текущего года», поправьте список, впишите цели, назначьте лидеров, включите сбор. Лидеры подтверждают или правят мероприятия в разделе «Проект на … год» своего отчёта и предлагают бизнес-инициативы. Затем «Выгрузить в форму Приложения 3».</li>' +
@@ -985,8 +1055,9 @@
   // ---------- события ----------
   function people() { return Model.reportPeople(S.reg); }
   document.addEventListener('click', async (e) => {
-    const b = e.target.closest('[data-tab],[data-act],[data-mailtest],[data-kpiedit],[data-kpidel],[data-avrf],[data-avr-src],[data-avr-excl],[data-restore],[data-pkdel],[data-pedel],[data-peadd],[data-person-idx],[data-mf],[data-meetf],[data-memo],[data-evdel],[data-evadd],[data-pmove],[data-dnop],[data-dnskip],[data-dadd],.who .card');
+    const b = e.target.closest('[data-tab],[data-act],[data-mailtest],[data-kpiedit],[data-kpidel],[data-avrf],[data-avr-src],[data-avr-excl],[data-restore],[data-pkdel],[data-pedel],[data-peadd],[data-person-idx],[data-mf],[data-meetf],[data-memo],[data-evdel],[data-evadd],[data-pmove],[data-dnop],[data-dnskip],[data-dadd],[data-remind],.who .card');
     if (!b) return;
+    if (b.dataset.remind) { e.preventDefault(); remindMail(b.dataset.remind); return; }
     if (b.dataset.dnop) { const [op, id] = b.dataset.dnop.split('|'); dnOp(op, id); return; }
     if (b.dataset.dnskip !== undefined) { S.dnParsed.splice(+b.dataset.dnskip, 1); render(); return; }
     if (b.dataset.dadd) { const [kind, ref, pid] = b.dataset.dadd.split('|'); dnFromMeeting(kind, ref, pid); return; }
@@ -1079,6 +1150,8 @@
         'Коллеги, добрый день!\n\nПрошу заполнить в отчёте первой линейки итоги за ' + r.period + ' по своим мероприятиям УПЦ (поле «Итог за ' + r.period + '»)' + (r.due ? ' до ' + Model.fmtISO(r.due) : '') + ' и нажать «Сохранить».\n\nСпасибо!');
     }
     else if (a === 'kpiNew') { S.kpiForm = {}; render(); }
+    else if (a === 'remindOpen') { S.remindOpen = !S.remindOpen; render(); }
+    else if (a === 'yearStart') yearStart();
     else if (a === 'kpiRestore') kpiRestore();
     else if (a === 'dnParse') { S.dnPasteText = $('#dnPaste').value; S.dnParsed = Model.parseDirMail(S.reg, S.dnPasteText); render(); }
     else if (a === 'dnClear') { S.dnParsed = null; S.dnPasteText = ''; render(); }

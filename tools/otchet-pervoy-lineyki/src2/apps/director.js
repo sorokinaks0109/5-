@@ -36,6 +36,7 @@
       View.countTiles(Model.countFlags(open)) + (late ? '<div class="msg bad">Срок прошёл: ' + late + '</div>' : '') +
       myNotes() + View.changesHtml(S.reg, S.data, today()) + View.attentionHtml(S.reg, S.data, today()) +
       '<h3 class="sec">По руководителям</h3>' + View.chartMemo(S.reg, S.data, today()) + View.whoCards(S.reg, S.data, today()) +
+      '<h3 class="sec">Динамика</h3>' + View.chartTrend(S.reg) + View.chartDiscipline(S.reg) +
       '<h3 class="sec">Показатели УПЦ <span class="muted">карта от ' + esc(Model.fmtISO(S.reg.settings.cardDate) || '—') + '</span></h3>' + View.chartKpi(S.reg, S.data) +
       '<table class="grid"><thead><tr><th>Показатель</th><th>Цель</th><th>Факт</th><th>Прогноз</th><th>Оценка</th><th class="c-resp">Отчитывается</th><th class="c-resp">Мероприятия выполнено</th></tr></thead><tbody>' + kpiRows + '</tbody></table>';
   }

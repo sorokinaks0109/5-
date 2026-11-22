@@ -11,6 +11,8 @@
     '.ch-legend{display:flex;flex-wrap:wrap;gap:2px 10px;font-size:12px;color:#5d6b7a;margin-bottom:8px}.ch-legend .sw{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px}',
     '.ch-row{padding:5px 0;font-size:13px;border-top:1px solid #eef1f4}.ch-name{font-weight:600}.ch-val{color:#5d6b7a;font-size:12px}.ch-krow .gchip{float:left;margin-right:6px}',
     '.ch-track{position:relative;height:14px;margin:3px 0}.ch-bar{display:flex;gap:2px;height:14px}.ch-bar .seg{min-width:3px}.ch-bar .seg:first-child{border-radius:4px 0 0 4px}.ch-bar .seg:last-child{border-radius:0 4px 4px 0}',
+    '.tc-row{display:flex;gap:3px;height:140px;border-bottom:1px solid #d9e0e8}.tc{flex:1;display:flex;flex-direction:column}.tc-od{height:16px;text-align:center;font-size:11px}.tc-plot{flex:1;display:flex;align-items:flex-end}.tc-stack{width:100%;display:flex;flex-direction:column-reverse;gap:1px;min-height:3px}.tc-stack .seg{min-height:2px}.tc-lb{font-size:9px;color:#5d6b7a;text-align:center;height:14px;overflow:hidden}.late{color:#b3261e;font-weight:600}',
+    '.dg-row{display:grid;grid-template-columns:96px 1fr 58px;gap:4px;align-items:center;padding:2px 0;font-size:12px}.dg-cells{display:flex;gap:2px}.dg{width:10px;height:12px;border-radius:2px;display:inline-block}.dg-w{display:none}',
     '.sw-done{background:#2e8b57}.sw-work{background:#3b78c4}.sw-fail{background:#c8423a}.sw-none{background:#e0a800}.sw-na{background:#9aa6b2}.sw-rest{background:#e3e7ec}',
     '.ch-kpi{background:#eef1f4;border-radius:4px}.ch-fc{position:absolute;left:0;top:3px;height:8px;border-radius:0 4px 4px 0}.ch-goal{position:absolute;top:-3px;bottom:-3px;width:2px;background:#1d2733}',
     '.ch-fact{position:absolute;top:1px;width:10px;height:10px;margin-left:-5px;border-radius:50%;background:#fff;border:2px solid #1d2733}.sw-goalmark{background:#1d2733;width:3px!important}.sw-factmark{background:#fff;border:2px solid #1d2733;border-radius:50%!important}',
@@ -77,6 +79,7 @@
     h += '<h2>Поручения на контроле</h2>' + tiles(all, 'на контроле');
     h += '<h2>Просрочено и не выполнено: ' + bad.length + '</h2>' + (bad.length ? bad.map((m) => card(m, '<div class="meta">Отв.: ' + esc(M().respName(reg, m)) + '</div>')).join('') : '<div class="muted">Нет</div>');
     h += '<h2>По руководителям</h2>' + V().chartMemo(reg, data, today);
+    h += '<h2>Динамика</h2>' + V().chartTrend(reg) + V().chartDiscipline(reg);
     const people = M().reportPeople(reg);
     for (const p of people) {
       const v = M().personView(reg, data, p.id, today);

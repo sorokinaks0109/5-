@@ -210,9 +210,19 @@
   function diffCard(reg, card) {
     const old = new Map(reg.kpis.map((k) => [k.id, k]));
     const neu = new Map(card.kpis.map((k) => [k.id, k]));
-    const added = card.kpis.filter((k) => !old.has(k.id));
+    let added = card.kpis.filter((k) => !old.has(k.id));
     // показатели, добавленные вручную, карта не трогает
-    const removed = reg.kpis.filter((k) => !k.manual && !neu.has(k.id)).map((k) => ({ ...k, eventCount: reg.events.filter((e) => e.kpi === k.id).length }));
+    let removed = reg.kpis.filter((k) => !k.manual && !neu.has(k.id)).map((k) => ({ ...k, eventCount: reg.events.filter((e) => e.kpi === k.id).length }));
+    // тот же показатель под новым кодом (например, в начале года показатели взяты из проекта карты, а в официальной карте — свои коды):
+    // мероприятия и «Отчитывается» переходят на новый код
+    const recoded = [];
+    for (const o of removed) {
+      const oc = kpiCore(o.name);
+      const k = added.find((x) => kpiCore(x.name) === oc) || added.find((x) => { const c = kpiCore(x.name); return Math.min(c.length, oc.length) >= 15 && (c.startsWith(oc) || oc.startsWith(c)); });
+      if (k && !recoded.some((r) => r.neu.id === k.id)) recoded.push({ old: o, neu: k });
+    }
+    removed = removed.filter((o) => !recoded.some((r) => r.old.id === o.id));
+    added = added.filter((k) => !recoded.some((r) => r.neu.id === k.id));
     const cardNames = new Set(card.kpis.map((k) => norm(shortKpi(k.name))));
     const manualDup = reg.kpis.filter((k) => k.manual && cardNames.has(norm(shortKpi(k.name))));
     const changed = [];
@@ -224,7 +234,7 @@
       const f = KPI_FIELDS.filter((x) => !(card.missing || []).includes(x) && !same(x));
       if (f.length) changed.push({ id: k.id, name: k.name, fields: f, leaderChanged: f.includes('leader'), old: o, neu: k });
     }
-    return { added, removed, changed, manualDup, date: card.date, missing: card.missing || [] };
+    return { added, removed, changed, recoded, manualDup, date: card.date, missing: card.missing || [] };
   }
   function defaultReporter(reg, kpi) {
     const p = personByName(reg, kpi.leader);
@@ -233,6 +243,7 @@
   function applyCard(reg, card) {
     const d = diffCard(reg, card);
     const keep = new Map(reg.kpis.map((k) => [k.id, k]));
+    for (const r of d.recoded) { keep.set(r.neu.id, r.old); reg.events.forEach((e) => { if (e.kpi === r.old.id) e.kpi = r.neu.id; }); }
     const ids0 = new Set(card.kpis.map((k) => k.id));
     reg.kpis = card.kpis.map((k) => {
       const o = keep.get(k.id);
@@ -498,6 +509,26 @@
     return { kpis, events, added, updated, removed, noLeader: fresh.noLeader, noFill, matched: fresh.matched };
   }
 
+  // ---------- начало нового года: карта УПЦ и мероприятия — из собранного плана ----------
+  // Показатель получает код из проекта карты (если он есть), «Отчитывается» — лидер из списка или первый, кто заполнял;
+  // мероприятия — итоговые варианты заполнявших, «Заполняет» — тот, кто их писал. Статусы начинаются с чистого листа.
+  function startYear(reg, data) {
+    const P = reg.plan; if (!P || !P.kpis || !P.kpis.length) throw new Error('В «Плане на год» нет показателей');
+    const realCode = (c) => /^[a-z]\d{4,}$/i.test(String(c || '').trim());
+    const kpis = [], events = [], used = new Set();
+    for (const k of P.kpis) {
+      let id = realCode(k.code) && !used.has(k.code) ? k.code : k.id; used.add(id);
+      const fs = planFillers(k);
+      kpis.push({ id, name: k.name, goal: k.goal || '', stretch: k.stretch || '', fact: '', forecast: '', grade: '', team: k.team || '', leader: planLeaderName(reg, k),
+        unit: k.unit || '', type: k.type || 'ФОП', top3: !!k.top3, reporter: k.leader || fs[0] || null, fromPlan: P.year });
+      for (const e of planFinal(reg, data, k).events) {
+        if (!String(e.text || '').trim()) continue;
+        events.push({ id: uid('e'), kpi: id, text: e.text, executors: e.executors || '', due: e.due || '', speaker: e.who || fs[0] || null });
+      }
+    }
+    return { kpis, events };
+  }
+
   // ---------- история по неделям (для графиков динамики и дисциплины отчётности) ----------
   // Одна запись на неделю (по понедельнику); при повторной записи в ту же неделю — обновляется.
   function recordWeek(reg, data, today) {
@@ -698,7 +729,7 @@
   root.Model = {
     STATUSES, NO_STATUS, statusLabel, isFinal, ISO, todayISO, fmtISO, parseDue, isOverdue, fmtDateTime, uid, norm, surname,
     personById, reportPeople, personByName, inTeam, shortKpi, memoStatus, eventStatus, respName, personView, countFlags, freshness,
-    respsOf, isResp, combineFlags, coNotes, mergeReport, sameVersion, stOf, sections, avrReq, avrqKey, avrqText, avrqProgress, planOn, planFinal, planProgress, planMine, planRefresh, planFillers, planLeaderName, recordWeek,
+    respsOf, isResp, combineFlags, coNotes, mergeReport, sameVersion, stOf, sections, avrReq, avrqKey, avrqText, avrqProgress, planOn, planFinal, planProgress, planMine, planRefresh, startYear, planFillers, planLeaderName, recordWeek,
     parsePlanCard, planFromCard, splitEvents, kpiCore,
     NOTE_TYPES, dirAnswer, noteState, dirNotes, noteItem, dirCode, parseDirMail, addDirNote, updateTrack, takeSnap, attention, changes, discipline,
     cellText, parseCard, diffCard, applyCard, kpiValuesLost, restoreKpiValues, defaultReporter, buildSummary, summaryText,

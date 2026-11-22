@@ -309,3 +309,25 @@ h3.sec .dn-tools { font-weight: normal; }
 .plan-banner.done .plan-st { color: #1e7b45; }
 .plan-banner.done .plan-go { background: #fff; color: #4b3591; }
 .plan-back { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+
+/* динамика по неделям */
+.tc-row { display: flex; gap: 6px; align-items: stretch; height: 190px; border-bottom: 1px solid var(--line); padding-top: 2px; }
+.tc { flex: 1; min-width: 22px; max-width: 64px; display: flex; flex-direction: column; }
+.tc-od { height: 18px; text-align: center; font-size: 12px; }
+.tc-plot { flex: 1; display: flex; align-items: flex-end; }
+.tc-stack { width: 100%; display: flex; flex-direction: column-reverse; gap: 2px; min-height: 3px; }
+.tc-stack .seg { min-height: 2px; }
+.tc-stack .seg:first-child { border-radius: 0 0 2px 2px; } .tc-stack .seg:last-child { border-radius: 4px 4px 0 0; } .tc-stack .seg:only-child { border-radius: 4px 4px 0 0; }
+.tc-lb { height: 0; overflow: visible; }
+.tc-row + .ch-val { margin-top: 22px !important; }
+.tc .tc-lb { position: relative; top: 4px; text-align: center; font-size: 11px; color: var(--muted); white-space: nowrap; }
+.dg-row { display: grid; grid-template-columns: 170px 1fr 90px; gap: 12px; align-items: center; padding: 2px 0; font-size: 13.5px; }
+.dg-cells { display: flex; gap: 3px; }
+.dg { width: 18px; height: 14px; border-radius: 3px; display: inline-block; flex: 0 0 auto; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.dg-w { width: 18px; font-size: 9.5px; color: var(--muted); writing-mode: vertical-rl; transform: rotate(180deg); height: 34px; flex: 0 0 auto; }
+.dg-head { align-items: end; }
+@media (max-width: 900px) { .dg-row { grid-template-columns: 110px 1fr 70px; gap: 6px; } .dg, .dg-w { width: 12px; } }
+@media print { .tc-stack .seg { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+
+details.remind { border-top: 1px solid var(--line); padding: 6px 0; } details.remind summary { cursor: pointer; } details.remind ul { margin: 6px 0 0; }
+.year-panel { border-left: 6px solid #1f5fa8; }
