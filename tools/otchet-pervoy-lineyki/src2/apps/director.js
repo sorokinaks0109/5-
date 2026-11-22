@@ -7,6 +7,7 @@
   const S = { dir: null, reg: null, data: {}, tab: 'sum', person: 0, memoFilter: '', memoPerson: '', demo: false, meetFilter: '' };
   const today = () => Model.todayISO();
   const TABS = [['sum', 'Сводка'], ['meeting', 'Доклады'], ['memo', 'Поручения'], ['upc', 'Показатели УПЦ']];
+  const H = View.history({ dir: () => S.dir, render: () => render() });
   const conn = Base.connector({ mode: 'read', render: () => render(), onDir: async (dir) => { S.dir = dir; await load(); } });
 
   async function load() { const all = await Base.loadAll(S.dir); S.reg = all.reg; S.data = all.data; render(); }
@@ -53,11 +54,12 @@
   function meetingTab() {
     const ps = people(); if (S.person >= ps.length) S.person = 0;
     return '<div class="people-bar">' + ps.map((x, i) => '<button class="chip ' + (i === S.person ? 'active' : '') + '" data-person-idx="' + i + '">' + esc(x.fio) + '</button>').join('') +
-      '<span class="tools row"><button data-act="prev">←</button><button data-act="next">→</button><button data-act="card">' + (S.card ? 'Доклад' : 'Карточка руководителя') + '</button><button data-act="print">Печать</button></span></div>' +
-      (S.card ? View.personCard(S.reg, S.data, ps[S.person].id, today()) :
+      '<span class="tools row"><button data-act="prev">←</button><button data-act="next">→</button><button data-act="card">' + (S.card ? 'Доклад' : 'Карточка руководителя') + '</button>' +
+      (S.snap ? '' : '<button data-act="hist">' + (H.on ? 'Доклад' : 'История по неделям') + '</button>') + '<button data-act="print">Печать</button></span></div>' +
+      (H.on && !S.snap ? H.html(ps[S.person].id, S.reg, S.data) : S.card ? View.personCard(S.reg, S.data, ps[S.person].id, today()) :
         (asst() ? '' : '<div class="msg warn small no-print">Кнопки «Комментарий» заработают, когда помощник впишет свою почту в настройках.</div>') +
         View.filterChips(S.meetFilter, 'data-meetf') +
-        View.personReport(S.reg, S.data, ps[S.person].id, today(), { filter: S.meetFilter, dir: true }));
+        View.personReport(S.reg, S.data, ps[S.person].id, today(), { filter: S.meetFilter, dir: true, histBtn: !S.snap }));
   }
   function memoTab() {
     const chip = (k, t) => '<button class="chip ' + (S.memoFilter === k ? 'active' : '') + '" data-mf="' + k + '">' + t + '</button>';
@@ -82,17 +84,18 @@
     const body = it.fio + ', ' + it.what + (m && m.num ? ' №' + m.num : '') + ':\n«' + cut2(it.text, 90) + '»\n\n' + lead + Model.dirCode(type, kind, ref, pid);
     // некоторые почтовые программы не принимают текст письма из ссылки — кладём его ещё и в буфер обмена
     View.copyText(body);
-    View.mailto([a.email], subj, body);
+    View.mail(S.reg.settings, [a.email], subj, body);
     View.toast('Открывается письмо помощнику. Если в письме нет текста — щёлкните в поле письма и нажмите Ctrl+V', 'ok');
   }
   document.addEventListener('click', async (e) => {
-    const b = e.target.closest('[data-tab],[data-act],[data-person-idx],[data-mf],[data-meetf],[data-dn],.who .card');
+    const b = e.target.closest('[data-tab],[data-act],[data-person-idx],[data-mf],[data-meetf],[data-dn],[data-hw],[data-hi],.who .card');
     if (!b) return;
+    if (H.click(b)) return;
     if (b.dataset.dn) { const [type, kind, ref, pid] = b.dataset.dn.split('|'); noteMail(type, kind, ref, pid); return; }
     if (b.dataset.meetf !== undefined) { S.meetFilter = b.dataset.meetf; render(); return; }
     if (b.dataset.tab) { S.tab = b.dataset.tab; render(); return; }
     if (b.classList.contains('card') && b.dataset.person) { S.person = people().findIndex((p) => p.id === b.dataset.person); S.tab = 'meeting'; render(); return; }
-    if (b.dataset.personIdx) { S.person = +b.dataset.personIdx; render(); return; }
+    if (b.dataset.personIdx) { S.person = +b.dataset.personIdx; H.item = null; render(); return; }
     if (b.dataset.mf !== undefined) { S.memoFilter = b.dataset.mf; render(); return; }
     const a = b.dataset.act; const n = S.reg ? people().length : 0;
     if (a === 'pick') conn.pick();

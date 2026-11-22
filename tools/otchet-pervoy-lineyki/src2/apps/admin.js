@@ -10,6 +10,7 @@
   const today = () => Model.todayISO();
   const TABS = [['who', 'Кто обновил'], ['meeting', 'Совещание'], ['memo', 'Поручения'], ['dir', 'Директор'], ['upc', 'УПЦ'], ['avr', 'План АВР'], ['plan', 'План на год'], ['out', 'Свод и письма'], ['settings', 'Настройки'], ['help', 'Как пользоваться']];
 
+  const H = View.history({ dir: () => S.dir, render: () => render() });
   const conn = Base.connector({ mode: 'readwrite', render: () => render(), onDir: async (dir) => { S.dir = dir; await load(); } });
 
   async function load() {
@@ -175,9 +176,9 @@
     const p = people[S.person];
     return '<div class="people-bar">' + people.map((x, i) => '<button class="chip ' + (i === S.person ? 'active' : '') + '" data-person-idx="' + i + '">' + esc(x.fio) + '</button>').join('') +
       '<span class="tools row"><button data-act="prev">←</button><button data-act="next">→</button><button class="primary" data-act="present">На весь экран</button>' +
-      '<button data-act="print">Печать</button><button data-act="printAll">Печать всех</button></span></div>' +
-      View.filterChips(S.meetFilter, 'data-meetf') +
-      '<div id="report">' + (p ? View.personReport(S.reg, S.data, p.id, today(), { filter: S.meetFilter, admin: true }) : '') + '</div>';
+      '<button data-act="hist">' + (H.on ? 'Доклад' : 'История по неделям') + '</button><button data-act="print">Печать</button><button data-act="printAll">Печать всех</button></span></div>' +
+      (H.on && p ? H.html(p.id, S.reg, S.data) : View.filterChips(S.meetFilter, 'data-meetf') +
+      '<div id="report">' + (p ? View.personReport(S.reg, S.data, p.id, today(), { filter: S.meetFilter, admin: true, histBtn: true }) : '') + '</div>');
   }
 
   // ---------- поручения ----------
@@ -1038,6 +1039,7 @@
       '<li><b>Поручение нескольким</b>: отметьте нескольких ответственных (или «Все на совещании»). У каждого свой статус, у поручения — «выполнили N из M». Снимается, когда выполнили все (или вручную).</li>' +
       '<li><b>Соисполнители</b> пишут свой комментарий по поручению в своём отчёте — он виден у ответственного и на совещании.</li>' +
       '<li><b>Комментарии директора</b>: директор нажимает у пункта «Комментарий» или «Снять с контроля» — вам приходит письмо с кодом пункта. Скопируйте текст письма во вкладку «Директор» → «Разобрать» → «Внести». Руководитель видит комментарий у пункта и отвечает там же; директор видит ответ. Комментарий, сказанный на совещании, — кнопка «+ комментарий директора» у пункта на экране «Совещание».</li>' +
+      '<li><b>История</b>: «Совещание» → «История по неделям» — отчёт руководителя на любую прошлую неделю и что изменилось; «📈 по неделям» у пункта — его статус и пояснение по всем неделям. Берётся из еженедельных копий (хранятся год).</li>' +
       '<li><b>Личные напоминания</b>: «Кто обновил» → «Личные напоминания» — каждому письмо с его пунктами (просрочки, давно не менявшиеся пояснения, комментарии директора без ответа, цели на следующий год).</li>' +
       '<li><b>Январь</b>: «План на год» → «Начать … год» — прошлый год в архив, карта УПЦ и мероприятия из плана. Потом официальную карту УПЦ — на вкладке «УПЦ», показатели со сменившимся кодом сохранят мероприятия.</li>' +
       '<li><b>«Требуют внимания»</b> у директора и пометки ⚠ на совещании собираются сами: пояснение не менялось 3 недели и больше, срок прошёл без движения, срок переносили 2 раза и больше, пояснения нет. Считается с первого открытия этой страницы после обновления.</li>' +
@@ -1055,8 +1057,9 @@
   // ---------- события ----------
   function people() { return Model.reportPeople(S.reg); }
   document.addEventListener('click', async (e) => {
-    const b = e.target.closest('[data-tab],[data-act],[data-mailtest],[data-kpiedit],[data-kpidel],[data-avrf],[data-avr-src],[data-avr-excl],[data-restore],[data-pkdel],[data-pedel],[data-peadd],[data-person-idx],[data-mf],[data-meetf],[data-memo],[data-evdel],[data-evadd],[data-pmove],[data-dnop],[data-dnskip],[data-dadd],[data-remind],.who .card');
+    const b = e.target.closest('[data-tab],[data-act],[data-mailtest],[data-kpiedit],[data-kpidel],[data-avrf],[data-avr-src],[data-avr-excl],[data-restore],[data-pkdel],[data-pedel],[data-peadd],[data-person-idx],[data-mf],[data-meetf],[data-memo],[data-evdel],[data-evadd],[data-pmove],[data-dnop],[data-dnskip],[data-dadd],[data-remind],[data-hw],[data-hi],.who .card');
     if (!b) return;
+    if (H.click(b)) return;
     if (b.dataset.remind) { e.preventDefault(); remindMail(b.dataset.remind); return; }
     if (b.dataset.dnop) { const [op, id] = b.dataset.dnop.split('|'); dnOp(op, id); return; }
     if (b.dataset.dnskip !== undefined) { S.dnParsed.splice(+b.dataset.dnskip, 1); render(); return; }
@@ -1090,7 +1093,7 @@
     }
     if (b.dataset.mailtest) { const to = S.reg.settings.directorEmail || ''; View.mail(S.reg.settings, to ? [to] : [], 'Проверка ссылки — не отправлять', 'Это проверка: открылось ли новое письмо с адресом и темой.', b.dataset.mailtest); return; }
     if (b.classList.contains('card') && b.dataset.person) { S.person = people().findIndex((p) => p.id === b.dataset.person); S.tab = 'meeting'; render(); return; }
-    if (b.dataset.personIdx) { S.person = +b.dataset.personIdx; render(); return; }
+    if (b.dataset.personIdx) { S.person = +b.dataset.personIdx; H.item = null; render(); return; }
     if (b.dataset.mf !== undefined) { S.memoFilter = b.dataset.mf; render(); return; }
     if (b.dataset.memo) { const [op, id] = b.dataset.memo.split('|'); memoAction(op, id); return; }
     if (b.dataset.evdel) { if (confirm('Удалить мероприятие?')) { S.reg.events = S.reg.events.filter((x) => x.id !== b.dataset.evdel); if (await saveReg('Удалено')) render(); } return; }

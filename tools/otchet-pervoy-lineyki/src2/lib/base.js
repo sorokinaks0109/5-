@@ -36,7 +36,7 @@
     return { reg, data, regModified: modified, restored };
   }
 
-  // Еженедельная копия всех данных (без вложений) — хранится полгода: Данные/архив/еженедельно/ГГГГ-ММ-ДД
+  // Еженедельная копия всех данных (без вложений) — хранится год (53 недели); из неё же — «История»: Данные/архив/еженедельно/ГГГГ-ММ-ДД
   async function weeklyBackup(dir, reg) {
     try {
       const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
@@ -48,7 +48,7 @@
       await copy([Store.DATA, Store.REG], [Store.REG]);
       for (const p of reg.people) await copy([Store.DATA, Store.PEOPLE, p.slug + '.json'], [Store.PEOPLE, p.slug + '.json']);
       await copy([Store.DATA, 'АВР', 'работа.json'], ['АВР', 'работа.json']);
-      for (const old of have.slice(0, Math.max(0, have.length + 1 - 26))) await Store.remove(dir, base.concat(old));
+      for (const old of have.slice(0, Math.max(0, have.length + 1 - 53))) await Store.remove(dir, base.concat(old));
       return true;
     } catch (e) { return false; }
   }

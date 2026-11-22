@@ -169,13 +169,137 @@
   // всё, что добавляется к пункту отчёта: комментарии директора, пометка «требует внимания», кнопки
   function itemExtras(reg, ctx, kind, ref, pid) {
     const a = kind === 'm' ? ctx.att['m|' + ref + '|' + pid] : kind === 'e' ? ctx.att['e|' + ref] : null;
-    return (a ? '<div class="attn">⚠ ' + esc(a.reasons.join('; ')) + '</div>' : '') + notesBlock(reg, ctx.data, pid, kind, ref, ctx.opts) + noteButtons(ctx, kind, ref, pid);
+    const hb = ctx.opts && ctx.opts.histBtn && (kind === 'm' || kind === 'e') ? '<button class="mini dn-btn no-print" data-hi="' + kind + '|' + esc(ref) + '|' + esc(pid) + '" title="Статус и пояснение по неделям">📈 по неделям</button>' : '';
+    return (a ? '<div class="attn">⚠ ' + esc(a.reasons.join('; ')) + '</div>' : '') + notesBlock(reg, ctx.data, pid, kind, ref, ctx.opts) +
+      (hb && !(ctx.opts.dir || ctx.opts.admin) ? '<span class="dn-tools no-print">' + hb + '</span>' : noteButtons(ctx, kind, ref, pid).replace('</span>', hb + '</span>'));
   }
   function attMap(reg, data, today, pid) { const m = {}; for (const x of M().attention(reg, data, today, pid)) m[x.key] = x; return m; }
   // пункты, которые директор хочет услышать, — первыми
   function meetFirst(reg, kind, list, pid) {
     const ids = new Set(M().dirNotes(reg, pid, kind).filter((n) => n.type === 'meet').map((n) => n.ref));
     return ids.size ? list.filter((x) => ids.has(x.id)).concat(list.filter((x) => !ids.has(x.id))) : list;
+  }
+
+  // ---------- история по неделям: из еженедельных копий «Данные/архив/еженедельно/ГГГГ-ММ-ДД» ----------
+  // Ничего не хранит в отчёте: недели читаются с папки только когда открыли «Историю» или «по неделям».
+  function history(opts) {
+    const H = { on: false, weeks: null, idx: 0, item: null, loading: '', reg: {}, ppl: {} };
+    const W = (name) => [root.Store.DATA, root.Store.ARCH, 'еженедельно', name];
+    const rd = async (path) => { try { return (await root.Store.readJSON(opts.dir(), path)).data; } catch (e) { return null; } };
+    async function weekReg(n) { if (!(n in H.reg)) H.reg[n] = await rd(W(n).concat(root.Store.REG)); return H.reg[n]; }
+    async function weekPerson(n, p) { const k = n + '/' + p.slug; if (!(k in H.ppl)) H.ppl[k] = await rd(W(n).concat(root.Store.PEOPLE, p.slug + '.json')); return H.ppl[k]; }
+    async function weekAll(n) {
+      const reg = await weekReg(n); if (!reg) return null;
+      const data = {}; for (const p of reg.people || []) { const d = await weekPerson(n, p); if (d) data[p.id] = { data: d }; }
+      return { reg, data };
+    }
+    async function list() { const all = await root.Store.list(opts.dir(), [root.Store.DATA, root.Store.ARCH, 'еженедельно']); return all.filter((x) => x.kind === 'directory' && /^\d{4}-\d{2}-\d{2}$/.test(x.name)).map((x) => x.name).sort(); }
+    H.open = async () => {
+      H.on = true; H.loading = 'Загружаю недели…'; opts.render();
+      try { H.weeks = await list(); H.idx = H.weeks.length - 1; await H.go(H.idx); } catch (e) { H.loading = 'История не открылась: ' + e.message; opts.render(); }
+    };
+    H.close = () => { H.on = false; H.item = null; opts.render(); };
+    H.go = async (i) => {
+      H.idx = Math.max(0, Math.min(H.weeks.length - 1, i)); H.loading = 'Загружаю неделю…'; opts.render();
+      H.cur = H.weeks.length ? await weekAll(H.weeks[H.idx]) : null; H.prev = H.idx > 0 ? await weekAll(H.weeks[H.idx - 1]) : null;
+      H.loading = ''; opts.render();
+    };
+    // История одного пункта: по всем неделям статус, пояснение, срок
+    H.showItem = async (kind, id, pid) => {
+      if (!H.weeks) { H.on = true; H.weeks = await list(); H.idx = H.weeks.length - 1; }
+      H.on = true; H.loading = 'Собираю историю пункта…'; opts.render();
+      const rows = [];
+      for (const n of H.weeks) {
+        const reg = await weekReg(n); if (!reg) continue;
+        rows.push({ week: n, ...(await itemAt(reg, kind, id, pid, async (p) => weekPerson(n, p))) });
+      }
+      H.item = { kind, id, pid, rows }; H.loading = '';
+      if (!H.cur && H.weeks.length) await H.go(H.weeks.length - 1); else opts.render();
+    };
+    async function itemAt(reg, kind, id, pid, load) {
+      const pp = (x) => M().personById(reg, x);
+      if (kind === 'm') {
+        const m = (reg.memo || []).find((x) => x.id === id);
+        if (!m) return { state: 'not' };
+        const p = pp(pid); const d = p ? await load(p) : null;
+        const s = (d && d.memo && d.memo[id]) || {};
+        return { state: m.closed ? 'closed' : 'open', text: m.text, flag: s.flag || '', note: s.text || '', due: m.due };
+      }
+      const e = (reg.events || []).find((x) => x.id === id);
+      if (!e) return { state: 'not' };
+      const sp = pp(e.speaker); const data = {};
+      if (sp) { const d = await load(sp); if (d) data[sp.id] = { data: d }; }
+      const st = M().eventStatus(reg, data, e);
+      return { state: 'open', text: e.text, flag: st.flag, note: st.text, due: e.due };
+    }
+    const wk = (n) => n.slice(8, 10) + '.' + n.slice(5, 7) + '.' + n.slice(0, 4);
+    function itemsOf(reg, data, pid, date) {
+      const v = M().personView(reg, data, pid, date); const out = new Map();
+      v.memo.forEach((m) => out.set('m|' + m.id, { kind: 'поручение', text: m.text, flag: m.st.flag, note: m.st.text, due: m.due }));
+      [].concat(...v.kpiOwn.map((k) => k.events.filter((e) => e.mine)), ...v.kpiOther.map((k) => k.events)).forEach((e) => out.set('e|' + e.id, { kind: 'мероприятие', text: e.text, flag: e.st.flag, note: e.st.text, due: e.due }));
+      return out;
+    }
+    function diffHtml(pid) {
+      if (!H.prev || !H.cur) return '<div class="muted small">Это самая ранняя сохранённая неделя — сравнивать не с чем.</div>';
+      const a = itemsOf(H.prev.reg, H.prev.data, pid, H.weeks[H.idx - 1]), b = itemsOf(H.cur.reg, H.cur.data, pid, H.weeks[H.idx]);
+      const lines = []; let same = 0;
+      for (const [k, x] of b) {
+        const o = a.get(k);
+        if (!o) { lines.push('<li><b>Новое</b> ' + x.kind + ' «' + esc(short(x.text)) + '»</li>'); continue; }
+        const ch = [];
+        if (o.flag !== x.flag) ch.push('статус: ' + esc(M().statusLabel(o.flag)) + ' → <b>' + esc(M().statusLabel(x.flag)) + '</b>');
+        if (String(o.note).trim() !== String(x.note).trim()) ch.push('пояснение: «' + esc(short(x.note || '—')) + '»');
+        if ((o.due || '') !== (x.due || '')) ch.push('срок: ' + esc(M().fmtISO(o.due)) + ' → <b>' + esc(M().fmtISO(x.due)) + '</b>');
+        if (ch.length) lines.push('<li>' + x.kind + ' «' + esc(short(x.text)) + '» — ' + ch.join('; ') + '</li>'); else same++;
+      }
+      for (const [k, o] of a) if (!b.has(k)) lines.push('<li><b>Снято / ушло</b>: ' + o.kind + ' «' + esc(short(o.text)) + '»</li>');
+      return '<div class="hist-diff"><b>Что изменилось за неделю (с ' + wk(H.weeks[H.idx - 1]) + ' по ' + wk(H.weeks[H.idx]) + '):</b>' +
+        (lines.length ? '<ul>' + lines.join('') + '</ul>' : ' <span class="late">ничего</span>') + (same ? '<div class="muted small">Без изменений: ' + same + '</div>' : '') + '</div>';
+    }
+    function itemHtml(cur) {
+      const I = H.item; if (!I) return '';
+      const rows = I.rows.concat(cur ? [{ week: 'сейчас', ...cur }] : []);
+      let run = 0, last = null;
+      const tr = rows.map((r, i) => {
+        if (r.state === 'not') return '<tr class="muted"><td>' + (r.week === 'сейчас' ? 'сейчас' : wk(r.week)) + '</td><td colspan="3">ещё не было</td></tr>';
+        const same = last && last.flag === r.flag && String(last.note).trim() === String(r.note).trim();
+        run = same ? run + 1 : 0; last = r;
+        return '<tr' + (same ? ' class="hist-same"' : '') + '><td>' + (r.week === 'сейчас' ? '<b>сейчас</b>' : wk(r.week)) + '</td><td>' + (r.state === 'closed' ? '<span class="badge s-na">снято</span>' : badge(r.flag)) + '</td><td>' + esc(r.note || '—') + (same ? ' <span class="muted small">(так же)</span>' : '') + '</td><td>' + esc(M().fmtISO(r.due)) + '</td></tr>';
+      }).join('');
+      const t = (rows.filter((r) => r.text).pop() || {}).text || '';
+      return '<div class="panel hist-item"><div class="row between"><h3>' + (I.kind === 'm' ? 'Поручение' : 'Мероприятие') + ' по неделям: «' + esc(short(t)) + '»</h3><button class="mini" data-act="histItemClose">✕</button></div>' +
+        (run >= 2 ? '<div class="attn">⚠ Статус и пояснение не менялись ' + (run + 1) + ' недель подряд</div>' : '') +
+        '<table class="grid"><thead><tr><th class="c-due">Неделя</th><th class="c-st">Статус</th><th>Пояснение</th><th class="c-due">Срок</th></tr></thead><tbody>' + tr + '</tbody></table></div>';
+    }
+    // pid — чья история; cur — нынешнее состояние пункта (для строки «сейчас»)
+    H.html = (pid, curReg, curData) => {
+      let cur = null;
+      if (H.item && curReg) {
+        const I = H.item; const p = M().personById(curReg, I.pid);
+        if (I.kind === 'm') { const m = curReg.memo.find((x) => x.id === I.id); const s = M().stOf(curData, I.pid, 'memo', I.id); cur = m ? { state: m.closed ? 'closed' : 'open', text: m.text, flag: s.flag, note: s.text, due: m.due } : { state: 'not' }; }
+        else { const e = curReg.events.find((x) => x.id === I.id); const s = e && M().eventStatus(curReg, curData, e); cur = e ? { state: 'open', text: e.text, flag: s.flag, note: s.text, due: e.due } : { state: 'not' }; }
+        if (!p) cur = null;
+      }
+      if (H.loading && !H.item) return '<div class="panel muted">' + esc(H.loading) + '</div>';
+      if (!H.weeks || !H.weeks.length) return '<div class="panel">Недельных копий пока нет. Они появляются раз в неделю, когда открывают Помощник.</div>';
+      const nav = '<div class="hist-nav no-print"><button data-hw="' + (H.idx - 1) + '"' + (H.idx ? '' : ' disabled') + '>←</button>' +
+        H.weeks.map((n, i) => '<button class="chip' + (i === H.idx ? ' active' : '') + '" data-hw="' + i + '">' + n.slice(8, 10) + '.' + n.slice(5, 7) + '</button>').join('') +
+        '<button data-hw="' + (H.idx + 1) + '"' + (H.idx < H.weeks.length - 1 ? '' : ' disabled') + '>→</button></div>';
+      const body = H.loading ? '<div class="muted">' + esc(H.loading) + '</div>' : !H.cur ? '<div class="msg warn">Копия этой недели не читается.</div>' :
+        '<div class="msg warn small">Так отчёт выглядел на неделе с ' + wk(H.weeks[H.idx]) + ' (копия делается, когда в эту неделю впервые открывают Помощник). Здесь ничего не меняется.</div>' + diffHtml(pid) +
+        '<div class="hist-week">' + personReport(H.cur.reg, H.cur.data, pid, H.weeks[H.idx], { histBtn: true }) + '</div>';
+      return itemHtml(cur) + '<div class="panel hist"><div class="row between"><h2>История по неделям</h2><button data-act="histClose">← Вернуться к докладу</button></div>' + nav + body + '</div>';
+    };
+    // клик на странице: true — обработано
+    H.click = (b) => {
+      if (b.dataset.hw !== undefined) { H.go(+b.dataset.hw); return true; }
+      if (b.dataset.hi) { const [k, id, pid] = b.dataset.hi.split('|'); H.showItem(k, id, pid); window.scrollTo(0, 0); return true; }
+      if (b.dataset.act === 'histClose') { H.close(); return true; }
+      if (b.dataset.act === 'histItemClose') { H.item = null; opts.render(); return true; }
+      if (b.dataset.act === 'hist') { if (H.on) H.close(); else H.open(); return true; }
+      return false;
+    };
+    return H;
   }
 
   // ---------- сводка для директора: что изменилось, что требует внимания ----------
@@ -705,6 +829,6 @@
   root.View = {
     esc, $, $$, badge, due, ago, statusSelect, tile, countTiles, freshBadge, itemCard, freeTable, kpiHead, eventsTable, personReport,
     hydrateAttachments, xlsxToHtml, memoTable, upcOverview, whoCards, printHtml, mailto, copyHtml, download, saveFile, toast, folderScreen,
-    chartMemo, chartKpi, chartTrend, chartDiscipline, changesHtml, attentionHtml, personCard, noteHtml, notesBlock, FILTERS, flagPass, filterChips, filterCounts, notesHtml, fileKind, fileIcon, attHtml, docxToHtml, activatePdf, b64, ta, autoGrow, mail, mailUrl, mailMode, MAIL_MODES, copyText, MIME, EXT,
+    history, chartMemo, chartKpi, chartTrend, chartDiscipline, changesHtml, attentionHtml, personCard, noteHtml, notesBlock, FILTERS, flagPass, filterChips, filterCounts, notesHtml, fileKind, fileIcon, attHtml, docxToHtml, activatePdf, b64, ta, autoGrow, mail, mailUrl, mailMode, MAIL_MODES, copyText, MIME, EXT,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

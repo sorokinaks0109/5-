@@ -331,3 +331,11 @@ h3.sec .dn-tools { font-weight: normal; }
 
 details.remind { border-top: 1px solid var(--line); padding: 6px 0; } details.remind summary { cursor: pointer; } details.remind ul { margin: 6px 0 0; }
 .year-panel { border-left: 6px solid #1f5fa8; }
+
+/* история по неделям */
+.hist-nav { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0; align-items: center; }
+.hist-diff { background: #f6f8fa; border-radius: 8px; padding: 8px 12px; margin: 8px 0; font-size: 13.5px; }
+.hist-diff ul { margin: 4px 0 0; padding-left: 20px; }
+.hist-week { border-top: 2px dashed var(--line); margin-top: 10px; padding-top: 6px; }
+.hist-item h3 { margin: 0; font-size: 15px; }
+tr.hist-same td { color: var(--muted); }
