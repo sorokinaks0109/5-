@@ -619,7 +619,11 @@
   }
   function planInfoPanel() {
     const I = S.planInfo; if (!I) return '';
-    return '<div class="msg ok">Загружено из «' + esc(I.file) + '»: показателей ' + I.total + ', из них ' + I.matched + ' найдены в карте текущего года (мероприятия перенесены), мероприятий всего ' + I.events + '.' +
+    const list = (t, a) => (a && a.length ? '<div class="small" style="margin-top:4px"><b>' + t + ' (' + a.length + '):</b> ' + a.map(esc).join('; ') + '</div>' : '');
+    return '<div class="msg ok">' + (I.refresh ? 'Проект обновлён по «' + esc(I.file) + '»: показателей ' + I.total + ', мероприятий ' + I.events + '. Ответы, которые уже дали руководители, сохранены.' +
+        list('Остались, цели обновлены', I.updated) + list('Новые', I.added) +
+        list('Убраны', (I.removed || []).map((x) => x.name + (x.answered.length ? ' — отвечали: ' + x.answered.join(', ') : '')))
+      : 'Загружено из «' + esc(I.file) + '»: показателей ' + I.total + ', из них ' + I.matched + ' найдены в карте текущего года (мероприятия перенесены), мероприятий всего ' + I.events + '.') +
       ((I.noFill || []).length ? '<div class="small" style="margin-top:6px"><b>Некому заполнять (' + I.noFill.length + '):</b> ' + I.noFill.map(esc).join('; ') + '. Отметьте у показателя «Заполняют».</div>' : '') +
       (I.noLeader.length ? '<div class="small muted" style="margin-top:6px">Лидер из файла не найден в списке руководителей (' + I.noLeader.length + '): ' + I.noLeader.map(esc).join('; ') + '. Это не мешает: лидер — подпись, мероприятия пишут те, кто отмечен в «Заполняют». Если лидер сам должен писать — добавьте его в «Настройках» с отметкой «нет — только план и УПЦ».</div>' : '') + '</div>';
   }
@@ -628,8 +632,18 @@
       const wb = new ExcelJS.Workbook(); await wb.xlsx.load(new Uint8Array(await file.arrayBuffer()));
       const card = Model.parsePlanCard(wb);
       const P = planOf();
-      if (P.kpis.length && !confirm('В проекте уже есть показатели (' + P.kpis.length + '). Заменить их показателями из файла? Ответы лидеров по старому списку перестанут отображаться.')) return;
       if (card.year) P.year = card.year;
+      // сбор уже идёт — обновляем проект, ответы людей сохраняются
+      if (P.kpis.length) {
+        const r = Model.planRefresh(S.reg, S.data, card, P.year);
+        const lost = r.removed.filter((x) => x.answered.length);
+        if (!confirm('Обновить проект по новому файлу?\n\nОстаются и обновляются (ответы сохраняются): ' + r.updated.length + '\nНовые: ' + r.added.length + '\nУбираются: ' + r.removed.length +
+          (lost.length ? '\n\nВнимание: по убираемым показателям уже отвечали — ' + lost.map((x) => x.name + ' (' + x.answered.join(', ') + ')').join('; ') + '. Их ответы останутся в отчётах, но в проекте и выгрузке не будут видны.' : ''))) return;
+        P.kpis = r.kpis; P.events = r.events; P.source = { file: file.name, title: card.title, at: today() };
+        S.planInfo = { file: file.name, refresh: true, total: r.kpis.length, updated: r.updated, added: r.added, removed: r.removed, events: r.events.length, noLeader: r.noLeader, noFill: r.noFill, matched: r.matched };
+        if (await saveReg('Проект обновлён: ' + r.kpis.length + ' показателей. Ответы сохранены.')) render();
+        return;
+      }
       const r = Model.planFromCard(S.reg, card, P.year);
       P.kpis = r.kpis; P.events = r.events; P.source = { file: file.name, title: card.title, at: today() };
       S.planInfo = { file: file.name, total: r.kpis.length, matched: r.matched, events: r.events.length, noLeader: r.noLeader, noFill: r.noFill };

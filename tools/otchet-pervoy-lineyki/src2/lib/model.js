@@ -395,9 +395,14 @@
   // Название показателя без префикса и хвоста подразделения — чтобы найти тот же показатель в карте текущего года
   const kpiCore = (name) => norm(shortKpi(name).replace(/\s·\s(вс|восточная\s+сибирь|восточ\S*\s+сиб\S*|логистика.*|дивизион.*|сибирь)$/i, '').replace(/\s·\s(вс|восточная\s+сибирь)$/i, ''));
   // «1. Проведён анализ…, срок: 30.06.2027 2. Разработан…» → мероприятия
+  // Нумерация «1.», «2)» или многоуровневая «1.1.», «4.2.»; каждый пункт с новой строки или подряд в одной строке
+  const NUM = /^\s*\d{1,2}(?:\.\d{1,2})*[.)]\s+/;
   function splitEvents(text) {
-    const t = String(text || '').trim(); if (!/^\s*1[.)]\s/.test(t)) return [];
-    return t.split(/(?:^|\s)\d{1,2}[.)]\s+/).map((x) => x.trim()).filter(Boolean).map((x) => {
+    const t = String(text || '').trim(); if (!NUM.test(t)) return [];
+    const lines = t.split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
+    const parts = lines.length > 1 && lines.every((l) => NUM.test(l)) ? lines.map((l) => l.replace(NUM, ''))
+      : t.split(/(?:^|\s)\d{1,2}(?:\.\d{1,2})*[.)]\s+/);
+    return parts.map((x) => x.trim()).filter(Boolean).map((x) => {
       const m = x.match(/,?\s*срок\s*:?\s*(\d{1,2}\.\d{1,2}\.\d{2,4})\s*[.;]?\s*$/i);
       return { text: m ? x.slice(0, m.index).trim() : x, executors: '', due: m ? parseDue(m[1]) : '' };
     });
@@ -453,6 +458,44 @@
       for (const e of fromStretch) events.push({ id: uid('pe'), kpi: id, ...e, who: fillers[0] || '' });
     }
     return { kpis, events, noLeader, noFill, matched: kpis.filter((k) => k.src).length };
+  }
+  // Новая версия проекта карты поверх уже идущего сбора: ответы людей не теряются.
+  // Тот же показатель (по коду или названию) сохраняет свой id — к нему привязаны ответы в отчётах;
+  // цели и подписи берутся из файла, кто заполняет — как было (плюс лидер из файла, если он в списке).
+  // У БИ мероприятия — из нового файла; у ФОП предложенные остаются. Ушедшие показатели убираются из проекта
+  // (ответы в отчётах людей не стираются — вернётся показатель, вернутся и они).
+  function planRefresh(reg, data, card, year) {
+    const old = (reg.plan && reg.plan.kpis) || [], oldEv = (reg.plan && reg.plan.events) || [];
+    const fresh = planFromCard(reg, card, year);
+    const realCode = (c) => /^[a-z]\d{4,}$/i.test(String(c || '').trim());
+    const used = new Set();
+    const cores = new Set(fresh.kpis.map((k) => kpiCore(k.name)));
+    const findOld = (k) => {
+      const cc = kpiCore(k.name);
+      return old.find((o) => !used.has(o.id) && realCode(k.code) && o.code === k.code) ||
+        old.find((o) => !used.has(o.id) && kpiCore(o.name) === cc) ||
+        old.find((o) => { const oc = kpiCore(o.name); return !used.has(o.id) && !cores.has(oc) && Math.min(oc.length, cc.length) >= 15 && (oc.startsWith(cc) || cc.startsWith(oc)); });
+    };
+    const kpis = [], events = [], updated = [], added = [];
+    for (const k of fresh.kpis) {
+      const o = findOld(k);
+      const evNew = fresh.events.filter((e) => e.kpi === k.id);
+      if (!o) { kpis.push(k); events.push(...evNew); added.push(shortKpi(k.name)); continue; }
+      used.add(o.id);
+      const fs = planFillers(o).slice();
+      if (k.leader && !fs.includes(k.leader)) fs.unshift(k.leader);
+      const nk = { ...o, ...k, id: o.id, src: k.src || o.src || '', leader: k.leader || o.leader || null, fillers: fs.length ? fs : k.fillers };
+      kpis.push(nk); updated.push(shortKpi(k.name));
+      const keepOld = oldEv.filter((e) => e.kpi === o.id);
+      const take = k.type === 'БИ' && evNew.length ? evNew : keepOld.length ? keepOld : evNew;
+      events.push(...take.map((e) => ({ ...e, kpi: o.id, who: e.who && nk.fillers.includes(e.who) ? e.who : nk.fillers[0] || '' })));
+    }
+    const removed = old.filter((o) => !used.has(o.id)).map((o) => ({
+      name: shortKpi(o.name),
+      answered: planFillers(o).filter((pid) => { const d = data[pid] && data[pid].data; return d && ((d.planK && d.planK[o.id]) || (d.planG && d.planG[o.id])); }).map((pid) => (personById(reg, pid) || {}).fio || pid),
+    }));
+    const noFill = kpis.filter((k) => !planFillers(k).length).map((k) => shortKpi(k.name));
+    return { kpis, events, added, updated, removed, noLeader: fresh.noLeader, noFill, matched: fresh.matched };
   }
 
   // ---------- история по неделям (для графиков динамики и дисциплины отчётности) ----------
@@ -655,7 +698,7 @@
   root.Model = {
     STATUSES, NO_STATUS, statusLabel, isFinal, ISO, todayISO, fmtISO, parseDue, isOverdue, fmtDateTime, uid, norm, surname,
     personById, reportPeople, personByName, inTeam, shortKpi, memoStatus, eventStatus, respName, personView, countFlags, freshness,
-    respsOf, isResp, combineFlags, coNotes, mergeReport, sameVersion, stOf, sections, avrReq, avrqKey, avrqText, avrqProgress, planOn, planFinal, planProgress, planMine, planFillers, planLeaderName, recordWeek,
+    respsOf, isResp, combineFlags, coNotes, mergeReport, sameVersion, stOf, sections, avrReq, avrqKey, avrqText, avrqProgress, planOn, planFinal, planProgress, planMine, planRefresh, planFillers, planLeaderName, recordWeek,
     parsePlanCard, planFromCard, splitEvents, kpiCore,
     NOTE_TYPES, dirAnswer, noteState, dirNotes, noteItem, dirCode, parseDirMail, addDirNote, updateTrack, takeSnap, attention, changes, discipline,
     cellText, parseCard, diffCard, applyCard, kpiValuesLost, restoreKpiValues, defaultReporter, buildSummary, summaryText,
