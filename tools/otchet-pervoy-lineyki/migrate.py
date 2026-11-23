@@ -17,11 +17,16 @@ SRC, CARD, OUT = sys.argv[1:4]
 DATA = os.path.join(OUT, 'Данные')
 MAX_COLS = 12
 
-# Кто отчитывается за показатель, если лидер не из первой линейки (решение заказчика).
-REPORTER_BY_LEADER = {'Топинская': 'Арикулова', 'Усманов': 'Дрыков', 'Бруховский': None, 'Губаревич': None}
-EXTRA_PEOPLE = [('Лазар А.А.', False)]
-# У кого Windows: браузер не пускает страницу в сетевую папку — сохраняют файлом в «Входящие»
-FILE_MODE = {'Мещеряков', 'Арикулова'}  # заполняет отчёт, на совещании не докладывает
+# Настройки под конкретных людей — в файле migrate_config.json рядом со скриптом (в репозиторий не кладём:
+# там фамилии). Пример: {"reporter_by_leader": {"Петров": "Иванов", "Сидоров": null},
+#                        "extra_people": [["Козлов К.К.", false]], "file_mode": ["Иванов"]}
+# reporter_by_leader — кто отчитывается за показатель, если лидер не из первой линейки (null — помощник);
+# extra_people — кого добавить в список (ФИО, на совещании ли); file_mode — у кого Windows (сохраняют файлом).
+_cfg_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'migrate_config.json')
+_cfg = json.load(open(_cfg_path, encoding='utf-8')) if os.path.exists(_cfg_path) else {}
+REPORTER_BY_LEADER = _cfg.get('reporter_by_leader', {})
+EXTRA_PEOPLE = [tuple(x) for x in _cfg.get('extra_people', [])]
+FILE_MODE = set(_cfg.get('file_mode', []))
 
 DONE_RE = re.compile(r'(^|[^а-яё])(выполнен|проведен|исполнен|завершен|снят|закрыт)(о|а|ы)?(?![а-яё])', re.I)
 NOT_DONE_RE = re.compile(r'(^|[^а-яё])не\s+(выполнен|проведен|исполнен|завершен|снят|закрыт)', re.I)

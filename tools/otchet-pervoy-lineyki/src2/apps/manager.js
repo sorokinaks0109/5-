@@ -8,7 +8,7 @@
   const LS = (k) => 'otchet.saved.' + k;
   const today = () => Model.todayISO();
 
-  // Кто я: из имени файла страницы («Отчёт — Мещеряков.html»), иначе — выбор из списка.
+  // Кто я: из имени файла страницы («Отчёт — Иванов.html»), иначе — выбор из списка.
   function whoFromFile(reg) {
     let name = '';
     try { name = decodeURIComponent(location.pathname.split('/').pop() || ''); } catch (e) { /* пусто */ }

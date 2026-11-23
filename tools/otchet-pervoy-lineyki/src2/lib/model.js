@@ -41,7 +41,7 @@
   function personById(reg, id) { return reg.people.find((p) => p.id === id) || null; }
   // Кто ведёт еженедельный отчёт (без участников «только план и УПЦ»), в порядке докладов: сначала участники совещания
   function reportPeople(reg) { const r = reg.people.filter((p) => !p.extra); return r.filter((p) => p.onMeeting !== false).concat(r.filter((p) => p.onMeeting === false)); }
-  // Ищем человека по «Мещеряков А.В.», «А.В. Мещеряков» или «Мещеряков Алексей Валериевич»
+  // Ищем человека по «Иванов И.И.», «И.И. Иванов» или «Иванов Иван Иванович»
   function personByName(reg, name) {
     const n = norm(name);
     if (!n) return null;
