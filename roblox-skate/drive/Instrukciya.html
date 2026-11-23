@@ -1,0 +1,174 @@
+<html><head><meta charset="utf-8"></head><body>
+<h1>Skate Rush — полная инструкция</h1>
+<p><b>Версия игры:</b> v6 (+ новые монеты, мега-трамплины, 3D-модели). <b>Обновлено:</b> 23 ноября 2026.</p>
+<p>Здесь всё про игру Миланы: где лежит код, что куда вставлять, как публиковать, как настроены покупки и что осталось сделать. Эта инструкция и файлы в папке обновляются при каждом изменении игры.</p>
+
+<h2>1. Что лежит в папке</h2>
+<table border="1" cellpadding="6">
+<tr><th>Папка или файл</th><th>Что внутри</th></tr>
+<tr><td><a href="https://drive.google.com/drive/folders/13r9wETU91hjEsBJrlHwG_rb_1ynAfWJH">1. Код (скрипты)</a></td><td>Актуальный код всех 9 скриптов игры, по файлу на скрипт</td></tr>
+<tr><td><a href="https://drive.google.com/drive/folders/1gqyv1kcKiqBBS-eDahJ8D3f3_keOgbhS">2. Картинки</a></td><td>Иконка игры (GameIcon.png), заставка (Splash_final.png), архив аниме-иконок для кнопок меню</td></tr>
+<tr><td><a href="https://drive.google.com/drive/folders/1x058KiJKPqyNactghi9CZcfNFYx7tT-p">3. 3D-модели</a></td><td>Скейт (Board.glb), сакура (Tree_sakura.glb), пальма (Palm.glb)</td></tr>
+<tr><td><a href="https://drive.google.com/file/d/13KXVjpQANjkpV35jq5BG8K1I7L1YBoYf/view">SkateRush_исходный_файл.rbxlx</a></td><td>Запасной файл игры «с нуля». В нём нет ваших картинок, номеров покупок и моделей. Открывать только если игра в Roblox потерялась</td></tr>
+</table>
+
+<h2>2. Главное правило</h2>
+<p><b>Сама игра хранится в Roblox, а не в файлах.</b> Открывайте её в Roblox Studio через <b>File → Open from Roblox → Skate Rush</b>. Файлы в этой папке нужны, чтобы обновлять отдельные скрипты.</p>
+<p><b>Два скрипта не заменяйте целиком: Config и UI.</b> В Config вписаны номера картинок, пассов и товаров, в UI исправлена кнопка X. Если их заменить файлом отсюда, номера картинок пропадут. Когда меняется что-то в этих скриптах, правку делаем одной строкой, и я пишу, какой именно.</p>
+<p><b>После любой правки нажимайте Alt+P</b> (File → Publish). Без этого игроки изменений не увидят.</p>
+<p><b>Перед большими правками делайте копию:</b> File → Download a Copy → сохранить на компьютер.</p>
+
+<h2>3. Где какой скрипт в Studio</h2>
+<p>Скрипты видны в окне <b>Explorer</b> (кнопка Explorer вверху справа). Стрелочка слева от названия раскрывает папку.</p>
+<table border="1" cellpadding="6">
+<tr><th>Файл в папке «Код»</th><th>Где в Explorer</th><th>Что делает</th><th>Можно заменять целиком?</th></tr>
+<tr><td><a href="https://drive.google.com/file/d/1sa-Z6LsLsCINzsp4X5hmMlrERqDHsTrz/view">SkateServer.txt</a></td><td>ServerScriptService → SkateServer</td><td>Монеты, уровни, покупки, сохранение, обби, беговые дорожки</td><td>Да</td></tr>
+<tr><td><a href="https://drive.google.com/file/d/1fsZ1cwKHh2NkTl2DjQ39fdDQszebrnAk/view">World.txt</a></td><td>ServerScriptService → SkateServer → World</td><td>Строит карту: лобби, 7 зон, трамплины, монеты, декор</td><td>Да</td></tr>
+<tr><td><a href="https://drive.google.com/file/d/1nQGwFuCVSAllFtQAaCmERtAclqwAvEEQ/view">Data.txt</a></td><td>ServerScriptService → SkateServer → Data</td><td>Сохранение прогресса игроков</td><td>Да</td></tr>
+<tr><td><a href="https://drive.google.com/file/d/1x9Wtv3fBPx8UWEL5x3uitiUwLcsOgUUA/view">SkateClient.txt</a></td><td>StarterPlayer → StarterPlayerScripts → SkateClient</td><td>Управление скейтом, трюки, звуки, ворота</td><td>Да</td></tr>
+<tr><td><a href="https://drive.google.com/file/d/16PhqXa9M_2jGiJ3nwBu96YqJ50Zdvgux/view">Rider.txt</a></td><td>… → SkateClient → Rider</td><td>Анимация персонажа на доске</td><td>Да</td></tr>
+<tr><td><a href="https://drive.google.com/file/d/1AGD6e5ljG91oG2XITwdvHj-9Olylp_zN/view">Sounds.txt</a></td><td>… → SkateClient → Sounds</td><td>Звуки и музыка</td><td>Да</td></tr>
+<tr><td><a href="https://drive.google.com/file/d/1K6x6OXTzP-ea_hXWnPinCn3Zn5gQLnKU/view">BoardBuilder.txt</a></td><td>ReplicatedStorage → SkateShared → BoardBuilder</td><td>Собирает доску из деталей</td><td>Да</td></tr>
+<tr><td><a href="https://drive.google.com/file/d/1ubOW0auMXS52iwoibRcKPiYc8qwSl5TY/view">UI.txt</a></td><td>… → SkateClient → UI</td><td>Весь интерфейс: меню, магазин, надписи</td><td><b>Нет</b>, только по одной строке</td></tr>
+<tr><td><a href="https://drive.google.com/file/d/1ePjm9bOvuEP6dlzIrXSnU9-fMN5bUXKj/view">Config.txt</a></td><td>ReplicatedStorage → SkateShared → Config</td><td>Все настройки: цены, зоны, доски, коды, номера покупок и картинок</td><td><b>Нет</b>, только по одной строке</td></tr>
+</table>
+
+<h2>4. Как заменить скрипт новым кодом</h2>
+<ol>
+<li>Остановите игру: красная кнопка Stop. Вкладок Client и Server вверху быть не должно (правки во время игры пропадают).</li>
+<li>Откройте нужный .txt из папки «Код» и скачайте его, или откройте на Диске и выделите весь текст: Ctrl+A, затем Ctrl+C.</li>
+<li>В Studio дважды щёлкните по нужному скрипту в Explorer.</li>
+<li>Нажмите Ctrl+A, затем Ctrl+V. Старый текст заменится новым.</li>
+<li>Нажмите Play и проверьте окно View → Output: красных строк быть не должно.</li>
+<li>Stop, затем Alt+P.</li>
+</ol>
+
+<h2>5. Открыть игру на другом компьютере</h2>
+<ol>
+<li>Установите Roblox Studio и войдите в аккаунт <b>MilaToCa3</b>.</li>
+<li>Слева нажмите <b>Experiences</b> → <b>Skate Rush</b>. Откроется место «Место MilaToCa3: 11092026_1» — это и есть игра.</li>
+<li>Откроется последняя опубликованная версия. Всё, что не было опубликовано через Alt+P, на другом компьютере не появится.</li>
+<li>Карта видна только после нажатия Play: её строит скрипт.</li>
+</ol>
+
+<h2>6. Сохранение прогресса игроков</h2>
+<p>Уже включено. Если когда-нибудь появится красная надпись «Прогресс не сохраняется»: File → Experience Settings → Security → включить <b>Enable Studio Access to API Services</b> → Save.</p>
+
+<h2>7. Аниме-иконки на кнопках меню</h2>
+<p>Уже загружены и работают. Если нужно загрузить заново или добавить новые:</p>
+<ol>
+<li>Распакуйте архив SkateRush_icons.zip из папки «Картинки».</li>
+<li>В Studio: кнопка <b>Assets</b> → Import → выбрать картинки. Если всё не грузится сразу, грузите по 2–3 штуки.</li>
+<li>Картинки лежат в Asset Manager → Inventories → <b>MilaToCa3</b>. Правой кнопкой по картинке → Copy Asset ID.</li>
+<li>В Config найдите (Ctrl+F) <b>Config.Icons</b> и вставьте номер <b>внутрь кавычек</b>, вместе со словом rbxassetid://</li>
+</ol>
+<p>Правильно: <font face="Courier New">Daily = "rbxassetid://123456789",</font><br>Неправильно: <font face="Courier New">Daily = rbxassetid://"123456789",</font></p>
+<p>Номера, которые уже стоят в игре: Boards 105891710535274, Speed 72059436794814, Zones 127013820974134, Shop 113232226640587, Rebirth 79609621091334, Settings 130030156682767, Starter 112596472044584. Номера Daily, Gifts, Trails и Codes тоже вписаны, их можно посмотреть в Config в Studio.</p>
+
+<h2>8. Покупки за робуксы</h2>
+<p>Всё создано на create.roblox.com и вписано в Config. Номера:</p>
+<table border="1" cellpadding="6">
+<tr><th>Товар</th><th>Тип</th><th>Цена</th><th>Строка в Config</th><th>Номер (ID)</th></tr>
+<tr><td>x2 Монеты навсегда</td><td>Пасс</td><td>199</td><td>Coins2x</td><td>2076184679</td></tr>
+<tr><td>x3 Монеты навсегда</td><td>Пасс</td><td>449</td><td>Coins3x</td><td>2074084703</td></tr>
+<tr><td>Золотая доска</td><td>Пасс</td><td>299</td><td>GoldBoard</td><td>2074486703</td></tr>
+<tr><td>Спасти комбо</td><td>Товар</td><td>5</td><td>SaveCombo</td><td>3729983321</td></tr>
+<tr><td>Открыть следующую зону</td><td>Товар</td><td>25</td><td>SkipZone</td><td>3729983615</td></tr>
+<tr><td>Буст x2 на 15 минут</td><td>Товар</td><td>15</td><td>Boost2x</td><td>3729983717</td></tr>
+<tr><td>Мешок монет</td><td>Товар</td><td>19</td><td>CoinsSmall</td><td>3729983786</td></tr>
+<tr><td>Сундук монет</td><td>Товар</td><td>79</td><td>CoinsBig</td><td>3729983878</td></tr>
+<tr><td>+1 уровень</td><td>Товар</td><td>19</td><td>LevelUp</td><td>3729983965</td></tr>
+<tr><td>Стартовый набор</td><td>Товар</td><td>5</td><td>StarterPack</td><td>3729984127</td></tr>
+</table>
+<p>Автору игры Roblox даёт все пассы бесплатно, поэтому в своём магазине вы видите «ЕСТЬ ✅». Обычные игроки видят цену.</p>
+<p>Новый товар создаётся так: create.roblox.com → Skate Rush → Monetization → Passes или Developer Products → Create. Managed pricing выключайте (Turn off), иначе цена будет отличаться от надписи в игре. Номер вписывается в Config <b>без кавычек</b>: <font face="Courier New">id = 1234567890,</font></p>
+
+<h2>9. Страница игры в Roblox</h2>
+<p>Уже оформлено: название, описание, иконка и заставка. Где меняется:</p>
+<ul>
+<li><b>Название и описание:</b> в Studio File → Experience Settings → Basic Info, или на create.roblox.com → Skate Rush → Publish settings → Game details.</li>
+<li><b>Иконка:</b> create.roblox.com → Skate Rush → Places → Skate Rush → <b>Icon</b>.</li>
+<li><b>Заставка:</b> там же → <b>Thumbnails</b>, вкладки Home Page и Experience Detail Page. Сохраняется сразу после загрузки.</li>
+</ul>
+<p>Текст описания:</p>
+<p>🛹 Катайся, делай трюки и стань легендой скейта!<br>⭐ Прыгай с трамплинов и мега-трамплинов<br>🔥 Кикфлип, спин 360, грэб и бэкфлип — собирай комбо до x12<br>🌸 7 миров: Сакура-парк, Конфетная страна, Пляж, Неоновый город, Ледяной каньон, Вулкан и Космос<br>🛹 9 досок со способностями: двойной прыжок, парение, магнит<br>🏃 Беговые дорожки — копи монеты даже в AFK<br>💖 Обби в лобби и трюк-битвы каждые 4 минуты<br>🎁 КОДЫ: SKATE, KICKFLIP, RUSH2026<br>— — —<br>🛹 Skate, do tricks and become a skate legend! Kickflips, 360 spins, combos up to x12, 7 worlds, boards with abilities, AFK treadmills and an obby! Codes: SKATE, KICKFLIP, RUSH2026</p>
+
+<h2>10. 3D-модели</h2>
+<p>Уже загружены. Модели лежат в <b>ReplicatedStorage → SkateAssets</b>, и игра сама ставит их вместо простых фигур. Размер подгоняется автоматически.</p>
+<ol>
+<li>Кнопка <b>Import</b> с кубиком на верхней панели (не та, что в окне Terrain Editor!) или Ctrl+M → выбрать .glb → Import.</li>
+<li>Появившуюся модель перетащить в Explorer в папку SkateAssets.</li>
+<li>Назвать точно так, как в таблице.</li>
+</ol>
+<table border="1" cellpadding="6">
+<tr><th>Имя модели в SkateAssets</th><th>Что заменяет</th></tr>
+<tr><td>Board</td><td>Доску у всех игроков</td></tr>
+<tr><td>Tree_sakura</td><td>Деревья сакуры</td></tr>
+<tr><td>Palm</td><td>Пальмы на пляже</td></tr>
+<tr><td>Lollipop, CandyCane, Crystal, Snowman, Rock, Umbrella, PineTree, Cloud</td><td>Можно добавить позже: леденцы, трости, кристаллы, снеговики, камни, зонтики, ёлки, облака</td></tr>
+</table>
+
+<h2>11. Что можно менять в Config</h2>
+<table border="1" cellpadding="6">
+<tr><th>Что поменять</th><th>Что искать (Ctrl+F)</th></tr>
+<tr><td>Цены и уровни зон, цвета, свет</td><td>Config.Zones</td></tr>
+<tr><td>Доски: цена, скорость, прыжок, способность</td><td>Config.Boards</td></tr>
+<tr><td>Очки за трюки</td><td>Config.Tricks</td></tr>
+<tr><td>Цена прокачки скорости</td><td>Config.Speed</td></tr>
+<tr><td>Коды (например, добавить NEWYEAR = 3000,)</td><td>Config.Codes</td></tr>
+<tr><td>Ежедневные награды и подарки за время</td><td>Config.Daily, Config.Gifts</td></tr>
+<tr><td>Следы за доской</td><td>Config.Trails</td></tr>
+<tr><td>Беговые дорожки и обби</td><td>Config.Treadmills, Config.Obby</td></tr>
+<tr><td>Звуки и музыка по зонам</td><td>Config.Sounds (вставлять "rbxassetid://номер" из Toolbox → Audio)</td></tr>
+</table>
+
+<h2>12. Кто может играть</h2>
+<p>Сейчас игра открыта для игроков <b>от 16 лет</b>. Чтобы её видели дети младше 16, Roblox требует:</p>
+<table border="1" cellpadding="6">
+<tr><th>Шаг</th><th>Статус</th></tr>
+<tr><td>Подтверждение возраста автора</td><td>✅ готово</td></tr>
+<tr><td>Двухэтапная защита аккаунта (по почте)</td><td>✅ готово</td></tr>
+<tr><td>Анкета о содержании игры</td><td>✅ готово</td></tr>
+<tr><td>250 активных игроков ИЛИ залог 1 000 робуксов (возвратный)</td><td>⏳ осталось</td></tr>
+</table>
+<p>Где смотреть: create.roblox.com → Skate Rush → Publish settings → Manage audience. Перед оплатой залога прочитайте условия возврата в строке «Pay the Kids &amp; Select publishing fee».</p>
+<p><b>Как другим зайти в игру:</b> откройте игру на roblox.com, скопируйте адрес из браузера (вида https://www.roblox.com/games/…/Skate-Rush) и отправьте. Аккаунт игрока должен пройти проверку возраста: Настройки → Информация об аккаунте → Подтвердить возраст.</p>
+
+<h2>13. Частые проблемы</h2>
+<table border="1" cellpadding="6">
+<tr><th>Что видите</th><th>Что делать</th></tr>
+<tr><td>Кнопки серые (Publish, Experience Settings)</td><td>Игра запущена. Нажмите Stop</td></tr>
+<tr><td>Правки пропали после Stop</td><td>Правили во время игры. Правьте только при остановленной игре</td></tr>
+<tr><td>Ошибка 256 «Failed to open send channel» при входе</td><td>Проблема связи с серверами Roblox, не игры. Зайти ещё раз, включить или выключить VPN, попробовать мобильный интернет</td></tr>
+<tr><td>Игру не видно в поиске</td><td>Новые игры поиск почти не показывает. Заходите по прямой ссылке</td></tr>
+<tr><td>Картинка на кнопке пустая</td><td>Roblox ещё проверяет картинку (подождать 10–15 минут) или номер записан не внутри кавычек</td></tr>
+<tr><td>На сайте «[TITLE UNAVAILABLE]»</td><td>В браузере вошли не в тот аккаунт. Войти в MilaToCa3</td></tr>
+<tr><td>Красные строки в Output</td><td>Сфотографировать окно Output и прислать Claude</td></tr>
+<tr><td>На кнопке закрытия окна «(X)» со скобками</td><td>Скрипт UI, строка 1014: внутри кавычек оставить только букву X</td></tr>
+<tr><td>Нет следа за новой доской</td><td>Скрипт SkateClient: найти FindFirstChild("Deck") и дописать , true перед скобкой → FindFirstChild("Deck", true)</td></tr>
+</table>
+
+<h2>14. Как играть (для игроков)</h2>
+<table border="1" cellpadding="6">
+<tr><th>Действие</th><th>Компьютер</th><th>Телефон</th></tr>
+<tr><td>Ехать</td><td>W A S D</td><td>Джойстик</td></tr>
+<tr><td>Прыжок</td><td>Пробел</td><td>Кнопка прыжка</td></tr>
+<tr><td>Кикфлип / Спин 360 / Грэб / Бэкфлип</td><td>E / Q / R / F в воздухе</td><td>ФЛИП / СПИН / ГРЭБ / БЭК</td></tr>
+</table>
+<p>Трюки подряд дают комбо до x12. Не докрутил трюк до приземления — падение. Ворота в следующую зону зеленеют, когда хватает уровня и монет: въезжаешь, и они открываются.</p>
+
+<h2>15. Что делать дальше</h2>
+<ul>
+<li>Позвать друзей поиграть хотя бы по 15–20 минут.</li>
+<li>Снимать короткие видео (мега-прыжок, комбо, обби) для TikTok или YouTube Shorts с кодом SKATE в конце.</li>
+<li>Выпускать обновление раз в 1–2 недели: новая доска, зона, код.</li>
+<li>Идеи: питомцы, гонки на время, перевод на английский, свой скейт-парк.</li>
+</ul>
+
+<h2>Журнал изменений</h2>
+<table border="1" cellpadding="6">
+<tr><th>Дата</th><th>Что изменилось</th></tr>
+<tr><td>23.11.2026</td><td>Создана папка на Google Диске и эта инструкция. Код: детальные монеты, украшенные мега-трамплины, поддержка 3D-моделей из SkateAssets</td></tr>
+<tr><td>09.11.2026</td><td>Публикация, покупки, иконки, заставка, 3D-модели, анкета, защита аккаунта</td></tr>
+</table>
+</body></html>
