@@ -757,10 +757,13 @@ function showBanner(mode){
   if (!FS_OK) return;
   var b = $("banner"); b.innerHTML = "";
   function btn(text, main, fn){ var x = el("button", main ? "main" : null, text); x.onclick = fn; b.appendChild(x); }
-  if (mode === "save"){
+  if (mode === "leave"){
+    b.appendChild(el("span", null, "Вы закрывали заставку, а изменения ещё не в файле. Сохранить?"));
+    btn("Сохранить", true, enableSaving);
+  } else if (mode === "save"){
     b.appendChild(el("span", null, savedHandle
-      ? "Чтобы изменения сохранились, разрешите запись в файл задач."
-      : "Чтобы изменения сохранились, сохраните задачи в " + DATA_NAME + " рядом с заставкой (заменить старый файл)."));
+      ? "Чтобы изменения сохранились, разрешите запись в файл задач (или нажмите Ctrl+S)."
+      : "Чтобы изменения сохранились, сохраните задачи в " + DATA_NAME + " рядом с заставкой (заменить старый файл). Можно и позже — Ctrl+S."));
     btn("Сохранять в файл", true, enableSaving);
   } else if (mode === "rename"){
     b.appendChild(el("span", null, "Чтобы задачи открывались сами при запуске, сохраните их как " + DATA_NAME + " в папке с заставкой."));
@@ -784,7 +787,7 @@ function renderFileStatus(){
     b.className = "fstat ok"; b.textContent = "💾 сохранено" + (lastSaved ? " · " + hhmm(lastSaved) : "");
     b.title = "Изменения сохраняются в «" + fh.name + "» автоматически";
   } else if (dirty){
-    b.className = "fstat warn"; b.textContent = "💾 не сохранено — нажмите"; b.title = "Клик — сохранять изменения в файл";
+    b.className = "fstat warn"; b.textContent = "💾 не сохранено — нажмите"; b.title = "Клик или Ctrl+S — сохранить изменения в файл";
   } else if (FROM_FILE){
     b.className = "fstat"; b.textContent = "💾 задачи из файла"; b.title = "Задачи подгружены из " + DATA_NAME + ". Когда что-то измените, заставка попросит разрешение на запись";
   } else {
@@ -800,7 +803,20 @@ document.addEventListener("visibilitychange", function(){
   if (document.visibilityState === "hidden" && fh){ clearTimeout(fileTimer); writeFile(); }
 });
 window.addEventListener("beforeunload", function(e){
-  if (FS_OK && dirty && !fh){ e.preventDefault(); e.returnValue = ""; }
+  if (FS_OK && dirty && !fh){
+    e.preventDefault(); e.returnValue = "";
+    // сработает, только если в окне браузера нажали «Остаться»
+    setTimeout(function(){ showBanner("leave"); }, 300);
+  }
+});
+// Ctrl+S — сохранить
+document.addEventListener("keydown", function(e){
+  if ((e.ctrlKey || e.metaKey) && (e.code === "KeyS" || e.key === "s" || e.key === "ы")){
+    e.preventDefault();
+    if (!FS_OK) return;
+    if (fh){ clearTimeout(fileTimer); writeFile().then(function(){ toast("Сохранено"); }); }
+    else enableSaving();
+  }
 });
 function startFile(){
   renderFileStatus();
