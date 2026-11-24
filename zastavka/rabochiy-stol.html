@@ -137,6 +137,15 @@ ul{list-style:none;margin:0;padding:0}
 .toolbar button.on{color:#1b1f2b;background:var(--accent)}
 .sep{width:1px;height:18px;background:rgba(255,255,255,.18);margin:0 4px}
 
+.banner{position:fixed;left:50%;top:20px;transform:translateX(-50%);z-index:5;display:none;align-items:center;gap:10px;flex-wrap:wrap;
+  justify-content:center;max-width:min(640px,calc(100% - 32px));padding:12px 16px;border-radius:14px;background:rgba(13,19,36,.85);
+  border:1px solid rgba(255,210,122,.55);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 10px 40px rgba(0,0,0,.35);font-size:14px}
+.banner.show{display:flex}
+.banner button{font:inherit;border:0;border-radius:10px;padding:7px 12px;cursor:pointer;background:rgba(255,255,255,.12);color:var(--text)}
+.banner button:hover{background:rgba(255,255,255,.2)}
+.banner button.main{background:var(--accent);color:#1b1f2b;font-weight:600}
+.toolbar button.fstat.ok{color:var(--ok)}
+.toolbar button.fstat.warn{color:#ffbf7a}
 .toast{position:fixed;left:50%;top:24px;transform:translateX(-50%) translateY(-20px);opacity:0;transition:.3s;
   background:rgba(13,19,36,.85);border:1px solid var(--panel-b);padding:10px 16px;border-radius:12px;font-size:14px;pointer-events:none}
 .toast.show{opacity:1;transform:translateX(-50%)}
@@ -191,6 +200,7 @@ ul{list-style:none;margin:0;padding:0}
       <button data-light="day">День</button>
       <button data-light="night">Вечер</button>
       <span class="sep"></span>
+      <button id="fstat" class="fstat" title="Файл, в котором хранятся задачи"></button>
       <button id="exp" title="Сохранить резервную копию задач в файл">Сохранить копию</button>
       <button id="imp" title="Загрузить задачи из файла">Загрузить</button>
       <button id="fs" title="Во весь экран (F11)">⛶</button>
@@ -215,6 +225,7 @@ ul{list-style:none;margin:0;padding:0}
     </section>
   </div>
 </div>
+<div class="banner" id="banner"></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -288,6 +299,7 @@ function load(){
 var S = load();
 var saveTimer = null;
 function save(){
+  scheduleFile();
   clearTimeout(saveTimer);
   saveTimer = setTimeout(function(){
     try { localStorage.setItem(KEY, JSON.stringify(S)); }
@@ -586,6 +598,124 @@ $("fs").onclick = function(){
 };
 
 function renderAll(){ renderTasks(); renderProjects(); renderTexts(); renderToolbar(); }
+
+/* =====================================================
+   ХРАНЕНИЕ В ФАЙЛЕ: задачи пишутся в .json в вашей папке
+   ===================================================== */
+var FS_OK = !!(window.showOpenFilePicker && window.showSaveFilePicker);
+var fh = null, writing = Promise.resolve(), fileTimer = null, lastSaved = null;
+var PICK = {types:[{description:"Мои задачи", accept:{"application/json":[".json"]}}]};
+
+function idb(){
+  return new Promise(function(res, rej){
+    var r = indexedDB.open("rabochiy-stol", 1);
+    r.onupgradeneeded = function(){ r.result.createObjectStore("kv"); };
+    r.onsuccess = function(){ res(r.result); };
+    r.onerror = function(){ rej(r.error); };
+  });
+}
+function idbGet(k){ return idb().then(function(db){ return new Promise(function(res){
+  var q = db.transaction("kv").objectStore("kv").get(k); q.onsuccess = function(){ res(q.result || null); }; q.onerror = function(){ res(null); }; }); }); }
+function idbSet(k, v){ return idb().then(function(db){ return new Promise(function(res){
+  var t = db.transaction("kv", "readwrite"); t.objectStore("kv").put(v, k); t.oncomplete = res; t.onerror = res; }); }).catch(function(){}); }
+
+function scheduleFile(){ if (!fh) return; clearTimeout(fileTimer); fileTimer = setTimeout(writeFile, 300); }
+function writeFile(){
+  if (!fh) return writing;
+  var h = fh, data = JSON.stringify(S, null, 2);
+  writing = writing.then(function(){ return h.createWritable(); })
+    .then(function(w){ return w.write(data).then(function(){ return w.close(); }); })
+    .then(function(){ lastSaved = new Date(); renderFileStatus(); })
+    .catch(function(e){
+      console.warn(e);
+      toast("Не получилось записать в файл. Нажмите «Открыть» в окошке сверху.");
+      fh = null; renderFileStatus(); showBanner(h);
+    });
+  return writing;
+}
+function useHandle(h, readFirst){
+  fh = h; idbSet("handle", h);
+  if (!readFirst) return writeFile().then(afterConnect);
+  return h.getFile().then(function(f){ return f.text(); }).then(function(txt){
+    var d = null;
+    if (txt.trim()){ try { d = JSON.parse(txt); } catch(e){ fh = null; throw new Error("bad"); } }
+    if (d && Array.isArray(d.tasks)){
+      S = fromData(d);
+      try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){}
+      renderAll(); buildScene();
+    } else if (d){ fh = null; throw new Error("bad"); }
+    else return writeFile();
+  }).then(afterConnect);
+}
+function afterConnect(){ if (!fh) return; hideBanner(); renderFileStatus(); toast("Задачи сохраняются в файл «" + fh.name + "»"); }
+function fail(e){
+  if (e && e.name === "AbortError") return;     // нажали «Отмена» в окне выбора файла
+  console.warn(e);
+  toast(e && e.message === "bad" ? "В этом файле не задачи — выберите другой" : "Не получилось открыть файл");
+  showBanner(null);
+}
+function createFile(){
+  window.showSaveFilePicker(Object.assign({suggestedName:"moi-zadachi.json"}, PICK))
+    .then(function(h){ return useHandle(h, false); }).catch(fail);
+}
+function openFile(){
+  window.showOpenFilePicker(PICK).then(function(hs){
+    return hs[0].requestPermission({mode:"readwrite"}).then(function(p){
+      if (p !== "granted") throw new Error("perm");
+      return useHandle(hs[0], true);
+    });
+  }).catch(fail);
+}
+function reopen(h){
+  h.requestPermission({mode:"readwrite"}).then(function(p){
+    if (p !== "granted") throw new Error("perm");
+    return useHandle(h, true);
+  }).catch(function(e){ fail(e); });
+}
+function hideBanner(){ $("banner").classList.remove("show"); }
+function showBanner(h){
+  if (!FS_OK) return;
+  var b = $("banner"); b.innerHTML = "";
+  if (h){
+    b.appendChild(el("span", null, "Открыть задачи из файла «" + h.name + "»?"));
+    var m = el("button", "main", "Открыть"); m.onclick = function(){ reopen(h); };
+    var o = el("button", null, "Другой файл"); o.onclick = openFile;
+    b.append(m, o);
+  } else {
+    b.appendChild(el("span", null, "Чтобы задачи не пропадали, храните их в файле."));
+    var c = el("button", "main", "Создать файл задач"); c.onclick = createFile;
+    var o2 = el("button", null, "Открыть мой файл"); o2.onclick = openFile;
+    b.append(c, o2);
+  }
+  var x = el("button", null, "×"); x.title = "Скрыть"; x.onclick = hideBanner; b.appendChild(x);
+  b.classList.add("show");
+}
+function renderFileStatus(){
+  var b = $("fstat");
+  if (!FS_OK){ b.style.display = "none"; return; }
+  if (fh){
+    b.className = "fstat ok";
+    b.textContent = "💾 " + fh.name + (lastSaved ? " · " + String(lastSaved.getHours()).padStart(2,"0") + ":" + String(lastSaved.getMinutes()).padStart(2,"0") : "");
+    b.title = "Задачи сохраняются в этот файл автоматически. Клик — выбрать другой файл";
+  } else {
+    b.className = "fstat warn"; b.textContent = "💾 файл не подключён"; b.title = "Клик — подключить файл задач";
+  }
+}
+$("fstat").onclick = function(){ showBanner(null); };
+document.addEventListener("visibilitychange", function(){
+  if (document.visibilityState === "hidden" && fh){ clearTimeout(fileTimer); writeFile(); }
+});
+function startFile(){
+  renderFileStatus();
+  if (!FS_OK) return;
+  idbGet("handle").then(function(h){
+    if (!h){ showBanner(null); return; }
+    h.queryPermission({mode:"readwrite"}).then(function(p){
+      if (p === "granted") useHandle(h, true).catch(fail);
+      else showBanner(h);   // браузер просит одно нажатие для доступа к файлу
+    }).catch(function(){ showBanner(h); });
+  }).catch(function(){ showBanner(null); });
+}
 
 /* =====================================================
    СЦЕНА: домики, небо, погода
@@ -891,6 +1021,7 @@ function frame(now){
 
 /* ---------- запуск ---------- */
 renderAll();
+startFile();
 tick();
 setInterval(tick, 1000);
 var rt; window.addEventListener("resize", function(){ clearTimeout(rt); rt = setTimeout(resize, 150); });
