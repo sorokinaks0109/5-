@@ -273,6 +273,8 @@ ul{list-style:none;margin:0;padding:0}
 <div class="banner" id="banner"></div>
 <div class="toast" id="toast"></div>
 
+<script>window.MOI_ZADACHI = null;</script>
+<script src="moi-zadachi.js"></script>
 <script>
 (function(){
 "use strict";
@@ -303,7 +305,7 @@ function norm(t){ return {id:t.id || uid(), text:String(t.text || ""), done:!!t.
 function defaults(){
   var a = uid(), b = uid(), c = uid(), d = uid(), now = Date.now();
   return {
-    name: "Ксения", focus: "", notes: "", season: "auto", light: "auto", filter: "all", showDone: false,
+    name: "Ксения", focus: "", notes: "", season: "auto", light: "auto", filter: "all", showDone: false, savedAt: 0,
     projects: [
       {id:a, name:"Развитие ИСМ", color:COLORS[0], due:addDays(37)},
       {id:b, name:"Тренинги", color:COLORS[1], due:null},
@@ -335,16 +337,21 @@ function fromData(d){
   if (d && typeof d === "object") for (var k in base) if (d[k] !== undefined) base[k] = d[k];
   return migrate(base);
 }
-var storageOK = true;
+var storageOK = true, FROM_FILE = false, LOCAL_NEWER = false;
 function load(){
   var d = null;
   try { d = JSON.parse(localStorage.getItem(KEY) || "null"); } catch(e){ storageOK = false; }
-  return fromData(d);
+  // файл moi-zadachi.js рядом с заставкой подгружается сам (см. <script src> в начале страницы)
+  var f = window.MOI_ZADACHI && Array.isArray(window.MOI_ZADACHI.tasks) ? window.MOI_ZADACHI : null;
+  FROM_FILE = !!f;
+  if (f && d && (d.savedAt || 0) > (f.savedAt || 0)){ LOCAL_NEWER = true; return fromData(d); }
+  return fromData(f || d);
 }
 var S = load();
 var saveTimer = null;
 function save(){
-  scheduleFile(); if (typeof warnIfUnsaved === "function") warnIfUnsaved();
+  S.savedAt = Date.now();
+  scheduleFile();
   clearTimeout(saveTimer);
   saveTimer = setTimeout(function(){
     try { localStorage.setItem(KEY, JSON.stringify(S)); }
@@ -650,8 +657,10 @@ function renderAll(){ renderTasks(); renderProjects(); renderTexts(); renderTool
    ХРАНЕНИЕ В ФАЙЛЕ: задачи пишутся в .json в вашей папке
    ===================================================== */
 var FS_OK = !!(window.showOpenFilePicker && window.showSaveFilePicker);
-var fh = null, writing = Promise.resolve(), fileTimer = null, lastSaved = null;
-var PICK = {types:[{description:"Мои задачи", accept:{"application/json":[".json"]}}]};
+var fh = null, savedHandle = null, writing = Promise.resolve(), fileTimer = null, lastSaved = null, dirty = false, asked = false;
+var DATA_NAME = "moi-zadachi.js";
+var PICK_OPEN = {id:"zadachi", types:[{description:"Мои задачи", accept:{"text/javascript":[".js"], "application/json":[".json"]}}]};
+var PICK_SAVE = {id:"zadachi", suggestedName:DATA_NAME, types:[{description:"Мои задачи", accept:{"text/javascript":[".js"]}}]};
 
 function idb(){
   return new Promise(function(res, rej){
@@ -666,17 +675,37 @@ function idbGet(k){ return idb().then(function(db){ return new Promise(function(
 function idbSet(k, v){ return idb().then(function(db){ return new Promise(function(res){
   var t = db.transaction("kv", "readwrite"); t.objectStore("kv").put(v, k); t.oncomplete = res; t.onerror = res; }); }).catch(function(){}); }
 
-function scheduleFile(){ if (!fh) return; clearTimeout(fileTimer); fileTimer = setTimeout(writeFile, 300); }
+/* формат файла: обычный JSON, обёрнутый в window.MOI_ZADACHI = ...; чтобы страница могла подгрузить его сама */
+function serialize(name){
+  var json = JSON.stringify(S, null, 1);
+  if (/\.json$/i.test(name)) return json;
+  return "/* Задачи для заставки «Мой рабочий стол». Не переименовывайте файл и держите его рядом с заставкой. */\nwindow.MOI_ZADACHI = " + json + ";\n";
+}
+function parseText(txt){
+  txt = String(txt || "").trim(); if (!txt) return null;
+  var a = txt.indexOf("{"), b = txt.lastIndexOf("}");
+  if (a < 0 || b < a) throw new Error("bad");
+  try { return JSON.parse(txt.slice(a, b + 1)); } catch(e){ throw new Error("bad"); }
+}
+
+function scheduleFile(){
+  if (!fh){
+    dirty = true; renderFileStatus();
+    if (FS_OK && !asked){ asked = true; showBanner(FROM_FILE || savedHandle ? "save" : "first"); }
+    return;
+  }
+  clearTimeout(fileTimer); fileTimer = setTimeout(writeFile, 300);
+}
 function writeFile(){
   if (!fh) return writing;
-  var h = fh, data = JSON.stringify(S, null, 2);
+  var h = fh, data = serialize(h.name);
   writing = writing.then(function(){ return h.createWritable(); })
     .then(function(w){ return w.write(data).then(function(){ return w.close(); }); })
-    .then(function(){ lastSaved = new Date(); renderFileStatus(); })
+    .then(function(){ lastSaved = new Date(); dirty = false; renderFileStatus(); })
     .catch(function(e){
       console.warn(e);
-      toast("Не получилось записать в файл. Нажмите «Открыть» в окошке сверху.");
-      fh = null; renderFileStatus(); showBanner(h);
+      toast("Не получилось записать в файл. Нажмите «Сохранять в файл».");
+      fh = null; dirty = true; renderFileStatus(); showBanner("save");
     });
   return writing;
 }
@@ -684,30 +713,32 @@ function useHandle(h, readFirst){
   fh = h; savedHandle = h; idbSet("handle", h);
   if (!readFirst) return writeFile().then(afterConnect);
   return h.getFile().then(function(f){ return f.text(); }).then(function(txt){
-    var d = null;
-    if (txt.trim()){ try { d = JSON.parse(txt); } catch(e){ fh = null; throw new Error("bad"); } }
-    if (d && Array.isArray(d.tasks)){
+    var d;
+    try { d = parseText(txt); } catch(e){ fh = null; throw e; }
+    if (d && !Array.isArray(d.tasks)){ fh = null; throw new Error("bad"); }
+    // берём более свежую версию: из файла или ту, что на экране
+    if (d && (d.savedAt || 0) >= (S.savedAt || 0) && !dirty){
       S = fromData(d);
       try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){}
       renderAll(); buildScene();
-    } else if (d){ fh = null; throw new Error("bad"); }
-    else return writeFile();
+      if (!/\.js$/i.test(h.name)) return writeFile();
+    } else return writeFile();
   }).then(afterConnect);
 }
-function afterConnect(){ if (!fh) return; hideBanner(); renderFileStatus(); toast("Задачи сохраняются в файл «" + fh.name + "»"); }
+function afterConnect(){
+  if (!fh) return;
+  dirty = false; hideBanner(); renderFileStatus();
+  if (fh.name !== DATA_NAME) showBanner("rename");
+  else toast("Изменения сохраняются в " + DATA_NAME);
+}
 function fail(e){
   if (e && e.name === "AbortError") return;     // нажали «Отмена» в окне выбора файла
   console.warn(e);
   toast(e && e.message === "bad" ? "В этом файле не задачи — выберите другой" : "Не получилось открыть файл");
-  showBanner(null);
 }
-var savedHandle = null, warnedUnsaved = false;
-function createFile(){
-  window.showSaveFilePicker(Object.assign({suggestedName:"moi-zadachi.json", id:"zadachi"}, PICK))
-    .then(function(h){ return useHandle(h, false); }).catch(fail);
-}
+function saveAs(){ window.showSaveFilePicker(PICK_SAVE).then(function(h){ return useHandle(h, false); }).catch(fail); }
 function openFile(){
-  window.showOpenFilePicker(Object.assign({id:"zadachi"}, PICK)).then(function(hs){
+  window.showOpenFilePicker(PICK_OPEN).then(function(hs){
     return hs[0].requestPermission({mode:"readwrite"}).then(function(p){
       if (p !== "granted") throw new Error("perm");
       return useHandle(hs[0], true);
@@ -718,59 +749,71 @@ function reopen(h){
   h.requestPermission({mode:"readwrite"}).then(function(p){
     if (p !== "granted") throw new Error("perm");
     return useHandle(h, true);
-  }).catch(function(e){ fail(e); });
+  }).catch(function(e){ if (e && e.message === "perm") saveAs(); else fail(e); });
 }
-function connect(){ if (savedHandle) reopen(savedHandle); else openFile(); }
+function enableSaving(){ if (savedHandle) reopen(savedHandle); else saveAs(); }
 function hideBanner(){ $("banner").classList.remove("show"); }
-function showBanner(h){
+function showBanner(mode){
   if (!FS_OK) return;
   var b = $("banner"); b.innerHTML = "";
-  if (h){
-    b.appendChild(el("span", null, "Задачи лежат в файле «" + h.name + "». Браузер просит разрешение после каждого запуска."));
-    var m = el("button", "main", "Открыть мои задачи"); m.onclick = function(){ reopen(h); };
-    var o = el("button", null, "Другой файл"); o.onclick = openFile;
-    b.append(m, o);
+  function btn(text, main, fn){ var x = el("button", main ? "main" : null, text); x.onclick = fn; b.appendChild(x); }
+  if (mode === "save"){
+    b.appendChild(el("span", null, savedHandle
+      ? "Чтобы изменения сохранились, разрешите запись в файл задач."
+      : "Чтобы изменения сохранились, сохраните задачи в " + DATA_NAME + " рядом с заставкой (заменить старый файл)."));
+    btn("Сохранять в файл", true, enableSaving);
+  } else if (mode === "rename"){
+    b.appendChild(el("span", null, "Чтобы задачи открывались сами при запуске, сохраните их как " + DATA_NAME + " в папке с заставкой."));
+    btn("Сохранить как " + DATA_NAME, true, saveAs);
+  } else if (mode === "switch"){
+    b.appendChild(el("span", null, "Задачи сохраняются в «" + (fh ? fh.name : "") + "»."));
+    btn("Открыть другой файл", false, openFile);
   } else {
-    b.appendChild(el("span", null, "Откройте файл с задачами moi-zadachi.json — он лежит рядом с этой заставкой."));
-    var c = el("button", "main", "Открыть мои задачи"); c.onclick = openFile;
-    var o2 = el("button", null, "Создать новый файл"); o2.onclick = createFile;
-    b.append(c, o2);
+    b.appendChild(el("span", null, "Рядом с заставкой нет файла " + DATA_NAME + ". Откройте свой старый файл задач или начните новый."));
+    btn("Открыть мои задачи", true, openFile);
+    btn("Создать " + DATA_NAME, false, saveAs);
   }
   var x = el("button", null, "×"); x.title = "Скрыть"; x.onclick = hideBanner; b.appendChild(x);
   b.classList.add("show");
 }
+function hhmm(d){ return String(d.getHours()).padStart(2,"0") + ":" + String(d.getMinutes()).padStart(2,"0"); }
 function renderFileStatus(){
   var b = $("fstat");
   if (!FS_OK){ b.style.display = "none"; return; }
   if (fh){
-    b.className = "fstat ok";
-    b.textContent = "💾 " + fh.name + (lastSaved ? " · " + String(lastSaved.getHours()).padStart(2,"0") + ":" + String(lastSaved.getMinutes()).padStart(2,"0") : "");
-    b.title = "Задачи сохраняются в этот файл автоматически. Клик — выбрать другой файл";
+    b.className = "fstat ok"; b.textContent = "💾 сохранено" + (lastSaved ? " · " + hhmm(lastSaved) : "");
+    b.title = "Изменения сохраняются в «" + fh.name + "» автоматически";
+  } else if (dirty){
+    b.className = "fstat warn"; b.textContent = "💾 не сохранено — нажмите"; b.title = "Клик — сохранять изменения в файл";
+  } else if (FROM_FILE){
+    b.className = "fstat"; b.textContent = "💾 задачи из файла"; b.title = "Задачи подгружены из " + DATA_NAME + ". Когда что-то измените, заставка попросит разрешение на запись";
   } else {
-    b.className = "fstat warn"; b.textContent = "💾 открыть мои задачи"; b.title = "Файл задач ещё не открыт. Клик — открыть";
+    b.className = "fstat warn"; b.textContent = "💾 открыть мои задачи"; b.title = "Клик — открыть файл задач";
   }
 }
-$("fstat").onclick = function(){ if (fh) showBanner(null); else connect(); };
+$("fstat").onclick = function(){
+  if (fh) showBanner("switch");
+  else if (FROM_FILE || savedHandle) enableSaving();
+  else openFile();
+};
 document.addEventListener("visibilitychange", function(){
   if (document.visibilityState === "hidden" && fh){ clearTimeout(fileTimer); writeFile(); }
 });
-function warnIfUnsaved(){
-  if (!FS_OK || fh || warnedUnsaved) return;
-  warnedUnsaved = true;
-  toast("Файл задач не открыт — изменения в него не попадут. Сначала нажмите «Открыть мои задачи».");
-  showBanner(savedHandle);
-}
+window.addEventListener("beforeunload", function(e){
+  if (FS_OK && dirty && !fh){ e.preventDefault(); e.returnValue = ""; }
+});
 function startFile(){
   renderFileStatus();
   if (!FS_OK) return;
+  if (!FROM_FILE) showBanner("first");
+  if (LOCAL_NEWER){ dirty = true; asked = true; renderFileStatus(); showBanner("save"); }
   idbGet("handle").then(function(h){
+    if (!h) return;
     savedHandle = h;
-    if (!h){ showBanner(null); return; }
     h.queryPermission({mode:"readwrite"}).then(function(p){
-      if (p === "granted") useHandle(h, true).catch(fail);
-      else showBanner(h);   // браузер просит одно нажатие для доступа к файлу
-    }).catch(function(){ showBanner(h); });
-  }).catch(function(){ showBanner(null); });
+      if (p === "granted") useHandle(h, true).catch(fail);   // браузер помнит разрешение — всё молча
+    }).catch(function(){});
+  }).catch(function(){});
 }
 
 
@@ -1441,9 +1484,9 @@ function cloudColors(){
   return [rgba(mix(a[0][0], b[0][0], t), lerp(a[0][1], b[0][1], t)), rgba(mix(a[1][0], b[1][0], t), lerp(a[1][1], b[1][1], t))];
 }
 function makeCloud(R){
-  var w = 180 + R() * 220, h = 64 + R() * 46;
-  var c = document.createElement("canvas"); c.width = Math.ceil(w * DPR); c.height = Math.ceil(h * DPR);
-  var x = c.getContext("2d"); x.scale(DPR, DPR);
+  var w = 180 + R() * 220, h = 64 + R() * 46, pd = 30;
+  var c = document.createElement("canvas"); c.width = Math.ceil((w + pd * 2) * DPR); c.height = Math.ceil((h + pd * 2) * DPR);
+  var x = c.getContext("2d"); x.scale(DPR, DPR); x.translate(pd, pd);
   x.filter = "blur(2.5px)"; x.fillStyle = "#fff";
   var n = 6 + Math.floor(R() * 5);
   for (var i = 0; i < n; i++){
@@ -1453,8 +1496,8 @@ function makeCloud(R){
   x.fillRect(w * 0.12, h * 0.5, w * 0.76, h * 0.22);
   x.filter = "none"; x.globalCompositeOperation = "source-in";
   var cc = cloudColors(), g = x.createLinearGradient(0, 0, 0, h);
-  g.addColorStop(0, cc[0]); g.addColorStop(1, cc[1]); x.fillStyle = g; x.fillRect(0, 0, w, h);
-  return {c:c, w:w, h:h};
+  g.addColorStop(0, cc[0]); g.addColorStop(1, cc[1]); x.fillStyle = g; x.fillRect(-pd, -pd, w + pd * 2, h + pd * 2);
+  return {c:c, w:w + pd * 2, h:h + pd * 2};
 }
 function initClouds(){
   var R = rng(31); clouds = [];
@@ -1512,7 +1555,6 @@ var t0 = performance.now(), lastT = t0;
 function layerAt(L, ox, oy){ ctx.setTransform(1,0,0,1,0,0); ctx.drawImage(L.c, Math.round((ox - PAD) * DPR), Math.round((oy - PAD) * DPR)); }
 function frame(now){
   var t = (now - t0) / 1000, dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
-  if (!reduced){ par.x += (mouse.nx - par.x) * 0.04; par.y += (mouse.ny - par.y) * 0.04; }
   var so = {x:-par.x * 4, y:-par.y * 2}, fo = {x:-par.x * 9, y:-par.y * 3.5}, mo = {x:-par.x * 18, y:-par.y * 6};
 
   layerAt(LAY.sky, so.x, so.y);
