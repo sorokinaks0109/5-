@@ -186,7 +186,8 @@ ul{list-style:none;margin:0;padding:0}
 .banner{position:fixed;left:50%;top:20px;transform:translateX(-50%);z-index:5;display:none;align-items:center;gap:10px;flex-wrap:wrap;
   justify-content:center;max-width:min(640px,calc(100% - 32px));padding:12px 16px;border-radius:16px;background:rgba(16,21,44,.94);
   border:1px solid rgba(255,201,107,.6);box-shadow:0 14px 44px rgba(0,0,0,.45);font-size:14px}
-.banner.show{display:flex}
+.banner.show{display:flex;animation:bpulse 2.4s ease-in-out infinite}
+@keyframes bpulse{50%{box-shadow:0 14px 44px rgba(0,0,0,.45),0 0 0 4px rgba(255,201,107,.25)}}
 .banner button{font:inherit;border:0;border-radius:10px;padding:7px 12px;cursor:pointer;background:rgba(255,255,255,.12);color:var(--text)}
 .banner button:hover{background:rgba(255,255,255,.2)}
 .banner button.main{background:var(--accent);color:#24180c;font-weight:700}
@@ -343,7 +344,7 @@ function load(){
 var S = load();
 var saveTimer = null;
 function save(){
-  scheduleFile();
+  scheduleFile(); if (typeof warnIfUnsaved === "function") warnIfUnsaved();
   clearTimeout(saveTimer);
   saveTimer = setTimeout(function(){
     try { localStorage.setItem(KEY, JSON.stringify(S)); }
@@ -680,7 +681,7 @@ function writeFile(){
   return writing;
 }
 function useHandle(h, readFirst){
-  fh = h; idbSet("handle", h);
+  fh = h; savedHandle = h; idbSet("handle", h);
   if (!readFirst) return writeFile().then(afterConnect);
   return h.getFile().then(function(f){ return f.text(); }).then(function(txt){
     var d = null;
@@ -700,12 +701,13 @@ function fail(e){
   toast(e && e.message === "bad" ? "В этом файле не задачи — выберите другой" : "Не получилось открыть файл");
   showBanner(null);
 }
+var savedHandle = null, warnedUnsaved = false;
 function createFile(){
-  window.showSaveFilePicker(Object.assign({suggestedName:"moi-zadachi.json"}, PICK))
+  window.showSaveFilePicker(Object.assign({suggestedName:"moi-zadachi.json", id:"zadachi"}, PICK))
     .then(function(h){ return useHandle(h, false); }).catch(fail);
 }
 function openFile(){
-  window.showOpenFilePicker(PICK).then(function(hs){
+  window.showOpenFilePicker(Object.assign({id:"zadachi"}, PICK)).then(function(hs){
     return hs[0].requestPermission({mode:"readwrite"}).then(function(p){
       if (p !== "granted") throw new Error("perm");
       return useHandle(hs[0], true);
@@ -718,19 +720,20 @@ function reopen(h){
     return useHandle(h, true);
   }).catch(function(e){ fail(e); });
 }
+function connect(){ if (savedHandle) reopen(savedHandle); else openFile(); }
 function hideBanner(){ $("banner").classList.remove("show"); }
 function showBanner(h){
   if (!FS_OK) return;
   var b = $("banner"); b.innerHTML = "";
   if (h){
-    b.appendChild(el("span", null, "Открыть задачи из файла «" + h.name + "»?"));
-    var m = el("button", "main", "Открыть"); m.onclick = function(){ reopen(h); };
+    b.appendChild(el("span", null, "Задачи лежат в файле «" + h.name + "». Браузер просит разрешение после каждого запуска."));
+    var m = el("button", "main", "Открыть мои задачи"); m.onclick = function(){ reopen(h); };
     var o = el("button", null, "Другой файл"); o.onclick = openFile;
     b.append(m, o);
   } else {
-    b.appendChild(el("span", null, "Чтобы задачи не пропадали, храните их в файле."));
-    var c = el("button", "main", "Создать файл задач"); c.onclick = createFile;
-    var o2 = el("button", null, "Открыть мой файл"); o2.onclick = openFile;
+    b.appendChild(el("span", null, "Откройте файл с задачами moi-zadachi.json — он лежит рядом с этой заставкой."));
+    var c = el("button", "main", "Открыть мои задачи"); c.onclick = openFile;
+    var o2 = el("button", null, "Создать новый файл"); o2.onclick = createFile;
     b.append(c, o2);
   }
   var x = el("button", null, "×"); x.title = "Скрыть"; x.onclick = hideBanner; b.appendChild(x);
@@ -744,17 +747,24 @@ function renderFileStatus(){
     b.textContent = "💾 " + fh.name + (lastSaved ? " · " + String(lastSaved.getHours()).padStart(2,"0") + ":" + String(lastSaved.getMinutes()).padStart(2,"0") : "");
     b.title = "Задачи сохраняются в этот файл автоматически. Клик — выбрать другой файл";
   } else {
-    b.className = "fstat warn"; b.textContent = "💾 файл не подключён"; b.title = "Клик — подключить файл задач";
+    b.className = "fstat warn"; b.textContent = "💾 открыть мои задачи"; b.title = "Файл задач ещё не открыт. Клик — открыть";
   }
 }
-$("fstat").onclick = function(){ showBanner(null); };
+$("fstat").onclick = function(){ if (fh) showBanner(null); else connect(); };
 document.addEventListener("visibilitychange", function(){
   if (document.visibilityState === "hidden" && fh){ clearTimeout(fileTimer); writeFile(); }
 });
+function warnIfUnsaved(){
+  if (!FS_OK || fh || warnedUnsaved) return;
+  warnedUnsaved = true;
+  toast("Файл задач не открыт — изменения в него не попадут. Сначала нажмите «Открыть мои задачи».");
+  showBanner(savedHandle);
+}
 function startFile(){
   renderFileStatus();
   if (!FS_OK) return;
   idbGet("handle").then(function(h){
+    savedHandle = h;
     if (!h){ showBanner(null); return; }
     h.queryPermission({mode:"readwrite"}).then(function(p){
       if (p === "granted") useHandle(h, true).catch(fail);
