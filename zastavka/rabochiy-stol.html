@@ -19,7 +19,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#0b1530;color:var(--te
   font-family:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;font-size:15px}
 canvas#scene{position:fixed;inset:0;width:100%;height:100%;display:block}
 
-.layout{position:fixed;inset:0;display:grid;grid-template-columns:minmax(300px,380px) 1fr minmax(340px,440px);
+.layout{position:fixed;inset:0;display:grid;grid-template-columns:minmax(300px,390px) 1fr minmax(380px,500px);
   gap:24px;padding:28px;pointer-events:none}
 .col{display:flex;flex-direction:column;gap:16px;min-height:0}
 .col.mid{justify-content:flex-end;align-items:center}
@@ -50,46 +50,85 @@ h2{margin:0;font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:u
   font:inherit;line-height:1.45;outline:none;padding:2px 4px;border-radius:6px}
 .notes textarea:focus{background:rgba(255,255,255,.06)}
 .notes textarea::placeholder{color:var(--muted)}
-.notes{flex:1;display:flex;flex-direction:column;min-height:0}
-.notes textarea{flex:1}
+.notes{flex:none}
+.notes textarea{min-height:70px;height:90px}
 
 /* задачи */
 .tasks{flex:1;display:flex;flex-direction:column;min-height:0}
-.add{display:flex;gap:8px;margin-bottom:10px}
-.add input{flex:1;min-width:0;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:var(--text);
-  border-radius:10px;padding:9px 12px;font:inherit;outline:none}
-.add input:focus{border-color:rgba(255,210,122,.6)}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.fchip{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:12.5px;padding:5px 10px;border-radius:999px;
+  border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:var(--muted);cursor:pointer}
+.fchip:hover{color:var(--text)}
+.fchip.on{background:rgba(255,255,255,.2);color:var(--text);border-color:rgba(255,255,255,.32)}
+.fchip .n{font-variant-numeric:tabular-nums;opacity:.75}
+.fchip .n.bad{color:var(--danger);opacity:1;font-weight:700}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--c,#999);flex:none}
+.add{display:flex;flex-direction:column;gap:8px;margin-bottom:6px}
+.add .row{display:flex;gap:8px}
+.add input,.add select{min-width:0;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:var(--text);
+  border-radius:10px;padding:8px 11px;font:inherit;outline:none;color-scheme:dark}
+.add input:focus,.add select:focus{border-color:rgba(255,210,122,.6)}
 .add input::placeholder{color:var(--muted)}
+.add select{flex:1}
+.add select option{color:#111;background:#fff}
+.add input[type=date]{flex:none;width:148px}
+.plus{flex:none;background:var(--accent);color:#1b1f2b;border:0;border-radius:10px;padding:0 14px;font:inherit;font-weight:600;cursor:pointer}
 ul{list-style:none;margin:0;padding:0}
 .list{overflow:auto;min-height:0;flex:1;margin-right:-8px;padding-right:8px}
 .list::-webkit-scrollbar{width:6px}.list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2);border-radius:3px}
-.task{display:flex;align-items:flex-start;gap:10px;padding:7px 4px;border-radius:10px}
+.group{display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--muted);padding:14px 4px 4px}
+.group .gn{font-weight:400;opacity:.8}
+.group .link{margin-left:auto;text-transform:none;letter-spacing:0;font-weight:400}
+.group .link + .link{margin-left:10px}
+.group.over{color:var(--danger)}
+.group.today{color:#ffbf7a}
+.empty{color:var(--muted);padding:16px 4px}
+.task{display:flex;align-items:flex-start;gap:10px;padding:7px 6px;border-radius:10px}
 .task:hover{background:rgba(255,255,255,.06)}
+.task.over{background:rgba(255,110,110,.09);box-shadow:inset 3px 0 0 var(--danger)}
 .cb{flex:none;width:20px;height:20px;margin-top:1px;border-radius:6px;border:2px solid rgba(255,255,255,.5);background:transparent;
   cursor:pointer;padding:0;display:grid;place-items:center;color:#14301f;font-size:13px;font-weight:700}
 .task.done .cb{background:var(--ok);border-color:var(--ok)}
-.task .tx{flex:1;line-height:1.4;word-break:break-word;padding:0 2px}
+.task .body{flex:1;min-width:0}
+.task .tx{display:block;line-height:1.4;word-break:break-word;padding:0 2px}
 .task.done .tx{text-decoration:line-through;color:var(--muted)}
+.meta{display:flex;gap:6px;align-items:center;margin-top:5px;flex-wrap:wrap}
+.ptag{appearance:none;-webkit-appearance:none;font:inherit;font-size:12px;color:var(--muted);background:rgba(255,255,255,.07);border:0;
+  border-left:3px solid var(--c,transparent);border-radius:6px;padding:2px 8px;cursor:pointer;max-width:180px;outline:none}
+.ptag:hover{color:var(--text)}
+.ptag option{color:#111;background:#fff}
+.due{font:inherit;font-size:12px;border:0;border-radius:6px;padding:2px 8px;cursor:pointer;background:rgba(255,255,255,.07);color:var(--muted);white-space:nowrap}
+.due:hover{filter:brightness(1.25)}
+.due.over{background:rgba(255,110,110,.28);color:#ffd0d0;font-weight:600}
+.due.today{background:rgba(255,160,80,.3);color:#ffdcb8;font-weight:600}
+.due.soon{background:rgba(255,215,110,.18);color:#ffe9b0}
+.due.none{opacity:0}
+.task:hover .due.none,.proj:hover .due.none{opacity:1}
+.dateinp{font:inherit;font-size:12px;background:rgba(255,255,255,.12);color:var(--text);border:1px solid rgba(255,210,122,.6);
+  border-radius:6px;padding:1px 6px;color-scheme:dark;outline:none}
 .ic{flex:none;background:none;border:0;color:var(--muted);cursor:pointer;font-size:16px;line-height:1;padding:2px 4px;border-radius:6px;opacity:0}
 .task:hover .ic,.proj:hover .ic,.ic.on{opacity:1}
 .ic:hover{color:var(--text);background:rgba(255,255,255,.08)}
 .ic.st.on{color:var(--accent)}
 .task.star:not(.done) .tx{font-weight:600}
-.foot{display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:13px;color:var(--muted)}
+.foot{margin-top:8px;font-size:12.5px;color:var(--muted)}
 .link{background:none;border:0;color:var(--muted);cursor:pointer;font:inherit;padding:0;text-decoration:underline dotted}
 .link:hover{color:var(--text)}
 
 /* проекты */
-.projects{max-height:44%;display:flex;flex-direction:column;min-height:0}
-.proj{padding:8px 4px 10px;border-bottom:1px solid rgba(255,255,255,.08)}
-.proj:last-child{border-bottom:0}
+.projects{flex:1;display:flex;flex-direction:column;min-height:0}
+.proj{padding:9px 8px;border-radius:12px;cursor:pointer;border:1px solid transparent}
+.proj:hover{background:rgba(255,255,255,.06)}
+.proj.on{background:rgba(255,255,255,.11);border-color:rgba(255,255,255,.2)}
 .prow{display:flex;align-items:center;gap:8px}
-.pname{flex:1;font-weight:600;padding:0 2px}
-.pct{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
-.bar{height:8px;border-radius:99px;background:rgba(255,255,255,.12);margin:8px 2px 6px;cursor:pointer;position:relative;overflow:hidden}
-.bar i{position:absolute;inset:0 auto 0 0;border-radius:99px;background:linear-gradient(90deg,#ffd27a,#ff9f6e)}
-.pnext{font-size:13px;color:var(--muted);display:flex;gap:6px}
-.pnext span[contenteditable]{color:var(--text);flex:1;padding:0 2px}
+.pname{flex:1;min-width:0;font-weight:600;padding:0 2px;word-break:break-word}
+.pmeta{display:flex;gap:10px;font-size:12.5px;color:var(--muted);margin-top:4px;padding-left:17px}
+.pmeta .bad{color:var(--danger);font-weight:600}
+.pmeta .pct{margin-left:auto;font-variant-numeric:tabular-nums}
+.bar{height:5px;border-radius:99px;background:rgba(255,255,255,.12);margin:6px 0 0 17px;position:relative;overflow:hidden}
+.bar i{position:absolute;inset:0 auto 0 0;border-radius:99px;background:var(--c)}
+.chip.bad{background:rgba(255,110,110,.28);border-color:rgba(255,110,110,.45)}
 
 /* панель снизу */
 .toolbar{pointer-events:auto;display:flex;align-items:center;gap:4px;padding:6px;border-radius:999px;flex-wrap:wrap;justify-content:center}
@@ -126,6 +165,14 @@ ul{list-style:none;margin:0;padding:0}
       <div class="head"><h2>Главное на сегодня</h2></div>
       <span class="txt" id="focus" contenteditable="true" data-ph="Одна вещь, после которой день прожит не зря…"></span>
     </section>
+    <section class="panel projects">
+      <div class="head"><h2>Проекты</h2><span class="count">клик — задачи проекта</span></div>
+      <ul class="list" id="projList"></ul>
+      <form class="add" id="projForm" autocomplete="off" style="margin:10px 0 0">
+        <input id="projInput" placeholder="Новый проект и Enter">
+      </form>
+      <div class="foot">Двойной клик по названию — переименовать</div>
+    </section>
     <section class="panel notes">
       <div class="head"><h2>Заметки</h2></div>
       <textarea id="notes" placeholder="Мысли, идеи для блога, кому перезвонить…" spellcheck="true"></textarea>
@@ -154,18 +201,17 @@ ul{list-style:none;margin:0;padding:0}
   <div class="col">
     <section class="panel tasks">
       <div class="head"><h2>Задачи</h2><span class="count" id="tcount"></span></div>
+      <div class="filters" id="filters"></div>
       <form class="add" id="taskForm" autocomplete="off">
-        <input id="taskInput" placeholder="Новая задача и Enter">
+        <input id="taskInput" placeholder="Что сделать?">
+        <div class="row">
+          <select id="taskProj" title="Проект"></select>
+          <input type="date" id="taskDue" title="Срок">
+          <button class="plus" type="submit">Добавить</button>
+        </div>
       </form>
       <ul class="list" id="taskList"></ul>
-      <div class="foot"><span>★ — важное, текст можно править прямо в списке</span><button class="link" id="clearDone">убрать выполненные</button></div>
-    </section>
-    <section class="panel projects">
-      <div class="head"><h2>Проекты</h2><span class="count" id="pcount"></span></div>
-      <ul class="list" id="projList"></ul>
-      <form class="add" id="projForm" autocomplete="off" style="margin:10px 0 0">
-        <input id="projInput" placeholder="Новый проект и Enter">
-      </form>
+      <div class="foot">Сверху — самое срочное. ★ — важное в своей группе. Текст, проект и срок меняются прямо в списке.</div>
     </section>
   </div>
 </div>
@@ -177,29 +223,67 @@ ul{list-style:none;margin:0;padding:0}
 /* ---------- данные ---------- */
 var KEY = "rabochiy-stol.v1";
 function uid(){ return Math.random().toString(36).slice(2,10); }
+var COLORS = ["#ffd27a","#8fd3ff","#c3a6ff","#8fe3b0","#ff9fb2","#ffb36b","#7fe0d6","#e7e7a0"];
+
+/* даты */
+function ymd(d){ return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0"); }
+function addDays(n){ var d = new Date(); d.setDate(d.getDate() + n); return ymd(d); }
+function parseD(s){ var p = s.split("-"); return new Date(+p[0], +p[1]-1, +p[2]); }
+function daysLeft(s){ if (!s) return null; var t = new Date(); t.setHours(0,0,0,0); return Math.round((parseD(s) - t) / 864e5); }
+var MON = ["янв","фев","мар","апр","мая","июн","июл","авг","сен","окт","ноя","дек"], WD = ["вс","пн","вт","ср","чт","пт","сб"];
+function shortD(s){ var d = parseD(s); return d.getDate() + " " + MON[d.getMonth()] + (d.getFullYear() !== new Date().getFullYear() ? " " + d.getFullYear() : ""); }
+function dueText(s){
+  var n = daysLeft(s); if (n === null) return "+ срок";
+  if (n < 0) return "просрочено · " + shortD(s);
+  if (n === 0) return "сегодня";
+  if (n === 1) return "завтра";
+  if (n < 7) return WD[parseD(s).getDay()] + ", " + shortD(s);
+  return shortD(s);
+}
+function dueClass(s){ var n = daysLeft(s); if (n === null) return "none"; if (n < 0) return "over"; if (n === 0) return "today"; if (n <= 3) return "soon"; return "later"; }
+
+function norm(t){ return {id:t.id || uid(), text:String(t.text || ""), done:!!t.done, star:!!t.star, pid:t.pid || null,
+  due:t.due || null, created:t.created || Date.now(), doneAt:t.doneAt || null}; }
 function defaults(){
+  var a = uid(), b = uid(), c = uid(), d = uid(), now = Date.now();
   return {
-    name: "Ксения", focus: "", notes: "", season: "auto", light: "auto",
-    tasks: [
-      {id:uid(), text:"Подготовить материалы к тренингу по 5S", done:false, star:true},
-      {id:uid(), text:"Проверить замечания внутреннего аудита ИСМ", done:false, star:false},
-      {id:uid(), text:"Набросать 3 темы постов для блога", done:false, star:false},
-      {id:uid(), text:"Это пример — отметьте галочкой", done:true, star:false}
-    ],
+    name: "Ксения", focus: "", notes: "", season: "auto", light: "auto", filter: "all", showDone: false,
     projects: [
-      {id:uid(), name:"Аспирантура", progress:20, next:"Выбрать кафедру и научного руководителя"},
-      {id:uid(), name:"Свой блог", progress:10, next:"Определить тему и формат первых 10 постов"},
-      {id:uid(), name:"Развитие ИСМ", progress:45, next:"Актуализировать карту процессов"}
-    ]
+      {id:a, name:"Развитие ИСМ", color:COLORS[0], due:addDays(37)},
+      {id:b, name:"Тренинги", color:COLORS[1], due:null},
+      {id:c, name:"Аспирантура", color:COLORS[2], due:addDays(90)},
+      {id:d, name:"Блог", color:COLORS[3], due:null}
+    ],
+    tasks: [
+      {text:"Отправить отчёт по несоответствиям", pid:a, due:addDays(-1), star:true},
+      {text:"Подготовить материалы к тренингу по 5S", pid:b, due:addDays(0), star:true},
+      {text:"Согласовать график внутренних аудитов", pid:a, due:addDays(2)},
+      {text:"Узнать требования к вступительным экзаменам", pid:c, due:addDays(6)},
+      {text:"Собрать обратную связь после тренинга", pid:b, due:addDays(12)},
+      {text:"Записать 10 тем для первых постов", pid:d, due:null},
+      {text:"Это пример выполненной задачи", pid:a, done:true, doneAt:now}
+    ].map(function(t, i){ t.created = now + i; return norm(t); })
   };
+}
+function migrate(d){
+  d.projects = (Array.isArray(d.projects) ? d.projects : []).map(function(p, i){
+    return {id:p.id || uid(), name:p.name || "Проект", color:p.color || COLORS[i % COLORS.length], due:p.due || null}; });
+  var ids = d.projects.map(function(p){ return p.id; });
+  d.tasks = (Array.isArray(d.tasks) ? d.tasks : []).map(norm);
+  d.tasks.forEach(function(t){ if (t.pid && ids.indexOf(t.pid) < 0) t.pid = null; });
+  if (d.filter !== "all" && d.filter !== "none" && ids.indexOf(d.filter) < 0) d.filter = "all";
+  return d;
+}
+function fromData(d){
+  var base = defaults();
+  if (d && typeof d === "object") for (var k in base) if (d[k] !== undefined) base[k] = d[k];
+  return migrate(base);
 }
 var storageOK = true;
 function load(){
   var d = null;
   try { d = JSON.parse(localStorage.getItem(KEY) || "null"); } catch(e){ storageOK = false; }
-  var base = defaults();
-  if (d && typeof d === "object") for (var k in base) if (d[k] !== undefined) base[k] = d[k];
-  return base;
+  return fromData(d);
 }
 var S = load();
 var saveTimer = null;
@@ -239,67 +323,183 @@ function editable(node, value, onSave, onEmpty){
   });
 }
 
-/* ---------- задачи ---------- */
-function renderTasks(){
-  var list = $("taskList"); list.innerHTML = "";
-  var items = S.tasks.slice().sort(function(a,b){ return (a.done - b.done) || (b.star - a.star); });
-  items.forEach(function(t){
-    var li = el("li", "task" + (t.done ? " done" : "") + (t.star ? " star" : ""));
-    var cb = el("button", "cb", t.done ? "✓" : ""); cb.title = t.done ? "Вернуть в работу" : "Готово";
-    cb.onclick = function(){ t.done = !t.done; commitTasks(); };
-    var tx = el("span", "tx");
-    editable(tx, t.text, function(v){ t.text = v; save(); }, function(){ removeTask(t.id); });
-    var st = el("button", "ic st" + (t.star ? " on" : ""), "★"); st.title = "Важное";
-    st.onclick = function(){ t.star = !t.star; commitTasks(); };
-    var del = el("button", "ic del", "×"); del.title = "Удалить";
-    del.onclick = function(){ removeTask(t.id); };
-    li.append(cb, tx, st, del); list.appendChild(li);
-  });
-  var done = S.tasks.filter(function(t){ return t.done; }).length;
-  $("tcount").textContent = S.tasks.length ? done + " из " + S.tasks.length : "пусто";
+/* ---------- задачи: ранжирование ---------- */
+var GROUPS = [["over","Просрочено"],["today","Сегодня"],["tomorrow","Завтра"],["week","Ближайшие 7 дней"],["later","Позже"],["nodate","Без срока"],["done","Выполнено"]];
+function bucket(t){
+  if (t.done) return 6;
+  var n = daysLeft(t.due);
+  if (n === null) return 5; if (n < 0) return 0; if (n === 0) return 1; if (n === 1) return 2; if (n <= 7) return 3; return 4;
 }
-function removeTask(id){ S.tasks = S.tasks.filter(function(t){ return t.id !== id; }); commitTasks(); }
-function commitTasks(){ save(); renderTasks(); }
+function rank(a, b){
+  var ba = bucket(a), bb = bucket(b);
+  if (ba !== bb) return ba - bb;
+  if (ba === 6) return (b.doneAt || 0) - (a.doneAt || 0);
+  if (a.due && b.due && a.due !== b.due) return a.due < b.due ? -1 : 1;
+  if (a.star !== b.star) return b.star - a.star;
+  return a.created - b.created;
+}
+function proj(id){ for (var i = 0; i < S.projects.length; i++) if (S.projects[i].id === id) return S.projects[i]; return null; }
+function inFilter(t, f){ return f === "all" || (f === "none" ? !t.pid : t.pid === f); }
+function isOver(t){ var n = daysLeft(t.due); return !t.done && n !== null && n < 0; }
+
+/* кнопка срока: клик — выбор даты */
+function dueBtn(val, onSet, title){
+  var b = el("button", "due " + dueClass(val), dueText(val)); b.type = "button"; b.title = title || "Срок";
+  b.onclick = function(e){
+    e.stopPropagation();
+    var inp = document.createElement("input"); inp.type = "date"; inp.className = "dateinp"; inp.value = val || "";
+    b.replaceWith(inp); inp.focus();
+    try { inp.showPicker(); } catch(_){}
+    var fin = false;
+    function done(){ if (fin) return; fin = true; onSet(inp.value || null); }
+    inp.onchange = function(){ if (!inp.value || +inp.value.slice(0,4) >= 2000) done(); };
+    inp.onblur = done;
+    inp.onkeydown = function(ev){ if (ev.key === "Enter"){ ev.preventDefault(); done(); } if (ev.key === "Escape"){ fin = true; inp.replaceWith(b); } };
+    inp.onclick = function(ev){ ev.stopPropagation(); };
+  };
+  return b;
+}
+function projOptions(sel, value){
+  sel.innerHTML = "";
+  var o = el("option", null, "Без проекта"); o.value = ""; sel.appendChild(o);
+  S.projects.forEach(function(p){ var x = el("option", null, p.name); x.value = p.id; sel.appendChild(x); });
+  sel.value = value && proj(value) ? value : "";
+}
+
+function renderFilters(){
+  var box = $("filters"); box.innerHTML = "";
+  var opts = [{id:"all", name:"Все"}].concat(S.projects).concat([{id:"none", name:"Без проекта"}]);
+  opts.forEach(function(o){
+    var open = S.tasks.filter(function(t){ return !t.done && inFilter(t, o.id); });
+    if (o.id === "none" && !open.length && S.filter !== "none") return;
+    var over = open.filter(isOver).length;
+    var b = el("button", "fchip" + (S.filter === o.id ? " on" : "")); b.type = "button";
+    if (o.color){ var d = el("i", "dot"); d.style.setProperty("--c", o.color); b.appendChild(d); }
+    b.appendChild(el("span", null, o.name));
+    b.appendChild(el("span", "n" + (over ? " bad" : ""), over ? open.length + " · " + over + "!" : String(open.length)));
+    b.title = "Открытых задач: " + open.length + (over ? ", просрочено: " + over : "");
+    b.onclick = function(){ setFilter(o.id); };
+    box.appendChild(b);
+  });
+}
+function setFilter(f){ S.filter = f; save(); renderTasks(); renderProjects(); }
+
+function renderTasks(){
+  renderFilters();
+  projOptions($("taskProj"), S.filter !== "all" && S.filter !== "none" ? S.filter : $("taskProj").value);
+  var list = $("taskList"); list.innerHTML = "";
+  var items = S.tasks.filter(function(t){ return inFilter(t, S.filter); }).sort(rank);
+  var last = -1;
+  items.forEach(function(t){
+    var b = bucket(t);
+    if (b !== last){
+      last = b;
+      var g = el("li", "group " + GROUPS[b][0]);
+      g.appendChild(el("span", null, GROUPS[b][1]));
+      g.appendChild(el("span", "gn", String(items.filter(function(x){ return bucket(x) === b; }).length)));
+      if (b === 6){
+        var tg = el("button", "link", S.showDone ? "скрыть" : "показать"); tg.type = "button";
+        tg.onclick = function(){ S.showDone = !S.showDone; save(); renderTasks(); };
+        var cl = el("button", "link", "удалить"); cl.type = "button"; cl.title = "Удалить выполненные задачи в этом списке";
+        cl.onclick = function(){ S.tasks = S.tasks.filter(function(t){ return !(t.done && inFilter(t, S.filter)); }); commit(); };
+        g.append(tg, cl);
+      }
+      list.appendChild(g);
+    }
+    if (b === 6 && !S.showDone) return;
+    list.appendChild(taskRow(t));
+  });
+  if (!items.length) list.appendChild(el("li", "empty", "Здесь пока пусто. Добавьте задачу сверху."));
+  var open = items.filter(function(t){ return !t.done; }).length;
+  $("tcount").textContent = "открыто: " + open;
+}
+function taskRow(t){
+  var li = el("li", "task" + (t.done ? " done" : "") + (t.star ? " star" : "") + (isOver(t) ? " over" : ""));
+  var cb = el("button", "cb", t.done ? "✓" : ""); cb.type = "button"; cb.title = t.done ? "Вернуть в работу" : "Готово";
+  cb.onclick = function(){ t.done = !t.done; t.doneAt = t.done ? Date.now() : null; commit(); };
+  var body = el("div", "body");
+  var tx = el("span", "tx");
+  editable(tx, t.text, function(v){ t.text = v; save(); }, function(){ removeTask(t.id); });
+  var meta = el("div", "meta");
+  var sel = el("select", "ptag"); sel.title = "Проект";
+  projOptions(sel, t.pid);
+  var p = proj(t.pid); sel.style.setProperty("--c", p ? p.color : "transparent");
+  sel.onchange = function(){ t.pid = sel.value || null; commit(); };
+  meta.appendChild(sel);
+  if (!t.done) meta.appendChild(dueBtn(t.due, function(v){ t.due = v; commit(); }));
+  body.append(tx, meta);
+  var st = el("button", "ic st" + (t.star ? " on" : ""), "★"); st.type = "button"; st.title = "Важное — выше в своей группе";
+  st.onclick = function(){ t.star = !t.star; commit(); };
+  var del = el("button", "ic del", "×"); del.type = "button"; del.title = "Удалить";
+  del.onclick = function(){ removeTask(t.id); };
+  li.append(cb, body, st, del);
+  return li;
+}
+function removeTask(id){ S.tasks = S.tasks.filter(function(t){ return t.id !== id; }); commit(); }
+function commit(){ save(); renderTasks(); renderProjects(); }
 $("taskForm").onsubmit = function(e){
   e.preventDefault();
-  var v = $("taskInput").value.trim(); if (!v) return;
-  S.tasks.unshift({id:uid(), text:v, done:false, star:false});
-  $("taskInput").value = ""; commitTasks();
+  var v = $("taskInput").value.trim(); if (!v){ $("taskInput").focus(); return; }
+  S.tasks.push(norm({text:v, pid:$("taskProj").value || null, due:$("taskDue").value || null}));
+  $("taskInput").value = ""; $("taskDue").value = "";
+  commit(); $("taskInput").focus();
 };
-$("clearDone").onclick = function(){ S.tasks = S.tasks.filter(function(t){ return !t.done; }); commitTasks(); };
 
 /* ---------- проекты ---------- */
+function projStats(p){
+  var ts = S.tasks.filter(function(t){ return t.pid === p.id; });
+  var open = ts.filter(function(t){ return !t.done; });
+  var dates = open.filter(function(t){ return t.due; }).map(function(t){ return t.due; }).sort();
+  return {total:ts.length, done:ts.length - open.length, open:open.length, over:open.filter(isOver).length, next:dates[0] || null};
+}
+function cmpDate(a, b){ if (a === b) return 0; if (!a) return 1; if (!b) return -1; return a < b ? -1 : 1; }
 function renderProjects(){
   var list = $("projList"); list.innerHTML = "";
-  S.projects.forEach(function(p){
-    var li = el("li", "proj");
-    var row = el("div", "prow");
-    var name = el("span", "pname");
-    editable(name, p.name, function(v){ p.name = v; save(); }, function(){ name.textContent = p.name; });
-    var pct = el("span", "pct", p.progress + "%");
-    var del = el("button", "ic", "×"); del.title = "Удалить проект";
-    del.onclick = function(){ if (confirm("Удалить проект «" + p.name + "»?")){ S.projects = S.projects.filter(function(x){ return x.id !== p.id; }); save(); renderProjects(); } };
-    row.append(name, pct, del);
-    var bar = el("div", "bar"); bar.title = "Кликните, чтобы поставить процент готовности";
-    var fill = el("i"); fill.style.width = p.progress + "%"; bar.appendChild(fill);
-    bar.onclick = function(e){
-      var r = bar.getBoundingClientRect();
-      p.progress = Math.max(0, Math.min(100, Math.round((e.clientX - r.left) / r.width * 20) * 5));
-      fill.style.width = p.progress + "%"; pct.textContent = p.progress + "%"; save();
+  var arr = S.projects.map(function(p){ return {p:p, s:projStats(p)}; });
+  // проекты тоже по срочности: с просрочкой — наверх, дальше по ближайшему сроку
+  arr.sort(function(a, b){ return (b.s.over > 0) - (a.s.over > 0) || cmpDate(a.s.next || a.p.due, b.s.next || b.p.due); });
+  arr.forEach(function(it){
+    var p = it.p, s = it.s;
+    var li = el("li", "proj" + (S.filter === p.id ? " on" : "")); li.style.setProperty("--c", p.color);
+    li.onclick = function(e){
+      if (e.target.closest("button,input,[contenteditable='true']")) return;
+      setFilter(S.filter === p.id ? "all" : p.id);
     };
-    var next = el("div", "pnext"); next.appendChild(el("span", null, "Дальше:"));
-    var nx = el("span"); nx.setAttribute("data-ph", "следующий шаг");
-    editable(nx, p.next, function(v){ p.next = v; save(); });
-    next.appendChild(nx);
-    li.append(row, bar, next); list.appendChild(li);
+    var row = el("div", "prow");
+    var name = el("span", "pname", p.name); name.title = "Двойной клик — переименовать";
+    name.ondblclick = function(e){
+      e.stopPropagation();
+      if (name.isContentEditable) return;
+      editable(name, p.name, function(v){ if (v) { p.name = v; save(); } }, function(){ name.textContent = p.name; });
+      name.addEventListener("blur", function(){ name.contentEditable = "false"; renderTasks(); renderProjects(); }, {once:true});
+      name.focus(); document.execCommand("selectAll", false, null);
+    };
+    var del = el("button", "ic", "×"); del.type = "button"; del.title = "Удалить проект";
+    del.onclick = function(){
+      if (!confirm("Удалить проект «" + p.name + "»? Его задачи останутся в списке «Без проекта».")) return;
+      S.tasks.forEach(function(t){ if (t.pid === p.id) t.pid = null; });
+      S.projects = S.projects.filter(function(x){ return x.id !== p.id; });
+      if (S.filter === p.id) S.filter = "all";
+      commit();
+    };
+    row.append(el("i", "dot"), name, dueBtn(p.due, function(v){ p.due = v; commit(); }, "Срок всего проекта"), del);
+    var meta = el("div", "pmeta");
+    meta.appendChild(el("span", null, s.open ? "открыто " + s.open : (s.total ? "всё сделано" : "задач нет")));
+    if (s.over) meta.appendChild(el("span", "bad", "просрочено " + s.over));
+    else if (s.next) meta.appendChild(el("span", null, "ближайшее: " + dueText(s.next)));
+    var pct = s.total ? Math.round(s.done / s.total * 100) : 0;
+    meta.appendChild(el("span", "pct", pct + "%"));
+    var bar = el("div", "bar"); bar.title = "Готово задач: " + s.done + " из " + s.total;
+    var fill = el("i"); fill.style.width = pct + "%"; bar.appendChild(fill);
+    li.append(row, meta, bar); list.appendChild(li);
   });
-  $("pcount").textContent = S.projects.length ? S.projects.length + "" : "";
+  if (!arr.length) list.appendChild(el("li", "empty", "Проектов нет — добавьте первый."));
 }
 $("projForm").onsubmit = function(e){
   e.preventDefault();
   var v = $("projInput").value.trim(); if (!v) return;
-  S.projects.push({id:uid(), name:v, progress:0, next:""});
-  $("projInput").value = ""; save(); renderProjects();
+  S.projects.push({id:uid(), name:v, color:COLORS[S.projects.length % COLORS.length], due:null});
+  $("projInput").value = ""; commit();
 };
 
 /* ---------- фокус, заметки, имя ---------- */
@@ -337,9 +537,16 @@ function tick(){
     var ny = Math.ceil((new Date(d.getFullYear() + 1, 0, 1) - d) / 864e5);
     chips.push("🎄 до Нового года " + ny + " " + plural(ny, "день", "дня", "дней"));
   }
-  var html = chips.map(function(c){ return '<span class="chip"></span>'; }).join("");
-  var box = $("chips"); box.innerHTML = html;
-  Array.prototype.forEach.call(box.children, function(n, i){ n.textContent = chips[i]; });
+  var over = S.tasks.filter(isOver).length;
+  var today = S.tasks.filter(function(t){ return !t.done && daysLeft(t.due) === 0; }).length;
+  var box = $("chips"); box.innerHTML = "";
+  if (over){ var o = el("span", "chip bad", "⚠ просрочено: " + over); box.appendChild(o); }
+  if (today) box.appendChild(el("span", "chip", "на сегодня: " + today));
+  chips.forEach(function(c){ box.appendChild(el("span", "chip", c)); });
+  // в полночь пересчитать сроки
+  var dayKey = ymd(d);
+  if (tick.day && tick.day !== dayKey){ renderTasks(); renderProjects(); }
+  tick.day = dayKey;
 }
 
 /* ---------- панель снизу ---------- */
@@ -369,8 +576,7 @@ $("file").onchange = function(){
     try {
       var d = JSON.parse(r.result);
       if (!d || !Array.isArray(d.tasks)) throw 0;
-      var base = defaults(); for (var k in base) if (d[k] !== undefined) base[k] = d[k];
-      S = base; save(); renderAll(); buildScene(); toast("Задачи загружены");
+      S = fromData(d); save(); renderAll(); buildScene(); toast("Задачи загружены");
     } catch(e){ toast("Не похоже на файл копии"); }
   };
   r.readAsText(f); this.value = "";
