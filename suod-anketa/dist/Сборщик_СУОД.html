@@ -98,6 +98,10 @@ p.lead{margin:0 0 14px;color:var(--ink2);font-size:15px}
 .file .fc{color:var(--muted);white-space:nowrap}
 .file button{border:0;background:#f0f1f7;border-radius:8px;width:28px;height:28px;color:var(--ink2);font-size:15px;flex:none}
 .file button:hover{background:var(--red-soft);color:var(--red)}
+.fdiv{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:0 0 9px 22px;font-size:13.5px;color:var(--ink2)}
+.fdiv input{flex:1;min-width:170px;padding:6px 10px;border:2px solid var(--line);border-radius:9px}
+.fdiv.need{color:var(--red);font-weight:700}
+.fdiv.need input{border-color:var(--red);background:var(--red-soft)}
 .msgs{font-size:13px;margin-top:8px;max-height:240px;overflow:auto}
 .msgs .w{color:var(--red)}.msgs .i{color:var(--ink2)}
 .paste textarea{width:100%;min-height:80px;margin-top:8px;border:2px solid var(--line);border-radius:10px;padding:8px;font:12px/1.4 Consolas,monospace}
@@ -1011,8 +1015,8 @@ function radarSvg(series, opts) {
   function addRaw(w, fname, fill) {
     var R = { id: Date.now() + "_" + Math.random().toString(36).slice(2, 7), wave: w, file: fname, recs: [], issues: [], info: [] };
     try { fill(R); } catch (e) { R.issues.push("Не удалось прочитать: " + e.message); }
-    var dd = defDiv(w);
-    R.recs.forEach(function (r) { if (!r.div && dd) r.div = cleanDiv(dd); });
+    // подразделение для анкет, где оно не указано: хранится у файла, его можно поправить позже
+    if (R.recs.some(function (r) { return !r.div; })) R.div = cleanDiv(defDiv(w));
     RAW = RAW.filter(function (x) { return !(x.wave === w && x.file === fname); });   // тот же файл ещё раз — заменяем
     RAW.push(R);
   }
@@ -1048,7 +1052,7 @@ function radarSvg(series, opts) {
     RAW.forEach(function (R) {
       R.recs.forEach(function (r0) {
         var r = JSON.parse(JSON.stringify(r0)); r.wave = R.wave; r.file = R.file; r.files = [R.file];
-        r.fio = r.fio || "(без ФИО)"; r.div = DIVMAP[r.div] || r.div || "(не указано)";
+        r.fio = r.fio || "(без ФИО)"; r.div = r.div || R.div || "(не указано)"; r.div = DIVMAP[r.div] || r.div;
         var key = personKey(r.fio), ex = null;
         if (r.fio !== "(без ФИО)") REC.forEach(function (x) { if (x.wave === r.wave && personKey(x.fio) === key) ex = x; });
         if (ex) { mergeInto(ex, r); MERGE[r.wave].push(ex.fio); } else REC.push(r);
@@ -1169,7 +1173,8 @@ function radarSvg(series, opts) {
     [1, 2].forEach(function (w) {
       var el = $('.load[data-w="' + w + '"]'), raws = RAW.filter(function (R) { return R.wave === w; });
       $("[data-files]", el).innerHTML = raws.map(function (R) {
-        return '<div class="file"><span class="fn" title="' + esc(R.file) + '">📄 ' + esc(R.file) + '</span><span class="fc">' + (R.recs.length ? R.recs.length + " анк." : "не загружен") + '</span><button title="Убрать этот файл" data-rm="' + R.id + '">✕</button></div>';
+        return '<div class="file"><span class="fn" title="' + esc(R.file) + '">📄 ' + esc(R.file) + '</span><span class="fc">' + (R.recs.length ? R.recs.length + " анк." : "не загружен") + '</span><button title="Убрать этот файл" data-rm="' + R.id + '">✕</button></div>' +
+          (R.recs.some(function (r) { return !r.div; }) ? '<div class="fdiv' + (R.div ? "" : " need") + '"><span>' + (R.div ? "Подразделение для этого файла:" : "⚠ В файле не указано подразделение — впишите:") + '</span><input data-fdiv="' + R.id + '" value="' + esc(R.div || "") + '" placeholder="например, Восточная Сибирь"></div>' : "");
       }).join("");
       var n = REC.filter(function (r) { return r.wave === w; }).length;
       var msgs = [];
@@ -1178,6 +1183,10 @@ function radarSvg(series, opts) {
       var mg = {}; MERGE[w].forEach(function (f) { mg[f] = 1; });
       if (Object.keys(mg).length) msgs.push('<div class="i">• Один человек встретился в нескольких файлах — ответы объединены: ' + esc(Object.keys(mg).join(", ")) + "</div>");
       $("[data-msgs]", el).innerHTML = msgs.join("");
+      $$("[data-fdiv]", el).forEach(function (inp) {
+        inp.onchange = function () { RAW.forEach(function (R) { if (R.id === inp.getAttribute("data-fdiv")) R.div = cleanDiv(inp.value); }); rebuild(); };
+        inp.onkeydown = function (e) { if (e.key === "Enter") inp.blur(); };
+      });
       $$("[data-rm]", el).forEach(function (b) { b.onclick = function () { RAW = RAW.filter(function (R) { return R.id !== b.getAttribute("data-rm"); }); rebuild(); }; });
     });
     REC.forEach(function (r) { delete r._sc; });
