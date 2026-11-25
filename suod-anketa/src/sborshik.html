@@ -1,0 +1,577 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Сборщик анкет СУОД</title>
+<style>
+/*CSS*/
+.top{background:var(--purple);color:#fff}
+.top .in{max-width:1240px;margin:0 auto;padding:18px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.top h1{font-size:26px;text-transform:uppercase;margin:0}
+.top h1 em{font-style:normal;color:var(--orange)}
+.top p{margin:2px 0 0;opacity:.8;font-size:14px}
+.wrap{max-width:1240px;margin:0 auto;padding:20px 16px 80px}
+.loads{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.load{padding:18px}
+.load .lh{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.load .lh .dot{width:14px;height:14px;border-radius:50%}
+.load .lh input{font-family:var(--head);font-size:20px;font-weight:600;border:0;border-bottom:1.5px dashed transparent;padding:0 2px;width:100%;background:transparent}
+.load .lh input:hover,.load .lh input:focus{border-bottom-color:var(--line);outline:none}
+.drop{border:2px dashed #c4c6dc;border-radius:10px;padding:22px 14px;text-align:center;color:var(--ink2);transition:background .15s,border-color .15s;cursor:pointer}
+.drop.over{background:var(--blue-soft);border-color:var(--blue)}
+.drop b{color:var(--purple)}
+.lrow{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap;font-size:14px}
+.lrow input{padding:7px 10px;border:1.5px solid var(--line);border-radius:8px;flex:1;min-width:160px}
+.lstat{margin-top:10px;font-size:14px}
+.issues{font-size:13px;color:var(--red);margin-top:6px;max-height:120px;overflow:auto}
+.paste textarea{width:100%;min-height:80px;margin-top:8px;border:1.5px solid var(--line);border-radius:8px;padding:8px;font:12px/1.4 Consolas,monospace}
+.filters{display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin:22px 0 14px;position:sticky;top:0;background:var(--bg);padding:10px 0;z-index:4}
+.filters label{font-size:13px;color:var(--muted);display:block;margin-bottom:3px}
+.filters select{padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;background:#fff;min-width:180px}
+.filters .sp{flex:1}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.kpi{padding:16px 18px}
+.kpi .k{font-size:13px;color:var(--muted)}
+.kpi .v{font-family:var(--head);font-size:34px;font-weight:600;line-height:1.1;margin-top:4px}
+.kpi .s{font-size:13px;color:var(--ink2)}
+.up{color:var(--green)}.down{color:var(--red)}.flat{color:var(--muted)}
+.sec{margin-top:26px}
+.sec>.sh{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.sec>.sh h2{font-size:22px;text-transform:uppercase;color:var(--purple);margin:0;margin-right:auto}
+.seg{display:inline-flex;background:#e6e7f1;border-radius:9px;padding:3px}
+.seg button{border:0;background:transparent;padding:6px 12px;border-radius:7px;font-size:13.5px;font-weight:600;color:var(--ink2)}
+.seg button.on{background:#fff;color:var(--purple);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.two{display:grid;grid-template-columns:1.4fr 1fr;gap:16px}
+.pad{padding:18px}
+.legend{display:flex;gap:16px;font-size:13px;color:var(--ink2);margin-bottom:8px;flex-wrap:wrap}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.tw{overflow:auto}
+table.t{width:100%;border-collapse:collapse;font-size:13.5px}
+table.t th{text-align:left;font-weight:600;color:var(--ink2);padding:9px 8px;border-bottom:1.5px solid var(--line);white-space:nowrap;background:#fafbfd;position:sticky;top:0}
+table.t th.c,table.t td.c{text-align:center}
+table.t td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+table.t tr:hover td{background:#fafaff}
+.cell{display:inline-block;min-width:54px;padding:3px 6px;border-radius:6px;font-weight:600;text-align:center}
+.d-up{background:var(--green-soft);color:var(--green)}.d-down{background:var(--red-soft);color:var(--red)}.d-flat{background:#eef0f5;color:var(--muted)}
+.dist{display:flex;height:10px;border-radius:4px;overflow:hidden;min-width:110px;background:#eef0f5}
+.dist i{display:block;height:100%}
+.chg{display:inline-block;width:18px;height:18px;border-radius:50%;background:var(--orange-soft);color:var(--orange);font-weight:700;font-size:12px;text-align:center;line-height:18px;cursor:help}
+.search{padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;min-width:220px}
+.ans{padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}
+.ans .who{font-size:12.5px;color:var(--muted)}
+.empty{padding:40px 20px;text-align:center;color:var(--muted)}
+.notes li{margin:4px 0;font-size:14px}
+@media (max-width:900px){.loads,.two{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="top"><div class="in">
+  <div style="flex:1"><h1>Сборщик анкет <em>СУОД</em></h1><p>Работает без интернета. Данные никуда не отправляются — всё считается в этом окне.</p></div>
+  <button class="btn orange" id="exportBtn" disabled>Выгрузить в Excel</button>
+</div></div>
+
+<div class="wrap">
+  <div class="loads">
+    <div class="load card" data-w="1">
+      <div class="lh"><span class="dot" style="background:#8a8fb5"></span><input value="Волна 1 · до" data-label></div>
+      <div class="drop" data-drop>Перетащите сюда файлы первого замера<br><b>старые Excel-анкеты (.xlsx), свод (.xlsx) или файлы .csv</b><br><span class="muted">или нажмите, чтобы выбрать</span></div>
+      <input type="file" multiple accept=".csv,.txt,.xlsx,.xlsm,.xls" class="hidden" data-file>
+      <div class="lrow"><span>Дивизион, если в файле не указан:</span><input data-defdiv placeholder="например, Восток"></div>
+      <div class="lrow"><button class="btn small ghost" data-pastebtn>Вставить текст из письма</button><button class="btn small ghost" data-clear>Очистить</button></div>
+      <div class="paste hidden" data-paste><textarea placeholder="Вставьте текст ответа сотрудника (начинается с «Формат»;…) или строки, скопированные из Excel-свода с заголовками"></textarea><button class="btn small" data-pasteadd>Добавить</button></div>
+      <div class="lstat" data-stat></div>
+      <div class="issues" data-issues></div>
+    </div>
+    <div class="load card" data-w="2">
+      <div class="lh"><span class="dot" style="background:#2d2a7b"></span><input value="Волна 2 · после" data-label></div>
+      <div class="drop" data-drop>Перетащите сюда файлы повторного замера<br><b>файлы .csv из новой анкеты</b><br><span class="muted">или нажмите, чтобы выбрать</span></div>
+      <input type="file" multiple accept=".csv,.txt,.xlsx,.xlsm,.xls" class="hidden" data-file>
+      <div class="lrow"><span>Дивизион, если в файле не указан:</span><input data-defdiv placeholder="например, Восток"></div>
+      <div class="lrow"><button class="btn small ghost" data-pastebtn>Вставить текст из письма</button><button class="btn small ghost" data-clear>Очистить</button></div>
+      <div class="paste hidden" data-paste><textarea placeholder="Вставьте текст ответа сотрудника (начинается с «Формат»;…)"></textarea><button class="btn small" data-pasteadd>Добавить</button></div>
+      <div class="lstat" data-stat></div>
+      <div class="issues" data-issues></div>
+    </div>
+  </div>
+
+  <div id="dash" class="hidden">
+    <div class="filters">
+      <div><label>Дивизион</label><select id="fDiv"></select></div>
+      <div><label>Категория</label><select id="fCat"></select></div>
+      <div class="sp"></div>
+    </div>
+
+    <div class="kpis" id="kpis"></div>
+
+    <div class="sec">
+      <div class="sh"><h2>Блоки: до и после</h2></div>
+      <div class="two">
+        <div class="card pad"><div class="legend" id="legBars"></div><div id="bars"></div></div>
+        <div class="card pad" style="display:grid;place-items:center"><div class="legend" id="legRadar"></div><div id="radar" style="width:100%;display:grid;place-items:center"></div></div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sh"><h2>По дивизионам</h2><div class="seg" data-seg="div"><button data-m="w2" class="on">После</button><button data-m="w1">До</button><button data-m="d">Изменение</button></div></div>
+      <div class="card tw" id="mDiv"></div>
+    </div>
+
+    <div class="sec">
+      <div class="sh"><h2>По категориям</h2><div class="seg" data-seg="cat"><button data-m="w2" class="on">После</button><button data-m="w1">До</button><button data-m="d">Изменение</button></div></div>
+      <div class="card tw" id="mCat"></div>
+    </div>
+
+    <div class="sec">
+      <div class="sh"><h2>По вопросам</h2><div class="seg" data-seg="qsort"><button data-m="id" class="on">По порядку</button><button data-m="low">Слабые места</button><button data-m="d">Наибольшие изменения</button></div></div>
+      <div class="legend"><span><i style="background:#d64545"></i>0 баллов</span><span><i style="background:#e9a93a"></i>3 балла</span><span><i style="background:#1f9d63"></i>5 баллов</span><span><span class="chg">!</span> вопрос изменён по сравнению с первой волной</span></div>
+      <div class="card tw" id="tQ" style="max-height:640px"></div>
+    </div>
+
+    <div class="sec">
+      <div class="sh"><h2>Сотрудники</h2><input class="search" id="pSearch" placeholder="Поиск по ФИО"></div>
+      <div class="card tw" id="tP" style="max-height:560px"></div>
+    </div>
+
+    <div class="sec">
+      <div class="sh"><h2>Ответы своими словами</h2><select id="oQ" class="search"></select><div class="seg" data-seg="ow"><button data-m="2" class="on">После</button><button data-m="1">До</button></div></div>
+      <div class="card pad" id="oList" style="max-height:520px;overflow:auto"></div>
+    </div>
+
+    <div class="sec">
+      <div class="sh"><h2>Что изменилось в анкете</h2></div>
+      <div class="card pad"><ul class="notes" id="notes"></ul></div>
+    </div>
+  </div>
+  <div id="emptyMsg" class="empty">Загрузите файлы хотя бы одной волны — здесь появится сводка.</div>
+</div>
+
+<script>
+/*XLSX*/
+</script>
+<script>
+/*DATA*/
+/*COMMON*/
+(function () {
+  var REC = [];                 // все анкеты
+  var ISSUES = { 1: [], 2: [] };
+  var mode = { div: "w2", cat: "w2", qsort: "id", ow: "2" };
+  var C1 = "#8a8fb5", C2 = "#2d2a7b";
+
+  function label(w) { return $('.load[data-w="' + w + '"] [data-label]').value || ("Волна " + w); }
+  function defDiv(w) { return ($('.load[data-w="' + w + '"] [data-defdiv]').value || "").trim(); }
+  // начала формулировок первой волны — чтобы разобрать столбцы «Ответ на вопрос: …» старого свода
+  var OLD_Q = { 1: "перечислите корпоративные модели", 2: "какие цели на ближайший год", 3: "какие цели стоят перед вашим дивизионом",
+    4: "какие корпоративные льготы", 15: "к чему договорились", 18: "расскажите, пожалуйста, о программах", 20: "назовите ключевые разделы",
+    25: "как вы охарактеризуете", 26: "какими инструментами", 27: "расскажите пожалуйста, что вам известно", 28: "что является главной целью" };
+  function norm(s) { return String(s || "").toLowerCase().replace(/ё/g, "е").replace(/\s+/g, " ").trim(); }
+
+  /* ---------- разбор CSV новой анкеты ---------- */
+  function parseCsv(text) {
+    text = text.replace(/^﻿/, "");
+    var rows = [], row = [], cur = "", q = false, sep = ";";
+    var firstLine = text.split(/\r?\n/)[0] || "";
+    if (firstLine.indexOf(";") < 0 && firstLine.indexOf("\t") >= 0) sep = "\t";
+    else if (firstLine.indexOf(";") < 0 && firstLine.indexOf(",") >= 0) sep = ",";
+    for (var i = 0; i < text.length; i++) {
+      var c = text[i];
+      if (q) { if (c === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += c; }
+      else if (c === '"') q = true;
+      else if (c === sep) { row.push(cur); cur = ""; }
+      else if (c === "\n") { row.push(cur.replace(/\r$/, "")); rows.push(row); row = []; cur = ""; }
+      else cur += c;
+    }
+    if (cur || row.length) { row.push(cur.replace(/\r$/, "")); rows.push(row); }
+    return rows.filter(function (r) { return r.some(function (x) { return String(x).trim() !== ""; }); });
+  }
+  function recordsFromRows(rows, w, src) {
+    // поддерживает: новый формат («Формат»…), строки свода с заголовком «ФИО»
+    var out = [], hdr = null, kind = "";
+    rows.forEach(function (r, ri) {
+      var cells = r.map(function (x) { return String(x == null ? "" : x).trim(); });
+      if (cells[0] === "Формат") { hdr = cells; kind = "new"; return; }
+      if (!hdr && cells.indexOf("ФИО") >= 0) { hdr = cells; kind = "svod"; return; }
+      if (!hdr) return;
+      var get = function (name) { var i = hdr.indexOf(name); return i >= 0 ? cells[i] : ""; };
+      if (kind === "new") {
+        var rec = { wave: w, src: src, div: get("Дивизион") || defDiv(w), fio: get("ФИО"), cat: catFromText(get("Категория")), date: get("Дата"), ans: {}, txt: {} };
+        hdr.forEach(function (h, i) {
+          var m = /^Вопрос (\d+) \((балл|ответ)\)$/.exec(h);
+          if (!m) return;
+          var id = +m[1];
+          if (m[2] === "балл") { var v = cells[i]; if (v === "0" || v === "3" || v === "5") rec.ans[id] = +v; }
+          else if (cells[i] && cells[i] !== "—") rec.txt[id] = cells[i];
+        });
+        out.push(rec);
+      } else {
+        var fio = get("ФИО"); if (!fio) return;
+        var rec2 = { wave: w, src: src, div: get("Дивизион") || defDiv(w), fio: fio, cat: catFromText(get("Категория")), ans: {}, txt: {}, blocksOnly: {} };
+        BLOCKS.forEach(function (b) {
+          var i = -1; hdr.forEach(function (h, k) { if (norm(h).indexOf(norm(b.name)) === 0) i = k; });
+          var v = i >= 0 ? parseFloat(String(cells[i]).replace(",", ".").replace("%", "")) : NaN;
+          if (!isNaN(v)) rec2.blocksOnly[b.id] = v <= 1.0001 && String(cells[i]).indexOf("%") < 0 ? v * 100 : v;
+          else rec2.blocksOnly[b.id] = null;
+        });
+        // свод мог содержать ответы своими словами
+        hdr.forEach(function (h, k) {
+          if (h.indexOf("Ответ на вопрос:") === 0 && cells[k] && cells[k] !== "—") {
+            var qt = norm(h.replace("Ответ на вопрос:", "")), qid = null;
+            Object.keys(OLD_Q).forEach(function (id) { if (qt.indexOf(OLD_Q[id]) === 0) qid = +id; });
+            if (qid) rec2.txt[qid] = cells[k];
+          }
+          if (norm(h) === "предложения по соп" && cells[k] && cells[k] !== "—") rec2.txt[24] = cells[k];
+        });
+        out.push(rec2);
+      }
+    });
+    if (!hdr) ISSUES[w].push(src + ": не найден заголовок (ожидается файл анкеты .csv или свод со столбцом «ФИО»)");
+    return out;
+  }
+
+  /* ---------- разбор старой Excel-анкеты (первая волна) ---------- */
+  function cellText(ws, addr) { var c = ws[addr]; return c ? String(c.w != null ? c.w : c.v).trim() : ""; }
+  function recordFromOldAnketa(ws, w, src) {
+    var title = cellText(ws, "A1");
+    var m = /Дивизион\s*[«"“„']?\s*([^"»”']+)/i.exec(title);
+    var fio = ""; ["C2", "D2", "E2", "F2", "B2"].some(function (a) { var t = cellText(ws, a); if (t && t.indexOf("ФИО") < 0) { fio = t; return true; } return false; });
+    var catT = ""; ["I2", "J2", "H2"].some(function (a) { var t = cellText(ws, a); if (t && t.indexOf("Категория") < 0) { catT = t; return true; } return false; });
+    var rec = { wave: w, src: src, div: (m ? m[1].trim() : "") || defDiv(w), fio: fio, cat: catFromText(catT), ans: {}, txt: {}, multi: [] };
+    var range = XLSX.utils.decode_range(ws["!ref"] || "A1:P60");
+    for (var r = 4; r <= Math.min(range.e.r + 1, 120); r++) {
+      var id = parseInt(cellText(ws, "A" + r), 10);
+      if (!id || id > 40) continue;
+      var marks = [cellText(ws, "C" + r), cellText(ws, "E" + r), cellText(ws, "G" + r)];
+      var q = qById(id);
+      if (id === 24) { var t24 = cellText(ws, "C" + r) || cellText(ws, "J" + r); if (t24 && t24 !== "—") rec.txt[24] = t24; continue; }
+      var t = cellText(ws, "J" + r); if (t && t !== "—" && q) rec.txt[id] = t;
+      if (!q) continue;                                 // вопрос 23 и другие удалённые
+      var on = marks.map(function (x) { return x !== ""; });
+      var k = on.indexOf(true);
+      if (k < 0) continue;
+      if (on.filter(Boolean).length > 1) { rec.multi.push(id); continue; }
+      var score = [0, 3, 5][k];
+      if (id === 21) score = [3, 0, 5][k];             // исправленный ключ
+      rec.ans[id] = score;
+    }
+    if (!fio) ISSUES[w].push(src + ": не заполнено ФИО");
+    if (rec.multi.length) ISSUES[w].push(src + ": несколько отметок в вопросах " + rec.multi.join(", ") + " — не засчитаны");
+    return rec;
+  }
+
+  /* ---------- приём файлов ---------- */
+  function addRecords(list) {
+    list.forEach(function (r) {
+      if (!r.fio) r.fio = "(без ФИО)";
+      if (!r.div) r.div = "(дивизион не указан)";
+      var key = r.wave + "|" + norm(r.div) + "|" + norm(r.fio);
+      var i = -1; REC.forEach(function (x, k) { if (x.wave + "|" + norm(x.div) + "|" + norm(x.fio) === key) i = k; });
+      if (i >= 0 && r.fio !== "(без ФИО)") { ISSUES[r.wave].push("Повтор: " + r.fio + " — оставлен последний загруженный файл (" + r.src + ")"); REC[i] = r; }
+      else REC.push(r);
+    });
+  }
+  function readFiles(files, w) {
+    var arr = Array.prototype.slice.call(files), left = arr.length;
+    if (!left) return;
+    arr.forEach(function (f) {
+      var fr = new FileReader(), isX = /\.xls[xm]?$/i.test(f.name);
+      fr.onload = function () {
+        try {
+          if (isX) {
+            var wb = XLSX.read(new Uint8Array(fr.result), { type: "array" });
+            if (wb.Sheets["Анкета"]) addRecords([recordFromOldAnketa(wb.Sheets["Анкета"], w, f.name)]);
+            else {
+              var got = false;
+              wb.SheetNames.forEach(function (sn) {
+                var rows = XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, raw: false, defval: "" });
+                if (rows.some(function (r) { return r.indexOf("ФИО") >= 0 || r[0] === "Формат"; })) {
+                  addRecords(recordsFromRows(rows, w, f.name + " / " + sn)); got = true;
+                }
+              });
+              if (!got) ISSUES[w].push(f.name + ": не найден лист «Анкета» или таблица со столбцом «ФИО»");
+            }
+          } else addRecords(recordsFromRows(parseCsv(fr.result), w, f.name));
+        } catch (e) { ISSUES[w].push(f.name + ": не удалось прочитать (" + e.message + ")"); }
+        if (--left === 0) refresh();
+      };
+      fr.onerror = function () { ISSUES[w].push(f.name + ": ошибка чтения"); if (--left === 0) refresh(); };
+      if (isX) fr.readAsArrayBuffer(f); else fr.readAsText(f, "utf-8");
+    });
+  }
+
+  $$(".load").forEach(function (el) {
+    var w = +el.getAttribute("data-w"), drop = $("[data-drop]", el), inp = $("[data-file]", el);
+    drop.onclick = function () { inp.click(); };
+    inp.onchange = function () { readFiles(inp.files, w); inp.value = ""; };
+    ["dragenter", "dragover"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add("over"); }); });
+    ["dragleave", "drop"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove("over"); }); });
+    drop.addEventListener("drop", function (e) { readFiles(e.dataTransfer.files, w); });
+    $("[data-pastebtn]", el).onclick = function () { $("[data-paste]", el).classList.toggle("hidden"); };
+    $("[data-pasteadd]", el).onclick = function () {
+      var ta = $("[data-paste] textarea", el); if (!ta.value.trim()) return;
+      // в тексте может быть несколько анкет подряд — у каждой своя строка заголовка
+      addRecords(recordsFromRows(parseCsv(ta.value), w, "вставленный текст"));
+      ta.value = ""; refresh();
+    };
+    $("[data-clear]", el).onclick = function () {
+      if (!confirm("Удалить все загруженные анкеты этой волны?")) return;
+      REC = REC.filter(function (r) { return r.wave !== w; }); ISSUES[w] = []; refresh();
+    };
+    $("[data-label]", el).oninput = function () { render(); };
+  });
+
+  /* ---------- расчёты ---------- */
+  function scoresOf(r) {
+    if (r._sc) return r._sc;
+    if (r.blocksOnly) {
+      var t = 0, n = 0; BLOCKS.forEach(function (b) { if (r.blocksOnly[b.id] != null) { t += r.blocksOnly[b.id]; n++; } });
+      r._sc = { blocks: r.blocksOnly, overall: n ? t / n : null, missing: 0, answered: n };
+    } else r._sc = computeScores(r.cat, r.ans);
+    return r._sc;
+  }
+  function filtered(w, fd, fc) {
+    fd = fd === undefined ? $("#fDiv").value : fd; fc = fc === undefined ? $("#fCat").value : fc;
+    return REC.filter(function (r) { return r.wave === w && (!fd || r.div === fd) && (!fc || r.cat === fc); });
+  }
+  function agg(list) {
+    var res = { n: list.length, blocks: {}, overall: null };
+    BLOCKS.forEach(function (b) {
+      var v = list.map(function (r) { return scoresOf(r).blocks[b.id]; }).filter(function (x) { return x != null; });
+      res.blocks[b.id] = v.length ? v.reduce(function (a, c) { return a + c; }, 0) / v.length : null;
+    });
+    var o = list.map(function (r) { return scoresOf(r).overall; }).filter(function (x) { return x != null; });
+    res.overall = o.length ? o.reduce(function (a, c) { return a + c; }, 0) / o.length : null;
+    return res;
+  }
+  function delta(a, b) { return a == null || b == null ? null : b - a; }
+  function dCls(d) { return d == null ? "d-flat" : d >= 2 ? "d-up" : d <= -2 ? "d-down" : "d-flat"; }
+  function fmtD(d) { return d == null ? "—" : (d > 0 ? "+" : d < 0 ? "−" : "±") + Math.abs(Math.round(d)) + " п.п."; }
+
+  /* ---------- отрисовка ---------- */
+  function refresh() { REC.forEach(function (r) { delete r._sc; }); fillFilters(); render(); }
+
+  function fillFilters() {
+    var divs = {}; REC.forEach(function (r) { divs[r.div] = 1; });
+    var cur = $("#fDiv").value;
+    $("#fDiv").innerHTML = '<option value="">Все дивизионы</option>' + Object.keys(divs).sort().map(function (d) { return "<option>" + esc(d) + "</option>"; }).join("");
+    if (divs[cur]) $("#fDiv").value = cur;
+    var cc = $("#fCat").value;
+    $("#fCat").innerHTML = '<option value="">Все категории</option>' + CATEGORIES.map(function (c) { return '<option value="' + c.id + '">' + esc(c.name) + "</option>"; }).join("");
+    $("#fCat").value = cc;
+  }
+  $("#fDiv").onchange = render; $("#fCat").onchange = render;
+  $$("[data-seg]").forEach(function (s) {
+    $$("button", s).forEach(function (b) {
+      b.onclick = function () {
+        $$("button", s).forEach(function (x) { x.classList.toggle("on", x === b); });
+        mode[s.getAttribute("data-seg")] = b.getAttribute("data-m"); render();
+      };
+    });
+  });
+  $("#pSearch").oninput = renderPeople;
+  $("#oQ").onchange = renderOpen;
+
+  function render() {
+    [1, 2].forEach(function (w) {
+      var el = $('.load[data-w="' + w + '"]'), list = REC.filter(function (r) { return r.wave === w; });
+      var divs = {}; list.forEach(function (r) { divs[r.div] = (divs[r.div] || 0) + 1; });
+      $("[data-stat]", el).innerHTML = list.length ? "<b>Загружено анкет: " + list.length + "</b> · " + Object.keys(divs).map(function (d) { return esc(d) + " — " + divs[d]; }).join(", ") : '<span class="muted">Пока ничего не загружено</span>';
+      $("[data-issues]", el).innerHTML = ISSUES[w].map(function (x) { return "<div>• " + esc(x) + "</div>"; }).join("");
+    });
+    var has = REC.length > 0;
+    $("#dash").classList.toggle("hidden", !has); $("#emptyMsg").classList.toggle("hidden", has);
+    $("#exportBtn").disabled = !has;
+    if (!has) return;
+
+    var a1 = agg(filtered(1)), a2 = agg(filtered(2)), d = delta(a1.overall, a2.overall);
+    var inc2 = filtered(2).filter(function (r) { return scoresOf(r).missing > 0; }).length;
+    $("#kpis").innerHTML =
+      kpi("Анкет", a1.n + " → " + a2.n, label(1) + " → " + label(2)) +
+      kpi(esc(label(1)), fmtPct(a1.overall), '<span class="pill ' + lvlClass(a1.overall) + '">' + lvlName(a1.overall) + "</span>") +
+      kpi(esc(label(2)), fmtPct(a2.overall), '<span class="pill ' + lvlClass(a2.overall) + '">' + lvlName(a2.overall) + "</span>" + (inc2 ? " · неполных: " + inc2 : "")) +
+      kpi("Изменение", '<span class="' + (d == null ? "flat" : d >= 2 ? "up" : d <= -2 ? "down" : "flat") + '">' + fmtD(d) + "</span>", "итог по блокам");
+
+    // столбики
+    var leg = '<span><i style="background:' + C1 + '"></i>' + esc(label(1)) + '</span><span><i style="background:' + C2 + '"></i>' + esc(label(2)) + "</span>";
+    $("#legBars").innerHTML = leg; $("#legRadar").innerHTML = leg;
+    $("#bars").innerHTML = barsSvg(a1, a2);
+    var ser = []; if (a1.n) ser.push({ values: a1.blocks, color: C1, dash: true }); if (a2.n) ser.push({ values: a2.blocks, color: C2 });
+    $("#radar").innerHTML = radarSvg(ser, { size: 400 });
+
+    $("#mDiv").innerHTML = matrix("div", mode.div);
+    $("#mCat").innerHTML = matrix("cat", mode.cat);
+    renderQuestions(); renderPeople(); fillOpenSelect(); renderOpen(); renderNotes();
+  }
+  function kpi(k, v, s) { return '<div class="kpi card"><div class="k">' + k + '</div><div class="v">' + v + '</div><div class="s">' + s + "</div></div>"; }
+
+  function barsSvg(a1, a2) {
+    var W = 640, rowH = 50, lw = 210, top = 6, H = top + BLOCKS.length * rowH + 22, x0 = lw, x1 = W - 70;
+    var sx = function (v) { return x0 + (x1 - x0) * v / 100; };
+    var s = '<svg viewBox="0 0 ' + W + " " + H + '" width="100%" role="img" aria-label="Блоки до и после">';
+    [0, 25, 50, 75, 100].forEach(function (t) { s += '<line x1="' + sx(t) + '" x2="' + sx(t) + '" y1="' + top + '" y2="' + (H - 20) + '" stroke="#eceef5"/><text x="' + sx(t) + '" y="' + (H - 6) + '" font-size="11" text-anchor="middle" fill="#7a7f99">' + t + "%</text>"; });
+    BLOCKS.forEach(function (b, i) {
+      var y = top + i * rowH, v1 = a1.blocks[b.id], v2 = a2.blocks[b.id], d = delta(v1, v2);
+      var ws = b.name.split(" "), ln = [], cu = "";
+      ws.forEach(function (wd) { if ((cu + " " + wd).trim().length > 24 && cu) { ln.push(cu); cu = wd; } else cu = (cu + " " + wd).trim(); }); ln.push(cu);
+      s += '<text x="' + (lw - 10) + '" y="' + (y + 25 - (ln.length - 1) * 7) + '" font-size="12.5" text-anchor="end" fill="#1d2140">' + ln.map(function (t, k) { return '<tspan x="' + (lw - 10) + '" dy="' + (k ? 15 : 0) + '">' + esc(t) + "</tspan>"; }).join("") + "</text>";
+      if (v1 != null) s += '<rect x="' + x0 + '" y="' + (y + 6) + '" width="' + Math.max(1, sx(v1) - x0) + '" height="14" rx="3" fill="' + C1 + '"><title>' + esc(label(1)) + ": " + fmtPct(v1) + '</title></rect><text x="' + (sx(v1) + 4) + '" y="' + (y + 17) + '" font-size="11" fill="#4a4f6e">' + fmtPct(v1) + "</text>";
+      if (v2 != null) s += '<rect x="' + x0 + '" y="' + (y + 22) + '" width="' + Math.max(1, sx(v2) - x0) + '" height="14" rx="3" fill="' + C2 + '"><title>' + esc(label(2)) + ": " + fmtPct(v2) + '</title></rect><text x="' + (sx(v2) + 4) + '" y="' + (y + 33) + '" font-size="11" font-weight="600" fill="#1d2140">' + fmtPct(v2) + "</text>";
+      if (d != null) s += '<text x="' + (W - 4) + '" y="' + (y + 26) + '" font-size="12" font-weight="700" text-anchor="end" fill="' + (d >= 2 ? "#1f9d63" : d <= -2 ? "#d64545" : "#7a7f99") + '">' + (d > 0 ? "+" : d < 0 ? "−" : "±") + Math.abs(Math.round(d)) + "</text>";
+    });
+    return s + "</svg>";
+  }
+
+  function matrix(kind, m) {
+    var keys;
+    if (kind === "div") { var o = {}; REC.forEach(function (r) { o[r.div] = 1; }); keys = Object.keys(o).sort(); }
+    else keys = CATEGORIES.map(function (c) { return c.id; });
+    var rows = keys.map(function (k) {
+      var fd = kind === "div" ? k : $("#fDiv").value, fc = kind === "cat" ? k : $("#fCat").value;
+      return { name: kind === "div" ? k : catName(k), a1: agg(filtered(1, fd, fc)), a2: agg(filtered(2, fd, fc)) };
+    });
+    rows.push({ name: "Итого" + (kind === "div" && $("#fCat").value ? " (" + catName($("#fCat").value) + ")" : kind === "cat" && $("#fDiv").value ? " (" + $("#fDiv").value + ")" : ""), a1: agg(filtered(1, kind === "div" ? "" : undefined, kind === "cat" ? "" : undefined)), a2: agg(filtered(2, kind === "div" ? "" : undefined, kind === "cat" ? "" : undefined)), tot: true });
+    function cell(a1, a2, b) {
+      var v1 = b ? a1.blocks[b] : a1.overall, v2 = b ? a2.blocks[b] : a2.overall;
+      if (m === "d") { var d = delta(v1, v2); return '<span class="cell ' + dCls(d) + '">' + (d == null ? "—" : (d > 0 ? "+" : d < 0 ? "−" : "±") + Math.abs(Math.round(d))) + "</span>"; }
+      var v = m === "w1" ? v1 : v2; return '<span class="cell ' + lvlClass(v) + '">' + fmtPct(v) + "</span>";
+    }
+    return '<table class="t"><thead><tr><th>' + (kind === "div" ? "Дивизион" : "Категория") + '</th><th class="c">Анкет<br>до / после</th>' +
+      BLOCKS.map(function (b) { return '<th class="c" style="white-space:normal;min-width:90px">' + esc(b.name) + "</th>"; }).join("") + '<th class="c">Итог</th></tr></thead><tbody>' +
+      rows.map(function (r) {
+        return "<tr" + (r.tot ? ' style="font-weight:600;background:#fafbfd"' : "") + "><td>" + esc(r.name) + '</td><td class="c">' + r.a1.n + " / " + r.a2.n + "</td>" +
+          BLOCKS.map(function (b) { return '<td class="c">' + cell(r.a1, r.a2, b.id) + "</td>"; }).join("") + '<td class="c">' + cell(r.a1, r.a2, null) + "</td></tr>";
+      }).join("") + "</tbody></table>" + (m === "d" ? '<div class="muted" style="font-size:12.5px;padding:8px 10px">Изменение в процентных пунктах. Зелёный — рост от 2 п.п., красный — снижение от 2 п.п.</div>' : "");
+  }
+
+  function qStats(w) {
+    var list = filtered(w).filter(function (r) { return !r.blocksOnly; }), st = {};
+    QUESTIONS.forEach(function (q) {
+      if (q.textOnly) return;
+      var c = [0, 0, 0], sum = 0, n = 0;
+      list.forEach(function (r) {
+        if (!isApplicable(q, r.cat, r.ans)) return;
+        var v = r.ans[q.id]; if (v == null) return;
+        c[v === 0 ? 0 : v === 3 ? 1 : 2]++; sum += v; n++;
+      });
+      st[q.id] = { n: n, avg: n ? sum / n / 5 * 100 : null, c: c };
+    });
+    return st;
+  }
+  function renderQuestions() {
+    var s1 = qStats(1), s2 = qStats(2);
+    var qs = QUESTIONS.filter(function (q) { return !q.textOnly; }).slice();
+    if (mode.qsort === "low") qs.sort(function (a, b) { return (s2[a.id].avg == null ? 999 : s2[a.id].avg) - (s2[b.id].avg == null ? 999 : s2[b.id].avg); });
+    if (mode.qsort === "d") qs.sort(function (a, b) { var da = delta(s1[a.id].avg, s2[a.id].avg), db = delta(s1[b.id].avg, s2[b.id].avg); return Math.abs(db || 0) - Math.abs(da || 0); });
+    $("#tQ").innerHTML = '<table class="t"><thead><tr><th>№</th><th>Вопрос</th><th>Блок</th><th class="c">' + esc(label(1)) + '</th><th class="c">' + esc(label(2)) + '</th><th class="c">Изм.</th><th>Ответы (' + esc(label(2)) + ")</th></tr></thead><tbody>" +
+      qs.map(function (q) {
+        var a = s1[q.id], b = s2[q.id], d = delta(a.avg, b.avg), cc = b.n ? b.c : a.c, tot = cc[0] + cc[1] + cc[2];
+        return "<tr><td>" + q.id + (q.changed ? ' <span class="chg" title="' + esc(q.changed) + '">!</span>' : "") + "</td><td>" + esc(q.q) + '</td><td class="muted" style="font-size:12.5px">' + esc(blockName(q.block)) + '</td><td class="c">' + fmtPct(a.avg) + '<div class="muted" style="font-size:11.5px">n=' + a.n + '</div></td><td class="c"><span class="cell ' + lvlClass(b.avg) + '">' + fmtPct(b.avg) + '</span><div class="muted" style="font-size:11.5px">n=' + b.n + '</div></td><td class="c"><span class="cell ' + dCls(d) + '">' + (d == null ? "—" : (d > 0 ? "+" : d < 0 ? "−" : "±") + Math.abs(Math.round(d))) + "</span></td><td>" +
+          (tot ? '<div class="dist" title="0 б.: ' + cc[0] + " · 3 б.: " + cc[1] + " · 5 б.: " + cc[2] + '"><i style="width:' + cc[0] / tot * 100 + '%;background:#d64545"></i><i style="width:' + cc[1] / tot * 100 + '%;background:#e9a93a"></i><i style="width:' + cc[2] / tot * 100 + '%;background:#1f9d63"></i></div><div class="muted" style="font-size:11.5px;margin-top:2px">' + cc[0] + " / " + cc[1] + " / " + cc[2] + "</div>" : '<span class="muted">—</span>') + "</td></tr>";
+      }).join("") + "</tbody></table>" +
+      (REC.some(function (r) { return r.blocksOnly; }) ? '<div class="muted" style="font-size:12.5px;padding:8px 10px">Анкеты, загруженные из свода (только проценты по блокам), в разбор по вопросам не входят.</div>' : "");
+  }
+
+  function peopleRows() {
+    var map = {};
+    REC.filter(function (r) { return (!$("#fDiv").value || r.div === $("#fDiv").value) && (!$("#fCat").value || r.cat === $("#fCat").value); }).forEach(function (r) {
+      var k = norm(r.div) + "|" + norm(r.fio);
+      map[k] = map[k] || { fio: r.fio, div: r.div, cat: r.cat };
+      map[k]["w" + r.wave] = r;
+      if (r.wave === 2 || !map[k].cat) map[k].cat = r.cat || map[k].cat;
+    });
+    return Object.keys(map).map(function (k) { return map[k]; }).sort(function (a, b) { return a.div.localeCompare(b.div) || a.fio.localeCompare(b.fio); });
+  }
+  function renderPeople() {
+    var q = norm($("#pSearch").value), rows = peopleRows().filter(function (p) { return !q || norm(p.fio).indexOf(q) >= 0; });
+    $("#tP").innerHTML = '<table class="t"><thead><tr><th>ФИО</th><th>Дивизион</th><th>Категория</th><th class="c">' + esc(label(1)) + '</th><th class="c">' + esc(label(2)) + '</th><th class="c">Изм.</th><th>Слабый блок (' + esc(label(2)) + ")</th><th>Примечание</th></tr></thead><tbody>" +
+      rows.map(function (p) {
+        var o1 = p.w1 ? scoresOf(p.w1).overall : null, s2 = p.w2 ? scoresOf(p.w2) : null, o2 = s2 ? s2.overall : null, d = delta(o1, o2), weak = "—", note = [];
+        if (s2) { var mn = null; BLOCKS.forEach(function (b) { var v = s2.blocks[b.id]; if (v != null && (mn == null || v < s2.blocks[mn])) mn = b.id; }); if (mn) weak = blockName(mn) + " · " + fmtPct(s2.blocks[mn]); }
+        if (p.w2 && scoresOf(p.w2).missing) note.push("не отвечено: " + scoresOf(p.w2).missing);
+        if (p.w1 && !p.w1.blocksOnly && scoresOf(p.w1).missing) note.push("до: не отвечено " + scoresOf(p.w1).missing);
+        if (!p.w1) note.push("только " + label(2)); if (!p.w2) note.push("только " + label(1));
+        return "<tr><td>" + esc(p.fio) + "</td><td>" + esc(p.div) + "</td><td>" + esc(catName(p.cat)) + '</td><td class="c">' + fmtPct(o1) + '</td><td class="c"><span class="cell ' + lvlClass(o2) + '">' + fmtPct(o2) + '</span></td><td class="c"><span class="cell ' + dCls(d) + '">' + (d == null ? "—" : (d > 0 ? "+" : d < 0 ? "−" : "±") + Math.abs(Math.round(d))) + '</span></td><td style="font-size:12.5px">' + esc(weak) + '</td><td class="muted" style="font-size:12.5px">' + esc(note.join("; ")) + "</td></tr>";
+      }).join("") + "</tbody></table>";
+  }
+
+  function fillOpenSelect() {
+    var cur = $("#oQ").value;
+    $("#oQ").innerHTML = QUESTIONS.filter(function (q) { return q.text || q.textOnly; }).map(function (q) { return '<option value="' + q.id + '">' + q.id + ". " + esc(q.q.length > 70 ? q.q.slice(0, 69) + "…" : q.q) + "</option>"; }).join("");
+    if (cur) $("#oQ").value = cur;
+  }
+  function renderOpen() {
+    var id = +$("#oQ").value, w = +mode.ow;
+    var list = filtered(w).filter(function (r) { return r.txt && r.txt[id]; });
+    $("#oList").innerHTML = list.length ? list.map(function (r) {
+      return '<div class="ans"><div class="who">' + esc(r.fio) + " · " + esc(r.div) + " · " + esc(catName(r.cat)) + (r.ans[id] != null ? " · выбрал(а) вариант на " + r.ans[id] + " б." : "") + "</div>" + esc(r.txt[id]) + "</div>";
+    }).join("") : '<div class="muted">Ответов нет.</div>';
+  }
+  function renderNotes() {
+    var items = QUESTIONS.filter(function (q) { return q.changed; }).map(function (q) { return "<li><b>Вопрос " + q.id + ".</b> " + esc(q.changed) + "</li>"; });
+    Object.keys(REMOVED_QUESTIONS).forEach(function (k) { items.push("<li><b>Вопрос " + k + "</b> удалён: " + esc(REMOVED_QUESTIONS[k]) + "</li>"); });
+    items.unshift("<li>Во всех вопросах варианты ответа показываются вперемешку, а не по возрастанию баллов, и выровнены по тону — чтобы «правильный» ответ не угадывался. Это может немного снизить результат второй волны: часть «падения» — эффект честной анкеты, а не ухудшения.</li>");
+    items.push("<li>Расчёт как в исходной анкете: % блока = средний балл по применимым вопросам / 5; итог = среднее по блокам. Первая волна из Excel-анкет пересчитывается по тому же набору вопросов, что и вторая.</li>");
+    $("#notes").innerHTML = items.join("");
+  }
+
+  /* ---------- выгрузка в Excel ---------- */
+  function r1(v) { return v == null ? "" : Math.round(v * 10) / 10; }
+  $("#exportBtn").onclick = function () {
+    var wb = XLSX.utils.book_new(), L1 = label(1), L2 = label(2);
+    function add(name, aoa, widths) { var ws = XLSX.utils.aoa_to_sheet(aoa); if (widths) ws["!cols"] = widths.map(function (w) { return { wch: w }; }); XLSX.utils.book_append_sheet(wb, ws, name); }
+    var A1 = agg(REC.filter(function (r) { return r.wave === 1; })), A2 = agg(REC.filter(function (r) { return r.wave === 2; }));
+    var sv = [["Сводка по всем загруженным анкетам"], [], ["Блок", L1 + ", %", L2 + ", %", "Изменение, п.п."]];
+    BLOCKS.forEach(function (b) { sv.push([b.name, r1(A1.blocks[b.id]), r1(A2.blocks[b.id]), r1(delta(A1.blocks[b.id], A2.blocks[b.id]))]); });
+    sv.push(["Итог", r1(A1.overall), r1(A2.overall), r1(delta(A1.overall, A2.overall))], [], ["Анкет", A1.n, A2.n]);
+    add("Сводка", sv, [36, 14, 14, 16]);
+
+    function byKey(kind) {
+      var keys = kind === "div" ? Object.keys(REC.reduce(function (o, r) { o[r.div] = 1; return o; }, {})).sort() : CATEGORIES.map(function (c) { return c.id; });
+      var h = [kind === "div" ? "Дивизион" : "Категория", "Анкет " + L1, "Анкет " + L2];
+      BLOCKS.concat([{ id: "_", name: "Итог" }]).forEach(function (b) { h.push(b.name + " · " + L1, b.name + " · " + L2, b.name + " · изм."); });
+      var aoa = [h];
+      keys.forEach(function (k) {
+        var f1 = REC.filter(function (r) { return r.wave === 1 && (kind === "div" ? r.div === k : r.cat === k); }), f2 = REC.filter(function (r) { return r.wave === 2 && (kind === "div" ? r.div === k : r.cat === k); });
+        var a = agg(f1), b = agg(f2), row = [kind === "div" ? k : catName(k), a.n, b.n];
+        BLOCKS.forEach(function (bl) { row.push(r1(a.blocks[bl.id]), r1(b.blocks[bl.id]), r1(delta(a.blocks[bl.id], b.blocks[bl.id]))); });
+        row.push(r1(a.overall), r1(b.overall), r1(delta(a.overall, b.overall)));
+        aoa.push(row);
+      });
+      return aoa;
+    }
+    add("По дивизионам", byKey("div"), [24]);
+    add("По категориям", byKey("cat"), [20]);
+
+    var all1 = REC.filter(function (r) { return r.wave === 1 && !r.blocksOnly; }), all2 = REC.filter(function (r) { return r.wave === 2; });
+    function qs(list, q) { var c = [0, 0, 0], s = 0, n = 0; list.forEach(function (r) { if (!isApplicable(q, r.cat, r.ans)) return; var v = r.ans[q.id]; if (v == null) return; c[v === 0 ? 0 : v === 3 ? 1 : 2]++; s += v; n++; }); return { n: n, avg: n ? s / n / 5 * 100 : null, c: c }; }
+    var qa = [["№", "Вопрос", "Блок", L1 + ", %", L2 + ", %", "Изменение, п.п.", "Ответов " + L2, "0 б.", "3 б.", "5 б.", "Изменение в анкете"]];
+    QUESTIONS.forEach(function (q) { if (q.textOnly) return; var a = qs(all1, q), b = qs(all2, q); qa.push([q.id, q.q, blockName(q.block), r1(a.avg), r1(b.avg), r1(delta(a.avg, b.avg)), b.n, b.c[0], b.c[1], b.c[2], q.changed || ""]); });
+    add("По вопросам", qa, [5, 70, 26, 10, 10, 12, 10, 6, 6, 6, 50]);
+
+    var pp = [["ФИО", "Дивизион", "Категория", "Итог " + L1, "Итог " + L2, "Изменение, п.п."].concat(BLOCKS.map(function (b) { return b.name + " · " + L2; }))];
+    var map = {}; REC.forEach(function (r) { var k = norm(r.div) + "|" + norm(r.fio); map[k] = map[k] || { fio: r.fio, div: r.div, cat: r.cat }; map[k]["w" + r.wave] = r; if (r.wave === 2) map[k].cat = r.cat; });
+    Object.keys(map).sort().forEach(function (k) { var p = map[k], o1 = p.w1 ? scoresOf(p.w1).overall : null, s2 = p.w2 ? scoresOf(p.w2) : null; pp.push([p.fio, p.div, catName(p.cat), r1(o1), r1(s2 && s2.overall), r1(delta(o1, s2 && s2.overall))].concat(BLOCKS.map(function (b) { return r1(s2 && s2.blocks[b.id]); }))); });
+    add("Сотрудники", pp, [32, 18, 18, 10, 10, 12]);
+
+    var raw = [["Волна", "Дивизион", "ФИО", "Категория", "Источник", "Итог, %"].concat(BLOCKS.map(function (b) { return b.name + ", %"; })).concat(QUESTIONS.filter(function (q) { return !q.textOnly; }).map(function (q) { return "В" + q.id; }))];
+    REC.forEach(function (r) { var s = scoresOf(r); raw.push([r.wave === 1 ? L1 : L2, r.div, r.fio, catName(r.cat), r.src, r1(s.overall)].concat(BLOCKS.map(function (b) { return r1(s.blocks[b.id]); })).concat(QUESTIONS.filter(function (q) { return !q.textOnly; }).map(function (q) { return r.blocksOnly || !isApplicable(q, r.cat, r.ans) ? "" : (r.ans[q.id] == null ? "" : r.ans[q.id]); }))); });
+    add("Все ответы", raw, [14, 18, 30, 18, 26]);
+
+    var op = [["Волна", "Дивизион", "ФИО", "Категория", "№", "Вопрос", "Ответ"]];
+    REC.forEach(function (r) { Object.keys(r.txt || {}).forEach(function (id) { var q = qById(+id); op.push([r.wave === 1 ? L1 : L2, r.div, r.fio, catName(r.cat), +id, q ? q.q : "", r.txt[id]]); }); });
+    add("Ответы своими словами", op, [14, 18, 30, 18, 5, 50, 80]);
+
+    var ch = [["№", "Что изменилось"]];
+    QUESTIONS.forEach(function (q) { if (q.changed) ch.push([q.id, q.changed]); });
+    Object.keys(REMOVED_QUESTIONS).forEach(function (k) { ch.push([+k, "Удалён: " + REMOVED_QUESTIONS[k]]); });
+    ch.push(["—", "Варианты ответа показываются вперемешку и выровнены по тону"]);
+    add("Изменения в анкете", ch, [6, 110]);
+
+    var d = new Date(), stamp = d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2);
+    XLSX.writeFile(wb, "Svod_SUOD_" + stamp + ".xlsx");
+  };
+
+  render();
+})();
+</script>
+</body>
+</html>

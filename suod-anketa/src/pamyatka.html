@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Модели поведения: памятка</title>
+<style>
+/*CSS*/
+.bar{background:var(--purple);color:#fff;position:sticky;top:0;z-index:5}
+.bar .in{max-width:1100px;margin:0 auto;padding:12px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.bar b{font-family:var(--head);font-size:20px;text-transform:uppercase;margin-right:auto}
+.tab{background:transparent;color:#fff;border:0;padding:8px 14px;border-radius:8px;font-weight:600;opacity:.8}
+.tab.on{background:rgba(255,255,255,.16);opacity:1}
+.view{padding:24px 16px 60px}
+.hint{max-width:210mm;margin:0 auto 14px;font-size:14px}
+.sheet{width:210mm;height:297mm;margin:0 auto 24px;background:#fff;box-shadow:0 2px 14px rgba(29,33,64,.15);position:relative;overflow:hidden}
+/* --- А4 --- */
+.a4{padding:11mm 11mm 9mm;display:flex;flex-direction:column}
+.a4 .hd{background:var(--purple);color:#fff;margin:-11mm -11mm 6mm;padding:9mm 11mm 7mm;position:relative}
+.a4 .hd h1{font-size:30pt;text-transform:uppercase;margin:0;line-height:1}
+.a4 .hd h1 em{font-style:normal;color:var(--orange)}
+.a4 .hd p{margin:2mm 0 0;font-size:10pt;opacity:.85}
+.a4 .hd .stripe{position:absolute;right:0;top:0;bottom:0;width:38mm;background:linear-gradient(135deg,transparent 50%,rgba(10,143,216,.55) 50%)}
+.grid6{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(3,1fr);gap:4.5mm;flex:1}
+.tile{border:0.4mm solid var(--line);border-radius:3mm;padding:4mm 4.5mm;display:flex;flex-direction:column;font-size:8.6pt;line-height:1.35}
+.tile .th{display:flex;gap:3mm;align-items:center;margin-bottom:2mm}
+.tile .th svg{width:11mm;height:11mm;flex:none}
+.tile .th b{font-family:var(--head);font-size:15pt;color:var(--orange);text-transform:uppercase;display:block;line-height:1}
+.tile .th span{font-family:var(--head);font-size:9pt;color:var(--purple);text-transform:uppercase}
+.tile ul{margin:0 0 2mm;padding-left:4mm}
+.tile li{margin:.6mm 0}
+.ex{margin-top:auto;border-top:0.3mm dashed var(--line);padding-top:2mm;font-size:8pt}
+.ex div{display:flex;gap:2mm;margin:.8mm 0}
+.ex i{flex:none;font-style:normal;font-weight:700;width:4mm}
+.ex .g i{color:var(--green)}.ex .r i{color:var(--red)}
+.ft{font-size:7.5pt;color:var(--muted);margin-top:3mm;display:flex;justify-content:space-between;gap:4mm}.ft span:last-child{white-space:nowrap}
+table.tb{width:100%;border-collapse:collapse;font-size:7.9pt;line-height:1.28}
+table.tb th{font-family:var(--head);font-weight:600;font-size:10.5pt;text-transform:uppercase;text-align:left;padding:2mm 2.5mm;color:#fff;background:var(--purple)}
+table.tb th.y{background:var(--purple2)}table.tb th.n{background:var(--orange)}
+table.tb td{vertical-align:top;padding:1.6mm 2.2mm;border-bottom:0.3mm solid var(--line)}
+table.tb td:first-child{width:30mm}
+table.tb td:first-child b{font-family:var(--head);font-size:12pt;color:var(--purple);text-transform:uppercase;display:block;line-height:1.05}
+table.tb td:first-child svg{width:8mm;height:8mm;margin-bottom:1mm}
+table.tb ul{margin:0;padding-left:3.5mm}
+table.tb li{margin:.3mm 0}
+/* --- карточки --- */
+.cards{display:grid;grid-template-columns:105mm 105mm;grid-template-rows:148.5mm 148.5mm}
+.cardf,.cardb{position:relative;overflow:hidden;padding:9mm 8mm;outline:0.2mm dashed #c9cbe0;outline-offset:-0.1mm}
+.cardf{background:var(--purple);color:#fff;display:flex;flex-direction:column}
+.cardf svg{width:18mm;height:18mm;margin-bottom:6mm}
+.cardf b{font-family:var(--head);font-size:20pt;color:var(--orange);text-transform:uppercase;line-height:1}
+.cardf .tg{font-family:var(--head);font-size:13pt;text-transform:uppercase;margin:2mm 0 7mm;opacity:.9}
+.cardf .we{font-size:10.5pt;line-height:1.35}
+.cardf .we div{padding:2.2mm 3mm;background:rgba(255,255,255,.1);border-radius:2mm;margin-bottom:2mm}
+.cardf .corner{position:absolute;right:0;bottom:0;width:40mm;height:40mm;background:linear-gradient(135deg,transparent 50%,rgba(10,143,216,.5) 50%)}
+.cardb{background:#fff;font-size:8.3pt;line-height:1.32;display:flex;flex-direction:column}
+.cardb h4{font-family:var(--head);font-size:13pt;color:var(--purple);text-transform:uppercase;margin:0 0 2mm;display:flex;align-items:center;gap:2mm}
+.cardb h5{font-family:var(--head);font-size:9.5pt;text-transform:uppercase;margin:2.5mm 0 1mm}
+.cardb h5.y{color:var(--green)}.cardb h5.n{color:var(--orange)}
+.cardb ul{margin:0;padding-left:3.5mm}
+.cardb .ex{font-size:7.8pt}
+.empty{background:#fff}
+#quizView .quizwrap{max-width:760px;margin:0 auto}
+@media screen and (max-width:860px){
+  .sheet{transform-origin:top left}
+}
+@media print{
+  @page{size:A4;margin:0}
+  body{background:#fff}
+  .bar,.hint,.noprint{display:none!important}
+  .view{padding:0}
+  .view:not(.on){display:none!important}
+  .sheet{margin:0;box-shadow:none;page-break-after:always;break-after:page}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+<div class="bar"><div class="in">
+  <b>Модели поведения</b>
+  <button class="tab on" data-v="a4View">Памятка А4</button>
+  <button class="tab" data-v="cardsView">Карточки</button>
+  <button class="tab" data-v="quizView">Мини-тест</button>
+  <button class="btn small orange noprint" id="printBtn">Печать</button>
+</div></div>
+
+<div class="view on" id="a4View">
+  <div class="hint muted">Две страницы А4. Печать: кнопка «Печать» → формат А4, поля «Нет», включите «Фоновые изображения» (в Edge/Chrome это «Другие настройки → Графика фона»).</div>
+  <div class="sheet a4" id="p1"></div>
+  <div class="sheet a4" id="p2"></div>
+</div>
+
+<div class="view" id="cardsView">
+  <div class="hint muted">Шесть карточек формата А6 (по 4 на лист А4). Лицевые стороны — страницы 1 и 3, обороты — 2 и 4, уже развёрнуты под двустороннюю печать (переворот по длинному краю). Режьте по пунктиру. Можно сложить из двух сторон «домик» на стол.</div>
+  <div id="cardSheets"></div>
+</div>
+
+<div class="view" id="quizView">
+  <div class="quizwrap">
+    <h2 style="font-size:26px;text-transform:uppercase;color:var(--purple)">Мини-тест: узнай модель</h2>
+    <p class="muted">12 ситуаций из работы снабжения. Для каждой выберите модель поведения, которая в ней проявляется. Подходит для разминки на тренинге или планёрке.</p>
+    <div class="card" style="padding:22px" id="quiz"><button class="btn orange" id="quizGo">Начать</button></div>
+  </div>
+</div>
+
+<script>
+/*DATA*/
+/*COMMON*/
+(function () {
+  function li(arr) { return arr.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join(""); }
+  var src = '<span>Источник: Кодекс корпоративной этики ПАО «Газпром нефть», раздел «Корпоративные модели поведения» (утв. приказом № 13-П от 17.02.2023)</span>';
+
+  $("#p1").innerHTML = '<div class="hd"><div class="stripe"></div><h1>Корпоративные<br><em>модели поведения</em></h1><p>Шесть моделей, которые дополняют корпоративные ценности и помогают достигать стратегических целей компании</p></div>' +
+    '<div class="grid6">' + MODELS.map(function (m) {
+      return '<div class="tile"><div class="th">' + icon(m.icon, "#2d2a7b") + '<div><b>' + esc(m.name) + '</b><span>' + esc(m.tag) + '</span></div></div><ul>' + li(m.we) + '</ul>' +
+        '<div class="ex"><div class="g"><i>✓</i><span>' + esc(m.good) + '</span></div><div class="r"><i>✗</i><span>' + esc(m.bad) + "</span></div></div></div>";
+    }).join("") + '</div><div class="ft">' + src + "<span>1 / 2</span></div>";
+
+  $("#p2").innerHTML = '<div class="hd" style="padding-bottom:5mm"><div class="stripe"></div><h1>Как понять, <em>что я действую по модели</em></h1><p>Соответствует модели или противоречит ей — по поведению конкретного работника</p></div>' +
+    '<table class="tb"><thead><tr><th>Модель</th><th class="y">Соответствует, когда работник</th><th class="n">Противоречит, когда работник</th></tr></thead><tbody>' +
+    MODELS.map(function (m) {
+      return "<tr><td>" + icon(m.icon, "#f39200") + "<b>" + esc(m.name) + "</b></td><td><ul>" + li(m.yes) + "</ul></td><td><ul>" + li(m.no) + "</ul></td></tr>";
+    }).join("") + '</tbody></table><div class="ft" style="margin-top:auto">' + src + "<span>2 / 2</span></div>";
+
+  /* карточки */
+  function front(m) {
+    return '<div class="cardf">' + icon(m.icon, "#f39200") + "<b>" + esc(m.name) + '</b><div class="tg">' + esc(m.tag) + '</div><div class="we">' +
+      m.we.map(function (w) { return "<div>" + esc(w) + "</div>"; }).join("") + '</div><div class="corner"></div></div>';
+  }
+  function back(m) {
+    return '<div class="cardb"><h4>' + icon(m.icon, "#2d2a7b").replace("<svg", '<svg style="width:7mm;height:7mm"') + esc(m.name) + '</h4>' +
+      '<h5 class="y">Соответствует, когда работник</h5><ul>' + li(m.yes) + '</ul><h5 class="n">Противоречит, когда работник</h5><ul>' + li(m.no) + "</ul>" +
+      '<div class="ex"><div class="g"><i>✓</i><span>' + esc(m.good) + '</span></div><div class="r"><i>✗</i><span>' + esc(m.bad) + "</span></div></div></div>";
+  }
+  function sheet(cells) { return '<div class="sheet"><div class="cards">' + cells.join("") + "</div></div>"; }
+  var E = '<div class="empty"></div>', M = MODELS;
+  $("#cardSheets").innerHTML =
+    sheet([front(M[0]), front(M[1]), front(M[2]), front(M[3])]) +
+    sheet([back(M[1]), back(M[0]), back(M[3]), back(M[2])]) +
+    sheet([front(M[4]), front(M[5]), E, E]) +
+    sheet([back(M[5]), back(M[4]), E, E]);
+
+  /* вкладки */
+  $$(".tab").forEach(function (t) {
+    t.onclick = function () {
+      $$(".tab").forEach(function (x) { x.classList.toggle("on", x === t); });
+      $$(".view").forEach(function (v) { v.classList.toggle("on", v.id === t.getAttribute("data-v")); v.style.display = v.id === t.getAttribute("data-v") ? "" : "none"; });
+      $("#printBtn").style.display = t.getAttribute("data-v") === "quizView" ? "none" : "";
+      fit();
+    };
+  });
+  $$(".view").forEach(function (v) { if (!v.classList.contains("on")) v.style.display = "none"; });
+  $("#printBtn").onclick = function () { window.print(); };
+  $("#quizGo").onclick = function () { startQuiz($("#quiz")); };
+
+  /* уменьшение листов на узком экране */
+  function fit() {
+    var w = document.documentElement.clientWidth - 32, mm = 210 * 96 / 25.4, k = Math.min(1, w / mm);
+    $$(".sheet").forEach(function (s) {
+      s.style.transform = k < 1 ? "scale(" + k + ")" : "";
+      s.style.marginBottom = k < 1 ? (-(297 * 96 / 25.4) * (1 - k) + 16) + "px" : "";
+      s.style.marginLeft = k < 1 ? "0" : "";
+    });
+  }
+  window.addEventListener("resize", fit); fit();
+  window.addEventListener("beforeprint", function () { $$(".sheet").forEach(function (s) { s.style.transform = ""; s.style.marginBottom = ""; }); });
+  window.addEventListener("afterprint", fit);
+})();
+</script>
+</body>
+</html>
