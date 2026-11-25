@@ -31,12 +31,15 @@ data = (SRC / "data.js").read_text(encoding="utf-8")
 common = (SRC / "common.js").read_text(encoding="utf-8")
 xlsx = (SRC / "xlsx.mini.min.js").read_text(encoding="utf-8")
 lic = "/*! SheetJS Community Edition 0.18.5 — Apache License 2.0 (см. xlsx.LICENSE) */\n"
+exceljs = (SRC / "exceljs.min.js").read_text(encoding="utf-8")
+exlic = "/*! ExcelJS 4.4.0 — MIT License (см. exceljs.LICENSE) */\n"
 
 
 def assemble(src):
     s = (SRC / src).read_text(encoding="utf-8")
     return (s.replace("/*CSS*/", css).replace("/*DATA*/", data)
-             .replace("/*COMMON*/", common).replace("/*XLSX*/", lic + xlsx))
+             .replace("/*COMMON*/", common).replace("/*XLSX*/", lic + xlsx)
+             .replace("/*EXCELJS*/", exlic + exceljs))
 
 
 for src, out in {"anketa.html": "Анкета_СУОД.html", "sborshik.html": "Сборщик_СУОД.html"}.items():
