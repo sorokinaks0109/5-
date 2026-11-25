@@ -6,100 +6,120 @@
 <title>Анкета СУОД ГПН-С</title>
 <style>
 /*CSS*/
-.top{background:var(--purple);color:#fff}
-.top .in{max-width:880px;margin:0 auto;padding:22px 20px 20px}
-.top h1{font-size:28px;text-transform:uppercase;margin:0}
-.top h1 em{font-style:normal;color:var(--orange)}
-.top p{margin:6px 0 0;opacity:.85}
-.wrap{max-width:880px;margin:0 auto;padding:20px 16px 80px}
-.prog{position:sticky;top:0;z-index:5;background:var(--bg);padding:10px 0 12px}
-.prog .bar{height:8px;background:var(--line);border-radius:5px;overflow:hidden}
-.prog .bar i{display:block;height:100%;background:var(--orange);transition:width .3s}
-.prog .lbl{display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-top:6px}
-.steps{display:flex;gap:4px;margin-top:8px}
-.steps span{flex:1;height:4px;border-radius:3px;background:var(--line)}
-.steps span.on{background:var(--purple)}
-.steps span.done{background:var(--green)}
-.panel{padding:24px}
-.field{margin-bottom:18px}
-.field label{display:block;font-weight:600;margin-bottom:6px}
-.field input,.field select{width:100%;padding:11px 12px;border:1.5px solid var(--line);border-radius:10px;background:#fff}
-.field input:focus,.field select:focus,textarea:focus{outline:none;border-color:var(--blue)}
-.cats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.cats button{border:1.5px solid var(--line);background:#fff;border-radius:10px;padding:14px 10px;font-weight:600}
-.cats button.on{border-color:var(--purple);background:#eeedf8;color:var(--purple)}
-.note{background:var(--blue-soft);border-radius:10px;padding:12px 14px;font-size:14px;margin:6px 0 20px}
-.bh{display:flex;align-items:baseline;gap:12px;margin:6px 0 14px}
-.bh h2{font-size:26px;text-transform:uppercase;color:var(--purple);margin:0}
-.bh span{color:var(--muted);font-size:14px}
-.q{padding:20px;margin-bottom:14px;scroll-margin-top:90px}
+body{font-size:17px}
+/* шапка */
+.hero{position:relative;overflow:hidden;background:linear-gradient(120deg,var(--navy) 0%,var(--purple) 55%,#2f3fa8 100%);color:#fff}
+.hero:before,.hero:after{content:"";position:absolute;pointer-events:none}
+.hero:before{right:0;top:0;bottom:0;width:44%;background:rgba(10,143,216,.38);clip-path:polygon(45% 0,100% 0,100% 100%,0 100%)}
+.hero:after{right:0;top:0;bottom:0;width:170px;background:var(--orange);clip-path:polygon(100% 42%,100% 100%,35% 100%)}
+.hero .in{position:relative;z-index:1;max-width:920px;margin:0 auto;padding:34px 22px 30px}
+.hero .kicker{display:inline-block;font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;background:rgba(255,255,255,.12);padding:5px 12px;border-radius:99px}
+.hero h1{font-size:38px;margin:14px 0 6px;line-height:1.08;max-width:680px}
+.hero h1 em{font-style:normal;color:var(--orange)}
+.hero p{margin:0;opacity:.85;font-size:17px}
+.wrap{max-width:920px;margin:0 auto;padding:24px 16px 90px}
+/* прогресс */
+.prog{position:sticky;top:0;z-index:5;background:rgba(243,244,249,.94);backdrop-filter:blur(6px);padding:12px 0 14px;margin:-8px 0 8px}
+.segs{display:flex;gap:6px}
+.seg{flex:1;height:8px;border-radius:5px;background:#dde0ec;overflow:hidden;position:relative}
+.seg i{position:absolute;left:0;top:0;bottom:0;border-radius:5px;transition:width .3s}
+.seg.cur{box-shadow:0 0 0 2px #fff,0 0 0 4px var(--bc)}
+.prog .lbl{display:flex;justify-content:space-between;font-size:14px;color:var(--ink2);margin-top:8px;font-weight:600}
+/* старт */
+.panel{padding:28px}
+.intro{font-size:17px}
+.field{margin-bottom:22px}
+.field>label,.field>.lab{display:block;font-weight:800;margin-bottom:8px;font-size:16px}
+.field small{display:block;color:var(--muted);font-weight:500;margin-top:-4px;margin-bottom:8px;font-size:14px}
+.field input{width:100%;padding:13px 14px;border:2px solid var(--line);border-radius:12px;background:#fff;font-size:17px}
+.field input:focus,textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 4px rgba(10,143,216,.12)}
+.choice{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.choice button{border:2px solid var(--line);background:#fff;border-radius:14px;padding:16px 14px;font-weight:700;text-align:left;display:flex;gap:12px;align-items:center;font-size:16px;transition:border-color .12s,background .12s}
+.choice button svg{width:28px;height:28px;flex:none;color:var(--purple)}
+.choice button:hover{border-color:#b3b1df}
+.choice button.on{border-color:var(--purple);background:#efeefb;color:var(--purple)}
+.choice button span small{display:block;font-weight:500;color:var(--muted);font-size:13.5px;margin-top:2px}
+.note{background:var(--blue-soft);border-radius:12px;padding:14px 16px;font-size:15.5px;margin:8px 0 24px;display:flex;gap:12px}
+.note b{color:var(--blue)}
+/* обложка блока */
+.cover{position:relative;overflow:hidden;border-radius:20px;color:#fff;padding:26px 26px 24px;margin-bottom:18px;background:var(--bc)}
+.cover:before{content:"";position:absolute;right:-30px;top:-30px;width:220px;height:220px;background:linear-gradient(135deg,transparent 50%,rgba(255,255,255,.14) 50%)}
+.cover:after{content:attr(data-n);position:absolute;right:22px;bottom:-26px;font-size:130px;font-weight:800;line-height:1;color:rgba(255,255,255,.13);letter-spacing:-.04em}
+.cover .ic{width:56px;height:56px;border-radius:16px;background:rgba(255,255,255,.16);display:grid;place-items:center;margin-bottom:14px}
+.cover .ic svg{width:32px;height:32px;color:#fff}
+.cover .bn{font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;opacity:.85}
+.cover h2{font-size:30px;margin:4px 0 6px;position:relative;z-index:1;max-width:620px}
+.cover p{margin:0;opacity:.9;max-width:560px;position:relative;z-index:1}
+/* вопрос */
+.q{padding:22px 24px;margin-bottom:14px;scroll-margin-top:110px;border-left:6px solid var(--bc);border-radius:var(--r)}
 .q.err{box-shadow:0 0 0 2px var(--red)}
-.q .qt{font-weight:600;font-size:16.5px;margin-bottom:12px;display:flex;gap:10px}
-.q .qn{flex:none;width:28px;height:28px;border-radius:50%;background:var(--purple);color:#fff;font-size:13px;display:grid;place-items:center;margin-top:-2px}
-.opts{display:grid;gap:8px}
-.opt{display:flex;gap:12px;align-items:flex-start;text-align:left;border:1.5px solid var(--line);background:#fff;border-radius:10px;padding:11px 14px;transition:border-color .12s,background .12s}
-.opt:hover{border-color:#a9a7d8}
-.opt i{flex:none;width:20px;height:20px;border-radius:50%;border:2px solid #b4b7cc;margin-top:1px;position:relative}
-.opt.on{border-color:var(--purple);background:#f1f0fb}
-.opt.on i{border-color:var(--purple)}
-.opt.on i:after{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--purple)}
-textarea{width:100%;min-height:64px;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:10px;resize:vertical;background:#fff}
-.nav{display:flex;justify-content:space-between;gap:10px;margin-top:20px}
-.skipnote{font-size:14px;color:var(--muted);padding:10px 14px;border:1px dashed var(--line);border-radius:10px;margin-bottom:14px}
-.res-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
-.brow{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);gap:10px}
+.q .qt{font-weight:800;font-size:19px;line-height:1.35;margin-bottom:14px;display:flex;gap:12px}
+.q .qn{flex:none;min-width:32px;height:32px;border-radius:10px;background:var(--bs);color:var(--bc);font-size:15px;display:grid;place-items:center}
+.opts{display:grid;gap:10px}
+.opt{display:flex;gap:14px;align-items:flex-start;text-align:left;border:2px solid var(--line);background:#fff;border-radius:14px;padding:14px 16px;font-size:17px;line-height:1.4;transition:border-color .12s,background .12s,transform .05s}
+.opt:hover{border-color:var(--bc);background:#fcfcff}
+.opt i{flex:none;width:22px;height:22px;border-radius:50%;border:2px solid #b4b7cc;margin-top:1px;position:relative;background:#fff}
+.opt.on{border-color:var(--bc);background:var(--bs)}
+.opt.on i{border-color:var(--bc);background:var(--bc)}
+.opt.on i:after{content:"";position:absolute;left:6px;top:2px;width:5px;height:10px;border:solid #fff;border-width:0 2.5px 2.5px 0;transform:rotate(45deg)}
+textarea{width:100%;min-height:70px;border:2px solid var(--line);border-radius:12px;padding:12px 14px;margin-top:12px;resize:vertical;background:#fff;font-size:16px}
+.nav{display:flex;justify-content:space-between;gap:10px;margin-top:22px}
+.skipnote{font-size:15px;color:var(--muted);padding:12px 16px;border:1.5px dashed var(--line);border-radius:12px;margin-bottom:14px}
+/* результат */
+.send{position:relative;overflow:hidden;background:linear-gradient(120deg,#fff4e2,#ffe7c2);border-radius:20px;padding:22px 24px;margin-bottom:18px}
+.send h3{font-size:24px;margin-bottom:6px}
+.res-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:center}
+.brow{padding:9px 0;border-bottom:1px solid var(--line)}
 .brow:last-child{border-bottom:0}
-.tips{margin-top:8px}
-.tip{padding:14px 16px;border-left:4px solid var(--orange);background:#fff;border-radius:0 10px 10px 0;margin-bottom:10px;box-shadow:0 0 0 1px var(--line)}
-.tip b{color:var(--purple)}
-.tip ul{margin:6px 0 0;padding-left:20px;font-size:14px}
-.send{background:var(--orange-soft);border-radius:var(--r);padding:18px 20px;margin-bottom:18px}
-.send h3{font-size:22px;margin-bottom:6px}
-.sec{margin-top:28px}
-.sec>h2{font-size:24px;text-transform:uppercase;color:var(--purple)}
+.brow .top{display:flex;justify-content:space-between;gap:10px;font-weight:600;font-size:15.5px}
+.brow .bar{height:8px;border-radius:5px;background:#eceef6;margin-top:6px;overflow:hidden}
+.brow .bar i{display:block;height:100%;border-radius:5px}
+.tip{padding:16px 18px;border-left:5px solid var(--bc);background:#fff;border-radius:0 14px 14px 0;margin-bottom:10px;box-shadow:0 0 0 1px var(--line)}
+.tip b{color:var(--bc);font-size:17px}
+.tip ul{margin:8px 0 0;padding-left:20px;font-size:15.5px}
+.sec{margin-top:34px}
+.sec>h2{font-size:26px;color:var(--purple)}
 .fallback textarea{font:12px/1.4 Consolas,monospace;min-height:90px}
-@media (max-width:700px){.res-grid{grid-template-columns:1fr}.cats{grid-template-columns:1fr}.top h1{font-size:22px}}
+@media (max-width:700px){.res-grid,.choice{grid-template-columns:1fr}.hero h1{font-size:28px}.cover h2{font-size:24px}.q{padding:18px}.q .qt{font-size:17.5px}.opt{font-size:16px}}
 </style>
 </head>
 <body>
 <noscript><div style="padding:20px;background:#fde6e6">Анкета не работает в окне предпросмотра почты. Сохраните файл на компьютер и откройте его двойным щелчком (в браузере Edge, Chrome или Яндекс).</div></noscript>
-<div class="top"><div class="in">
-  <h1>Уровень развития <em>направлений СУОД</em> ГПН-С</h1>
-  <p>Анкета сотрудника · около 10–15 минут</p>
-</div></div>
+<header class="hero"><div class="in">
+  <span class="kicker">Анкета сотрудника · 10–15 минут</span>
+  <h1>Уровень развития направлений <em>СУОД</em> ГПН-С</h1>
+  <p>Корпоративная культура, регулярный менеджмент, бережливое производство</p>
+</div></header>
 
 <div class="wrap">
   <div class="prog hidden" id="prog">
-    <div class="bar"><i id="progbar"></i></div>
+    <div class="segs" id="segs"></div>
     <div class="lbl"><span id="proglbl"></span><span id="progcnt"></span></div>
   </div>
 
-  <!-- Старт -->
   <section id="start" class="card panel">
-    <h2 style="font-size:24px">Здравствуйте!</h2>
-    <p>Эта анкета помогает понять, как в дивизионах работают практики регулярного менеджмента, бережливого производства и корпоративной культуры. Правильных и неправильных ответов нет: выбирайте вариант, который <b>ближе всего к вашей реальной ситуации</b>. Результаты смотрят в целом по дивизиону.</p>
-    <div class="note">Ответы сохраняются автоматически, анкету можно закрыть и продолжить позже на этом же компьютере. В конце нажмите «Сохранить ответы» — появится файл, его нужно отправить в ответном письме.</div>
-    <div class="field">
-      <label for="div">Дивизион</label>
-      <select id="div"></select>
-      <input id="divOther" class="hidden" style="margin-top:8px" placeholder="Напишите название дивизиона">
-    </div>
-    <div class="field">
-      <label for="fio">Фамилия, имя, отчество</label>
-      <input id="fio" autocomplete="name" placeholder="Иванова Мария Сергеевна">
-    </div>
-    <div class="field">
-      <label>Ваша категория</label>
-      <div class="cats" id="cats"></div>
-    </div>
-    <div id="startErr" class="muted" style="color:var(--red);min-height:1.5em"></div>
-    <button class="btn orange" id="go">Начать</button>
+    <h2 style="font-size:28px">Здравствуйте!</h2>
+    <p class="intro">Анкета помогает понять, как в подразделениях работают практики регулярного менеджмента, бережливого производства и корпоративной культуры. Правильных и неправильных ответов нет: выбирайте вариант, который <b>ближе всего к тому, как есть на самом деле</b>. Результаты смотрят в целом по подразделению.</p>
+    <div class="note"><span>💾</span><span>Ответы сохраняются сами: анкету можно закрыть и продолжить позже на этом же компьютере. В конце нажмите <b>«Сохранить ответы»</b> — появится файл, его нужно отправить в ответном письме.</span></div>
+
+    <div class="field"><label for="fio">Фамилия, имя, отчество</label><input id="fio" autocomplete="name" placeholder="Иванова Мария Сергеевна"></div>
+    <div class="field"><label for="unit">Подразделение</label><small>Как оно у вас называется: дивизион, управление, отдел, склад</small><input id="unit" placeholder="Например: Дивизион «Восток», склад № 3"></div>
+    <div class="field"><label for="pos">Должность <span class="muted" style="font-weight:500">(по желанию)</span></label><input id="pos" placeholder="Например: кладовщик, ведущий специалист"></div>
+    <div class="field"><span class="lab">У вас есть подчинённые?</span>
+      <div class="choice" id="mgr">
+        <button type="button" data-v="1"><span data-ic="hands"></span><span>Да, я руковожу<small>есть сотрудники в подчинении</small></span></button>
+        <button type="button" data-v="0"><span data-ic="user"></span><span>Нет<small>я специалист или рабочий</small></span></button>
+      </div></div>
+    <div class="field"><span class="lab">Где проходит ваша работа?</span>
+      <div class="choice" id="place">
+        <button type="button" data-v="office"><span data-ic="office"></span><span>В офисе<small>документы, закупки, учёт, аналитика</small></span></button>
+        <button type="button" data-v="prod"><span data-ic="truck"></span><span>На производстве<small>склад, база, транспорт, площадка</small></span></button>
+      </div></div>
+    <div id="startErr" style="color:var(--red);min-height:1.6em;font-weight:600"></div>
+    <button class="btn orange" id="go">Начать анкету →</button>
   </section>
 
-  <!-- Шаги -->
   <section id="steps" class="hidden"></section>
-
-  <!-- Результат -->
   <section id="result" class="hidden"></section>
 </div>
 
@@ -107,130 +127,110 @@ textarea{width:100%;min-height:64px;border:1.5px solid var(--line);border-radius
 /*DATA*/
 /*COMMON*/
 (function () {
-  var KEY = "suod-anketa-v2";
-  var st = { div: "", divOther: "", fio: "", cat: "", ans: {}, txt: {}, step: -1, done: false };
+  var KEY = "suod-anketa-v3";
+  var st = { fio: "", unit: "", pos: "", mgr: null, place: "", ans: {}, txt: {}, step: -1, done: false };
   try { var saved = JSON.parse(localStorage.getItem(KEY) || "null"); if (saved) st = Object.assign(st, saved); } catch (e) {}
   function save() { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) {} }
+  function who() { return { mgr: st.mgr === true, prod: st.place === "prod", office: st.place === "office" }; }
+  function cat() { return catFromWho(who()); }
 
   /* --- старт --- */
-  var divSel = $("#div");
-  divSel.innerHTML = '<option value="">— выберите —</option>' + CONFIG.divisions.map(function (d) { return '<option>' + esc(d) + '</option>'; }).join("") + '<option value="__other">Другой</option>';
-  if (CONFIG.divisions.length === 1 && !st.div) st.div = CONFIG.divisions[0];
-  divSel.value = st.div;
-  $("#divOther").value = st.divOther;
-  function syncDiv() { $("#divOther").classList.toggle("hidden", divSel.value !== "__other"); }
-  syncDiv();
-  divSel.onchange = function () { st.div = divSel.value; syncDiv(); save(); };
-  $("#divOther").oninput = function () { st.divOther = this.value; save(); };
-  $("#fio").value = st.fio;
-  $("#fio").oninput = function () { st.fio = this.value; save(); };
-  $("#cats").innerHTML = CATEGORIES.map(function (c) { return '<button type="button" data-c="' + c.id + '">' + esc(c.name) + "</button>"; }).join("");
-  function syncCats() { $$("#cats button").forEach(function (b) { b.classList.toggle("on", b.getAttribute("data-c") === st.cat); }); }
-  syncCats();
-  $$("#cats button").forEach(function (b) { b.onclick = function () { st.cat = b.getAttribute("data-c"); syncCats(); save(); }; });
-
-  function division() { return st.div === "__other" ? (st.divOther || "").trim() : st.div; }
+  $$("[data-ic]").forEach(function (e) { e.outerHTML = icon(e.getAttribute("data-ic")); });
+  ["fio", "unit", "pos"].forEach(function (k) { var el = $("#" + k); el.value = st[k] || ""; el.oninput = function () { st[k] = el.value; save(); }; });
+  function syncChoice() {
+    $$("#mgr button").forEach(function (b) { b.classList.toggle("on", st.mgr !== null && (b.getAttribute("data-v") === "1") === st.mgr); });
+    $$("#place button").forEach(function (b) { b.classList.toggle("on", b.getAttribute("data-v") === st.place); });
+  }
+  $$("#mgr button").forEach(function (b) { b.onclick = function () { st.mgr = b.getAttribute("data-v") === "1"; syncChoice(); save(); }; });
+  $$("#place button").forEach(function (b) { b.onclick = function () { st.place = b.getAttribute("data-v"); syncChoice(); save(); }; });
+  syncChoice();
 
   $("#go").onclick = function () {
     var err = "";
-    if (!division()) err = "Выберите дивизион.";
-    else if ((st.fio || "").trim().split(/\s+/).length < 2) err = "Напишите фамилию и имя.";
-    else if (!st.cat) err = "Выберите категорию.";
+    if ((st.fio || "").trim().split(/\s+/).length < 2) err = "Напишите фамилию и имя.";
+    else if (!(st.unit || "").trim()) err = "Напишите подразделение.";
+    else if (st.mgr === null) err = "Ответьте, есть ли у вас подчинённые.";
+    else if (!st.place) err = "Выберите, где проходит ваша работа.";
     $("#startErr").textContent = err;
     if (err) return;
-    st.step = 0; save(); render();
+    st.step = 0; save(); render(); window.scrollTo(0, 0);
   };
 
   /* --- шаги --- */
-  function blocksForCat() {
-    return BLOCKS.filter(function (b) { return QUESTIONS.some(function (q) { return q.block === b.id && q.cats.indexOf(st.cat) >= 0; }); });
+  function visibleQs(bid) { return QUESTIONS.filter(function (q) { return q.block === bid && isApplicable(q, who(), st.ans); }); }
+  function blocksForMe() {
+    return BLOCKS.filter(function (b) { return QUESTIONS.some(function (q) { return q.block === b.id && isApplicable(q, who(), {}); }); });
   }
-  function visibleQs(bid) {
-    return QUESTIONS.filter(function (q) { return q.block === bid && isApplicable(q, st.cat, st.ans); });
-  }
-  function allApplicable() { return QUESTIONS.filter(function (q) { return !q.textOnly && isApplicable(q, st.cat, st.ans); }); }
-  function progress() {
-    var a = allApplicable(), d = a.filter(function (q) { return st.ans[q.id] != null; }).length;
-    return { d: d, n: a.length };
-  }
+  function scored(list) { return list.filter(function (q) { return !q.textOnly; }); }
+  function allApplicable() { return scored(QUESTIONS.filter(function (q) { return isApplicable(q, who(), st.ans); })); }
   function updateProg() {
-    var bl = blocksForCat(), p = progress();
-    $("#progbar").style.width = (p.n ? p.d / p.n * 100 : 0) + "%";
-    $("#proglbl").textContent = st.step < bl.length ? "Блок " + (st.step + 1) + " из " + bl.length : "Готово";
-    $("#progcnt").textContent = "Отвечено " + p.d + " из " + p.n;
+    var bl = blocksForMe(), all = allApplicable(), done = all.filter(function (q) { return st.ans[q.id] != null; }).length;
+    $("#segs").innerHTML = bl.map(function (b, i) {
+      var qs = scored(visibleQs(b.id)), d = qs.filter(function (q) { return st.ans[q.id] != null; }).length;
+      return '<div class="seg' + (i === st.step ? " cur" : "") + '" style="--bc:' + b.color + '" title="' + esc(b.name) + '"><i style="width:' + (qs.length ? d / qs.length * 100 : 0) + "%;background:" + b.color + '"></i></div>';
+    }).join("");
+    $("#proglbl").textContent = st.step < bl.length ? bl[st.step].name : "Проверка";
+    $("#progcnt").textContent = "Отвечено " + done + " из " + all.length;
   }
 
   function renderStep() {
-    var bl = blocksForCat(), b = bl[st.step], el = $("#steps");
-    var qs = visibleQs(b.id);
-    var num = 0;
-    var html = '<div class="bh"><h2>' + esc(b.name) + '</h2></div>';
+    var bl = blocksForMe(), b = bl[st.step], el = $("#steps"), qs = visibleQs(b.id);
+    el.style.setProperty("--bc", b.color); el.style.setProperty("--bs", b.soft);
+    var html = '<div class="cover" data-n="' + ("0" + (st.step + 1)).slice(-2) + '"><div class="ic">' + icon(b.icon) + '</div><div class="bn">Блок ' + (st.step + 1) + " из " + bl.length + "</div><h2>" + esc(b.name) + "</h2><p>" + esc(b.desc) + "</p></div>";
     qs.forEach(function (q) {
-      num = QUESTIONS.filter(function (x) { return isApplicable(x, st.cat, st.ans) && x.id <= q.id; }).length;
+      var num = QUESTIONS.filter(function (x) { return isApplicable(x, who(), st.ans) && x.id <= q.id; }).length;
       html += '<div class="q card" id="q' + q.id + '"><div class="qt"><span class="qn">' + num + "</span><span>" + esc(q.q) + "</span></div>";
       if (!q.textOnly) {
-        var order = OPTION_ORDER[q.id] || [0, 1, 2];
-        html += '<div class="opts">' + order.map(function (k) {
-          var on = st.ans[q.id] === SCORES[k] ? " on" : "";
-          return '<button type="button" class="opt' + on + '" data-q="' + q.id + '" data-k="' + k + '"><i></i><span>' + esc(q.o[k]) + "</span></button>";
+        html += '<div class="opts">' + (OPTION_ORDER[q.id] || [0, 1, 2]).map(function (k) {
+          return '<button type="button" class="opt' + (st.ans[q.id] === SCORES[k] ? " on" : "") + '" data-q="' + q.id + '" data-k="' + k + '"><i></i><span>' + esc(q.o[k]) + "</span></button>";
         }).join("") + "</div>";
       }
-      if (q.text || q.textOnly) {
-        html += '<textarea data-t="' + q.id + '" placeholder="' + esc((q.textOnly ? "" : "Ваш ответ / пример (по желанию): ") + (q.hint || "")) + '">' + esc(st.txt[q.id] || "") + "</textarea>";
-      }
+      if (q.text || q.textOnly) html += '<textarea data-t="' + q.id + '" placeholder="' + esc((q.textOnly ? "" : "Ваш ответ / пример (по желанию): ") + (q.hint || "")) + '">' + esc(st.txt[q.id] || "") + "</textarea>";
       html += "</div>";
     });
-    if (b.id === "BP" && st.cat !== "O" && st.ans[19] === 0) html += '<div class="skipnote">Вопросы про устройство СОП пропущены, потому что в вашей работе нет документированных СОП.</div>';
+    if (b.id === "BP" && who().prod && st.ans[19] === 0) html += '<div class="skipnote">Вопросы про устройство СОП пропущены: в вашей работе нет документированных СОП.</div>';
     html += '<div class="nav"><button class="btn ghost" id="back">← Назад</button><button class="btn" id="next">' + (st.step + 1 < bl.length ? "Дальше →" : "К завершению →") + "</button></div>";
     el.innerHTML = html;
 
     $$(".opt", el).forEach(function (o) {
       o.onclick = function () {
         var id = +o.getAttribute("data-q");
-        st.ans[id] = SCORES[+o.getAttribute("data-k")];
-        save();
+        st.ans[id] = SCORES[+o.getAttribute("data-k")]; save();
         if (id === 19) { renderStep(); updateProg(); return; }
         $$('.opt[data-q="' + id + '"]', el).forEach(function (x) { x.classList.toggle("on", x === o); });
-        $("#q" + id).classList.remove("err");
-        updateProg();
+        $("#q" + id).classList.remove("err"); updateProg();
       };
     });
     $$("textarea", el).forEach(function (t) { t.oninput = function () { st.txt[t.getAttribute("data-t")] = t.value; save(); }; });
-    $("#back").onclick = function () { st.step--; save(); render(); window.scrollTo(0, 0); };
+    $("#back").onclick = function () { if (st.step === 0) { st.step = -1; } else st.step--; save(); render(); window.scrollTo(0, 0); };
     $("#next").onclick = function () {
       var miss = qs.filter(function (q) { return !q.textOnly && st.ans[q.id] == null; });
       $$(".q", el).forEach(function (x) { x.classList.remove("err"); });
-      if (miss.length) {
-        miss.forEach(function (q) { $("#q" + q.id).classList.add("err"); });
-        $("#q" + miss[0].id).scrollIntoView({ behavior: "smooth", block: "start" });
-        return;
-      }
+      if (miss.length) { miss.forEach(function (q) { $("#q" + q.id).classList.add("err"); }); $("#q" + miss[0].id).scrollIntoView({ behavior: "smooth", block: "start" }); return; }
       st.step++; save(); render(); window.scrollTo(0, 0);
     };
   }
 
   function renderFinish() {
-    var p = progress(), el = $("#steps");
-    var miss = allApplicable().filter(function (q) { return st.ans[q.id] == null; });
-    el.innerHTML = '<div class="card panel"><h2 style="font-size:24px">Почти готово</h2>' +
-      (miss.length ? '<p style="color:var(--red)">Осталось ответить на ' + miss.length + " вопр. Вернитесь назад и проверьте блоки.</p>" :
+    var el = $("#steps"), miss = allApplicable().filter(function (q) { return st.ans[q.id] == null; });
+    el.style.setProperty("--bc", "#2b2878");
+    el.innerHTML = '<div class="card panel"><h2 style="font-size:28px">Почти готово</h2>' +
+      (miss.length ? '<p style="color:var(--red);font-weight:600">Осталось ответить на ' + miss.length + " вопр. Вернитесь назад и проверьте блоки.</p>" :
         "<p>Вы ответили на все вопросы. Нажмите кнопку ниже: браузер сохранит файл с ответами (обычно в папку «Загрузки»), а на экране появится ваш профиль.</p>") +
       '<p class="muted">После сохранения изменить ответы будет нельзя.</p>' +
       '<div class="nav"><button class="btn ghost" id="back">← Назад</button><button class="btn orange" id="saveBtn"' + (miss.length ? " disabled" : "") + ">Сохранить ответы</button></div></div>";
     $("#back").onclick = function () { st.step--; save(); render(); };
-    $("#saveBtn").onclick = function () {
-      st.done = true; st.savedAt = new Date().toISOString(); save();
-      download(); render(); window.scrollTo(0, 0);
-    };
+    $("#saveBtn").onclick = function () { st.done = true; st.savedAt = new Date().toISOString(); save(); download(); render(); window.scrollTo(0, 0); };
   }
 
   /* --- файл с ответами --- */
   function csvCell(v) { return '"' + String(v == null ? "" : v).replace(/"/g, '""').replace(/\r?\n/g, " ") + '"'; }
   function buildCsv() {
-    var sc = computeScores(st.cat, st.ans);
-    var h = ["Формат", "Версия анкеты", "Дивизион", "ФИО", "Категория", "Дата"], v = ["SUOD", "2", division(), st.fio.trim(), catName(st.cat), (st.savedAt || "").slice(0, 10)];
+    var w = who(), sc = computeScores(w, st.ans);
+    var h = ["Формат", "Версия анкеты", "Подразделение", "ФИО", "Должность", "Руководитель", "Место работы", "Категория", "Дата"],
+        v = ["SUOD", "3", st.unit.trim(), st.fio.trim(), (st.pos || "").trim(), w.mgr ? "да" : "нет", w.prod ? "производство" : "офис", catName(cat()), (st.savedAt || "").slice(0, 10)];
     QUESTIONS.forEach(function (q) {
-      if (!q.textOnly) { h.push("Вопрос " + q.id + " (балл)"); v.push(isApplicable(q, st.cat, st.ans) ? st.ans[q.id] : ""); }
+      if (!q.textOnly) { h.push("Вопрос " + q.id + " (балл)"); v.push(isApplicable(q, w, st.ans) ? st.ans[q.id] : ""); }
       if (q.text || q.textOnly) { h.push("Вопрос " + q.id + " (ответ)"); v.push(st.txt[q.id] || ""); }
     });
     BLOCKS.forEach(function (b) { h.push("Блок: " + b.name + ", %"); v.push(sc.blocks[b.id] == null ? "" : Math.round(sc.blocks[b.id])); });
@@ -238,64 +238,53 @@ textarea{width:100%;min-height:64px;border:1.5px solid var(--line);border-radius
     return h.map(csvCell).join(";") + "\r\n" + v.map(csvCell).join(";") + "\r\n";
   }
   var TR = { а:"a",б:"b",в:"v",г:"g",д:"d",е:"e",ё:"e",ж:"zh",з:"z",и:"i",й:"y",к:"k",л:"l",м:"m",н:"n",о:"o",п:"p",р:"r",с:"s",т:"t",у:"u",ф:"f",х:"kh",ц:"ts",ч:"ch",ш:"sh",щ:"sch",ъ:"",ы:"y",ь:"",э:"e",ю:"yu",я:"ya" };
-  function translit(s) {
-    return String(s).split("").map(function (c) { var l = c.toLowerCase(), t = TR[l]; if (t === undefined) return c; return c !== l && t ? t[0].toUpperCase() + t.slice(1) : t; }).join("");
-  }
+  function translit(s) { return String(s).split("").map(function (c) { var l = c.toLowerCase(), t = TR[l]; if (t === undefined) return c; return c !== l && t ? t[0].toUpperCase() + t.slice(1) : t; }).join(""); }
   // латиница в имени файла: кириллицу некоторые браузеры и почтовые системы портят
   function fileName() {
-    var parts = st.fio.trim().split(/\s+/), short = parts[0] + (parts[1] ? "_" + parts[1][0] : "") + (parts[2] ? parts[2][0] : "");
-    return translit("SUOD_" + division() + "_" + short + ".csv").replace(/[^A-Za-z0-9_.-]+/g, "_");
+    var p = st.fio.trim().split(/\s+/), short = p[0] + (p[1] ? "_" + p[1][0] : "") + (p[2] ? p[2][0] : "");
+    return translit("SUOD_" + short + ".csv").replace(/[^A-Za-z0-9_.-]+/g, "_");
   }
   function download() {
     try {
       var blob = new Blob(["﻿" + buildCsv()], { type: "text/csv;charset=utf-8" });
       if (window.navigator && window.navigator.msSaveOrOpenBlob) { window.navigator.msSaveOrOpenBlob(blob, fileName()); return; }
-      var a = document.createElement("a");
-      a.href = URL.createObjectURL(blob); a.download = fileName();
+      var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = fileName();
       document.body.appendChild(a); a.click();
-      setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+      setTimeout(function () { URL.revokeObjectURL(a.href); document.body.removeChild(a); }, 1500);
     } catch (e) { /* остаётся запасной вариант с текстом */ }
   }
 
   /* --- результат --- */
   function renderResult() {
-    var sc = computeScores(st.cat, st.ans), el = $("#result");
-    var weak = BLOCKS.filter(function (b) { return sc.blocks[b.id] != null && sc.blocks[b.id] < CONFIG.levelHigh; })
-      .sort(function (a, b) { return sc.blocks[a.id] - sc.blocks[b.id]; });
+    var sc = computeScores(who(), st.ans), el = $("#result");
+    var weak = BLOCKS.filter(function (b) { return sc.blocks[b.id] != null && sc.blocks[b.id] < CONFIG.levelHigh; }).sort(function (a, b) { return sc.blocks[a.id] - sc.blocks[b.id]; });
     el.innerHTML =
       '<div class="send"><h3>Спасибо! Осталось отправить файл</h3>' +
-      "<p style=\"margin:0\">Файл <b>" + esc(fileName()) + "</b> сохранён в папку «Загрузки». Прикрепите его к ответному письму и отправьте " + esc(CONFIG.sendTo) + ".</p>" +
-      '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" id="again">Скачать файл ещё раз</button><button class="btn small ghost" id="fbBtn">Файл не скачался?</button></div>' +
+      '<p style="margin:0">Файл <b>' + esc(fileName()) + "</b> сохранён в папку «Загрузки». Прикрепите его к ответному письму и отправьте " + esc(CONFIG.sendTo) + ".</p>" +
+      '<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" id="again">Скачать файл ещё раз</button><button class="btn small ghost" id="fbBtn">Файл не скачался?</button></div>' +
       '<div class="fallback hidden" id="fb"><p style="margin:12px 0 4px">Скопируйте этот текст целиком и вставьте в письмо:</p><textarea readonly id="fbText"></textarea><button class="btn small" id="copy">Скопировать</button></div></div>' +
-
-      '<div class="card panel"><h2 style="font-size:24px">Ваш профиль</h2><p class="muted" style="margin-top:0">Это самооценка по вашим ответам — ориентир, а не оценка вашей работы.</p>' +
-      '<div class="res-grid"><div>' + radarSvg([{ values: sc.blocks, color: "#2d2a7b" }]) + "</div><div>" +
+      '<div class="card panel"><h2 style="font-size:28px">Ваш профиль</h2><p class="muted" style="margin-top:0">Самооценка по вашим ответам — ориентир, а не оценка вашей работы.</p>' +
+      '<div class="res-grid"><div>' + radarSvg([{ values: sc.blocks, color: "#2b2878" }]) + "</div><div>" +
       BLOCKS.map(function (b) {
         var p = sc.blocks[b.id];
-        return '<div class="brow"><span>' + esc(b.name) + "</span>" + (p == null ? '<span class="muted">не оценивался</span>' : '<span class="pill ' + lvlClass(p) + '">' + fmtPct(p) + "</span>") + "</div>";
+        return '<div class="brow"><div class="top"><span>' + esc(b.name) + "</span>" + (p == null ? '<span class="muted">не оценивался</span>' : '<span class="pill ' + lvlClass(p) + '">' + fmtPct(p) + "</span>") + '</div><div class="bar"><i style="width:' + (p || 0) + "%;background:" + b.color + '"></i></div></div>';
       }).join("") +
-      '<div class="brow"><b>Итог</b><span class="pill ' + lvlClass(sc.overall) + '">' + fmtPct(sc.overall) + "</span></div></div></div></div>" +
-
-      (weak.length ? '<div class="sec"><h2>Что можно усилить</h2><div class="tips">' + weak.map(function (b) {
-        return '<div class="tip"><b>' + esc(b.name) + " · " + fmtPct(sc.blocks[b.id]) + "</b><ul>" + TIPS[b.id].map(function (t) { return "<li>" + esc(t) + "</li>"; }).join("") + "</ul></div>";
-      }).join("") + "</div></div>" : "") +
-
+      '<div class="brow"><div class="top"><b>Итог</b><span class="pill ' + lvlClass(sc.overall) + '">' + fmtPct(sc.overall) + "</span></div></div></div></div></div>" +
+      (weak.length ? '<div class="sec"><h2>Что можно усилить</h2>' + weak.map(function (b) {
+        return '<div class="tip" style="--bc:' + b.color + '"><b>' + esc(b.name) + " · " + fmtPct(sc.blocks[b.id]) + "</b><ul>" + TIPS[b.id].map(function (t) { return "<li>" + esc(t) + "</li>"; }).join("") + "</ul></div>";
+      }).join("") + "</div>" : "") +
       '<div class="sec"><h2>Корпоративные модели поведения</h2><div id="models"></div></div>' +
       '<div class="sec"><h2>Мини-тест: узнай модель</h2><p class="muted" style="margin-top:0">12 рабочих ситуаций. Угадайте, какая модель поведения в каждой проявляется.</p><div class="card panel" id="quiz"><button class="btn orange" id="quizGo">Начать тест</button></div></div>' +
-      '<div class="sec muted" style="font-size:14px;border-top:1px solid var(--line);padding-top:14px">На этом компьютере анкету заполняет другой сотрудник? <button class="btn small ghost" id="reset">Начать новую анкету</button></div>';
-
+      '<div class="sec muted" style="font-size:15px;border-top:1px solid var(--line);padding-top:16px">На этом компьютере анкету заполняет другой сотрудник? <button class="btn small ghost" id="reset">Начать новую анкету</button></div>';
     renderModelsCompact($("#models"));
     $("#quizGo").onclick = function () { startQuiz($("#quiz")); };
     $("#again").onclick = download;
+    $("#fbBtn").onclick = function () { $("#fb").classList.remove("hidden"); $("#fbText").value = buildCsv(); };
+    $("#copy").onclick = function () { var t = $("#fbText"); t.select(); try { document.execCommand("copy"); this.textContent = "Скопировано"; } catch (e) {} };
     $("#reset").onclick = function () {
       if (!confirm("Начать новую анкету? Убедитесь, что файл с текущими ответами сохранён и отправлен.")) return;
       try { localStorage.removeItem(KEY); } catch (e) {}
       location.reload();
-    };
-    $("#fbBtn").onclick = function () { $("#fb").classList.remove("hidden"); $("#fbText").value = buildCsv(); };
-    $("#copy").onclick = function () {
-      var t = $("#fbText"); t.select();
-      try { document.execCommand("copy"); this.textContent = "Скопировано"; } catch (e) {}
     };
   }
 
@@ -307,8 +296,7 @@ textarea{width:100%;min-height:64px;border:1.5px solid var(--line);border-radius
     $("#result").classList.toggle("hidden", !st.done);
     if (st.done) return renderResult();
     if (!started) return;
-    var bl = blocksForCat();
-    if (st.step >= bl.length) renderFinish(); else renderStep();
+    if (st.step >= blocksForMe().length) renderFinish(); else renderStep();
     updateProg();
   }
   render();

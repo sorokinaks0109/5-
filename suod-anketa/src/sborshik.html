@@ -62,6 +62,9 @@ table.t tr:hover td{background:#fafaff}
 .ans .who{font-size:12.5px;color:var(--muted)}
 .empty{padding:40px 20px;text-align:center;color:var(--muted)}
 .notes li{margin:4px 0;font-size:14px}
+.ren{border:0;background:none;padding:0;font:inherit;color:var(--ink);text-align:left;cursor:pointer}
+.ren span{color:var(--muted);font-size:12px;opacity:0;transition:opacity .15s}
+.ren:hover{color:var(--purple)}.ren:hover span{opacity:1}
 @media (max-width:900px){.loads,.two{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}}
 </style>
 </head>
@@ -75,9 +78,9 @@ table.t tr:hover td{background:#fafaff}
   <div class="loads">
     <div class="load card" data-w="1">
       <div class="lh"><span class="dot" style="background:#8a8fb5"></span><input value="Волна 1 · до" data-label></div>
-      <div class="drop" data-drop>Перетащите сюда файлы первого замера<br><b>старые Excel-анкеты (.xlsx), свод (.xlsx) или файлы .csv</b><br><span class="muted">или нажмите, чтобы выбрать</span></div>
+      <div class="drop" data-drop>Перетащите сюда файлы первого замера<br><b>старые Excel-анкеты, интервью-чек-листы, свод (.xlsx) или .csv</b><br><span class="muted">или нажмите, чтобы выбрать</span></div>
       <input type="file" multiple accept=".csv,.txt,.xlsx,.xlsm,.xls" class="hidden" data-file>
-      <div class="lrow"><span>Дивизион, если в файле не указан:</span><input data-defdiv placeholder="например, Восток"></div>
+      <div class="lrow"><span>Подразделение, если в файле не указано:</span><input data-defdiv placeholder="например, Восточная Сибирь"></div>
       <div class="lrow"><button class="btn small ghost" data-pastebtn>Вставить текст из письма</button><button class="btn small ghost" data-clear>Очистить</button></div>
       <div class="paste hidden" data-paste><textarea placeholder="Вставьте текст ответа сотрудника (начинается с «Формат»;…) или строки, скопированные из Excel-свода с заголовками"></textarea><button class="btn small" data-pasteadd>Добавить</button></div>
       <div class="lstat" data-stat></div>
@@ -87,7 +90,7 @@ table.t tr:hover td{background:#fafaff}
       <div class="lh"><span class="dot" style="background:#2d2a7b"></span><input value="Волна 2 · после" data-label></div>
       <div class="drop" data-drop>Перетащите сюда файлы повторного замера<br><b>файлы .csv из новой анкеты</b><br><span class="muted">или нажмите, чтобы выбрать</span></div>
       <input type="file" multiple accept=".csv,.txt,.xlsx,.xlsm,.xls" class="hidden" data-file>
-      <div class="lrow"><span>Дивизион, если в файле не указан:</span><input data-defdiv placeholder="например, Восток"></div>
+      <div class="lrow"><span>Подразделение, если в файле не указано:</span><input data-defdiv placeholder="например, Восточная Сибирь"></div>
       <div class="lrow"><button class="btn small ghost" data-pastebtn>Вставить текст из письма</button><button class="btn small ghost" data-clear>Очистить</button></div>
       <div class="paste hidden" data-paste><textarea placeholder="Вставьте текст ответа сотрудника (начинается с «Формат»;…)"></textarea><button class="btn small" data-pasteadd>Добавить</button></div>
       <div class="lstat" data-stat></div>
@@ -97,7 +100,7 @@ table.t tr:hover td{background:#fafaff}
 
   <div id="dash" class="hidden">
     <div class="filters">
-      <div><label>Дивизион</label><select id="fDiv"></select></div>
+      <div><label>Подразделение</label><select id="fDiv"></select></div>
       <div><label>Категория</label><select id="fCat"></select></div>
       <div class="sp"></div>
     </div>
@@ -113,7 +116,7 @@ table.t tr:hover td{background:#fafaff}
     </div>
 
     <div class="sec">
-      <div class="sh"><h2>По дивизионам</h2><div class="seg" data-seg="div"><button data-m="w2" class="on">После</button><button data-m="w1">До</button><button data-m="d">Изменение</button></div></div>
+      <div class="sh"><h2>По подразделениям</h2><div class="seg" data-seg="div"><button data-m="w2" class="on">После</button><button data-m="w1">До</button><button data-m="d">Изменение</button></div></div>
       <div class="card tw" id="mDiv"></div>
     </div>
 
@@ -154,7 +157,7 @@ table.t tr:hover td{background:#fafaff}
 /*COMMON*/
 (function () {
   var REC = [];                 // все анкеты
-  var ISSUES = { 1: [], 2: [] };
+  var ISSUES = { 1: [], 2: [] }, INFO = { 1: [], 2: [] };
   var mode = { div: "w2", cat: "w2", qsort: "id", ow: "2" };
   var C1 = "#8a8fb5", C2 = "#2d2a7b";
 
@@ -194,7 +197,11 @@ table.t tr:hover td{background:#fafaff}
       if (!hdr) return;
       var get = function (name) { var i = hdr.indexOf(name); return i >= 0 ? cells[i] : ""; };
       if (kind === "new") {
-        var rec = { wave: w, src: src, div: get("Дивизион") || defDiv(w), fio: get("ФИО"), cat: catFromText(get("Категория")), date: get("Дата"), ans: {}, txt: {} };
+        var rec = { wave: w, src: src, div: get("Подразделение") || get("Дивизион") || defDiv(w), fio: get("ФИО"), pos: get("Должность"), cat: catFromText(get("Категория")), date: get("Дата"), ans: {}, txt: {} };
+        if (hdr.indexOf("Руководитель") >= 0) {
+          rec.who = { mgr: norm(get("Руководитель")) === "да", prod: norm(get("Место работы")).indexOf("производ") === 0, office: norm(get("Место работы")) === "офис" };
+          rec.cat = catFromWho(rec.who);
+        } else rec.who = whoFromCat(rec.cat);
         hdr.forEach(function (h, i) {
           var m = /^Вопрос (\d+) \((балл|ответ)\)$/.exec(h);
           if (!m) return;
@@ -205,7 +212,8 @@ table.t tr:hover td{background:#fafaff}
         out.push(rec);
       } else {
         var fio = get("ФИО"); if (!fio) return;
-        var rec2 = { wave: w, src: src, div: get("Дивизион") || defDiv(w), fio: fio, cat: catFromText(get("Категория")), ans: {}, txt: {}, blocksOnly: {} };
+        var rec2 = { wave: w, src: src, div: get("Подразделение") || get("Дивизион") || defDiv(w), fio: fio, cat: catFromText(get("Категория")), ans: {}, txt: {}, blocksOnly: {} };
+        rec2.who = whoFromCat(rec2.cat);
         BLOCKS.forEach(function (b) {
           var i = -1; hdr.forEach(function (h, k) { if (norm(h).indexOf(norm(b.name)) === 0) i = k; });
           var v = i >= 0 ? parseFloat(String(cells[i]).replace(",", ".").replace("%", "")) : NaN;
@@ -236,6 +244,7 @@ table.t tr:hover td{background:#fafaff}
     var fio = ""; ["C2", "D2", "E2", "F2", "B2"].some(function (a) { var t = cellText(ws, a); if (t && t.indexOf("ФИО") < 0) { fio = t; return true; } return false; });
     var catT = ""; ["I2", "J2", "H2"].some(function (a) { var t = cellText(ws, a); if (t && t.indexOf("Категория") < 0) { catT = t; return true; } return false; });
     var rec = { wave: w, src: src, div: (m ? m[1].trim() : "") || defDiv(w), fio: fio, cat: catFromText(catT), ans: {}, txt: {}, multi: [] };
+    rec.who = whoFromCat(rec.cat);
     var range = XLSX.utils.decode_range(ws["!ref"] || "A1:P60");
     for (var r = 4; r <= Math.min(range.e.r + 1, 120); r++) {
       var id = parseInt(cellText(ws, "A" + r), 10);
@@ -258,13 +267,86 @@ table.t tr:hover td{background:#fafaff}
     return rec;
   }
 
+  /* ---------- интервью-чек-лист первой волны: лист на сотрудника, балл аудитора в столбце «ФАКТ» ---------- */
+  // начала формулировок вопросов чек-листа → номер вопроса анкеты
+  var CHECK_Q = [
+    ["перечислите корпоративные модели", 1], ["какие цели на ближайший год", 2], ["какие цели стоят перед вашим", 3],
+    ["какие корпоративные льготы", 4], ["как часто ваш руководитель проводит линейный", 5], ["как часто вы проводите линейный", 6],
+    ["как часто вы сами проводите линейный", 6], ["опишите ваши основные действия при линейном", 7], ["что вы делаете во время линейного", 7],
+    ["как часто вы получаете от руководителя", 8], ["в какой форме вам", 9], ["в какой форме вы", 10],
+    ["ваш руководитель чаще", 11], ["как ваш руководитель сочетает", 11], ["давайте поговорим о совещаниях", 12], ["опишите типичное приглашение", 12],
+    ["как обычно выглядит приглашение", 12], ["за какое время", 13], ["как часто вы с", 14], ["расскажите о последней такой беседе", 15],
+    ["к чему договорились", 15], ["о чем вы договорились", 15], ["как вы подаете инициативы", 16], ["насколько вам комфортно", 17],
+    ["расскажите, пожалуйста, о программах обучения", 18], ["что вы знаете о программах обучения", 18],
+    ["как часто вы в своей текущей работе", 19], ["как часто вы в работе используете", 19], ["как часто вы используете в работе стандартные", 19],
+    ["пожалуйста, назовите ключевые", 20], ["назовите ключевые разделы", 20], ["какие разделы должны быть", 20],
+    ["из каких основных частей", 21], ["из каких частей состоит", 21], ["насколько разработанные", 22], ["насколько соп применимы", 22],
+    ["насколько существующие соп", 23], ["насколько соп в вашей зоне", 23],
+    ["если у вас есть конкретные предложения", 24], ["предложения по соп", 24], ["какие процессы нуждаются", 24],
+    ["как вы охарактеризуете", 25], ["как вы относитесь к действиям", 25], ["расскажите, пожалуйста, какими инструментами", 26],
+    ["какими инструментами", 26], ["какими способами вы находите потери", 26], ["расскажите пожалуйста, что вам известно о системе 5", 27],
+    ["расскажите, пожалуйста, что вам известно о системе 5", 27], ["что вы знаете о системе 5", 27], ["что является главной целью", 28],
+    ["какая главная цель", 28], ["есть ли у вас стенд", 29]
+  ];
+  function checkQid(text) {
+    var t = norm(text).replace(/[«»"]/g, "");
+    for (var i = 0; i < CHECK_Q.length; i++) if (t.indexOf(CHECK_Q[i][0]) === 0) return CHECK_Q[i][1];
+    return null;
+  }
+  function isChecklistSheet(rows) {
+    for (var i = 0; i < Math.min(rows.length, 15); i++) if (rows[i].some(function (c) { return norm(c) === "факт"; })) return i;
+    return -1;
+  }
+  function afterLabel(rows, label) {
+    for (var i = 0; i < Math.min(rows.length, 12); i++) {
+      for (var j = 0; j < rows[i].length; j++) {
+        var c = String(rows[i][j] || "").trim();
+        if (norm(c).indexOf(label) === 0) {
+          var v = c.slice(label.length).replace(/^[\s:_]+|[\s_]+$/g, "").trim();
+          if (!v && rows[i][j + 1]) v = String(rows[i][j + 1]).trim();
+          return v;
+        }
+      }
+    }
+    return "";
+  }
+  function recordFromChecklist(rows, hi, w, src) {
+    var hdr = rows[hi].map(norm), cQ = -1, cF = hdr.indexOf("факт"), cC = -1;
+    hdr.forEach(function (h, i) { if (cQ < 0 && h.indexOf("вопрос") >= 0) cQ = i; if (cC < 0 && h.indexOf("коммент") === 0) cC = i; });
+    if (cQ < 0) cQ = 2;
+    var fio = afterLabel(rows, "сотрудник"), unit = afterLabel(rows, "аудируемое подразделение") || afterLabel(rows, "подразделение");
+    var rec = { wave: w, src: src, div: unit || defDiv(w), fio: fio, pos: afterLabel(rows, "должность"), date: afterLabel(rows, "дата"), ans: {}, txt: {}, askedOnly: true };
+    var unknown = 0;
+    for (var r = hi + 1; r < rows.length; r++) {
+      var qtext = rows[r][cQ]; if (!qtext) continue;
+      var id = checkQid(qtext);
+      var fact = String(rows[r][cF] == null ? "" : rows[r][cF]).trim().replace(",", ".");
+      var com = cC >= 0 ? String(rows[r][cC] || "").trim() : "";
+      if (!id) { if (fact !== "") unknown++; continue; }      // пункты для аудитора (5С, визуальные артефакты) — в анкете их нет
+      if (com && com !== "—") rec.txt[id] = rec.txt[id] ? rec.txt[id] + "; " + com : com;
+      if (id === 24 || id === 23 || !qById(id)) continue;
+      var v = parseFloat(fact);
+      if (v !== 0 && v !== 3 && v !== 5) continue;
+      if (id === 21) v = v === 0 ? 3 : v === 3 ? 0 : 5;          // исправленный ключ: в чек-листе «название, ответственный, шаги» стояло на 0
+      rec.ans[id] = v;
+    }
+    // роль по тому, какие вопросы задавали
+    var mgr = rec.ans[6] != null || rec.ans[7] != null || /руковод|начальник|директор|заместител|мастер|заведующ/i.test(rec.pos || "");
+    var prod = [19, 20, 21, 22].some(function (id) { return rec.ans[id] != null; });
+    rec.who = { mgr: mgr, prod: prod, office: !prod };
+    rec.cat = catFromWho(rec.who);
+    rec.auditorItems = unknown;
+    if (!fio) ISSUES[w].push(src + ": не найдено ФИО (строка «Сотрудник …»)");
+    return rec;
+  }
+
   /* ---------- приём файлов ---------- */
   function addRecords(list) {
     list.forEach(function (r) {
       if (!r.fio) r.fio = "(без ФИО)";
-      if (!r.div) r.div = "(дивизион не указан)";
-      var key = r.wave + "|" + norm(r.div) + "|" + norm(r.fio);
-      var i = -1; REC.forEach(function (x, k) { if (x.wave + "|" + norm(x.div) + "|" + norm(x.fio) === key) i = k; });
+      if (!r.div) r.div = "(подразделение не указано)";
+      var key = r.wave + "|" + personKey(r.fio);
+      var i = -1; REC.forEach(function (x, k) { if (x.wave + "|" + personKey(x.fio) === key) i = k; });
       if (i >= 0 && r.fio !== "(без ФИО)") { ISSUES[r.wave].push("Повтор: " + r.fio + " — оставлен последний загруженный файл (" + r.src + ")"); REC[i] = r; }
       else REC.push(r);
     });
@@ -280,14 +362,18 @@ table.t tr:hover td{background:#fafaff}
             var wb = XLSX.read(new Uint8Array(fr.result), { type: "array" });
             if (wb.Sheets["Анкета"]) addRecords([recordFromOldAnketa(wb.Sheets["Анкета"], w, f.name)]);
             else {
-              var got = false;
+              var got = false, nCheck = 0, nAud = 0;
               wb.SheetNames.forEach(function (sn) {
                 var rows = XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, raw: false, defval: "" });
+                var hi = isChecklistSheet(rows);
+                if (hi >= 0) { var rc = recordFromChecklist(rows, hi, w, f.name + " / " + sn.trim()); nAud += rc.auditorItems; addRecords([rc]); got = true; nCheck++; return; }
+                if (nCheck) return;                                  // в файле чек-листов лист «Итоги» не нужен
                 if (rows.some(function (r) { return r.indexOf("ФИО") >= 0 || r[0] === "Формат"; })) {
                   addRecords(recordsFromRows(rows, w, f.name + " / " + sn)); got = true;
                 }
               });
-              if (!got) ISSUES[w].push(f.name + ": не найден лист «Анкета» или таблица со столбцом «ФИО»");
+              if (!got) ISSUES[w].push(f.name + ": не найден лист «Анкета», чек-лист со столбцом «ФАКТ» или таблица со столбцом «ФИО»");
+              if (nCheck) INFO[w].push(f.name + ": прочитано чек-листов — " + nCheck + (nAud ? ". Пункты для аудитора (5С по шагам, визуальные артефакты) в сравнение не входят: в анкете их нет" : ""));
             }
           } else addRecords(recordsFromRows(parseCsv(fr.result), w, f.name));
         } catch (e) { ISSUES[w].push(f.name + ": не удалось прочитать (" + e.message + ")"); }
@@ -314,7 +400,7 @@ table.t tr:hover td{background:#fafaff}
     };
     $("[data-clear]", el).onclick = function () {
       if (!confirm("Удалить все загруженные анкеты этой волны?")) return;
-      REC = REC.filter(function (r) { return r.wave !== w; }); ISSUES[w] = []; refresh();
+      REC = REC.filter(function (r) { return r.wave !== w; }); ISSUES[w] = []; INFO[w] = []; refresh();
     };
     $("[data-label]", el).oninput = function () { render(); };
   });
@@ -325,7 +411,7 @@ table.t tr:hover td{background:#fafaff}
     if (r.blocksOnly) {
       var t = 0, n = 0; BLOCKS.forEach(function (b) { if (r.blocksOnly[b.id] != null) { t += r.blocksOnly[b.id]; n++; } });
       r._sc = { blocks: r.blocksOnly, overall: n ? t / n : null, missing: 0, answered: n };
-    } else r._sc = computeScores(r.cat, r.ans);
+    } else r._sc = computeScores(r.who, r.ans, r.askedOnly);
     return r._sc;
   }
   function filtered(w, fd, fc) {
@@ -352,7 +438,7 @@ table.t tr:hover td{background:#fafaff}
   function fillFilters() {
     var divs = {}; REC.forEach(function (r) { divs[r.div] = 1; });
     var cur = $("#fDiv").value;
-    $("#fDiv").innerHTML = '<option value="">Все дивизионы</option>' + Object.keys(divs).sort().map(function (d) { return "<option>" + esc(d) + "</option>"; }).join("");
+    $("#fDiv").innerHTML = '<option value="">Все подразделения</option>' + Object.keys(divs).sort().map(function (d) { return "<option>" + esc(d) + "</option>"; }).join("");
     if (divs[cur]) $("#fDiv").value = cur;
     var cc = $("#fCat").value;
     $("#fCat").innerHTML = '<option value="">Все категории</option>' + CATEGORIES.map(function (c) { return '<option value="' + c.id + '">' + esc(c.name) + "</option>"; }).join("");
@@ -375,7 +461,7 @@ table.t tr:hover td{background:#fafaff}
       var el = $('.load[data-w="' + w + '"]'), list = REC.filter(function (r) { return r.wave === w; });
       var divs = {}; list.forEach(function (r) { divs[r.div] = (divs[r.div] || 0) + 1; });
       $("[data-stat]", el).innerHTML = list.length ? "<b>Загружено анкет: " + list.length + "</b> · " + Object.keys(divs).map(function (d) { return esc(d) + " — " + divs[d]; }).join(", ") : '<span class="muted">Пока ничего не загружено</span>';
-      $("[data-issues]", el).innerHTML = ISSUES[w].map(function (x) { return "<div>• " + esc(x) + "</div>"; }).join("");
+      $("[data-issues]", el).innerHTML = INFO[w].map(function (x) { return '<div style="color:var(--ink2)">• ' + esc(x) + "</div>"; }).join("") + ISSUES[w].map(function (x) { return "<div>• " + esc(x) + "</div>"; }).join("");
     });
     var has = REC.length > 0;
     $("#dash").classList.toggle("hidden", !has); $("#emptyMsg").classList.toggle("hidden", has);
@@ -398,6 +484,15 @@ table.t tr:hover td{background:#fafaff}
     $("#radar").innerHTML = radarSvg(ser, { size: 400 });
 
     $("#mDiv").innerHTML = matrix("div", mode.div);
+    $$("#mDiv [data-ren]").forEach(function (b) {
+      b.onclick = function () {
+        var old = b.getAttribute("data-ren");
+        var nw = prompt("Новое название подразделения «" + old + "».\nЧтобы объединить с другим, впишите его название точно так же:", old);
+        if (!nw || !nw.trim() || nw.trim() === old) return;
+        REC.forEach(function (r) { if (r.div === old) r.div = nw.trim(); });
+        refresh();
+      };
+    });
     $("#mCat").innerHTML = matrix("cat", mode.cat);
     renderQuestions(); renderPeople(); fillOpenSelect(); renderOpen(); renderNotes();
   }
@@ -434,10 +529,10 @@ table.t tr:hover td{background:#fafaff}
       if (m === "d") { var d = delta(v1, v2); return '<span class="cell ' + dCls(d) + '">' + (d == null ? "—" : (d > 0 ? "+" : d < 0 ? "−" : "±") + Math.abs(Math.round(d))) + "</span>"; }
       var v = m === "w1" ? v1 : v2; return '<span class="cell ' + lvlClass(v) + '">' + fmtPct(v) + "</span>";
     }
-    return '<table class="t"><thead><tr><th>' + (kind === "div" ? "Дивизион" : "Категория") + '</th><th class="c">Анкет<br>до / после</th>' +
+    return '<table class="t"><thead><tr><th>' + (kind === "div" ? "Подразделение" : "Категория") + '</th><th class="c">Анкет<br>до / после</th>' +
       BLOCKS.map(function (b) { return '<th class="c" style="white-space:normal;min-width:90px">' + esc(b.name) + "</th>"; }).join("") + '<th class="c">Итог</th></tr></thead><tbody>' +
       rows.map(function (r) {
-        return "<tr" + (r.tot ? ' style="font-weight:600;background:#fafbfd"' : "") + "><td>" + esc(r.name) + '</td><td class="c">' + r.a1.n + " / " + r.a2.n + "</td>" +
+        return "<tr" + (r.tot ? ' style="font-weight:600;background:#fafbfd"' : "") + "><td>" + (kind === "div" && !r.tot ? '<button class="ren" data-ren="' + esc(r.name) + '" title="Переименовать или объединить с другим">' + esc(r.name) + ' <span>✎</span></button>' : esc(r.name)) + '</td><td class="c">' + r.a1.n + " / " + r.a2.n + "</td>" +
           BLOCKS.map(function (b) { return '<td class="c">' + cell(r.a1, r.a2, b.id) + "</td>"; }).join("") + '<td class="c">' + cell(r.a1, r.a2, null) + "</td></tr>";
       }).join("") + "</tbody></table>" + (m === "d" ? '<div class="muted" style="font-size:12.5px;padding:8px 10px">Изменение в процентных пунктах. Зелёный — рост от 2 п.п., красный — снижение от 2 п.п.</div>' : "");
   }
@@ -448,7 +543,7 @@ table.t tr:hover td{background:#fafaff}
       if (q.textOnly) return;
       var c = [0, 0, 0], sum = 0, n = 0;
       list.forEach(function (r) {
-        if (!isApplicable(q, r.cat, r.ans)) return;
+        if (!r.askedOnly && !isApplicable(q, r.who, r.ans)) return;
         var v = r.ans[q.id]; if (v == null) return;
         c[v === 0 ? 0 : v === 3 ? 1 : 2]++; sum += v; n++;
       });
@@ -473,8 +568,9 @@ table.t tr:hover td{background:#fafaff}
   function peopleRows() {
     var map = {};
     REC.filter(function (r) { return (!$("#fDiv").value || r.div === $("#fDiv").value) && (!$("#fCat").value || r.cat === $("#fCat").value); }).forEach(function (r) {
-      var k = norm(r.div) + "|" + norm(r.fio);
+      var k = personKey(r.fio);
       map[k] = map[k] || { fio: r.fio, div: r.div, cat: r.cat };
+      if (r.wave === 2) { map[k].fio = r.fio; map[k].div = r.div; }
       map[k]["w" + r.wave] = r;
       if (r.wave === 2 || !map[k].cat) map[k].cat = r.cat || map[k].cat;
     });
@@ -482,7 +578,7 @@ table.t tr:hover td{background:#fafaff}
   }
   function renderPeople() {
     var q = norm($("#pSearch").value), rows = peopleRows().filter(function (p) { return !q || norm(p.fio).indexOf(q) >= 0; });
-    $("#tP").innerHTML = '<table class="t"><thead><tr><th>ФИО</th><th>Дивизион</th><th>Категория</th><th class="c">' + esc(label(1)) + '</th><th class="c">' + esc(label(2)) + '</th><th class="c">Изм.</th><th>Слабый блок (' + esc(label(2)) + ")</th><th>Примечание</th></tr></thead><tbody>" +
+    $("#tP").innerHTML = '<table class="t"><thead><tr><th>ФИО</th><th>Подразделение</th><th>Категория</th><th class="c">' + esc(label(1)) + '</th><th class="c">' + esc(label(2)) + '</th><th class="c">Изм.</th><th>Слабый блок (' + esc(label(2)) + ")</th><th>Примечание</th></tr></thead><tbody>" +
       rows.map(function (p) {
         var o1 = p.w1 ? scoresOf(p.w1).overall : null, s2 = p.w2 ? scoresOf(p.w2) : null, o2 = s2 ? s2.overall : null, d = delta(o1, o2), weak = "—", note = [];
         if (s2) { var mn = null; BLOCKS.forEach(function (b) { var v = s2.blocks[b.id]; if (v != null && (mn == null || v < s2.blocks[mn])) mn = b.id; }); if (mn) weak = blockName(mn) + " · " + fmtPct(s2.blocks[mn]); }
@@ -509,6 +605,9 @@ table.t tr:hover td{background:#fafaff}
     var items = QUESTIONS.filter(function (q) { return q.changed; }).map(function (q) { return "<li><b>Вопрос " + q.id + ".</b> " + esc(q.changed) + "</li>"; });
     Object.keys(REMOVED_QUESTIONS).forEach(function (k) { items.push("<li><b>Вопрос " + k + "</b> удалён: " + esc(REMOVED_QUESTIONS[k]) + "</li>"); });
     items.unshift("<li>Во всех вопросах варианты ответа показываются вперемешку, а не по возрастанию баллов, и выровнены по тону — чтобы «правильный» ответ не угадывался. Это может немного снизить результат второй волны: часть «падения» — эффект честной анкеты, а не ухудшения.</li>");
+    items.push("<li>Вопросы для руководителей (6, 7, 10) теперь задаются только тем, у кого есть подчинённые, а вопросы про СОП (19–24) — только тем, кто работает на производстве. Первая волна пересчитывается по тем же правилам, чтобы сравнение было честным. Анкеты первой волны с категорией «Руководитель» получают все вопросы, как и тогда.</li>");
+    items.push("<li>Интервью-чек-листы первой волны считаются по тем вопросам, которые реально задавали (балл в столбце «ФАКТ»). Пункты, которые оценивал аудитор (5С по шагам, визуальные артефакты), в сравнение не входят: в анкете их нет. Поэтому итог может отличаться от листа «Итоги» в файле чек-листов.</li>");
+    items.push("<li>Сотрудники двух волн сопоставляются по фамилии и инициалам: «Иванова М.С.» и «Иванова Мария Сергеевна» — один человек. Подразделение можно переименовать или объединить щелчком по названию в таблице «По подразделениям».</li>");
     items.push("<li>Расчёт как в исходной анкете: % блока = средний балл по применимым вопросам / 5; итог = среднее по блокам. Первая волна из Excel-анкет пересчитывается по тому же набору вопросов, что и вторая.</li>");
     $("#notes").innerHTML = items.join("");
   }
@@ -526,7 +625,7 @@ table.t tr:hover td{background:#fafaff}
 
     function byKey(kind) {
       var keys = kind === "div" ? Object.keys(REC.reduce(function (o, r) { o[r.div] = 1; return o; }, {})).sort() : CATEGORIES.map(function (c) { return c.id; });
-      var h = [kind === "div" ? "Дивизион" : "Категория", "Анкет " + L1, "Анкет " + L2];
+      var h = [kind === "div" ? "Подразделение" : "Категория", "Анкет " + L1, "Анкет " + L2];
       BLOCKS.concat([{ id: "_", name: "Итог" }]).forEach(function (b) { h.push(b.name + " · " + L1, b.name + " · " + L2, b.name + " · изм."); });
       var aoa = [h];
       keys.forEach(function (k) {
@@ -538,25 +637,25 @@ table.t tr:hover td{background:#fafaff}
       });
       return aoa;
     }
-    add("По дивизионам", byKey("div"), [24]);
+    add("По подразделениям", byKey("div"), [28]);
     add("По категориям", byKey("cat"), [20]);
 
     var all1 = REC.filter(function (r) { return r.wave === 1 && !r.blocksOnly; }), all2 = REC.filter(function (r) { return r.wave === 2; });
-    function qs(list, q) { var c = [0, 0, 0], s = 0, n = 0; list.forEach(function (r) { if (!isApplicable(q, r.cat, r.ans)) return; var v = r.ans[q.id]; if (v == null) return; c[v === 0 ? 0 : v === 3 ? 1 : 2]++; s += v; n++; }); return { n: n, avg: n ? s / n / 5 * 100 : null, c: c }; }
+    function qs(list, q) { var c = [0, 0, 0], s = 0, n = 0; list.forEach(function (r) { if (!r.askedOnly && !isApplicable(q, r.who, r.ans)) return; var v = r.ans[q.id]; if (v == null) return; c[v === 0 ? 0 : v === 3 ? 1 : 2]++; s += v; n++; }); return { n: n, avg: n ? s / n / 5 * 100 : null, c: c }; }
     var qa = [["№", "Вопрос", "Блок", L1 + ", %", L2 + ", %", "Изменение, п.п.", "Ответов " + L2, "0 б.", "3 б.", "5 б.", "Изменение в анкете"]];
     QUESTIONS.forEach(function (q) { if (q.textOnly) return; var a = qs(all1, q), b = qs(all2, q); qa.push([q.id, q.q, blockName(q.block), r1(a.avg), r1(b.avg), r1(delta(a.avg, b.avg)), b.n, b.c[0], b.c[1], b.c[2], q.changed || ""]); });
     add("По вопросам", qa, [5, 70, 26, 10, 10, 12, 10, 6, 6, 6, 50]);
 
-    var pp = [["ФИО", "Дивизион", "Категория", "Итог " + L1, "Итог " + L2, "Изменение, п.п."].concat(BLOCKS.map(function (b) { return b.name + " · " + L2; }))];
-    var map = {}; REC.forEach(function (r) { var k = norm(r.div) + "|" + norm(r.fio); map[k] = map[k] || { fio: r.fio, div: r.div, cat: r.cat }; map[k]["w" + r.wave] = r; if (r.wave === 2) map[k].cat = r.cat; });
+    var pp = [["ФИО", "Подразделение", "Категория", "Итог " + L1, "Итог " + L2, "Изменение, п.п."].concat(BLOCKS.map(function (b) { return b.name + " · " + L2; }))];
+    var map = {}; REC.forEach(function (r) { var k = personKey(r.fio); map[k] = map[k] || { fio: r.fio, div: r.div, cat: r.cat }; map[k]["w" + r.wave] = r; if (r.wave === 2) { map[k].cat = r.cat; map[k].fio = r.fio; map[k].div = r.div; } });
     Object.keys(map).sort().forEach(function (k) { var p = map[k], o1 = p.w1 ? scoresOf(p.w1).overall : null, s2 = p.w2 ? scoresOf(p.w2) : null; pp.push([p.fio, p.div, catName(p.cat), r1(o1), r1(s2 && s2.overall), r1(delta(o1, s2 && s2.overall))].concat(BLOCKS.map(function (b) { return r1(s2 && s2.blocks[b.id]); }))); });
     add("Сотрудники", pp, [32, 18, 18, 10, 10, 12]);
 
-    var raw = [["Волна", "Дивизион", "ФИО", "Категория", "Источник", "Итог, %"].concat(BLOCKS.map(function (b) { return b.name + ", %"; })).concat(QUESTIONS.filter(function (q) { return !q.textOnly; }).map(function (q) { return "В" + q.id; }))];
-    REC.forEach(function (r) { var s = scoresOf(r); raw.push([r.wave === 1 ? L1 : L2, r.div, r.fio, catName(r.cat), r.src, r1(s.overall)].concat(BLOCKS.map(function (b) { return r1(s.blocks[b.id]); })).concat(QUESTIONS.filter(function (q) { return !q.textOnly; }).map(function (q) { return r.blocksOnly || !isApplicable(q, r.cat, r.ans) ? "" : (r.ans[q.id] == null ? "" : r.ans[q.id]); }))); });
+    var raw = [["Волна", "Подразделение", "ФИО", "Категория", "Источник", "Итог, %"].concat(BLOCKS.map(function (b) { return b.name + ", %"; })).concat(QUESTIONS.filter(function (q) { return !q.textOnly; }).map(function (q) { return "В" + q.id; }))];
+    REC.forEach(function (r) { var s = scoresOf(r); raw.push([r.wave === 1 ? L1 : L2, r.div, r.fio, catName(r.cat), r.src, r1(s.overall)].concat(BLOCKS.map(function (b) { return r1(s.blocks[b.id]); })).concat(QUESTIONS.filter(function (q) { return !q.textOnly; }).map(function (q) { return r.blocksOnly || (!r.askedOnly && !isApplicable(q, r.who, r.ans)) ? "" : (r.ans[q.id] == null ? "" : r.ans[q.id]); }))); });
     add("Все ответы", raw, [14, 18, 30, 18, 26]);
 
-    var op = [["Волна", "Дивизион", "ФИО", "Категория", "№", "Вопрос", "Ответ"]];
+    var op = [["Волна", "Подразделение", "ФИО", "Категория", "№", "Вопрос", "Ответ"]];
     REC.forEach(function (r) { Object.keys(r.txt || {}).forEach(function (id) { var q = qById(+id); op.push([r.wave === 1 ? L1 : L2, r.div, r.fio, catName(r.cat), +id, q ? q.q : "", r.txt[id]]); }); });
     add("Ответы своими словами", op, [14, 18, 30, 18, 5, 50, 80]);
 

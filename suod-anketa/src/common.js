@@ -16,22 +16,37 @@ function lvlClass(p) { if (p == null || isNaN(p)) return ""; return p >= CONFIG.
 function lvlName(p) { if (p == null || isNaN(p)) return "—"; return p >= CONFIG.levelHigh ? "высокий" : p >= CONFIG.levelMid ? "средний" : "низкий"; }
 function fmtPct(p) { return p == null || isNaN(p) ? "—" : Math.round(p) + "%"; }
 
+/* Роль человека: mgr — есть подчинённые, prod — производство, office — офис.
+   Старые категории первой волны: «Руководитель» получал все вопросы, как и раньше. */
+function whoFromCat(cat) {
+  if (cat === "R") return { mgr: true, prod: true, office: true };
+  if (cat === "O") return { office: true };
+  if (cat === "P") return { prod: true };
+  return { all: true };
+}
+function catFromWho(w) { return w.mgr ? "R" : w.prod ? "P" : w.office ? "O" : ""; }
+
 /* Применим ли вопрос к человеку. ans — {id: балл} */
-function isApplicable(q, cat, ans) {
-  if (cat && q.cats.indexOf(cat) < 0) return false;
+function isApplicable(q, who, ans) {
   if (q.sop && ans && ans[19] === 0) return false;
+  if (!who || who.all || q.need === "all") return true;
+  if (q.need === "mgr") return !!who.mgr;
+  if (q.need === "prod") return !!who.prod;
+  if (q.need === "officeOrMgr") return !!(who.office || who.mgr);
   return true;
 }
 
-/* Подсчёт баллов: % по блокам = средний балл / 5; итог = среднее по блокам (как в исходной анкете) */
-function computeScores(cat, ans) {
+/* Подсчёт баллов: % по блокам = средний балл / 5; итог = среднее по блокам (как в исходной анкете).
+   askedOnly — для интервью-чек-листов: считаем только те вопросы, которые задавали. */
+function computeScores(who, ans, askedOnly) {
   var sums = {}, cnt = {}, missing = 0, answered = 0;
   QUESTIONS.forEach(function (q) {
-    if (q.textOnly || !isApplicable(q, cat, ans)) return;
+    if (q.textOnly) return;
+    if (!askedOnly && !isApplicable(q, who, ans)) return;
     var v = ans[q.id];
     if (v === 0 || v === 3 || v === 5) {
       sums[q.block] = (sums[q.block] || 0) + v; cnt[q.block] = (cnt[q.block] || 0) + 1; answered++;
-    } else missing++;
+    } else if (!askedOnly) missing++;
   });
   var blocks = {}, tot = 0, n = 0;
   BLOCKS.forEach(function (b) {
@@ -50,6 +65,22 @@ var ICONS = {
   chart: '<path d="M4 27h24" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M6 21l7-7 5 4 8-10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 8h5v5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
   check: '<rect x="5" y="5" width="22" height="22" rx="4" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="m10.5 16.5 4 4 7-8.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>'
 };
+ICONS.star = '<path d="M16 3.5l3.7 7.6 8.3 1.2-6 5.9 1.4 8.3L16 22.6l-7.4 3.9 1.4-8.3-6-5.9 8.3-1.2z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>';
+ICONS.flag = '<path d="M7 29V4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M7 5h17l-4 6 4 6H7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>';
+ICONS.gift = '<rect x="4.5" y="11" width="23" height="6" rx="1.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M6.5 17v10h19V17M16 11v16" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M16 11c-2-5-8-6-8-2.5S13 11 16 11zm0 0c2-5 8-6 8-2.5S19 11 16 11z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>';
+ICONS.calendar = '<rect x="4.5" y="6.5" width="23" height="21" rx="3" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M4.5 12.5h23M10.5 3.5v6M21.5 3.5v6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="m11 19.5 3.2 3.2 6.3-6.2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>';
+ICONS.book = '<path d="M16 8.5C13 6 8.5 5.5 4.5 6.5v19c4-1 8.5-.5 11.5 2 3-2.5 7.5-3 11.5-2v-19c-4-1-8.5-.5-11.5 2zM16 8.5v19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>';
+ICONS.gear = '<circle cx="16" cy="16" r="4.2" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M16 3.5v4M16 24.5v4M3.5 16h4M24.5 16h4M7.2 7.2l2.8 2.8M22 22l2.8 2.8M7.2 24.8 10 22M22 10l2.8-2.8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="16" cy="16" r="9" fill="none" stroke="currentColor" stroke-width="2.2"/>';
+ICONS.user = '<circle cx="16" cy="11" r="5.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M5.5 27.5c0-5.5 4.7-9 10.5-9s10.5 3.5 10.5 9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>';
+ICONS.office = '<rect x="6" y="4" width="20" height="24" rx="2" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M11 9h3M18 9h3M11 14h3M18 14h3M11 19h3M18 19h3M14 28v-4h4v4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>';
+ICONS.truck = '<path d="M3.5 8.5h15v14h-15zM18.5 13h5.5l4 5v4.5h-9.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><circle cx="9" cy="24" r="2.8" fill="#fff" stroke="currentColor" stroke-width="2.2"/><circle cx="23" cy="24" r="2.8" fill="#fff" stroke="currentColor" stroke-width="2.2"/>';
+function blockById(id) { for (var i = 0; i < BLOCKS.length; i++) if (BLOCKS[i].id === id) return BLOCKS[i]; return null; }
+/* Ключ человека «фамилия + инициалы»: «Потехина В.А.» и «Потехина Валентина Андреевна» совпадут */
+function personKey(fio) {
+  var t = String(fio || "").toLowerCase().replace(/ё/g, "е").replace(/\./g, " ").trim().split(/\s+/).filter(Boolean);
+  if (!t.length) return "";
+  return t[0] + " " + t.slice(1).map(function (x) { return x[0]; }).join("");
+}
 function icon(name, color) { return '<svg viewBox="0 0 32 32" style="color:' + (color || "currentColor") + '" aria-hidden="true">' + ICONS[name] + "</svg>"; }
 function modelById(id) { for (var i = 0; i < MODELS.length; i++) if (MODELS[i].id === id) return MODELS[i]; return null; }
 
