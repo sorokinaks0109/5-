@@ -26,7 +26,7 @@
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;overflow:hidden;background:#0b1530;color:var(--text);font-family:var(--font);font-size:15px;
   -webkit-font-smoothing:antialiased}
-canvas#scene{position:fixed;inset:0;width:100%;height:100%;display:block}
+canvas#bg,canvas#scene{position:fixed;inset:0;width:100%;height:100%;display:block}
 button{font-family:inherit}
 
 .layout{position:fixed;inset:0;display:grid;grid-template-columns:minmax(300px,390px) 1fr minmax(380px,500px);
@@ -186,8 +186,7 @@ ul{list-style:none;margin:0;padding:0}
 .banner{position:fixed;left:50%;top:20px;transform:translateX(-50%);z-index:5;display:none;align-items:center;gap:10px;flex-wrap:wrap;
   justify-content:center;max-width:min(640px,calc(100% - 32px));padding:12px 16px;border-radius:16px;background:rgba(16,21,44,.94);
   border:1px solid rgba(255,201,107,.6);box-shadow:0 14px 44px rgba(0,0,0,.45);font-size:14px}
-.banner.show{display:flex;animation:bpulse 2.4s ease-in-out infinite}
-@keyframes bpulse{50%{box-shadow:0 14px 44px rgba(0,0,0,.45),0 0 0 4px rgba(255,201,107,.25)}}
+.banner.show{display:flex}
 .banner button{font:inherit;border:0;border-radius:10px;padding:7px 12px;cursor:pointer;background:rgba(255,255,255,.12);color:var(--text)}
 .banner button:hover{background:rgba(255,255,255,.2)}
 .banner button.main{background:var(--accent);color:#24180c;font-weight:700}
@@ -204,6 +203,7 @@ ul{list-style:none;margin:0;padding:0}
 </style>
 </head>
 <body>
+<canvas id="bg"></canvas>
 <canvas id="scene"></canvas>
 
 <div class="layout">
@@ -248,6 +248,7 @@ ul{list-style:none;margin:0;padding:0}
       <button id="fstat" class="fstat" title="Файл, в котором хранятся задачи"></button>
       <button id="exp" title="Сохранить резервную копию задач в файл">Копия</button>
       <button id="imp" title="Загрузить задачи из файла">Загрузить</button>
+      <button id="anim" title="Анимация"></button>
       <button id="fs" title="Во весь экран (F11)">⛶</button>
       <input type="file" id="file" accept=".json,application/json" hidden>
     </div>
@@ -305,7 +306,7 @@ function norm(t){ return {id:t.id || uid(), text:String(t.text || ""), done:!!t.
 function defaults(){
   var a = uid(), b = uid(), c = uid(), d = uid(), now = Date.now();
   return {
-    name: "Ксения", focus: "", notes: "", season: "auto", light: "auto", filter: "all", showDone: false, savedAt: 0,
+    name: "Ксения", focus: "", notes: "", season: "auto", light: "auto", filter: "all", showDone: false, savedAt: 0, anim: true,
     projects: [
       {id:a, name:"Развитие ИСМ", color:COLORS[0], due:addDays(37)},
       {id:b, name:"Тренинги", color:COLORS[1], due:null},
@@ -592,7 +593,8 @@ function isoWeek(d){
 function plural(n, a, b, c){ var m = n % 100, k = n % 10; if (m > 10 && m < 20) return c; if (k === 1) return a; if (k > 1 && k < 5) return b; return c; }
 function tick(){
   var d = new Date(), h = d.getHours(), m = d.getMinutes();
-  $("time").innerHTML = String(h).padStart(2,"0") + '<span class="colon">:</span>' + String(m).padStart(2,"0");
+  var tm = String(h).padStart(2,"0") + String(m).padStart(2,"0");
+  if (tick.tm !== tm){ tick.tm = tm; $("time").innerHTML = String(h).padStart(2,"0") + '<span class="colon">:</span>' + String(m).padStart(2,"0"); }
   $("date").textContent = d.toLocaleDateString("ru-RU", {weekday:"long", day:"numeric", month:"long"});
   $("greet").textContent = h < 5 ? "Доброй ночи" : h < 12 ? "Доброе утро" : h < 18 ? "Добрый день" : "Добрый вечер";
   var chips = [isoWeek(d) + "-я неделя"];
@@ -605,10 +607,11 @@ function tick(){
   }
   var over = S.tasks.filter(isOver).length;
   var today = S.tasks.filter(function(t){ return !t.done && daysLeft(t.due) === 0; }).length;
-  var box = $("chips"); box.innerHTML = "";
+  var ckey = over + "|" + today + "|" + chips.join("|"), box = $("chips");
+  if (tick.ckey !== ckey){ tick.ckey = ckey; box.innerHTML = "";
   if (over){ var o = el("span", "chip bad", "⚠ просрочено: " + over); box.appendChild(o); }
   if (today) box.appendChild(el("span", "chip warm", "на сегодня: " + today));
-  chips.forEach(function(c){ box.appendChild(el("span", "chip", c)); });
+  chips.forEach(function(c){ box.appendChild(el("span", "chip", c)); }); }
   // в полночь пересчитать сроки
   var dayKey = ymd(d);
   if (tick.day && tick.day !== dayKey){ renderTasks(); renderProjects(); }
@@ -837,6 +840,7 @@ function startFile(){
    СЦЕНА: небо, горы, городок, погода, салют
    ===================================================== */
 var cv = $("scene"), ctx = cv.getContext("2d");
+var bgc = $("bg"), bgx = bgc.getContext("2d"), QS = 0.5;
 var W = 0, H = 0, DPR = 1, GY = 0, PAD = 34;
 function mkLayer(){ var c = document.createElement("canvas"); return {c:c, x:c.getContext("2d")}; }
 var LAY = {sky:mkLayer(), far:mkLayer(), mid:mkLayer()};
@@ -918,9 +922,10 @@ var GAR = ["#ff5d5d","#ffd34d","#6ee0ff","#8cff8c","#ff8ae0"];
 
 /* ---------- построение ---------- */
 function resize(){
-  DPR = Math.min(window.devicePixelRatio || 1, 1.5);
+  DPR = Math.min(window.devicePixelRatio || 1, 1.25);
   W = window.innerWidth; H = window.innerHeight;
-  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  bgc.width = Math.round(W * DPR); bgc.height = Math.round(H * DPR);
+  cv.width = Math.round(W * DPR * QS); cv.height = Math.round(H * DPR * QS);   // живой слой в половинном разрешении — в 4 раза легче
   ["sky","far","mid"].forEach(function(k){ LAY[k].c.width = Math.round((W + PAD * 2) * DPR); LAY[k].c.height = Math.round((H + PAD * 2) * DPR); });
   buildScene();
 }
@@ -935,8 +940,9 @@ function buildScene(){
   var wide = W > 1100;
   VIS.l = wide ? 430 : 0; VIS.r = wide ? W - 540 : W; VIS.c = (VIS.l + VIS.r) / 2;
   genTown();
-  drawSky(); drawFar(); drawMid();
-  initStars(); initClouds(); makeParticles();
+  initStars(); drawSky(); drawFar(); drawMid(); compose();
+  initClouds(); makeParticles();
+  if (!animOn) drawStill();
   smoke = [];
 }
 
@@ -1008,6 +1014,22 @@ function makeHouse(R, x, w, h, type, idx){
 }
 
 /* ---------- небо ---------- */
+function compose(){
+  bgx.setTransform(1,0,0,1,0,0); bgx.clearRect(0, 0, bgc.width, bgc.height);
+  [LAY.sky, LAY.far, LAY.mid].forEach(function(L){ bgx.drawImage(L.c, -PAD * DPR, -PAD * DPR); });
+  bgx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  drawClock(bgx);
+}
+/* стрелки часов на башне — в неподвижной картинке, обновляются раз в 30 секунд */
+function drawClock(c){
+  if (!SC.clock) return;
+  var d = new Date(), hr = (d.getHours() % 12 + d.getMinutes() / 60) * Math.PI / 6 - Math.PI / 2, mn = (d.getMinutes() + d.getSeconds() / 60) * Math.PI / 30 - Math.PI / 2;
+  c.strokeStyle = "#2e2418"; c.lineCap = "round";
+  c.lineWidth = 2.2; c.beginPath(); c.moveTo(SC.clock.x, SC.clock.y); c.lineTo(SC.clock.x + Math.cos(hr) * 7, SC.clock.y + Math.sin(hr) * 7); c.stroke();
+  c.lineWidth = 1.5; c.beginPath(); c.moveTo(SC.clock.x, SC.clock.y); c.lineTo(SC.clock.x + Math.cos(mn) * 11, SC.clock.y + Math.sin(mn) * 11); c.stroke();
+  c.fillStyle = "#2e2418"; circle(c, SC.clock.x, SC.clock.y, 1.6);
+}
+setInterval(function(){ if (LAY.mid.c.width) compose(); }, 30000);
 function drawSky(){
   var x = prep(LAY.sky), c = skyCols();
   var g = x.createLinearGradient(0, -PAD, 0, GY);
@@ -1029,6 +1051,14 @@ function drawSky(){
     glow(x, sx, sy, 70, "#fffbe6", 0.6 * a);
     x.globalAlpha = a; x.fillStyle = mix("#fffbea", "#ffb36a", t); circle(x, sx, sy, 30); x.globalAlpha = 1;
   }
+  // звёзды (мерцают только некоторые, их рисует анимация)
+  var sa0 = clamp((dark - 0.35) / 0.4);
+  if (sa0 > 0) stars.forEach(function(st){
+    if (st.tw) return;
+    x.fillStyle = "rgba(255,255,255," + (sa0 * 0.75).toFixed(3) + ")";
+    if (st.r > 1.5){ x.fillRect(st.x - st.r * 2, st.y - 0.4, st.r * 4, 0.8); x.fillRect(st.x - 0.4, st.y - st.r * 2, 0.8, st.r * 4); circle(x, st.x, st.y, st.r * 0.7); }
+    else x.fillRect(st.x, st.y, st.r, st.r);
+  });
   // луна
   if (dark > 0.45){
     var ma = clamp((dark - 0.45) / 0.4), mx = VIS.c + 230, my = H * 0.14;
@@ -1362,7 +1392,8 @@ function drawHouse(x, h){
       for (var i = 0; i <= n; i++){
         var gx = lerp(e[0], apx, i / n), gy = lerp(e[1], apy, i / n) + 2.5 * Math.abs(Math.sin(i * 1.4));
         if (i === 0) x.moveTo(gx, gy); else x.lineTo(gx, gy);
-        SC.garland.push({x:gx, y:gy, c:GAR[(((i + Math.round(h.x)) % GAR.length) + GAR.length) % GAR.length], p:(i * 1.7 + h.x) % 6.28});
+        var gcol = hx(GAR[(((i + Math.round(h.x)) % GAR.length) + GAR.length) % GAR.length]);
+        SC.garland.push({x:gx, y:gy, rgb:gcol.join(","), p:(i * 1.7 + h.x) % 6.28});
       }
     });
     x.stroke();
@@ -1491,7 +1522,7 @@ function drawTower(x, t){
 function initStars(){
   var R = rng(5); stars = [];
   var n = Math.round(W * H / 7000);
-  for (var i = 0; i < n; i++) stars.push({x:R() * W, y:R() * GY * 0.78, r:R() < 0.08 ? 1.6 + R() : 0.5 + R() * 0.9, p:R() * 6.28, s:0.6 + R() * 2.2});
+  for (var i = 0; i < n; i++) var sy = R() * GY * 0.78; stars.push({x:R() * W, y:sy, r:R() < 0.08 ? 1.6 + R() : 0.5 + R() * 0.9, p:R() * 6.28, s:0.6 + R() * 2.2, tw:sy < H * 0.4 && R() < 0.3});
 }
 function cloudColors(){
   var day = [["#ffffff",0.95],["#d3def0",0.9]], dusk = [["#ffd5b8",0.95],["#a7779f",0.85]], night = [["#4f5b8a",0.5],["#252e5a",0.45]];
@@ -1533,17 +1564,17 @@ function getAuroraStrip(){
 /* ---------- погода ---------- */
 function makeParticles(){
   particles = [];
-  var n = season === "winter" ? Math.round(W * H / 6000) : season === "summer" ? 45 : 60;
+  var n = season === "winter" ? Math.round(W * H / 11000) : season === "summer" ? 35 : 45;
   if (reduced) n = Math.round(n / 4);
   for (var i = 0; i < n; i++) particles.push(newP(true));
 }
 function newP(anyY){
   var p = {x:Math.random() * W, y:anyY ? Math.random() * H : -20, ph:Math.random() * 6.28, vx:0};
-  if (season === "winter"){ var z = Math.random(); p.r = 0.8 + z * 2.6; p.vy = 0.3 + z * 1.1; p.a = 0.45 + z * 0.5; }
+  if (season === "winter"){ var z = Math.random(); p.r = 0.8 + z * 2.6; p.vy = 0.3 + z * 1.1; p.a = 0.45 + z * 0.5; p.fs = "rgba(255,255,255," + p.a.toFixed(2) + ")"; }
   else if (season === "autumn"){ p.s = 5 + Math.random() * 5; p.vy = 0.5 + Math.random() * 0.8; p.rot = Math.random() * 6.28; p.vr = (Math.random() - 0.5) * 0.06;
-    p.c = ["#e0782a","#d0482a","#e9b23c","#b8562a"][Math.floor(Math.random() * 4)]; }
+    p.c = mix(["#e0782a","#d0482a","#e9b23c","#b8562a"][Math.floor(Math.random() * 4)], SHADE, dark * 0.45); }
   else if (season === "spring"){ p.s = 3 + Math.random() * 3; p.vy = 0.35 + Math.random() * 0.5; p.rot = Math.random() * 6.28; p.vr = (Math.random() - 0.5) * 0.05;
-    p.c = ["#f7c6d6","#ffffff","#f2a7c0"][Math.floor(Math.random() * 3)]; }
+    p.c = mix(["#f7c6d6","#ffffff","#f2a7c0"][Math.floor(Math.random() * 3)], SHADE, dark * 0.45); }
   else { p.y = anyY ? Math.random() * H : H + 10; p.r = 1 + Math.random() * 2; p.vy = -(0.1 + Math.random() * 0.3); }
   return p;
 }
@@ -1567,19 +1598,29 @@ function celebrate(){
 }
 
 /* ---------- кадр ---------- */
-var t0 = performance.now(), lastT = t0;
-function layerAt(L, ox, oy){ ctx.setTransform(1,0,0,1,0,0); ctx.drawImage(L.c, Math.round((ox - PAD) * DPR), Math.round((oy - PAD) * DPR)); }
+var t0 = performance.now(), lastT = t0, lastMove = t0, animOn = true, running = false, heavy = 0, slowFrames = 0;
+/* бережный режим: 25 кадров в секунду, когда вы работаете с заставкой,
+   8 — когда она в фоне или мышь не двигалась 20 секунд */
+function nextFrame(){
+  if (!animOn){ running = false; return; }
+  var active = document.hasFocus() && performance.now() - lastMove < 20000;
+  setTimeout(function(){ requestAnimationFrame(frame); }, active ? 36 : 120);   // ~25 кадров, в покое — 8
+}
 function frame(now){
-  var t = (now - t0) / 1000, dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
-  var so = {x:-par.x * 4, y:-par.y * 2}, fo = {x:-par.x * 9, y:-par.y * 3.5}, mo = {x:-par.x * 18, y:-par.y * 6};
+  if (!animOn){ running = false; return; }
+  nextFrame();
+  var t = (now - t0) / 1000, dt = Math.min(0.15, (now - lastT) / 1000); lastT = now;
+  var k = dt * 60;                       // поправка скорости к 60 кадрам
+  var startWork = performance.now();
 
-  layerAt(LAY.sky, so.x, so.y);
-  ctx.setTransform(DPR, 0, 0, DPR, so.x * DPR, so.y * DPR);
-  // звёзды
+  ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0, 0, cv.width, cv.height);
+  ctx.setTransform(DPR * QS, 0, 0, DPR * QS, 0, 0);
+  // мерцающие звёзды
   var sa = clamp((dark - 0.35) / 0.4);
   if (sa > 0){
     for (var i = 0; i < stars.length; i++){
-      var s = stars[i], a = sa * (0.55 + 0.45 * Math.sin(t * s.s + s.p));
+      var s = stars[i]; if (!s.tw) continue;
+      var a = sa * (0.55 + 0.45 * Math.sin(t * s.s + s.p));
       ctx.fillStyle = "rgba(255,255,255," + a.toFixed(3) + ")";
       if (s.r > 1.5){
         ctx.fillRect(s.x - s.r * 2, s.y - 0.4, s.r * 4, 0.8); ctx.fillRect(s.x - 0.4, s.y - s.r * 2, 0.8, s.r * 4);
@@ -1588,26 +1629,26 @@ function frame(now){
     }
   }
   // северное сияние
-  if (season === "winter" && dark > 0.6){
+  if (season === "winter" && dark > 0.6 && heavy < 2){
     var A = 0.55 * clamp((dark - 0.6) / 0.35), strip = getAuroraStrip();
     ctx.globalCompositeOperation = "lighter";
     for (var rb = 0; rb < 2; rb++){
-      for (var ax = -20; ax < W + 20; ax += 6){
+      for (var ax = -20; ax < W + 20; ax += 12){
         var yb = H * (0.24 + rb * 0.07) + Math.sin(ax * 0.0035 + t * 0.22 + rb * 2) * 34 + Math.sin(ax * 0.011 - t * 0.35 + rb) * 12;
         var hh = 120 + 60 * Math.sin(ax * 0.006 + t * 0.3 + rb * 1.3);
         ctx.globalAlpha = A * (0.5 + 0.5 * Math.sin(ax * 0.018 + t * 0.9 + rb * 3)) * (rb ? 0.6 : 1);
-        ctx.drawImage(strip, ax, yb - hh, 7, hh);
+        ctx.drawImage(strip, ax, yb - hh, 13, hh);
       }
     }
     ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
   }
   // падающие звёзды
   if (dark > 0.6 && !reduced && now > nextMeteor){
-    meteors.push({x:Math.random() * W * 0.8 + W * 0.1, y:Math.random() * H * 0.25, vx:-(6 + Math.random() * 4), vy:2.5 + Math.random() * 2, life:1});
+    meteors.push({x:Math.random() * W * 0.8 + W * 0.1, y:Math.random() * H * 0.2, vx:-(6 + Math.random() * 4), vy:2.5 + Math.random() * 2, life:1});
     nextMeteor = now + 7000 + Math.random() * 12000;
   }
   for (var m = meteors.length - 1; m >= 0; m--){
-    var me = meteors[m]; me.x += me.vx; me.y += me.vy; me.life -= 0.018;
+    var me = meteors[m]; me.x += me.vx * k; me.y += me.vy * k; me.life -= 0.018 * k;
     if (me.life <= 0){ meteors.splice(m, 1); continue; }
     var mg = ctx.createLinearGradient(me.x, me.y, me.x - me.vx * 10, me.y - me.vy * 10);
     mg.addColorStop(0, "rgba(255,255,255," + me.life + ")"); mg.addColorStop(1, "rgba(255,255,255,0)");
@@ -1620,53 +1661,20 @@ function frame(now){
     if (cl.x > W + 60) cl.x = -cl.s.w * cl.z - 60;
     ctx.drawImage(cl.s.c, cl.x, cl.y, cl.s.w * cl.z, cl.s.h * cl.z);
   }
-
-  layerAt(LAY.far, fo.x, fo.y);
-  layerAt(LAY.mid, mo.x, mo.y);
-
-  // всё, что привязано к городку
-  ctx.setTransform(DPR, 0, 0, DPR, mo.x * DPR, mo.y * DPR);
-  if (SC.clock){
-    var d = new Date(), hr = (d.getHours() % 12 + d.getMinutes() / 60) * Math.PI / 6 - Math.PI / 2, mn = (d.getMinutes() + d.getSeconds() / 60) * Math.PI / 30 - Math.PI / 2;
-    ctx.strokeStyle = "#2e2418"; ctx.lineCap = "round";
-    ctx.lineWidth = 2.2; ctx.beginPath(); ctx.moveTo(SC.clock.x, SC.clock.y); ctx.lineTo(SC.clock.x + Math.cos(hr) * 7, SC.clock.y + Math.sin(hr) * 7); ctx.stroke();
-    ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(SC.clock.x, SC.clock.y); ctx.lineTo(SC.clock.x + Math.cos(mn) * 11, SC.clock.y + Math.sin(mn) * 11); ctx.stroke();
-    ctx.fillStyle = "#2e2418"; circle(ctx, SC.clock.x, SC.clock.y, 1.6);
-  }
-  if ((season === "winter" || season === "autumn") && !reduced){
-    if (SC.chimneys.length && Math.random() < 0.3){
-      var ch = SC.chimneys[Math.floor(Math.random() * SC.chimneys.length)];
-      smoke.push({x:ch.x, y:ch.y, r:4, a:0.32, vx:0.12 + Math.random() * 0.2, vy:-0.45 - Math.random() * 0.3});
-    }
-    var scol = dark > 0.5 ? "190,200,230" : "246,248,252";
-    for (var k = smoke.length - 1; k >= 0; k--){
-      var sm = smoke[k]; sm.x += sm.vx + Math.sin(t + k) * 0.05; sm.y += sm.vy; sm.r += 0.13; sm.a -= 0.0024;
-      if (sm.a <= 0){ smoke.splice(k, 1); continue; }
-      ctx.fillStyle = "rgba(" + scol + "," + sm.a.toFixed(3) + ")"; circle(ctx, sm.x, sm.y, sm.r);
-    }
-  }
-  if (SC.garland.length){
-    for (var gi = 0; gi < SC.garland.length; gi++){
-      var b = SC.garland[gi], tw = reduced ? 1 : 0.55 + 0.45 * Math.sin(t * 2.4 + b.p);
-      var ga = (0.5 + dark * 0.5) * tw;
-      if (dark > 0.3){ ctx.fillStyle = rgba(b.c, ga * 0.28); circle(ctx, b.x, b.y, 6); }
-      ctx.fillStyle = rgba(b.c, Math.max(0.4, ga)); circle(ctx, b.x, b.y, 2.1);
-    }
-  }
-
-  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  drawTownLive(t, k);
   // салют
   if (rockets.length || sparks.length){
     ctx.globalCompositeOperation = "lighter";
     for (var q = rockets.length - 1; q >= 0; q--){
-      var rk = rockets[q], dx = rk.tx - rk.x, dy = rk.ty - rk.y;
-      rk.x += dx * 0.06; rk.y += dy * 0.06 - 1.5;
+      var rk = rockets[q], f = Math.min(1, 0.06 * k);
+      rk.x += (rk.tx - rk.x) * f; rk.y += (rk.ty - rk.y) * f - 1.5 * k;
       ctx.fillStyle = "hsla(" + rk.hue + ",100%,75%,.9)"; circle(ctx, rk.x, rk.y, 2);
       ctx.fillStyle = "hsla(" + rk.hue + ",100%,70%,.3)"; circle(ctx, rk.x, rk.y + 6, 1.5);
       if (rk.y <= rk.ty + 4){ burst(rk.x, rk.y, rk.hue); rockets.splice(q, 1); }
     }
+    var dmp = Math.pow(0.985, k);
     for (var z = sparks.length - 1; z >= 0; z--){
-      var sp = sparks[z]; sp.x += sp.vx; sp.y += sp.vy; sp.vx *= 0.985; sp.vy = sp.vy * 0.985 + 0.035; sp.life -= 0.011;
+      var sp = sparks[z]; sp.x += sp.vx * k; sp.y += sp.vy * k; sp.vx *= dmp; sp.vy = sp.vy * dmp + 0.035 * k; sp.life -= 0.011 * k;
       if (sp.life <= 0){ sparks.splice(z, 1); continue; }
       ctx.fillStyle = "hsla(" + sp.hue + ",100%," + (60 + sp.life * 25) + "%," + sp.life.toFixed(3) + ")";
       circle(ctx, sp.x, sp.y, 1.1 + sp.life * 1.3);
@@ -1678,18 +1686,18 @@ function frame(now){
   for (var j = 0; j < particles.length; j++){
     var p = particles[j];
     var mdx = p.x - mouse.x, mdy = p.y - mouse.y, md = mdx * mdx + mdy * mdy;
-    if (md < 6400 && md > 1){ var f = (1 - Math.sqrt(md) / 80) * 2.2; p.vx += mdx / Math.sqrt(md) * f * 0.3; }
+    if (md < 6400 && md > 1){ var fr = (1 - Math.sqrt(md) / 80) * 2.2; p.vx += mdx / Math.sqrt(md) * fr * 0.3; }
     p.vx *= 0.94;
     if (season === "winter"){
-      p.y += p.vy; p.x += Math.sin(t * 0.8 + p.ph) * 0.35 + wind * p.vy + p.vx;
-      ctx.fillStyle = "rgba(255,255,255," + p.a.toFixed(2) + ")"; circle(ctx, p.x, p.y, p.r);
+      p.y += p.vy * k; p.x += (Math.sin(t * 0.8 + p.ph) * 0.35 + wind * p.vy + p.vx) * k;
+      if (p.r < 1.6){ ctx.fillStyle = p.fs; ctx.fillRect(p.x - p.r, p.y - p.r, p.r * 2, p.r * 2); } else { ctx.fillStyle = p.fs; circle(ctx, p.x, p.y, p.r); }
     } else if (season === "autumn" || season === "spring"){
-      p.y += p.vy; p.x += Math.sin(t * 0.9 + p.ph) * 0.8 + wind + p.vx; p.rot += p.vr;
+      p.y += p.vy * k; p.x += (Math.sin(t * 0.9 + p.ph) * 0.8 + wind + p.vx) * k; p.rot += p.vr * k;
       ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.scale(1, Math.max(0.15, Math.abs(Math.cos(t * 1.5 + p.ph))));
-      ctx.fillStyle = mix(p.c, SHADE, dark * 0.45); ell(ctx, 0, 0, p.s, p.s * 0.5);
+      ctx.fillStyle = p.c; ell(ctx, 0, 0, p.s, p.s * 0.5);
       ctx.restore();
     } else {
-      p.y += p.vy; p.x += Math.sin(t * 0.6 + p.ph) * 0.4 + p.vx;
+      p.y += p.vy * k; p.x += (Math.sin(t * 0.6 + p.ph) * 0.4 + p.vx) * k;
       if (dark > 0.4){
         var bl = 0.5 + 0.5 * Math.sin(t * 2 + p.ph * 3);
         ctx.fillStyle = "rgba(220,255,140," + (0.16 * bl) + ")"; circle(ctx, p.x, p.y, 7);
@@ -1698,8 +1706,48 @@ function frame(now){
     }
     if (p.y > H + 20 || p.y < -30 || p.x < -30 || p.x > W + 30) particles[j] = newP(false);
   }
-  requestAnimationFrame(frame);
+  // если компьютер не справляется — сами упрощаем картинку
+  if (performance.now() - startWork > 14){ if (++slowFrames > 40 && heavy < 2){ heavy++; slowFrames = 0; particles.length = Math.max(30, Math.round(particles.length / 2)); } }
+  else slowFrames = Math.max(0, slowFrames - 1);
 }
+/* дым, гирлянды, часы на башне */
+function drawTownLive(t, k){
+  if (k && (season === "winter" || season === "autumn") && !reduced){
+    if (SC.chimneys.length && Math.random() < 0.3 * k){
+      var ch = SC.chimneys[Math.floor(Math.random() * SC.chimneys.length)];
+      smoke.push({x:ch.x, y:ch.y, r:4, a:0.32, vx:0.12 + Math.random() * 0.2, vy:-0.45 - Math.random() * 0.3});
+    }
+    var scol = dark > 0.5 ? "190,200,230" : "246,248,252";
+    for (var i = smoke.length - 1; i >= 0; i--){
+      var sm = smoke[i]; sm.x += (sm.vx + Math.sin(t + i) * 0.05) * k; sm.y += sm.vy * k; sm.r += 0.13 * k; sm.a -= 0.0024 * k;
+      if (sm.a <= 0){ smoke.splice(i, 1); continue; }
+      ctx.fillStyle = "rgba(" + scol + "," + sm.a.toFixed(3) + ")"; circle(ctx, sm.x, sm.y, sm.r);
+    }
+  }
+  for (var g = 0; g < SC.garland.length; g++){
+    var b = SC.garland[g], tw = (reduced || !k) ? 1 : 0.55 + 0.45 * Math.sin(t * 2.4 + b.p);
+    var ga = (0.5 + dark * 0.5) * tw;
+    if (dark > 0.3){ ctx.fillStyle = "rgba(" + b.rgb + "," + (ga * 0.28).toFixed(2) + ")"; circle(ctx, b.x, b.y, 6); }
+    ctx.fillStyle = "rgba(" + b.rgb + "," + Math.max(0.4, ga).toFixed(2) + ")"; circle(ctx, b.x, b.y, 2.1);
+  }
+}
+/* анимация выключена: рисуем только часы и гирлянды, раз в 30 секунд */
+function drawStill(){
+  ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0, 0, cv.width, cv.height);
+  ctx.setTransform(DPR * QS, 0, 0, DPR * QS, 0, 0);
+  drawTownLive(0, 0);
+}
+function applyAnim(){
+  animOn = S.anim !== false;
+  var b = $("anim");
+  b.textContent = animOn ? "✨ анимация" : "✨ выкл";
+  b.classList.toggle("on", false);
+  b.title = animOn ? "Выключить анимацию (если компьютер тормозит)" : "Включить анимацию";
+  if (animOn){ if (!running){ running = true; lastT = performance.now(); nextFrame(); } }
+  else drawStill();
+}
+$("anim").onclick = function(){ S.anim = S.anim === false; save(); applyAnim(); };
+setInterval(function(){ if (!animOn) drawStill(); }, 30000);
 
 /* ---------- мышь: свет в окнах, салют ---------- */
 function midPoint(e){ return {x:e.clientX + par.x * 18, y:e.clientY + par.y * 6}; }
@@ -1708,14 +1756,15 @@ function hitWin(pt){
   return null;
 }
 window.addEventListener("mousemove", function(e){
-  mouse.x = e.clientX; mouse.y = e.clientY;
+  mouse.x = e.clientX; mouse.y = e.clientY; lastMove = performance.now();
   mouse.nx = e.clientX / W - 0.5; mouse.ny = e.clientY / H - 0.5;
   if (e.target === cv) cv.style.cursor = hitWin(midPoint(e)) ? "pointer" : (e.clientY < GY - 40 ? "crosshair" : "default");
 });
 document.addEventListener("mouseleave", function(){ mouse.x = mouse.y = -9999; mouse.nx = mouse.ny = 0; });
 cv.addEventListener("click", function(e){
   var w = hitWin(midPoint(e));
-  if (w){ toggled[w.id] = !toggled[w.id]; drawMid(); return; }
+  lastMove = performance.now();
+  if (w){ toggled[w.id] = !toggled[w.id]; drawMid(); compose(); if (!animOn) drawStill(); return; }
   if (e.clientY < GY - 40) launch(e.clientX, e.clientY);
 });
 
@@ -1725,7 +1774,7 @@ function startScene(){
   resize();
   setInterval(function(){ if (S.season === "auto" || S.light === "auto"){ var d0 = dark; season = currentSeason(); if (Math.abs(currentDark() - d0) > 0.02 || season !== document.body.dataset.scene) buildScene(); document.body.dataset.scene = season; } }, 60 * 1000);
   document.body.dataset.scene = season;
-  requestAnimationFrame(frame);
+  applyAnim();
   var hint = $("hint"); setTimeout(function(){ hint.classList.add("hide"); }, 12000);
 }
 
